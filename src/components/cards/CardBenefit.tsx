@@ -24,7 +24,7 @@ const CardBenefit: FC<CardBenefitProps> = ({
   const theme = useTheme();
   return (
     <MotionCard
-      className='relative w-full p-12 !rounded-[20px] !shadow-customCard'
+      className='relative w-full p-12 !rounded-[20px] !shadow-customCard '
       sx={{ color: theme.palette.text.primary, height, overflow: 'visible' }}
       elevation={0}
       whileHover={{
@@ -43,7 +43,7 @@ const CardBenefit: FC<CardBenefitProps> = ({
         } ${leftToRight ? 'left-6' : 'right-4'}`}
       />
 
-      <div className='absolute top-6 right-4 w-[350px]'>
+      <div className='absolute top-6 right-4 w-[250px] sm:w-[300px] md:w-[350px] max-w-[80%]'>
         <h3 className='text-xl font-semibold'>{title}</h3>
         <p className='text-base mt-1 text-justify'>{description}</p>
       </div>

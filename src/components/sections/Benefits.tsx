@@ -26,7 +26,7 @@ const Benefits: FC<BenefitsProps> = ({ benefits }) => {
             className={`absolute object-contain bottom-0 right-[5%]`}
           />
 
-          <div className='absolute top-6 left-8 w-[600px]'>
+          <div className='absolute top-6 left-8 w-[300px] sm:w-[300px] md:w-[600px] max-w-[80%]'>
             <h3 className='text-xl font-semibold'>{benefits[0].title}</h3>
             <p className='text-base mt-1 text-justify'>
               {benefits[0].description}

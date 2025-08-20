@@ -57,9 +57,8 @@ const LottieAnimation: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className='inline-flex justify-center opacity-90 transition-transform duration-300 ease-in-out hover:scale-110 hover:opacity-100 '
-      // Thêm min-height để IntersectionObserver có thể "thấy" được element trước khi Lottie được load
-      style={{ minHeight: '300px', minWidth: '300px' }} // <-- Điều chỉnh cho phù hợp với kích thước animation
+      className='inline-flex justify-center opacity-90 transition-transform duration-300 ease-in-out  '
+      style={{ minHeight: '300px', minWidth: '300px' }} 
     />
   );
 };

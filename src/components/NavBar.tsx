@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import SchoolIcon from '@mui/icons-material/School';
+import { useNavigate } from 'react-router-dom';
 
 interface NavLink {
   label: string;
@@ -26,6 +27,7 @@ const navLinks: NavLink[] = [
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
   const theme = useTheme();
 
   const handleDrawerToggle = () => {
@@ -82,6 +84,7 @@ export default function Navbar() {
                 borderRadius: '20px',
                 px: 3,
               }}
+              onClick={() => navigate('/login')}
             >
               Đăng nhập
             </Button>
@@ -135,6 +138,7 @@ export default function Navbar() {
               fontWeight: 'bold',
               borderRadius: '20px',
             }}
+            onClick={() => navigate('/login')}
           >
             Đăng nhập
           </Button>

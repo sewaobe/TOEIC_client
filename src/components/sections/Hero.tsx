@@ -76,6 +76,7 @@ const Hero: FC = () => {
               fontSize: { xs: '2.5rem', sm: '3.5rem' },
               color: 'text.primary',
             }}
+            className='text-title'
           >
             Chinh phục TOEIC với TOEIC Master
           </Typography>

@@ -110,6 +110,7 @@ const Testimonials: FC = () => {
             fontWeight='bold'
             textAlign='center'
             sx={{ mb: 8 }}
+            className='text-title'
           >
             Hàng Ngàn Học Viên Đã Thành Công
           </Typography>

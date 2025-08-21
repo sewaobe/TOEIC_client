@@ -66,7 +66,7 @@ export default function Navbar() {
                 sx={{
                   color: theme.palette.text.primary,
                   textTransform: 'none',
-                  fontWeight: 500,
+                  fontWeight: 600,
                   '&:hover': {
                     color: theme.palette.primary.main,
                   },

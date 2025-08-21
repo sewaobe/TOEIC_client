@@ -60,6 +60,7 @@ const SmartRoadmap: FC = () => {
             component='h2'
             fontWeight='bold'
             sx={{ mb: 2 }}
+            className='text-title'
           >
             Lộ Trình Của Bạn Bắt Đầu Từ Đây
           </Typography>

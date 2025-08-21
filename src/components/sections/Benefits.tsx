@@ -12,7 +12,13 @@ const Benefits: FC<BenefitsProps> = ({ benefits }) => {
   return (
     <Box component='section' className='relative py-20 overflow-hidden'>
       <FadeUp>
-        <Typography variant='h4' align='center' gutterBottom fontWeight='bold'>
+        <Typography
+          variant='h4'
+          align='center'
+          gutterBottom
+          fontWeight='bold'
+          className='text-title'
+        >
           Tại Sao Chọn TOEIC Master?
         </Typography>
         <Card

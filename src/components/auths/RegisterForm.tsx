@@ -18,15 +18,16 @@ interface RegisterFormProps {
 }
 
 const RegisterForm: FC<RegisterFormProps> = ({ onSwitch }) => {
+  const authViewModel = useAuthViewModel();
+
   const {
     control,
     handleSubmit,
     formState: { errors },
-  } = useAuthViewModel.useRegisterForm?.() ?? ({} as any); // phòng khi hook tên khác
-
+  } = authViewModel.useRegisterForm();
   const [showPassword, setShowPassword] = useState(false);
 
-  const onSubmit = handleSubmit?.(useAuthViewModel.register) ?? (() => {});
+  const onSubmit = handleSubmit(authViewModel.register);
 
   return (
     <Box

@@ -6,24 +6,56 @@ import {
   RegisterFormInputs,
   registerSchema,
 } from '../models/schemas/registerSchema';
-export const useAuthViewModel = {
-  useLoginForm() {
+import { useNavigateToast } from '../hooks/useNavigateToast';
+export const useAuthViewModel = () => {
+  const { showToastAndRedirect } = useNavigateToast();
+
+  const useLoginForm = () => {
     return useForm<LoginFormInputs>({
       resolver: zodResolver(loginSchema),
       defaultValues: { username: '', password: '' },
     });
-  },
-  useRegisterForm() {
+  };
+
+  const useRegisterForm = () => {
     return useForm<RegisterFormInputs>({
       resolver: zodResolver(registerSchema),
-      defaultValues: { username: ' ', email: '', password: '', fullname: '' },
+      defaultValues: { username: '', email: '', password: '', fullname: '' },
     });
-  },
+  };
 
-  async login(data: LoginFormInputs) {
-    console.log('Login data', data);
-  },
-  async register(data: RegisterFormInputs) {
-    console.log('Register data', data);
-  },
+  const login = async (data: LoginFormInputs) => {
+    try {
+      console.log('Login data', data);
+      showToastAndRedirect(
+        'success',
+        'Bạn đã đăng nhập thành công',
+        '/overview-test',
+        'login-toast',
+      );
+    } catch (error) {
+      showToastAndRedirect(
+        'error',
+        'Đăng nhập thất bại!',
+        '/login',
+        'login-toast',
+      );
+      console.error(error);
+    }
+  };
+
+  const register = async (data: RegisterFormInputs) => {
+    try {
+      console.log('Register data', data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  return {
+    useLoginForm,
+    useRegisterForm,
+    login,
+    register,
+  };
 };

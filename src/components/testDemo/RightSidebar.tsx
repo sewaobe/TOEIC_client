@@ -1,54 +1,55 @@
-import { FC, useState } from "react";
-import { motion } from "framer-motion";
+import { FC } from 'react';
+import { motion } from 'framer-motion';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../../stores/store';
+import QuestionChipRightBar from './QuestionChipRightBar';
+import { setCurrentGroupByQuestionId } from '../../stores/examSlice';
 
-const RightSidebar: FC = () => {
+interface RightSidebarProps {
+  isShow: boolean;
+}
+
+const RightSidebar: FC<RightSidebarProps> = ({ isShow }) => {
   const parts = [
-    { part: "Part 1", questions: Array.from({ length: 6 }, (_, i) => i + 1) },
-    { part: "Part 2", questions: Array.from({ length: 25 }, (_, i) => i + 7) },
-    { part: "Part 3", questions: Array.from({ length: 39 }, (_, i) => i + 32) },
+    { part: 'Part 1', questions: [1, 2] },
+    { part: 'Part 2', questions: [7, 8] },
+    { part: 'Part 3', questions: [32, 33, 34] },
+    { part: 'Part 4', questions: [71, 72, 73] },
+    { part: 'Part 5', questions: [101, 102] },
+    { part: 'Part 6', questions: [151, 152, 153, 154, 155, 156, 157, 158] },
   ];
 
-  // Lưu trạng thái câu hỏi đã làm
-  const [answered, setAnswered] = useState<number[]>([]);
-
-  const toggleAnswer = (q: number) => {
-    setAnswered((prev) =>
-      prev.includes(q) ? prev.filter((x) => x !== q) : [...prev, q]
-    );
-  };
+  const dispatch = useDispatch<AppDispatch>();
+  const answers = useSelector((s: RootState) => s.answer.answers);
 
   return (
-    <aside
-      className="
-        max-w-[25%] w-full flex-shrink-0
-        h-screen bg-white border-l p-4 
-        overflow-y-auto shadow-inner flex-1
-        max-h-[calc(100vh-100px)]
-      "
+    <motion.aside
+      initial={{ x: '100%' }}
+      animate={{ x: isShow ? 0 : '100%' }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'tween', duration: 0.4 }}
+      className='absolute right-0 w-full md:max-w-[25%] h-[calc(100vh-112px)] bg-white border-l py-4 pl-4 overflow-y-auto shadow-inner'
     >
       {parts.map((p) => (
-        <div key={p.part} className="mb-4">
-          <h3 className="font-bold text-primary mb-2">{p.part}</h3>
-          <div className="flex flex-wrap gap-2">
-            {p.questions.map((q) => (
-              <motion.button
-                key={q}
-                whileHover={{ scale: 1.1 }}
-                onClick={() => toggleAnswer(q)}
-                className={`w-8 h-8 rounded-md text-sm font-semibold border
-                  ${
-                    answered.includes(q)
-                      ? "bg-green-500 text-white"
-                      : "bg-gray-100 text-gray-700"
-                  }`}
-              >
-                {q}
-              </motion.button>
-            ))}
+        <div key={p.part} className='mb-4'>
+          <h3 className='font-bold text-primary mb-2'>{p.part}</h3>
+          <div className='flex flex-wrap gap-2'>
+            {p.questions.map((q) => {
+              const a = answers[q - 1]; // mảng 200 phần tử
+              return (
+                <QuestionChipRightBar
+                  key={q}
+                  id={q}
+                  answered={!!a && a.answer !== ''}
+                  isFlagged={!!a && a.isFlagged}
+                  onClick={() => dispatch(setCurrentGroupByQuestionId(q))}
+                />
+              );
+            })}
           </div>
         </div>
       ))}
-    </aside>
+    </motion.aside>
   );
 };
 

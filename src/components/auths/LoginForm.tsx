@@ -1,4 +1,3 @@
-// src/features/auth/components/LoginForm.tsx
 import { FC, useState } from 'react';
 import {
   Box,
@@ -26,16 +25,18 @@ interface LoginFormProps {
 }
 
 const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
+  const authViewModel = useAuthViewModel();
+
   const {
     control,
     handleSubmit,
     formState: { errors },
-  } = useAuthViewModel.useLoginForm();
+  } = authViewModel.useLoginForm();
 
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  const onSubmit = handleSubmit(useAuthViewModel.login);
+  const onSubmit = handleSubmit(authViewModel.login);
 
   return (
     <Box

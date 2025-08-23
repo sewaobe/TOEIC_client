@@ -94,7 +94,8 @@ const FeatureSection: React.FC = () => {
           size="large"
           className="rounded-full px-8 py-3 normal-case font-bold"
           sx={{
-            background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
+            // background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
+            backgroundColor: theme.palette.primary.main,
             color: "#fff",
             "&:hover": {
               boxShadow: "0 3px 5px 2px rgba(255, 105, 135, .3)",

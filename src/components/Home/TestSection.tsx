@@ -1,7 +1,7 @@
-import React from 'react';
-import { Box, Typography, Button, useTheme } from '@mui/material';
-import { motion } from 'framer-motion';
-import TestCard from './TestCard';
+import React from "react";
+import { Box, Typography, Button, useTheme } from "@mui/material";
+import { motion } from "framer-motion";
+import TestCard from "./TestCard";
 
 interface TestSectionProps {
   title: string;
@@ -15,25 +15,16 @@ interface TestSectionProps {
   showViewMoreButton?: boolean;
 }
 
-const TestSection: React.FC<TestSectionProps> = ({ title, tests, showViewMoreButton = false }) => {
+const TestSection: React.FC<TestSectionProps> = ({
+  title,
+  tests,
+  showViewMoreButton = false,
+}) => {
   const theme = useTheme();
-
-  const containerVariants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        staggerChildren: 0.2,
-        delayChildren: 0.2,
-      },
-    },
-  } as const;
 
   return (
     <Box
       component={motion.div}
-      variants={containerVariants}
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, amount: 0.3 }}
@@ -44,17 +35,23 @@ const TestSection: React.FC<TestSectionProps> = ({ title, tests, showViewMoreBut
         <Typography
           variant="h4"
           className="text-2xl md:text-3xl font-bold"
-          sx={{ color: theme.palette.text.primary }}
+          sx={{
+            color: theme.palette.text.primary,
+            fontWeight: 800, // Thêm dòng này để tăng độ dày
+          }}
         >
           {title}
         </Typography>
         {showViewMoreButton && (
-          <Button variant="text" sx={{ color: theme.palette.primary.main, textTransform: 'none' }}>
+          <Button
+            variant="text"
+            sx={{ color: theme.palette.primary.main, textTransform: "none" }}
+          >
             Xem kho đề thi
           </Button>
         )}
       </Box>
-      
+
       <Box className="flex flex-wrap justify-start gap-4">
         {tests.map((test) => (
           <TestCard key={test.id} {...test} />

@@ -1,7 +1,7 @@
-import React from 'react';
-import { Box, Typography, Button, useTheme } from '@mui/material';
-import { motion } from 'framer-motion';
-import {  ScoreboardOutlined } from '@mui/icons-material';
+import React from "react";
+import { Box, Typography, Button, useTheme } from "@mui/material";
+import { motion } from "framer-motion";
+import { ScoreboardOutlined } from "@mui/icons-material";
 
 interface TestCardProps {
   title: string;
@@ -10,7 +10,7 @@ interface TestCardProps {
   isNew?: boolean;
 }
 
-const TestCard: React.FC<TestCardProps> = ({ title, score, details}) => {
+const TestCard: React.FC<TestCardProps> = ({ title, score, details }) => {
   const theme = useTheme();
 
   const cardVariants = {
@@ -26,16 +26,27 @@ const TestCard: React.FC<TestCardProps> = ({ title, score, details}) => {
       sx={{ background: theme.palette.background.paper }}
     >
       <Box className="flex items-center justify-between mb-2">
-        <Typography variant="h6" className="text-base font-bold" sx={{ color: theme.palette.text.primary }}>
+        <Typography
+          variant="h6"
+          className="text-base font-bold"
+          sx={{ color: theme.palette.text.primary }}
+        >
           {title}
         </Typography>
-          <span className="text-xs font-bold text-white px-2 py-1 rounded-full" style={{ background: theme.palette.primary.main }}>
-            Đề thi thật
-          </span>
+        <span
+          className="text-xs font-bold text-white px-2 py-1 rounded-full"
+          style={{ background: theme.palette.primary.main }}
+        >
+          Đề thi thật
+        </span>
       </Box>
 
       {details && (
-        <Typography variant="body2" sx={{ color: theme.palette.text.secondary }} className="mb-2">
+        <Typography
+          variant="body2"
+          sx={{ color: theme.palette.text.secondary }}
+          className="mb-2"
+        >
           <p>{details}</p>
           <p>• 120 phút • 7 phần thi • 200 câu hỏi</p>
         </Typography>
@@ -43,8 +54,15 @@ const TestCard: React.FC<TestCardProps> = ({ title, score, details}) => {
 
       {score !== undefined && (
         <Box className="flex items-center mb-1">
-          <ScoreboardOutlined sx={{ color: theme.palette.success.main, fontSize: 18 }} className="mr-1" />
-          <Typography variant="body2" className="font-bold" sx={{ color: theme.palette.success.main }}>
+          <ScoreboardOutlined
+            sx={{ color: theme.palette.success.main, fontSize: 18 }}
+            className="mr-1"
+          />
+          <Typography
+            variant="body2"
+            className="font-bold"
+            sx={{ color: theme.palette.success.main }}
+          >
             Tổng điểm: {score}
           </Typography>
         </Box>
@@ -56,9 +74,10 @@ const TestCard: React.FC<TestCardProps> = ({ title, score, details}) => {
           sx={{
             borderColor: theme.palette.primary.main,
             color: theme.palette.primary.main,
-            textTransform: 'none',
-            '&:hover': {
-              backgroundColor: theme.palette.primary.light,
+            textTransform: "none",
+            "&:hover": {
+              boxShadow: "0 3px 5px 2px rgba(255, 105, 135, .3)",
+              transform: "scale(1.05)", // Phóng to 5%
             },
           }}
         >
@@ -67,12 +86,13 @@ const TestCard: React.FC<TestCardProps> = ({ title, score, details}) => {
         <Button
           variant="contained"
           sx={{
-            background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
-            // backgroundColor: theme.palette.primary.main,
-            color: '#fff',
-            textTransform: 'none',
-            '&:hover': {
-              boxShadow: '0 3px 5px 2px rgba(255, 105, 135, .3)',
+            // background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
+            backgroundColor: theme.palette.primary.main,
+            color: "#fff",
+            textTransform: "none",
+            "&:hover": {
+              boxShadow: "0 3px 5px 2px rgba(255, 105, 135, .3)",
+              transform: "scale(1.05)",
             },
           }}
         >

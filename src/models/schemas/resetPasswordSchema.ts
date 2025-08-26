@@ -15,11 +15,19 @@ export type Step2Inputs = z.infer<typeof step2Schema>;
 // Step 3: nhập mật khẩu mới
 export const step3Schema = z
   .object({
-    password: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
-    confirmPassword: z.string().min(6, 'Xác nhận mật khẩu tối thiểu 6 ký tự'),
+    newPassword: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
+    confirmNewPassword: z
+      .string()
+      .min(6, 'Xác nhận mật khẩu tối thiểu 6 ký tự'),
   })
-  .refine((data) => data.password === data.confirmPassword, {
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
     message: 'Mật khẩu không khớp',
     path: ['confirmPassword'],
   });
 export type Step3Inputs = z.infer<typeof step3Schema>;
+
+export const verifyOtpSchema = step1Schema.merge(step2Schema);
+export type VerifyOtpInputs = z.infer<typeof verifyOtpSchema>;
+
+export const resetPasswordSchema = verifyOtpSchema.merge(step3Schema);
+export type ResetPasswordInputs = z.infer<typeof resetPasswordSchema>;

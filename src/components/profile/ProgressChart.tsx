@@ -1,5 +1,5 @@
 // src/components/profile/ProgressChart.tsx
-import { Box, Card, CardContent, Typography, LinearProgress, useTheme } from '@mui/material';
+import { Card, CardContent, Typography, LinearProgress, useTheme } from '@mui/material';
 import { motion } from 'framer-motion';
 
 const ProgressChart: React.FC<any> = ({ data }) => {

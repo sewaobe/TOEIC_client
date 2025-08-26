@@ -46,26 +46,34 @@ const ResetPasswordForm: FC = () => {
   // form step 3: password
   const form3 = useForm<Step3Inputs>({
     resolver: zodResolver(step3Schema),
-    defaultValues: { password: '', confirmPassword: '' },
+    defaultValues: { newPassword: '', confirmNewPassword: '' },
   });
 
   const handleStep1 = async (data: Step1Inputs) => {
     console.log('Step1 data:', data);
-    // await authService.sendOtp(data);
+    await authService.sendOtp(data);
     showToastAndRedirect('success', 'OTP đã được gửi', '', 'otp-toast');
     setResetStep(2);
   };
 
   const handleStep2 = async (data: Step2Inputs) => {
     console.log('Step2 data:', data);
-    // await authService.verifyOtp(data);
+    const emailFromStep1 = form1.getValues('email');
+
+    await authService.verifyOtp({ ...data, email: emailFromStep1 });
     showToastAndRedirect('success', 'OTP hợp lệ', '', 'otp-toast');
     setResetStep(3);
   };
 
   const handleStep3 = async (data: Step3Inputs) => {
     console.log('Step3 data:', data);
-    // await authService.resetPassword({ ...data, email: form1.getValues("email") });
+    const emailFromStep1 = form1.getValues('email');
+    const otpFromStep2 = form2.getValues('otp');
+    await authService.resetPassword({
+      newPassword: data.newPassword,
+      email: emailFromStep1,
+      otp: otpFromStep2,
+    });
     showToastAndRedirect(
       'success',
       'Đổi mật khẩu thành công',
@@ -155,15 +163,15 @@ const ResetPasswordForm: FC = () => {
       {resetStep === 3 && (
         <Box component='form' onSubmit={form3.handleSubmit(handleStep3)}>
           <Controller
-            name='password'
+            name='newPassword'
             control={form3.control}
             render={({ field }) => (
               <TextField
                 {...field}
                 label='New Password'
                 type={showPassword ? 'text' : 'password'}
-                error={!!form3.formState.errors.password}
-                helperText={form3.formState.errors.password?.message}
+                error={!!form3.formState.errors.newPassword}
+                helperText={form3.formState.errors.newPassword?.message}
                 sx={{ marginBottom: '10px' }}
                 fullWidth
                 InputProps={{
@@ -179,15 +187,15 @@ const ResetPasswordForm: FC = () => {
             )}
           />
           <Controller
-            name='confirmPassword'
+            name='confirmNewPassword'
             control={form3.control}
             render={({ field }) => (
               <TextField
                 {...field}
                 label='Confirm Password'
                 type='password'
-                error={!!form3.formState.errors.confirmPassword}
-                helperText={form3.formState.errors.confirmPassword?.message}
+                error={!!form3.formState.errors.confirmNewPassword}
+                helperText={form3.formState.errors.confirmNewPassword?.message}
                 fullWidth
               />
             )}

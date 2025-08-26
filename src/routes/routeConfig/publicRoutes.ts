@@ -11,6 +11,7 @@ const TestDemoPage = lazy(() => import('../../views/pages/TestDemoPage'));
 const OverviewTestPage = lazy(() => import('../../views/pages/OverviewPage'));
 
 const HomePage = lazy(() => import('../../views/pages/HomePage'));
+const ProfilePage = lazy(() => import('../../views/pages/ProfilePage'));
 
 const publicRoutes: AppRoute[] = [
   { path: '/', element: LandingPage },
@@ -19,6 +20,7 @@ const publicRoutes: AppRoute[] = [
   { path: '/overview-test', element: OverviewTestPage },
   { path: '/test-demo', element: TestDemoPage },
   { path: '/home', element: HomePage },
+  { path: '/profile', element: ProfilePage },
 ];
 
 export default publicRoutes;

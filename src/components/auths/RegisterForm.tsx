@@ -27,7 +27,9 @@ const RegisterForm: FC<RegisterFormProps> = ({ onSwitch }) => {
   } = authViewModel.useRegisterForm();
   const [showPassword, setShowPassword] = useState(false);
 
-  const onSubmit = handleSubmit(authViewModel.register);
+  const onSubmit = handleSubmit((data) =>
+    authViewModel.register(data, onSwitch),
+  );
 
   return (
     <Box
@@ -55,6 +57,20 @@ const RegisterForm: FC<RegisterFormProps> = ({ onSwitch }) => {
         </Typography>
       </Box>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Controller
+          name='fullname'
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label='Full Name'
+              size='small'
+              error={!!errors?.fullname}
+              helperText={errors?.fullname?.message as string}
+            />
+          )}
+        />
+
         <Controller
           name='username'
           control={control}
@@ -149,10 +165,11 @@ const RegisterForm: FC<RegisterFormProps> = ({ onSwitch }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          marginTop: '30px',
         }}
       >
         <Typography variant='caption' color='text.secondary' textAlign='center'>
-          © {new Date().getFullYear()} TOEIC Master. All rights reserved.{' '}
+          © {new Date().getFullYear()} TOEIC Master. All rights reserved.
         </Typography>
         <Typography
           variant='caption'

@@ -34,6 +34,7 @@ const ScrollToTopButton: FC<ScrollToTopButtonProps> = ({
   };
 
   useEffect(() => {
+    console.log(window.scrollY);
     // Thêm event listener khi component được mount
     window.addEventListener('scroll', handleScroll);
 

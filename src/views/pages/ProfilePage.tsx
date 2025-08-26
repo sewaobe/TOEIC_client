@@ -1,20 +1,16 @@
-// src/pages/ProfilePage.tsx
 import { Box, Container, Typography, useTheme } from "@mui/material";
+import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+
+import MainLayout from "../layouts/MainLayout";
 import UserCard from "../../components/profile/UserCard";
 import ProgressChart from "../../components/profile/ProgressChart";
-import AchievementSection from "../../components/profile/AchievementSection";
 import CourseHistory from "../../components/profile/CourseHistory";
-import { motion } from "framer-motion";
-import MainLayout from "../layouts/MainLayout";
+import userService from "../../services/user.service";
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
 const itemVariants = {
@@ -24,26 +20,65 @@ const itemVariants = {
 
 const ProfilePage: React.FC = () => {
   const theme = useTheme();
-  // Lấy dữ liệu người dùng từ hook hoặc API
-  const userData = {
-    name: "Nguyễn Văn A",
-    level: "Intermediate (650 TOEIC)",
-    totalHours: 120,
-    recentScore: 780,
-    progress: { listening: 80, reading: 75 },
-    achievements: [
-      { id: 1, name: "Tân binh xuất sắc", icon: "🏆" },
-      { id: 2, name: "Hoàn thành 100 bài", icon: "💯" },
-      { id: 3, name: "Tân binh xuất sắc", icon: "🏆" },
-      { id: 4, name: "Hoàn thành 100 bài", icon: "💯" },
-      { id: 5, name: "Tân binh xuất sắc", icon: "🏆" },
-      { id: 6, name: "Hoàn thành 100 bài", icon: "💯" },
-    ],
-    courses: [
-      { id: 1, name: "TOEIC Căn bản", completion: 100 },
-      { id: 2, name: "Luyện đề TOEIC", completion: 60 },
-    ],
-  };
+  const [userData, setUserData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const user = await userService.getCurrentUser();
+        console.log("Fetched user data:", user);
+
+        // chỉ lấy name và gmail từ API (dùng biến user)
+        setUserData({
+          name: user.fullname || "Nguyễn Văn A",
+          gmail: user.email || "abc@gmail.com",
+
+          // phần còn lại mock cứng
+          totalHours: 120,
+          recentScore: 780,
+          progress: { listening: 80, reading: 75 },
+          achievements: [
+            { id: 1, name: "Tân binh xuất sắc", icon: "🏆" },
+            { id: 2, name: "Hoàn thành 100 bài", icon: "💯" },
+          ],
+          courses: [
+            { id: 1, name: "TOEIC Căn bản", completion: 100 },
+            { id: 2, name: "Luyện đề TOEIC", completion: 60 },
+          ],
+        });
+      } catch (err) {
+        console.error("Failed to fetch user", err);
+
+        // fallback toàn bộ mock
+        setUserData({
+          name: "Nguyễn Văn A",
+          gmail: "abc@gmail.com",
+          totalHours: 120,
+          recentScore: 780,
+          progress: { listening: 80, reading: 75 },
+          achievements: [
+            { id: 1, name: "Tân binh xuất sắc", icon: "🏆" },
+            { id: 2, name: "Hoàn thành 100 bài", icon: "💯" },
+          ],
+          courses: [
+            { id: 1, name: "TOEIC Căn bản", completion: 100 },
+            { id: 2, name: "Luyện đề TOEIC", completion: 60 },
+          ],
+        });
+      }
+    };
+    fetchUser();
+  }, []);
+
+  if (!userData) {
+    return (
+      <MainLayout>
+        <Box className="flex justify-center items-center h-screen">
+          <Typography>Đang tải dữ liệu...</Typography>
+        </Box>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>

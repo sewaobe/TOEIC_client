@@ -25,7 +25,7 @@ const UserCard: React.FC<any> = ({ userData }) => {
 
             {/* Level */}
             <Typography variant="body2" className="text-text-secondary mt-1">
-              {userData.level}
+              {userData.gmail}
             </Typography>
 
             {/* Nút chỉnh sửa hồ sơ */}

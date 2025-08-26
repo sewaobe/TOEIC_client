@@ -1,9 +1,10 @@
 import { FC, useState } from 'react';
 import TestHeader from '../../components/testDemo/TestHeader';
 import RightSidebar from '../../components/testDemo/RightSidebar';
-import QuestionContent from '../../components/testDemo/QuestionContent';
 import { AnimatePresence } from 'framer-motion';
 import Joyride, { Step, CallBackProps, STATUS } from 'react-joyride';
+import ExamContainer from '../../components/testDemo/ExamContainer';
+import ReloadGuard from '../../components/testDemo/ReloadGuard';
 
 const steps: Step[] = [
   {
@@ -28,7 +29,7 @@ const steps: Step[] = [
 
 const TestDemoPage: FC = () => {
   const [isShowSideBar, setIsShowSideBar] = useState<boolean>(false);
-  const [stepIndex, setStepIndex] = useState<number>(0);
+  const [_, setStepIndex] = useState<number>(0);
   const [isTourRunning, setIsTourRunning] = useState<boolean>(true);
   const handleJoyrideCallback = (data: CallBackProps) => {
     const { status } = data;
@@ -62,13 +63,16 @@ const TestDemoPage: FC = () => {
       {/* Main layout */}
       <div className='flex flex-1 max-h-[calc(100vh-100px)] relative'>
         <main className='flex-1 p-3 flex'>
-          <QuestionContent />
+          <ExamContainer />
         </main>
 
         <AnimatePresence>
           {isShowSideBar && <RightSidebar isShow={isShowSideBar} />}
         </AnimatePresence>
       </div>
+
+      {/* Modal khi ấn reload */}
+      <ReloadGuard />
     </div>
   );
 };

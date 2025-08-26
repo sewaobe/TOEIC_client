@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import AutoGraphIcon from '@mui/icons-material/AutoGraph';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import { useNavigate } from 'react-router-dom';
 
 // 1. Tách dữ liệu ra để dễ quản lý và cập nhật
 const keyBenefits = [
@@ -41,6 +42,7 @@ const benefitItemVariants = {
 } as const;
 
 const Hero: FC = () => {
+  const navigate = useNavigate();
   return (
     <Box
       sx={{
@@ -115,7 +117,11 @@ const Hero: FC = () => {
           </Stack>
 
           <Stack direction='row' spacing={2} justifyContent='center'>
-            <Button variant='contained' size='large'>
+            <Button
+              variant='contained'
+              size='large'
+              onClick={() => navigate('/overview-test')}
+            >
               Bắt đầu ngay
             </Button>
             <Button variant='outlined' size='large' color='secondary'>

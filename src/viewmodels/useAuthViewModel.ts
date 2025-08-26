@@ -1,15 +1,22 @@
+// viewmodels/useAuthViewModel.ts
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-
 import { LoginFormInputs, loginSchema } from '../models/schemas/loginSchema';
 import {
   RegisterFormInputs,
   registerSchema,
 } from '../models/schemas/registerSchema';
 import { useNavigateToast } from '../hooks/useNavigateToast';
+import authService from '../services/authService';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '../stores/store';
+import { setUser } from '../stores/authSlice';
+
 export const useAuthViewModel = () => {
   const { showToastAndRedirect } = useNavigateToast();
+  const dispatch = useDispatch<AppDispatch>();
 
+  // -------- Login ----------
   const useLoginForm = () => {
     return useForm<LoginFormInputs>({
       resolver: zodResolver(loginSchema),
@@ -17,6 +24,7 @@ export const useAuthViewModel = () => {
     });
   };
 
+  // -------- Register ----------
   const useRegisterForm = () => {
     return useForm<RegisterFormInputs>({
       resolver: zodResolver(registerSchema),
@@ -24,13 +32,15 @@ export const useAuthViewModel = () => {
     });
   };
 
+  // -------- Login ----------
   const login = async (data: LoginFormInputs) => {
     try {
-      console.log('Login data', data);
+      const res = await authService.login(data);
+      dispatch(setUser(res.data));
       showToastAndRedirect(
         'success',
         'Bạn đã đăng nhập thành công',
-        '/overview-test',
+        '/home',
         'login-toast',
       );
     } catch (error) {
@@ -44,10 +54,19 @@ export const useAuthViewModel = () => {
     }
   };
 
-  const register = async (data: RegisterFormInputs) => {
+  // -------- Register ----------
+  const register = async (data: RegisterFormInputs, onSwitch: () => void) => {
     try {
-      console.log('Register data', data);
+      await authService.register(data);
+      showToastAndRedirect(
+        'success',
+        'Bạn đã đăng ký thành công',
+        '/login',
+        'register-toast',
+      );
+      onSwitch();
     } catch (error) {
+      showToastAndRedirect('error', 'Đăng ký thất bại!', '', 'register-toast');
       console.error(error);
     }
   };

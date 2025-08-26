@@ -127,7 +127,7 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
           }
           label={<Typography variant='body2'>Remember Me</Typography>}
         />
-        <MuiLink href='#' variant='body2' underline='hover'>
+        <MuiLink href='/reset-password' variant='body2' underline='hover'>
           Forgot Password?
         </MuiLink>
       </Box>
@@ -216,13 +216,12 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          marginTop: '30px',
         }}
       >
-        {' '}
         <Typography variant='caption' color='text.secondary' textAlign='center'>
-          {' '}
           © {new Date().getFullYear()} TOEIC Master. All rights reserved.{' '}
-        </Typography>{' '}
+        </Typography>
         <Typography
           variant='caption'
           color='text.secondary'

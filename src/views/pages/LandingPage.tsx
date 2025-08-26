@@ -12,10 +12,6 @@ import MainLayout from '../layouts/MainLayout';
 const LandingPage: FC = () => {
   const vm = useLandingViewModel();
 
-  const handleRegister = () => {
-    console.log('Đăng ký ngay');
-  };
-
   return (
     <MainLayout>
       <Box sx={{ px: { xs: 2, sm: 4, md: 6 } }}>
@@ -23,7 +19,7 @@ const LandingPage: FC = () => {
         <SmartRoadmap />
         <Benefits benefits={vm.benefits} />
         <Testimonials />
-        <CTA onRegister={handleRegister} />
+        <CTA />
         <ScrollToTopButton scrollThreshold={1000} />
       </Box>
     </MainLayout>

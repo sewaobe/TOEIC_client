@@ -1,4 +1,3 @@
-// src/pages/LoginPage.tsx
 import { FC, useState } from 'react';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { AnimatePresence, motion } from 'framer-motion';

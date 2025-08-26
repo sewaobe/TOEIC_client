@@ -221,3 +221,69 @@ export const questionsById: Record<number, QuestionData> = {
     options: ['A. ...', 'B. ...', 'C. ...', 'D. ...'],
   },
 };
+
+export interface PartIntroData {
+  part: number;
+  termDesc: string; // HTML content
+  audioUrl?: string;
+}
+
+export const partIntros: PartIntroData[] = [
+  {
+    part: 1,
+    termDesc: `
+      <p><strong>Part 1</strong>: Photographs</p>
+      <p>You will look at a picture and listen to four short statements. Choose the statement that best describes the picture.</p>
+    `,
+    audioUrl:
+      'https://zenlishtoeic.vn/wp-content/uploads/2022/08/DIRECTION-PART-1.mp3',
+  },
+  {
+    part: 2,
+    termDesc: `
+      <p><strong>Part 2</strong>: Question-Response</p>
+      <p>You will listen to a question or statement and three responses. Choose the best response.</p>
+    `,
+    audioUrl:
+      'https://zenlishtoeic.vn/wp-content/uploads/2022/08/DIRECTION-PART-2.mp3',
+  },
+  {
+    part: 3,
+    termDesc: `
+      <p><strong>Part 3</strong>: Conversations</p>
+      <p>You will listen to a conversation and answer questions about it.</p>
+    `,
+    audioUrl:
+      'https://zenlishtoeic.vn/wp-content/uploads/2022/08/DIRECTION-PART-3.mp3',
+  },
+  {
+    part: 4,
+    termDesc: `
+      <p><strong>Part 4</strong>: Talks</p>
+      <p>You will listen to a talk and answer questions about it.</p>
+    `,
+    audioUrl:
+      'https://zenlishtoeic.vn/wp-content/uploads/2022/08/DIRECTION-PART-4.mp3',
+  },
+  {
+    part: 5,
+    termDesc: `
+      <p><strong>Part 5</strong>: Incomplete Sentences</p>
+      <p>You will read a sentence with a missing word or phrase and choose the best option to complete it.</p>
+    `,
+  },
+  {
+    part: 6,
+    termDesc: `
+      <p><strong>Part 6</strong>: Text Completion</p>
+      <p>You will read a passage with missing sentences. Choose the best option to complete the passage.</p>
+    `,
+  },
+  {
+    part: 7,
+    termDesc: `
+      <p><strong>Part 7</strong>: Reading Comprehension</p>
+      <p>You will read passages and answer questions about them.</p>
+    `,
+  },
+];

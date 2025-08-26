@@ -10,10 +10,9 @@ import {
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { useNavigate } from 'react-router-dom';
 
-interface CTAProps {
-  onRegister: () => void;
-}
+interface CTAProps {}
 
 const containerVariants = {
   offscreen: { opacity: 0, y: 50 },
@@ -24,9 +23,9 @@ const containerVariants = {
   },
 } as const;
 
-const CTA: FC<CTAProps> = ({ onRegister }) => {
+const CTA: FC<CTAProps> = ({}) => {
   const theme = useTheme();
-
+  const navigate = useNavigate();
   return (
     <Box
       component={motion.section}
@@ -99,7 +98,7 @@ const CTA: FC<CTAProps> = ({ onRegister }) => {
             color='secondary'
             size='large'
             endIcon={<ArrowForwardIcon />}
-            onClick={onRegister}
+            onClick={() => navigate('/login')}
             sx={{
               py: 1.5,
               px: 5,

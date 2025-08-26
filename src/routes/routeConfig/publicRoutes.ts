@@ -11,14 +11,18 @@ const TestDemoPage = lazy(() => import('../../views/pages/TestDemoPage'));
 const OverviewTestPage = lazy(() => import('../../views/pages/OverviewPage'));
 
 const HomePage = lazy(() => import('../../views/pages/HomePage'));
+const ResetPasswordPage = lazy(
+  () => import('../../views/pages/ResetPasswordPage'),
+);
 
 const publicRoutes: AppRoute[] = [
   { path: '/', element: LandingPage },
-  { path: '/ladingPage', element: LandingPage },
+  { path: '/landing-page', element: LandingPage },
   { path: '/login', element: AuthPage },
   { path: '/overview-test', element: OverviewTestPage },
   { path: '/test-demo', element: TestDemoPage },
   { path: '/home', element: HomePage },
+  { path: '/reset-password', element: ResetPasswordPage },
 ];
 
 export default publicRoutes;

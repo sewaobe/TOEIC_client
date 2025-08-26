@@ -7,11 +7,17 @@ import {
   IconButton,
   Drawer,
   Box,
+  Avatar,
+  Menu,
+  MenuItem,
   useTheme,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import SchoolIcon from '@mui/icons-material/School';
 import { useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../stores/store';
+import { clearUser } from '../stores/authSlice';
 
 interface NavLink {
   label: string;
@@ -27,11 +33,29 @@ const navLinks: NavLink[] = [
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const user = useSelector((state: RootState) => state.auth.user);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const theme = useTheme();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    dispatch(clearUser());
+    handleMenuClose();
+    navigate('/login');
   };
 
   return (
@@ -75,19 +99,57 @@ export default function Navbar() {
                 {item.label}
               </Button>
             ))}
-            <Button
-              variant='contained'
-              color='primary'
-              sx={{
-                textTransform: 'none',
-                fontWeight: 'bold',
-                borderRadius: '20px',
-                px: 3,
-              }}
-              onClick={() => navigate('/login')}
-            >
-              Đăng nhập
-            </Button>
+
+            {user ? (
+              <>
+                <IconButton onClick={handleAvatarClick}>
+                  <Avatar
+                    src={user.avatar}
+                    alt={user.fullname}
+                    sx={{ bgcolor: theme.palette.primary.main }}
+                  >
+                    {!user.avatar && user.fullname?.charAt(0).toUpperCase()}
+                  </Avatar>
+                </IconButton>
+                <Menu
+                  anchorEl={anchorEl}
+                  open={Boolean(anchorEl)}
+                  onClose={handleMenuClose}
+                  anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'right', // canh trái avatar
+                  }}
+                  transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right', // bung từ góc trái
+                  }}
+                >
+                  <MenuItem
+                    onClick={() => {
+                      navigate('/profile');
+                      handleMenuClose();
+                    }}
+                  >
+                    Trang cá nhân
+                  </MenuItem>
+                  <MenuItem onClick={handleLogout}>Đăng xuất</MenuItem>
+                </Menu>
+              </>
+            ) : (
+              <Button
+                variant='contained'
+                color='primary'
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  borderRadius: '20px',
+                  px: 3,
+                }}
+                onClick={() => navigate('/login')}
+              >
+                Đăng nhập
+              </Button>
+            )}
           </div>
 
           {/* Mobile menu icon */}
@@ -112,6 +174,32 @@ export default function Navbar() {
           onClick={handleDrawerToggle}
           sx={{ backgroundColor: theme.palette.background.paper }}
         >
+          {user ? (
+            <Box className='flex items-center gap-3 px-2'>
+              <Avatar
+                src={user.avatar}
+                alt={user.fullname}
+                sx={{ bgcolor: theme.palette.primary.main }}
+              >
+                {!user.avatar && user.fullname?.charAt(0).toUpperCase()}
+              </Avatar>
+              <Typography>{user.fullname}</Typography>
+            </Box>
+          ) : (
+            <Button
+              variant='contained'
+              color='primary'
+              fullWidth
+              sx={{
+                textTransform: 'none',
+                fontWeight: 'bold',
+                borderRadius: '20px',
+              }}
+              onClick={() => navigate('/login')}
+            >
+              Đăng nhập
+            </Button>
+          )}
           {navLinks.map((item) => (
             <Button
               key={item.label}
@@ -129,19 +217,6 @@ export default function Navbar() {
               {item.label}
             </Button>
           ))}
-          <Button
-            variant='contained'
-            color='primary'
-            fullWidth
-            sx={{
-              textTransform: 'none',
-              fontWeight: 'bold',
-              borderRadius: '20px',
-            }}
-            onClick={() => navigate('/login')}
-          >
-            Đăng nhập
-          </Button>
         </Box>
       </Drawer>
     </>

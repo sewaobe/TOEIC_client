@@ -22,6 +22,7 @@ import {
 
 import authService from '../../services/authService';
 import { useNavigateToast } from '../../hooks/useNavigateToast';
+import { useNavigate } from 'react-router-dom';
 
 type ResetStep = 1 | 2 | 3;
 
@@ -30,7 +31,7 @@ const ResetPasswordForm: FC = () => {
   const [resetStep, setResetStep] = useState<ResetStep>(1);
   const [showPassword, setShowPassword] = useState(false);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
-
+  const navigate = useNavigate();
   // form step 1: email
   const form1 = useForm<Step1Inputs>({
     resolver: zodResolver(step1Schema),
@@ -208,7 +209,7 @@ const ResetPasswordForm: FC = () => {
 
       <Typography variant='body2' textAlign='center' mt={2}>
         Don’t have an account?{' '}
-        <Button variant='text' size='small'>
+        <Button variant='text' size='small' onClick={() => navigate('/login')}>
           Register Now
         </Button>
       </Typography>

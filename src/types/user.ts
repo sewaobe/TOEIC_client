@@ -1,0 +1,16 @@
+export interface UserProfile {
+  fullname: string;
+  avatar: string;
+}
+
+export interface User {
+  _id: string;
+  role_id: string;
+  avatar: string;
+  username: string;
+  fullname: string;
+  email: string;
+  isActive: boolean;
+  created_at: string;
+  profile: UserProfile;
+}

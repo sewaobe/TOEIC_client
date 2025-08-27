@@ -1,21 +1,5 @@
-// stores/authSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-
-interface UserProfile {
-  fullname: string;
-}
-
-interface User {
-  _id: string;
-  role_id: string;
-  avatar: string;
-  username: string;
-  fullname: string;
-  email: string;
-  isActive: boolean;
-  created_at: string;
-  profile: UserProfile;
-}
+import { User } from '../types/user';
 
 interface AuthState {
   user: User | null;

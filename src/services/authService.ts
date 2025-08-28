@@ -6,6 +6,7 @@ import {
   Step1Inputs,
   VerifyOtpInputs,
 } from '../models/schemas/resetPasswordSchema';
+
 export type ResetPasswordPayload = Omit<
   ResetPasswordInputs,
   'confirmNewPassword'

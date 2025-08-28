@@ -8,7 +8,7 @@ interface MainLayoutProps {
 
 function MainLayout({ children }: MainLayoutProps) {
   return (
-    <div className='custom-scrollbar'>
+    <div>
       <Navbar />
       <div className='pt-16'>{children}</div>
       <Footer />

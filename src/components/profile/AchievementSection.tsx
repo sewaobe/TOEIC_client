@@ -1,5 +1,12 @@
 // src/components/profile/AchievementSection.tsx
-import { Card, CardContent, Typography, useTheme, Tooltip, IconButton } from "@mui/material";
+import {
+  Card,
+  CardContent,
+  Typography,
+  useTheme,
+  Tooltip,
+  IconButton,
+} from "@mui/material";
 import { motion } from "framer-motion";
 import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "@mui/icons-material";
@@ -17,7 +24,9 @@ const achievementVariants = {
   },
 } as const;
 
-const AchievementSection: React.FC<{ achievements: any[] }> = ({ achievements }) => {
+const AchievementSection: React.FC<{ achievements: any[] }> = ({
+  achievements,
+}) => {
   const theme = useTheme();
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -26,7 +35,10 @@ const AchievementSection: React.FC<{ achievements: any[] }> = ({ achievements })
     let newIndex = currentIndex;
     if (direction === "left" && currentIndex > 0) {
       newIndex = currentIndex - 3;
-    } else if (direction === "right" && currentIndex < achievements.length - 1) {
+    } else if (
+      direction === "right" &&
+      currentIndex < achievements.length - 1
+    ) {
       newIndex = currentIndex + 3;
     }
 
@@ -65,7 +77,7 @@ const AchievementSection: React.FC<{ achievements: any[] }> = ({ achievements })
           <div className="flex overflow-hidden flex-1 gap-2">
             {achievements.map((achievement: any, idx) => (
               <motion.div
-                key={achievement.id}
+                key={achievement._id}
                 ref={(el) => (itemRefs.current[idx] = el)}
                 variants={achievementVariants}
                 className="flex-shrink-0 flex flex-col items-center text-center p-4
@@ -73,7 +85,11 @@ const AchievementSection: React.FC<{ achievements: any[] }> = ({ achievements })
                 whileHover={{ scale: 1.1 }}
               >
                 <Tooltip title={achievement.name} arrow>
-                  <div className="text-4xl">{achievement.icon}</div>
+                  <img
+                    src={achievement.image}
+                    alt={achievement.name}
+                    className="w-10 h-10 object-contain"
+                  />
                 </Tooltip>
               </motion.div>
             ))}

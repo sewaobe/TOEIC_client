@@ -1,20 +1,13 @@
 import { Avatar, Box, Card, CardContent, Typography, Button } from "@mui/material";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { useSelector } from "react-redux";
-import { RootState } from "../../stores/store";
 import AchievementSection from "./AchievementSection";
 import EditProfileForm from "./EditProfileForm";
 
-const UserCard: React.FC = () => {
-  const user = useSelector((state: RootState) => state.user);
-  const [isEditing, setIsEditing] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl || "");
+const UserCard = ({ user, isEditing, setIsEditing }: any) => {
 
-  const achievements = [
-    { id: 1, name: "Tân binh xuất sắc", icon: "🏆" },
-    { id: 2, name: "Hoàn thành 100 bài", icon: "💯" },
-  ];
+  const [avatarUrl, setAvatarUrl] = useState(user.infor.profile.avatar || "");
+  console.log("UserCard user:", user);
 
   return (
     <motion.div transition={{ type: "spring", stiffness: 300 }}>
@@ -24,14 +17,14 @@ const UserCard: React.FC = () => {
             {/* Chỉ show avatar gốc khi không edit */}
             {!isEditing && (
               <Avatar sx={{ width: 80, height: 80 }} className="mb-4" src={avatarUrl}>
-                {!avatarUrl && (user.name || "").charAt(0)}
+                {!avatarUrl && (user?.infor.profile.fullname || "").charAt(0)}
               </Avatar>
             )}
 
             {isEditing ? (
               <EditProfileForm
-                initialName={user.name || ""}
-                initialGmail={user.gmail || ""}
+                initialName={user?.infor.profile.fullname || ""}
+                initialGmail={user?.infor.email || ""}
                 avatarUrl={avatarUrl}
                 onClose={() => setIsEditing(false)}
                 onAvatarChange={(newAvatar) => setAvatarUrl(newAvatar)} // cập nhật ngay
@@ -39,10 +32,10 @@ const UserCard: React.FC = () => {
             ) : (
               <>
                 <Typography variant="h5" className="font-bold text-text-primary">
-                  {user.name}
+                  {user?.infor.profile.fullname}
                 </Typography>
                 <Typography variant="body2" className="text-text-secondary mt-1">
-                  {user.gmail}
+                  {user?.infor.email}
                 </Typography>
                 <Button
                   variant="outlined"
@@ -60,9 +53,9 @@ const UserCard: React.FC = () => {
           <div className="mt-6 space-y-2">
             <Box className="flex justify-between items-center text-left">
               <Typography variant="body2" className="text-text-secondary">
-                Điểm TOEIC gần nhất:
+                Điểm TOEIC cao nhất:
               </Typography>
-              <Typography variant="h6" className="text-primary-main font-bold">780</Typography>
+              <Typography variant="h6" className="text-primary-main font-bold">{user.highestTest.score}</Typography>
             </Box>
             <Box className="flex justify-between items-center text-left">
               <Typography variant="body2" className="text-text-secondary">
@@ -74,7 +67,7 @@ const UserCard: React.FC = () => {
         </CardContent>
 
         <div className="md:col-span-2">
-          <AchievementSection achievements={achievements} />
+          <AchievementSection achievements={user.infor.badges} />
         </div>
       </Card>
     </motion.div>

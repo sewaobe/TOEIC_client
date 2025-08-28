@@ -1,9 +1,11 @@
 import { Button, TextField, Avatar } from "@mui/material";
 import { CameraAlt } from "@mui/icons-material";
 import { useState, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "../../stores/store";
+import { setUser } from "../../stores/authSlice";
 import userService from "../../services/user.service";
-import { useDispatch } from "react-redux";
-import { updateUser } from "../../stores/userSlice";
+import { uploadToCloudinary } from "../../services/cloudinary.service";
 
 interface EditProfileFormProps {
   initialName: string;
@@ -20,10 +22,17 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
   onClose,
   onAvatarChange,
 }) => {
+  const user = useSelector((state: RootState) => state.auth.user);
   const dispatch = useDispatch();
-  const [formData, setFormData] = useState({ name: initialName, gmail: initialGmail });
+
+  // State form
+  const [formData, setFormData] = useState({
+    name: initialName,
+    gmail: initialGmail,
+  });
+  const [avatar, setAvatar] = useState(avatarUrl);       // preview avatar
+  const [avatarFile, setAvatarFile] = useState<File | null>(null); // file upload
   const [loading, setLoading] = useState(false);
-  const [avatar, setAvatar] = useState(avatarUrl);
   const [hover, setHover] = useState(false);
 
   useEffect(() => {
@@ -31,10 +40,12 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
     setAvatar(avatarUrl);
   }, [initialName, initialGmail, avatarUrl]);
 
+  // Handle input change
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Handle avatar click -> chọn file
   const handleAvatarClick = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -42,11 +53,12 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
     input.onchange = (e: any) => {
       const file = e.target.files[0];
       if (file) {
+        setAvatarFile(file); // lưu file để upload
         const reader = new FileReader();
         reader.onload = () => {
           const result = reader.result as string;
-          setAvatar(result);
-          onAvatarChange(result); // cập nhật ngay cho UserCard
+          setAvatar(result);        // preview ngay trên UI
+          onAvatarChange(result);   // cập nhật UserCard
         };
         reader.readAsDataURL(file);
       }
@@ -54,25 +66,42 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
     input.click();
   };
 
+  // Handle save -> upload Cloudinary nếu có file mới, rồi gửi backend
   const handleSave = async () => {
     try {
       setLoading(true);
+      let avatarUrlToSend = avatar;
+
+      // Upload avatarFile lên Cloudinary nếu có
+      if (avatarFile) {
+        avatarUrlToSend = await uploadToCloudinary(avatarFile);
+      }
+
+      // Gửi profile mới lên backend
       const updatedUser = await userService.updateUserProfile({
         fullname: formData.name,
         email: formData.gmail,
-        avatar,
+        avatar: avatarUrlToSend,
       });
-      setLoading(false);
 
-      dispatch(updateUser({
-        name: updatedUser.fullname,
-        gmail: updatedUser.email,
-        avatarUrl: updatedUser.avatar,
-      }));
+      // Cập nhật Redux
+      dispatch(
+        setUser({
+          ...user!,
+          profile: {
+            fullname: updatedUser.profile.fullname,
+            avatar: updatedUser.profile.avatar,
+          },
+          email: updatedUser.email,
+        })
+      );
 
+      // Đóng form và reset file
       onClose();
+      setAvatarFile(null);
     } catch (err) {
       console.error("Update profile failed:", err);
+    } finally {
       setLoading(false);
     }
   };

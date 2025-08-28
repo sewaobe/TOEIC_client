@@ -4,8 +4,8 @@ import { motion } from 'framer-motion';
 
 const ProgressChart: React.FC<any> = ({ data }) => {
     const theme = useTheme();
-  const listeningProgress = data.listening;
-  const readingProgress = data.reading;
+  const listeningProgress = data.listeningCorrect;
+  const readingProgress = data.readingCorrect;
 
   return (
     <Card className="rounded-xl shadow-lg bg-background-paper p-3">

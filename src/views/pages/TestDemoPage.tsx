@@ -1,28 +1,33 @@
-import { FC, useState } from 'react';
-import TestHeader from '../../components/testDemo/TestHeader';
-import RightSidebar from '../../components/testDemo/RightSidebar';
-import { AnimatePresence } from 'framer-motion';
-import Joyride, { Step, CallBackProps, STATUS } from 'react-joyride';
-import ExamContainer from '../../components/testDemo/ExamContainer';
-import ReloadGuard from '../../components/testDemo/ReloadGuard';
+import { FC, useEffect, useState } from "react";
+import { useDispatch, useSelector} from "react-redux";
+import { fetchExamById } from "../../stores/examSlice";
+import { AppDispatch, RootState } from "../../stores/store";
+import TestHeader from "../../components/testDemo/TestHeader";
+import RightSidebar from "../../components/testDemo/RightSidebar";
+import { AnimatePresence } from "framer-motion";
+import Joyride, { Step, CallBackProps, STATUS } from "react-joyride";
+import ExamContainer from "../../components/testDemo/ExamContainer";
+import ReloadGuard from "../../components/testDemo/ReloadGuard";
+import { setInitialAnswers } from "../../stores/answerSlice";
+import { ExamGroup, ExamQuestion } from "../../types/Exam";
 
 const steps: Step[] = [
   {
     target: '[data-tour-id="time-counter"]',
-    content: 'Đây là đồng hồ thời gian, hãy chú ý thời gian làm bài.',
-    placement: 'bottom',
+    content: "Đây là đồng hồ thời gian, hãy chú ý thời gian làm bài.",
+    placement: "bottom",
     disableBeacon: true,
   },
   {
     target: '[data-tour-id="submit-button"]',
-    content: 'Nhấn nút này để nộp bài khi hoàn thành.',
-    placement: 'bottom',
+    content: "Nhấn nút này để nộp bài khi hoàn thành.",
+    placement: "bottom",
     disableBeacon: true,
   },
   {
     target: '[data-tour-id="sidebar-toggle"]',
-    content: 'Nhấn vào đây để xem danh sách câu hỏi bên phải.',
-    placement: 'bottom',
+    content: "Nhấn vào đây để xem danh sách câu hỏi bên phải.",
+    placement: "bottom",
     disableBeacon: true,
   },
 ];
@@ -41,8 +46,26 @@ const TestDemoPage: FC = () => {
     }
   };
 
+  const dispatch = useDispatch<AppDispatch>();
+  const groups = useSelector((s: RootState) => s.exam.groups);
+  useEffect(() => {
+    dispatch(fetchExamById("68af851b1918226d4c424e7f"))
+  }, [dispatch]);
+  useEffect(() => {
+    if (groups.length > 0) {
+      const initialAnswers = groups.flatMap((g: ExamGroup) =>
+        g.questions.map((q: ExamQuestion) => ({
+          _id: q._id,
+          question: Number(q.name.replace(/^Question\s*/, "")),
+          answer: "",
+          isFlagged: false,
+        }))
+      );
+      dispatch(setInitialAnswers(initialAnswers));
+    }
+  }, [groups, dispatch]);
   return (
-    <div className='relative flex flex-col min-h-screen bg-gray-50 overflow-hidden'>
+    <div className="relative flex flex-col min-h-screen bg-gray-50 overflow-hidden">
       {/* Tour */}
       <Joyride
         steps={steps}
@@ -61,8 +84,8 @@ const TestDemoPage: FC = () => {
       />
 
       {/* Main layout */}
-      <div className='flex flex-1 max-h-[calc(100vh-100px)] relative'>
-        <main className='flex-1 p-3 flex'>
+      <div className="flex flex-1 max-h-[calc(100vh-100px)] relative">
+        <main className="flex-1 p-3 flex">
           <ExamContainer />
         </main>
 

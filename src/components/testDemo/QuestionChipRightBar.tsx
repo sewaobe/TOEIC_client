@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 interface QuestionChipRightBarProps {
-  id: number;
+  id: string;
   answered: boolean;
   isFlagged: boolean;
   onClick: () => void;

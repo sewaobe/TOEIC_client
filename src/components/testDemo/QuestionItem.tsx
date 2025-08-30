@@ -4,28 +4,29 @@ import { AppDispatch, RootState } from '../../stores/store';
 import { setAnswer, toggleFlag } from '../../stores/answerSlice';
 
 interface QuestionItemProps {
-  id: number;
+  id: string;
+  name: number;
   text: string;
   options: string[];
 }
 
-const QuestionItem: React.FC<QuestionItemProps> = ({ id, text, options }) => {
+const QuestionItem: React.FC<QuestionItemProps> = ({ id,name, text, options }) => {
   const dispatch = useDispatch<AppDispatch>();
 
   const answer = useSelector(
-    (state: RootState) => state.answer.answers[id - 1],
-  );
+  (state: RootState) => state.answer.answers[name - 1] || { answer: "", isFlagged: false }
+);
 
   const handleSelect = (opt: string) => {
-    dispatch(setAnswer({ questionId: id, answer: opt }));
+    dispatch(setAnswer({question: name, answer: opt }));
   };
 
   const handleToggleFlag = () => {
-    dispatch(toggleFlag({ questionId: id }));
+    dispatch(toggleFlag({ question: name }));
   };
   return (
     <div className='w-full md:w-1/2'>
-      <h3 className='font-bold mb-4'>Câu {id}</h3>
+      <h3 className='font-bold mb-4'>{name}.</h3>
       <p className='mb-4'>{text}</p>
 
       <ul className='space-y-2'>

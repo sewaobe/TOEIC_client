@@ -1,31 +1,82 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { QuestionGroup, questionGroups } from '../models/QuestionType';
+// stores/examSlice.ts
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { ExamGroup } from '../types/Exam';
+import testService from '../services/test.service';
 
+// ----------------- Async thunk để fetch test -----------------
+export const fetchExamById = createAsyncThunk(
+  'exam/fetchById',
+  async (id: string, thunkAPI) => {
+    try {
+      const { test } = await testService.getTestById(id, { full: true });
+      const groups = formatTestToGroups(test);
+      return { testId: test._id, groups };
+    } catch (err) {
+      return thunkAPI.rejectWithValue(err);
+    }
+  }
+);
+
+function formatTestToGroups(test: any): ExamGroup[] {
+  const groups: ExamGroup[] = [];
+  const parts = Object.keys(test.questions || {});
+
+  parts.forEach((partName, partIndex) => {
+    const partData = test.questions[partName];
+    const partGroups = partData.groups || [];
+
+    partGroups.forEach((g: any, gi: number) => {
+      const qs = g.questions || [];
+      groups.push({
+        _id: `${partName}-${gi}`, // unique id
+        part: partIndex + 1,
+        audioUrl: g.audioUrl?.url || null,
+        imagesUrl: g.imagesUrl?.map((i: any) => i.url) || [],
+        transcriptEnglish: g.transcriptEnglish || "",
+        transcriptTranslation: g.transcriptTranslation || "",
+        questions: qs.map((q: any) => ({
+          _id: q._id,
+          name: q.name,
+          textQuestion: q.textQuestion,
+          choices: q.choices || {},
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation,
+        })),
+      });
+    });
+  });
+
+  return groups;
+}
+
+// ----------------- State -----------------
 interface ExamState {
-  groups: QuestionGroup[];
-  qIdToGroupIndex: Record<number, number>;
+  currentTestId: string;      // thêm field lưu testId
+  groups: ExamGroup[];
+  qIdToGroupIndex: Record<string, number>;
   currentGroupIndex: number;
   showIntro: boolean;
 }
 
-function buildIndex(groups: QuestionGroup[]) {
-  const map: Record<number, number> = {};
+function buildIndex(groups: ExamGroup[]) {
+  const map: Record<string, number> = {};
   groups.forEach((g, gi) =>
-    g.questionIds.forEach((qid) => {
-      map[qid] = gi;
-    }),
+    g.questions.forEach((q) => {
+      map[q._id] = gi;
+    })
   );
   return map;
 }
 
-const initialGroups = questionGroups;
 const initialState: ExamState = {
-  groups: initialGroups,
-  qIdToGroupIndex: buildIndex(initialGroups),
+  currentTestId:'',  // mặc định null
+  groups: [],
+  qIdToGroupIndex: {},
   currentGroupIndex: 0,
-  showIntro: true, // khi vừa mở vào part đầu tiên -> show Intro luôn
+  showIntro: true,
 };
 
+// ----------------- Slice -----------------
 const examSlice = createSlice({
   name: 'exam',
   initialState,
@@ -37,23 +88,18 @@ const examSlice = createSlice({
         const nextPart = state.groups[i]?.part;
 
         state.currentGroupIndex = i;
-        // nếu đổi sang part mới thì bật intro
-        if (nextPart !== currentPart) {
-          state.showIntro = true;
-        }
+        if (nextPart !== currentPart) state.showIntro = true;
       }
     },
-    setCurrentGroupByQuestionId: (state, action: PayloadAction<number>) => {
-      const q = action.payload;
-      const gi = state.qIdToGroupIndex[q];
+    setCurrentGroupByQuestionId: (state, action: PayloadAction<string>) => {
+      const qid = action.payload;
+      const gi = state.qIdToGroupIndex[qid];
       if (gi !== undefined) {
         const currentPart = state.groups[state.currentGroupIndex]?.part;
         const nextPart = state.groups[gi]?.part;
 
         state.currentGroupIndex = gi;
-        if (nextPart !== currentPart) {
-          state.showIntro = true;
-        }
+        if (nextPart !== currentPart) state.showIntro = true;
       }
     },
     nextGroup: (state) => {
@@ -62,9 +108,7 @@ const examSlice = createSlice({
         const nextPart = state.groups[state.currentGroupIndex + 1]?.part;
 
         state.currentGroupIndex += 1;
-        if (nextPart !== currentPart) {
-          state.showIntro = true;
-        }
+        if (nextPart !== currentPart) state.showIntro = true;
       }
     },
     prevGroup: (state) => {
@@ -73,14 +117,21 @@ const examSlice = createSlice({
         const prevPart = state.groups[state.currentGroupIndex - 1]?.part;
 
         state.currentGroupIndex -= 1;
-        if (prevPart !== currentPart) {
-          state.showIntro = true;
-        }
+        if (prevPart !== currentPart) state.showIntro = true;
       }
     },
     setShowIntro: (state, action: PayloadAction<boolean>) => {
       state.showIntro = action.payload;
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(fetchExamById.fulfilled, (state, action: PayloadAction<{ testId: string; groups: ExamGroup[] }>) => {
+      state.groups = action.payload.groups;
+      state.qIdToGroupIndex = buildIndex(action.payload.groups);
+      state.currentGroupIndex = 0;
+      state.showIntro = true;
+      state.currentTestId = action.payload.testId;  // lưu testId
+    });
   },
 });
 

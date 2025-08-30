@@ -3,7 +3,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../stores/store';
 import userService from '../../services/user.service';
-import { User } from '../../types/user';
+import { setUser } from '../../stores/authSlice';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -18,10 +18,9 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   useEffect(() => {
     if (!user) {
       userService
-        .getCurrentUser()
-        .then((data) => {
-          //dispatch(setUser(data))
-          console.log('User', data);
+        .getProfile()
+        .then((data) => { 
+          dispatch(setUser(data.user));
         })
         .catch((error) => {
           console.error('Error ProtectedRoute ', error);

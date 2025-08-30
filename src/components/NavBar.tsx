@@ -28,7 +28,7 @@ const navLinks: NavLink[] = [
   { label: 'Trang chủ', href: '/' },
   { label: 'Chương trình học', href: '/programs' },
   { label: 'Đề thi online', href: '/exams' },
-  { label: 'Flash Card', href: '/flashcards' },
+  { label: 'Flash Card', href: '/flash-cards' },
 ];
 
 export default function Navbar() {
@@ -104,11 +104,11 @@ export default function Navbar() {
               <>
                 <IconButton onClick={handleAvatarClick}>
                   <Avatar
-                    src={user.avatar}
-                    alt={user.fullname}
+                    src={user.profile.avatar}
+                    alt={user.profile.fullname}
                     sx={{ bgcolor: theme.palette.primary.main }}
                   >
-                    {!user.avatar && user.fullname?.charAt(0).toUpperCase()}
+                    {!user.profile.avatar && user.profile.fullname?.charAt(0).toUpperCase()}
                   </Avatar>
                 </IconButton>
                 <Menu
@@ -178,13 +178,13 @@ export default function Navbar() {
           {user ? (
             <Box className='flex items-center gap-3 px-2'>
               <Avatar
-                src={user.avatar}
-                alt={user.fullname}
+                src={user.profile.avatar}
+                alt={user.profile.fullname}
                 sx={{ bgcolor: theme.palette.primary.main }}
               >
-                {!user.avatar && user.fullname?.charAt(0).toUpperCase()}
+                {!user.profile.avatar && user.profile.fullname?.charAt(0).toUpperCase()}
               </Avatar>
-              <Typography>{user.fullname}</Typography>
+              <Typography>{user.profile.fullname}</Typography>
             </Box>
           ) : (
             <Button

@@ -8,19 +8,19 @@ import ScrollToTopButton from '../../components/ScrollToTopButton';
 
 const recentTestsData = [
   {
-    id: 1,
+    id: "1",
     title: 'ETS 23 TOEIC Test 1',
     score: 850,
     details: 'Bộ đề thi: ETS 23 ',
   },
   {
-    id: 2,
+    id: "2",
     title: 'ETS 23 TOEIC Test 2',
     score: 780,
     details: 'Bộ đề thi: ETS 23 ',
   },
   {
-    id: 3,
+    id: "3",
     title: 'ETS 23 TOEIC Test 3',
     score: 920,
     details: 'Bộ đề thi: ETS 23 ',
@@ -29,19 +29,19 @@ const recentTestsData = [
 
 const newestTestsData = [
   {
-    id: 1,
+    id: "1",
     title: 'ETS 23 TOEIC Test 4',
     details: 'Bộ đề thi: ETS 23 ',
     isNew: true,
   },
   {
-    id: 2,
+    id: "2",
     title: 'ETS 23 TOEIC Test 5',
     details: 'Bộ đề thi: ETS 23 ',
     isNew: true,
   },
   {
-    id: 3,
+    id: "3",
     title: 'ETS 23 TOEIC Test 6',
     details: 'Bộ đề thi: ETS 23 ',
     isNew: true,

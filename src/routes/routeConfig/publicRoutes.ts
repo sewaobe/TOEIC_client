@@ -10,25 +10,21 @@ const AuthPage = lazy(() => import('../../views/pages/AuthPage'));
 const TestDemoPage = lazy(() => import('../../views/pages/TestDemoPage'));
 const OverviewTestPage = lazy(() => import('../../views/pages/OverviewPage'));
 
-const ProfilePage = lazy(() => import('../../views/pages/ProfilePage'));
 const ResetPasswordPage = lazy(
   () => import('../../views/pages/ResetPasswordPage'),
 );
 const ExamPage = lazy(() => import('../../views/pages/ExamPage'));
 const ExamDetailPage = lazy(() => import('../../views/pages/ExamDetailPage'));
 
-const FlashCardPage = lazy(() => import('../../views/pages/FlashCardPage'));
 const publicRoutes: AppRoute[] = [
   { path: '/', element: LandingPage },
   { path: '/landing-page', element: LandingPage },
   { path: '/login', element: AuthPage },
   { path: '/overview-test', element: OverviewTestPage },
   { path: '/test-demo', element: TestDemoPage },
-  { path: '/profile', element: ProfilePage },
   { path: '/reset-password', element: ResetPasswordPage },
   { path: '/exams', element: ExamPage },
   { path: '/exam/:id', element: ExamDetailPage },
-  { path: '/flash-cards', element: FlashCardPage },
 ];
 
 export default publicRoutes;

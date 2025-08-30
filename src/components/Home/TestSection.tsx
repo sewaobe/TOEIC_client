@@ -6,7 +6,7 @@ import TestCard from "./TestCard";
 interface TestSectionProps {
   title: string;
   tests: {
-    id: number;
+    id: string;
     title: string;
     score?: number;
     details: string;

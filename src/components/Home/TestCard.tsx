@@ -12,7 +12,7 @@ interface TestCardProps {
   id: string;
   title: string;
   score?: number;
-  details?: string; // Thêm prop này để chứa thông tin chi tiết
+  details: string; // Thêm prop này để chứa thông tin chi tiết
   isNew?: boolean;
 }
 

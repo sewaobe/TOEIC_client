@@ -1,17 +1,32 @@
-import { StrictMode } from 'react';
+import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import ThemeProviderWrapper from './ThemeProviderWrapper.tsx';
 import { BrowserRouter } from 'react-router-dom';
 import { AppRouter } from './routes/AppRouter.tsx';
-import { Provider } from 'react-redux';
-import { store } from './stores/store.ts';
+import { Provider, useDispatch } from 'react-redux';
+import { AppDispatch, store } from './stores/store.ts';
+import { getUserThunk } from './stores/userSlice.ts';
+
+const AppProvider = ({ children }: { children: React.ReactNode }) => {
+  const dispatch = useDispatch<AppDispatch>();
+
+  useEffect(() => {
+    console.log("FETCH USER APP PROVIDER ==========")
+    dispatch(getUserThunk());
+  }, [dispatch]);
+
+  return <>{children}</>;
+};
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <Provider store={store}>
         <ThemeProviderWrapper>
-          <AppRouter />
+          <AppProvider>
+            <AppRouter />
+          </AppProvider>
         </ThemeProviderWrapper>
       </Provider>
     </BrowserRouter>

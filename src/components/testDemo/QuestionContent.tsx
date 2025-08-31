@@ -11,6 +11,7 @@ const QuestionContent: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
+    console.log(currentGroupIndex);
     // khi group thay đổi, play audio nếu có
     if (group?.audioUrl && audioRef.current) {
       audioRef.current.load();
@@ -38,7 +39,7 @@ const QuestionContent: React.FC = () => {
   return (
     <div className="flex flex-col flex-1">
       {/* Navigation buttons */}
-      <div className="flex justify-center gap-4 mb-4">
+      {currentGroupIndex > 53 && <div className="flex justify-center gap-4 mb-4">
         <button
           onClick={goPrev}
           disabled={currentGroupIndex === 0}
@@ -53,7 +54,7 @@ const QuestionContent: React.FC = () => {
         >
           Câu tiếp ➡
         </button>
-      </div>
+      </div>}
 
       {/* Layout question + passage/image */}
       <div className="flex flex-col md:flex-row flex-1 bg-white border rounded-md overflow-hidden shadow-sm">
@@ -87,7 +88,7 @@ const QuestionContent: React.FC = () => {
             return (
               <QuestionItem
                 key={question._id}
-                id={question._id} 
+                id={question._id}
                 name={Number(questionId)}
                 text={question.textQuestion || ""}
                 options={options}

@@ -93,7 +93,7 @@ const HeroSection: React.FC = () => {
           variants={imageVariants}
           initial="initial"
           animate="animate"
-          style={{ maxWidth: "400px" }}
+          style={{ maxWidth: "400px", aspectRatio: "1 / 1", }}
         >
           <img
             src="https://estudyme.com/_next/image/?url=%2Fimages%2Fapp%2Flegacyhome%2Fstudent.webp&w=640&q=100"

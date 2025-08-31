@@ -10,7 +10,7 @@ import { useNavigateToast } from '../hooks/useNavigateToast';
 import authService from '../services/authService';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../stores/store';
-import { setUser } from '../stores/authSlice';
+import { getUserThunk, setAuth } from '../stores/userSlice';
 
 export const useAuthViewModel = () => {
   const { showToastAndRedirect } = useNavigateToast();
@@ -36,7 +36,8 @@ export const useAuthViewModel = () => {
   const login = async (data: LoginFormInputs) => {
     try {
       const res = await authService.login(data);
-      dispatch(setUser(res.data));
+      dispatch(setAuth(true));
+      dispatch(getUserThunk());
       showToastAndRedirect(
         'success',
         'Bạn đã đăng nhập thành công',

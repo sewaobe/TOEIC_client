@@ -3,9 +3,9 @@ import { CameraAlt } from "@mui/icons-material";
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../stores/store";
-import { setUser } from "../../stores/authSlice";
 import userService from "../../services/user.service";
 import { uploadToCloudinary } from "../../services/cloudinary.service";
+import { setUser } from "../../stores/userSlice";
 
 interface EditProfileFormProps {
   initialName: string;
@@ -22,7 +22,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
   onClose,
   onAvatarChange,
 }) => {
-  const user = useSelector((state: RootState) => state.auth.user);
+  const user = useSelector((state: RootState) => state.user.user);
   const dispatch = useDispatch();
 
   // State form

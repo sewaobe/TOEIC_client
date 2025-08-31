@@ -1,60 +1,75 @@
-// import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
-// import userService from "../services/user.service";
-// import { User } from "../types/user";
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import userService from "../services/user.service";
+import { User } from "../types/user";
 
-// // 1. Async thunk để fetch user
-// export const fetchCurrentUser = createAsyncThunk(
-//   "user/fetchCurrentUser",
-//   async (_, thunkAPI) => {
-//     try {
-//       const response = await userService.getCurrentUser();
-//       return response.user; // chỉ trả về user thôi
-//     } catch (err) {
-//       return thunkAPI.rejectWithValue(err);
-//     }
-//   }
-// );
+interface UserState {
+  user: User | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+  initialized: boolean; // thêm flag
+  error: string | null;
+}
 
-// // 2. initial state của user
-// interface UserState {
-//   currentUser: User | null;
-//   loading: boolean;
-//   error: string | null;
-// }
+export const getUserThunk = createAsyncThunk<User>(
+  "user/get",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await userService.getProfile();
+      return res.user;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Unauthorized");
+    }
+  }
+);
 
-// const initialState: UserState = {
-//   currentUser: null,
-//   loading: false,
-//   error: null,
-// };
+const initialState: UserState = {
+  user: null,
+  isAuthenticated: false,
+  loading: false,
+  initialized: false, // ban đầu false
+  error: null,
+};
 
-// // 3. user slice
-// const userSlice = createSlice({
-//   name: "user",
-//   initialState,
-//   reducers: {
-//     updateUser: (state, action: PayloadAction<Partial<User>>) => {
-//       if (state.currentUser) {
-//         state.currentUser = { ...state.currentUser, ...action.payload };
-//       }
-//     },
-//   },
-//   extraReducers: (builder) => {
-//     builder
-//       .addCase(fetchCurrentUser.pending, (state) => {
-//         state.loading = true;
-//         state.error = null;
-//       })
-//       .addCase(fetchCurrentUser.fulfilled, (state, action: PayloadAction<User>) => {
-//         state.currentUser = action.payload;
-//         state.loading = false;
-//       })
-//       .addCase(fetchCurrentUser.rejected, (state, action) => {
-//         state.error = action.error.message || "Failed to fetch user";
-//         state.loading = false;
-//       });
-//   },
-// });
+const userSlice = createSlice({
+  name: "user",
+  initialState,
+  reducers: {
+    logout: (state) => {
+      state.user = null;
+      state.isAuthenticated = false;
+      state.error = null;
+      state.initialized = true; // tránh fetch lại
+    },
+    setUser: (state, action: PayloadAction<User>) => {
+      state.user = action.payload;
+      state.isAuthenticated = true;
+      state.initialized = true;
+    },
+    setAuth: (state, action: PayloadAction<boolean>) => {
+      state.isAuthenticated = action.payload;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(getUserThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getUserThunk.fulfilled, (state, action: PayloadAction<User>) => {
+        state.loading = false;
+        state.user = action.payload;
+        state.isAuthenticated = true;
+        state.initialized = true;
+      })
+      .addCase(getUserThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.user = null;
+        state.isAuthenticated = false;
+        state.initialized = true; // mark initialized để FE không gọi lại
+        state.error = action.payload as string;
+      });
+  },
+});
 
-// export const { updateUser } = userSlice.actions;
-// export default userSlice.reducer;
+export const { logout, setUser, setAuth } = userSlice.actions;
+export default userSlice.reducer;

@@ -2,10 +2,12 @@ import { Route, Routes } from 'react-router-dom';
 import privateRoutes from './routeConfig/privateRoutes';
 import publicRoutes from './routeConfig/publicRoutes';
 import { RouteWrapper } from './guards/RouteWrapper';
-import { Suspense } from 'react';
+import { Suspense} from 'react';
 import { Toaster } from 'sonner';
 
+
 export const AppRouter = () => {
+ 
   return (
     <>
       <Toaster position='top-right' richColors />

@@ -1,40 +1,52 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { store } from '../stores/store';
+import { logout } from '../stores/userSlice';
+import type { NavigateFunction } from 'react-router-dom';
 
-// Khởi tạo axios instance
+let navigateRef: NavigateFunction | null = null;
+export const setNavigate = (navigate: NavigateFunction) => { navigateRef = navigate; };
+
+// logoutService.ts
+let logoutHandler: (() => void) | null = null;
+
+/** Thiết lập handler logout từ component */
+export const setLogoutHandler = (handler: () => void) => {
+  logoutHandler = handler;
+};
+
+/** Gọi logout */
+export const triggerLogout = () => {
+  if (logoutHandler) logoutHandler();
+};
+
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 });
 
-// Interceptor cho response
-axiosClient.interceptors.response.use(
-  (response: AxiosResponse) => response.data, // luôn trả về response.data
-  async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig & {
-      _retry?: boolean;
-    };
+const axiosRefresh = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  withCredentials: true,
+});
 
-    // Nếu lỗi là 401 (unauthorized) và chưa retry
+axiosClient.interceptors.response.use(
+  (response: AxiosResponse) => response.data,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        // Gọi API refresh token (nó tự lấy từ cookie HttpOnly)
-        await axiosClient.get('/auth/refresh-token');
-
-        // Retry lại request gốc
-        return axiosClient(originalRequest);
+        await axiosRefresh.get('/auth/refresh-token'); // gọi riêng
+        return axiosClient(originalRequest); // retry request gốc
       } catch (refreshError) {
-        // Nếu refresh cũng fail → logout
-        console.error('Refresh token failed:', refreshError);
-        window.location.href = '/login';
+        console.error('Refresh token failed', refreshError);
+        triggerLogout(); // → component lắng nghe để dispatch + redirect
         return Promise.reject(refreshError);
       }
     }
 
-    // Nếu lỗi khác hoặc đã retry → reject
     return Promise.reject(error);
   },
 );

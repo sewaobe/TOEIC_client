@@ -1,5 +1,5 @@
 import { FC, useEffect, useState } from "react";
-import { useDispatch, useSelector} from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { fetchExamById } from "../../stores/examSlice";
 import { AppDispatch, RootState } from "../../stores/store";
 import TestHeader from "../../components/testDemo/TestHeader";
@@ -7,9 +7,10 @@ import RightSidebar from "../../components/testDemo/RightSidebar";
 import { AnimatePresence } from "framer-motion";
 import Joyride, { Step, CallBackProps, STATUS } from "react-joyride";
 import ExamContainer from "../../components/testDemo/ExamContainer";
-import ReloadGuard from "../../components/testDemo/ReloadGuard";
 import { setInitialAnswers } from "../../stores/answerSlice";
 import { ExamGroup, ExamQuestion } from "../../types/Exam";
+import { useNavigate } from "react-router-dom";
+import F5Modal from "../../components/modals/F5Modal";
 
 const steps: Step[] = [
   {
@@ -33,6 +34,7 @@ const steps: Step[] = [
 ];
 
 const TestDemoPage: FC = () => {
+  const navigate = useNavigate();
   const [isShowSideBar, setIsShowSideBar] = useState<boolean>(false);
   const [_, setStepIndex] = useState<number>(0);
   const [isTourRunning, setIsTourRunning] = useState<boolean>(true);
@@ -95,7 +97,8 @@ const TestDemoPage: FC = () => {
       </div>
 
       {/* Modal khi ấn reload */}
-      <ReloadGuard />
+      <F5Modal onConfirm={() => navigate('/home')}/>
+
     </div>
   );
 };

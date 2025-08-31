@@ -17,7 +17,8 @@ import SchoolIcon from '@mui/icons-material/School';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../stores/store';
-import { clearUser } from '../stores/authSlice';
+import { logout } from '../stores/userSlice';
+import authService from '../services/authService';
 
 interface NavLink {
   label: string;
@@ -35,7 +36,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  const user = useSelector((state: RootState) => state.auth.user);
+  const user = useSelector((state: RootState) => state.user.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -52,12 +53,21 @@ export default function Navbar() {
     setAnchorEl(null);
   };
 
-  const handleLogout = () => {
-    dispatch(clearUser());
+  const handleLogout = async () => {
+    await authService.logout();
+    dispatch(logout());
     handleMenuClose();
     navigate('/login');
   };
 
+  const handleNavigate = (href: string, label: string) => {
+    // Nếu là Trang chủ, tùy trạng thái login
+    if (label === 'Trang chủ') {
+      navigate(user ? '/home' : '/');
+    } else {
+      navigate(href);
+    }
+  };
   return (
     <>
       <AppBar
@@ -86,7 +96,7 @@ export default function Navbar() {
             {navLinks.map((item) => (
               <Button
                 key={item.label}
-                href={item.href}
+                onClick={() => handleNavigate(item.href, item.label)}
                 sx={{
                   color: theme.palette.text.primary,
                   textTransform: 'none',
@@ -204,7 +214,7 @@ export default function Navbar() {
           {navLinks.map((item) => (
             <Button
               key={item.label}
-              href={item.href}
+              onClick={() => handleNavigate(item.href, item.label)}
               fullWidth
               sx={{
                 justifyContent: 'flex-start',

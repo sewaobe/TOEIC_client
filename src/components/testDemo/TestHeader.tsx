@@ -1,10 +1,13 @@
-import React, { FC, useEffect } from "react";
+import React, { FC, useEffect, useState } from "react";
 import { Button, useTheme } from "@mui/material";
 import AppsIcon from "@mui/icons-material/Apps";
 import { useCountdown } from "../../hooks/useCountDown";
 import { useSelector } from "react-redux";
 import { RootState } from "../../stores/store";
 import testService from "./../../services/test.service";
+import ScoreModal from "../modals/ScoreModal";
+import { useNavigate } from "react-router-dom";
+import ConfirmModal from "../modals/ConfirmModal";
 
 interface TestHeaderProps {
   setIsShowSideBar: React.Dispatch<React.SetStateAction<boolean>>;
@@ -14,12 +17,16 @@ const TestHeader: FC<TestHeaderProps> = ({
   setIsShowSideBar,
   isTourRunning,
 }) => {
+  const [submitOpen, setSubmitOpen] = useState<boolean>(false);
+  const [scoreOpen, setScoreOpen] = useState(false);
+  const [score, setScore] = useState(0);
+  const navigate = useNavigate();
   const theme = useTheme();
   const { timeLeft, formatTime } = useCountdown(7200, isTourRunning);
   const answers = useSelector((state: RootState) => state.answer.answers);
 
   const answeredCount = answers.filter((a) => a.answer !== "").length;
-  const userId = useSelector((state: RootState) => state.auth.user!._id);
+  const userId = useSelector((state: RootState) => state.user.user!._id);
   const testId = useSelector((state: RootState) => state.exam.currentTestId);
   const handleSubmit = async () => {
     const answersMap = answers.map((a) => ({
@@ -30,8 +37,12 @@ const TestHeader: FC<TestHeaderProps> = ({
       const result = await testService.submitTest(testId, userId, answersMap);
       console.log("Chi tiết từng câu:", result.answers);
       console.log("số điểm đạt được:", result.score);
+      setScore(result.score);
+      setSubmitOpen(false);
+      setScoreOpen(true);
     } catch (err) {
       console.error("Submit test failed", err);
+      setSubmitOpen(false);
     }
   };
   useEffect(() => {
@@ -40,6 +51,10 @@ const TestHeader: FC<TestHeaderProps> = ({
     }
   }, [timeLeft]);
 
+  const handleCloseScoreModal = () => {
+    setScoreOpen(false);
+    navigate('/home');
+  }
   return (
     <header className="w-full bg-white border-b px-6 py-3 flex items-center justify-between shadow-sm">
       {/* Logo / Tiêu đề */}
@@ -66,7 +81,7 @@ const TestHeader: FC<TestHeaderProps> = ({
           variant="contained"
           color="secondary"
           className="rounded-lg px-4 py-2 font-semibold"
-          onClick={handleSubmit}
+          onClick={() => setSubmitOpen(true)}
         >
           Nộp bài
         </Button>
@@ -87,7 +102,22 @@ const TestHeader: FC<TestHeaderProps> = ({
           <AppsIcon className="text-white" />
         </div>
       </div>
+
+      <ConfirmModal
+        open={submitOpen}
+        message="Bạn có chắc chắn muốn nộp bài không?"
+        onConfirm={handleSubmit}
+        onCancel={() => setSubmitOpen(false)}
+      />
+
+      <ScoreModal
+        open={scoreOpen}
+        score={score}
+        onClose={handleCloseScoreModal}
+      />
+
     </header>
+
   );
 };
 

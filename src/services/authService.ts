@@ -20,6 +20,7 @@ const authService = {
     axiosClient.post('/auth/verify-otp', data),
   resetPassword: (data: ResetPasswordPayload) =>
     axiosClient.post('/auth/reset-password', data),
+  logout: () => axiosClient.post('/auth/logout')
 };
 
 export default authService;

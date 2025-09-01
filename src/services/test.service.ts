@@ -2,6 +2,10 @@
 import axiosClient from "./axiosClient";
 
 const testService = {
+  getTests: async (page = 1, limit = 6, search? : string) => {
+  const res = await axiosClient.get("/tests", { params: { page, limit, search } });
+    return res.data;
+  },
   // Lấy test theo id với query tùy chọn
   getTestById: async (
     id: string,

@@ -3,18 +3,21 @@ import { Box, Pagination } from '@mui/material';
 
 interface PaginationContainerProps<T> {
   items: T[];
+  pageCount: number;
   itemsPerPage?: number;
+  page: number; // trang hiện tại từ ngoài
+  onPageChange?: (page: number) => void; // callback khi user đổi page
   renderItem: (item: T, index: number) => React.ReactNode;
 }
 
 function PaginationContainer<T>({
   items,
+  pageCount,
   itemsPerPage = 6,
+  page,
+  onPageChange,
   renderItem,
 }: PaginationContainerProps<T>) {
-  const [page, setPage] = useState(1);
-
-  const pageCount = Math.max(1, Math.ceil(items.length / itemsPerPage));
   const currentItems = useMemo(() => {
     const start = (page - 1) * itemsPerPage;
     return items.slice(start, start + itemsPerPage);
@@ -31,7 +34,7 @@ function PaginationContainer<T>({
           <Pagination
             count={pageCount}
             page={page}
-            onChange={(_, p) => setPage(p)}
+            onChange={(_, p) => onPageChange?.(p)} // gọi callback bên ngoài
             color='primary'
             shape='rounded'
             siblingCount={0}

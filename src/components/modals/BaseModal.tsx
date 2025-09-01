@@ -1,4 +1,4 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, PaperProps } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import InfoIcon from '@mui/icons-material/Info';
@@ -10,13 +10,15 @@ type ModalType = 'success' | 'error' | 'info' | 'warning' | 'confirm';
 
 interface BaseModalProps {
   open: boolean;
-  type?: ModalType; // để tự chọn icon & màu
+  type?: ModalType;
   title?: string;
   children: ReactNode;
   onConfirm?: () => void;
   onCancel?: () => void;
   confirmText?: string;
   cancelText?: string;
+  className?: string; // thêm className
+  PaperProps?: PaperProps; // để tùy chỉnh Paper
 }
 
 const typeConfig: Record<ModalType, { icon: JSX.Element; color: string }> = {
@@ -36,11 +38,22 @@ const BaseModal = ({
   onCancel,
   confirmText = 'OK',
   cancelText = 'Hủy',
+  className,
+  PaperProps: customPaperProps,
 }: BaseModalProps) => {
   const { icon, color } = typeConfig[type];
 
   return (
-    <Dialog open={open} onClose={onCancel || onConfirm} PaperProps={{ sx: { borderRadius: 2 } }}>
+    <Dialog
+      open={open}
+      onClose={onCancel || onConfirm}
+      disableScrollLock
+      className={className}
+      PaperProps={{
+        sx: { borderRadius: 2, minWidth: 400, ...customPaperProps?.sx }, // set minWidth, merge với sx truyền vào
+        ...customPaperProps,
+      }}
+    >
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color }}>
         {icon}
         {title || type.charAt(0).toUpperCase() + type.slice(1)}

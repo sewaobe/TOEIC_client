@@ -143,6 +143,7 @@ export default function Navbar() {
                   >
                     Trang cá nhân
                   </MenuItem>
+                  <MenuItem onClick={() => console.log("Clicked")}>Thống kê kết quả</MenuItem>
                   <MenuItem onClick={handleLogout}>Đăng xuất</MenuItem>
                 </Menu>
               </>

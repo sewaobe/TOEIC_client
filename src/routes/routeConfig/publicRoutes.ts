@@ -21,7 +21,7 @@ const publicRoutes: AppRoute[] = [
   { path: '/landing-page', element: LandingPage },
   { path: '/login', element: AuthPage },
   { path: '/overview-test', element: OverviewTestPage },
-  { path: '/test-demo', element: TestDemoPage },
+  { path: '/test', element: TestDemoPage },
   { path: '/reset-password', element: ResetPasswordPage },
   { path: '/exams', element: ExamPage },
   { path: '/exam/:id', element: ExamDetailPage },

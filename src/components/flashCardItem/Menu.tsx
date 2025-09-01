@@ -6,6 +6,7 @@ import {
   VisibilityOff,
   EventBusy,
 } from '@mui/icons-material';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function Menu() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -18,6 +19,8 @@ export default function Menu() {
     setAnchorEl(null);
   };
 
+  const location = useLocation();
+  const navigate = useNavigate();
   return (
     <div className='flex justify-between items-center mb-6'>
       <div className='flex gap-2 items-center flex-nowrap '>
@@ -29,6 +32,7 @@ export default function Menu() {
             whiteSpace: 'nowrap',
             fontSize: '0.75rem',
           }}
+          onClick={() => navigate(location.pathname.substring(0, location.pathname.lastIndexOf("/")))}
         >
           Xem tất cả
         </Button>

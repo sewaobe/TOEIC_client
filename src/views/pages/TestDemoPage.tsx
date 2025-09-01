@@ -9,7 +9,7 @@ import Joyride, { Step, CallBackProps, STATUS } from "react-joyride";
 import ExamContainer from "../../components/testDemo/ExamContainer";
 import { setInitialAnswers } from "../../stores/answerSlice";
 import { ExamGroup, ExamQuestion } from "../../types/Exam";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import F5Modal from "../../components/modals/F5Modal";
 
 const steps: Step[] = [
@@ -34,6 +34,9 @@ const steps: Step[] = [
 ];
 
 const TestDemoPage: FC = () => {
+  const [searchParams] = useSearchParams();
+  const testId = searchParams.get("testId");
+
   const navigate = useNavigate();
   const [isShowSideBar, setIsShowSideBar] = useState<boolean>(false);
   const [_, setStepIndex] = useState<number>(0);
@@ -51,8 +54,9 @@ const TestDemoPage: FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const groups = useSelector((s: RootState) => s.exam.groups);
   useEffect(() => {
-    dispatch(fetchExamById("68af851b1918226d4c424e7f"))
+    dispatch(fetchExamById(testId!))
   }, [dispatch]);
+  
   useEffect(() => {
     if (groups.length > 0) {
       const initialAnswers = groups.flatMap((g: ExamGroup) =>

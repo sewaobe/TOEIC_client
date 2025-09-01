@@ -23,7 +23,8 @@ const Footer: FC = () => {
       sx={{
         // 1. Dùng màu từ theme, không dùng className
         bgcolor: 'background.paper',
-        py: { xs: 5, md: 6 }, // Padding responsive
+        pt: { xs: 2, md: 4 },
+        pb: { xs: 1, md: 2 },
       }}
     >
       <Container maxWidth='lg'>

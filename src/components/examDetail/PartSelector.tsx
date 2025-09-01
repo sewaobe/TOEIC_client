@@ -32,7 +32,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
             {part.tags.map((t, i) => (
               <span
                 key={i}
-                className={`px-2 py-1 rounded-full text-sm cursor-pointer transition-transform ${t.color}`}
+                className={`px-2 py-1 rounded-full text-xs cursor-pointer transition-transform ${t.color}`}
               >
                 {t.name}
               </span>

@@ -2,6 +2,7 @@ import { Card, CardContent, Typography, Button, useTheme } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import SchoolIcon from '@mui/icons-material/School';
 import { FC } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 export interface SkillInfo {
   name: string;
@@ -21,11 +22,14 @@ export const OverviewCard: FC<OverviewCardProps> = ({
   skills,
   description,
 }) => {
+  const [searchParams] = useSearchParams();
+  const testId = searchParams.get("testId");
+
   const theme = useTheme();
   const navigate = useNavigate();
 
   const handleStart = () => {
-    navigate('/test-demo');
+    navigate(`/test?testId=${testId}`);
   };
 
   return (

@@ -1,12 +1,12 @@
-import React from 'react';
-import { Box, Typography, Button, useTheme } from '@mui/material';
-import { motion } from 'framer-motion';
+import React from "react";
+import { Box, Typography, Button, useTheme } from "@mui/material";
+import { motion } from "framer-motion";
 import {
   ChatOutlined,
   ModeEditOutlineOutlined,
   ScoreboardOutlined,
-} from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+} from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 
 interface TestCardProps {
   id: string;
@@ -29,20 +29,20 @@ const TestCard: React.FC<TestCardProps> = ({ id, title, score, details }) => {
     <Box
       component={motion.div}
       variants={cardVariants}
-      className='flex flex-col gap-2 p-3 rounded-xl shadow-md w-full sm:w-[calc(33.33%-16px)] lg:w-[calc(33.33%-16px)] hover:shadow-lg hover:scale-[1.02] transition-all duration-200 cursor-pointer'
+      className="flex flex-col gap-2 p-3 rounded-xl shadow-md w-full sm:w-[calc(33.33%-16px)] lg:w-[calc(33.33%-16px)] hover:shadow-lg hover:scale-[1.02] transition-all duration-200 cursor-pointer"
       sx={{ background: theme.palette.background.paper }}
       onClick={() => navigate(`/exam/${id}`)}
     >
-      <Box className='flex items-center justify-between mb-2'>
+      <Box className="flex items-center justify-between mb-2">
         <Typography
-          variant='h6'
-          className='text-base font-bold'
+          variant="h6"
+          className="text-base font-bold"
           sx={{ color: theme.palette.text.primary }}
         >
           {title}
         </Typography>
         <span
-          className='text-xs font-bold text-white px-2 py-1 rounded-full'
+          className="text-xs font-bold text-white px-2 py-1 rounded-full"
           style={{ background: theme.palette.primary.main }}
         >
           Đề thi thật
@@ -51,7 +51,7 @@ const TestCard: React.FC<TestCardProps> = ({ id, title, score, details }) => {
 
       {details && (
         <Typography
-          variant='body2'
+          variant="body2"
           sx={{ color: theme.palette.text.secondary }}
         >
           <p>{details}</p>
@@ -60,70 +60,71 @@ const TestCard: React.FC<TestCardProps> = ({ id, title, score, details }) => {
       )}
 
       {/* Tổng số người tham gia */}
-      <Box className='flex items-center gap-4 mb-1'>
+      <Box className="flex items-center gap-4 mb-1">
         <Typography
-          variant='body2'
+          variant="body2"
           sx={{ color: theme.palette.text.secondary }}
-          className='flex items-center gap-[2px]'
+          className="flex items-center gap-[2px]"
         >
-          <ModeEditOutlineOutlined fontSize='small' />
-          <span className='flex items-center'>13200</span>
+          <ModeEditOutlineOutlined fontSize="small" />
+          <span className="flex items-center">13200</span>
         </Typography>
         <Typography
-          variant='body2'
+          variant="body2"
           sx={{ color: theme.palette.text.secondary }}
-          className='flex items-center gap-[2px]'
+          className="flex items-center gap-[2px]"
         >
-          <ChatOutlined fontSize='small' />
-          <span className='flex items-center'>4520</span>
+          <ChatOutlined fontSize="small" />
+          <span className="flex items-center">4520</span>
         </Typography>
       </Box>
 
       {score !== undefined && (
-        <Box className='flex items-center mb-1'>
+        <Box className="flex items-center mb-1">
           <ScoreboardOutlined
             sx={{ color: theme.palette.success.main, fontSize: 18 }}
-            className='mr-1'
+            className="mr-1"
           />
           <Typography
-            variant='body2'
-            className='font-bold'
+            variant="body2"
+            className="font-bold"
             sx={{ color: theme.palette.success.main }}
           >
-            Tổng điểm: {score}
+            {score != null
+              ? `Tổng điểm: ${score}`
+              : "Làm bài ngay để có điểm nè ><"}
           </Typography>
         </Box>
       )}
 
-      <Box className='flex items-center mt-4 space-x-2'>
+      <Box className="flex items-center mt-4 space-x-2">
         <Button
-          variant='outlined'
+          variant="outlined"
           sx={{
             borderColor: theme.palette.primary.main,
             color: theme.palette.primary.main,
-            textTransform: 'none',
-            '&:hover': {
-              boxShadow: '0 3px 5px 2px rgba(255, 105, 135, .3)',
-              transform: 'scale(1.05)', // Phóng to 5%
+            textTransform: "none",
+            "&:hover": {
+              boxShadow: "0 3px 5px 2px rgba(255, 105, 135, .3)",
+              transform: "scale(1.05)", // Phóng to 5%
             },
           }}
         >
-          Xem đáp án
+          Xem chi tiết
         </Button>
         <Button
-          variant='contained'
+          variant="contained"
           sx={{
-            // background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
             backgroundColor: theme.palette.primary.main,
-            color: '#fff',
-            textTransform: 'none',
-            '&:hover': {
-              boxShadow: '0 3px 5px 2px rgba(255, 105, 135, .3)',
-              transform: 'scale(1.05)',
+            color: "#fff",
+            textTransform: "none",
+            "&:hover": {
+              boxShadow: "0 3px 5px 2px rgba(255, 105, 135, .3)",
+              transform: "scale(1.05)",
             },
           }}
         >
-          Làm lại
+          {score != null ? "Làm lại" : "Làm bài ngay"}
         </Button>
       </Box>
     </Box>

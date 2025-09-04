@@ -1,63 +1,49 @@
-import { FC } from 'react';
+import { FC, useEffect, useState } from 'react';
 import HeroSection from '../../components/Home/HeroSection';
 import FeatureSection from '../../components/Home/FeatureSection';
 import MainLayout from '../layouts/MainLayout';
 import { Box } from '@mui/material';
 import TestSection from '../../components/Home/TestSection';
 import ScrollToTopButton from '../../components/ScrollToTopButton';
+import testService from '../../services/test.service';
+import { ITestCard } from '../../types/Test';
 
-const recentTestsData = [
-  {
-    id: "1",
-    title: 'ETS 23 TOEIC Test 1',
-    score: 850,
-    details: 'Bộ đề thi: ETS 23 ',
-  },
-  {
-    id: "2",
-    title: 'ETS 23 TOEIC Test 2',
-    score: 780,
-    details: 'Bộ đề thi: ETS 23 ',
-  },
-  {
-    id: "3",
-    title: 'ETS 23 TOEIC Test 3',
-    score: 920,
-    details: 'Bộ đề thi: ETS 23 ',
-  },
-];
-
-const newestTestsData = [
-  {
-    id: "1",
-    title: 'ETS 23 TOEIC Test 4',
-    details: 'Bộ đề thi: ETS 23 ',
-    isNew: true,
-  },
-  {
-    id: "2",
-    title: 'ETS 23 TOEIC Test 5',
-    details: 'Bộ đề thi: ETS 23 ',
-    isNew: true,
-  },
-  {
-    id: "3",
-    title: 'ETS 23 TOEIC Test 6',
-    details: 'Bộ đề thi: ETS 23 ',
-    isNew: true,
-  },
-];
 const HomePage: FC = () => {
+  const [latestTests, setLatestTests] = useState<ITestCard[]>([]);
+  const [userRecentTests, setUserRecentTests] = useState<ITestCard[]>([]);
+  useEffect(() => {
+    const fetchLatestTests = async () => {
+      try {
+        const data = await testService.getLatestTests();
+        setLatestTests(data);
+      } catch (error) {
+        console.error("Lỗi khi gọi API LatestTests:", error);
+      }
+    };
+
+    const fetchRecentTests = async () => {
+      try {
+        const data = await testService.getUserRecentTest();
+        setUserRecentTests(data);
+      } catch (error) {
+        console.error("Lỗi khi gọi API Recent Test:", error);
+      }
+    };
+
+    fetchLatestTests();
+    fetchRecentTests();
+  }, []); // [] để chỉ gọi 1 lần khi mount
+
   return (
     <MainLayout>
       <Box sx={{ px: { xs: 2, sm: 4, md: 6 } }}>
         <HeroSection />
         <FeatureSection />
-        <TestSection title='Bài làm gần đây' tests={recentTestsData} />
+        <TestSection title='Bài làm gần đây' tests={userRecentTests} />
         {/* Sử dụng component tái sử dụng */}
         <TestSection
           title='Đề thi mới nhất'
-          tests={newestTestsData}
+          tests={latestTests}
           showViewMoreButton
         />
         <ScrollToTopButton scrollThreshold={700} />

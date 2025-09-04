@@ -2,16 +2,12 @@ import React from "react";
 import { Box, Typography, Button, useTheme } from "@mui/material";
 import { motion } from "framer-motion";
 import TestCard from "./TestCard";
+import { ITestCard } from "../../types/Test";
+import { useNavigate } from "react-router-dom";
 
 interface TestSectionProps {
   title: string;
-  tests: {
-    id: string;
-    title: string;
-    score?: number;
-    details: string;
-    isNew?: boolean;
-  }[];
+  tests: any[];
   showViewMoreButton?: boolean;
 }
 
@@ -21,15 +17,12 @@ const TestSection: React.FC<TestSectionProps> = ({
   showViewMoreButton = false,
 }) => {
   const theme = useTheme();
-
+  const navigate = useNavigate();
   return (
     <Box
       component={motion.div}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.3 }}
       className="p-6 md:p-14 rounded-xl max-w-6xl m-auto mt-8"
-      // sx={{ background: theme.palette.background.paper }}
+    // sx={{ background: theme.palette.background.paper }}
     >
       <Box className="flex justify-between items-center mb-6 mr-6">
         <Typography
@@ -46,6 +39,7 @@ const TestSection: React.FC<TestSectionProps> = ({
           <Button
             variant="text"
             sx={{ color: theme.palette.primary.main, textTransform: "none" }}
+            onClick={() => navigate("/exams")}
           >
             Xem kho đề thi
           </Button>
@@ -53,8 +47,8 @@ const TestSection: React.FC<TestSectionProps> = ({
       </Box>
 
       <Box className="flex flex-wrap justify-start gap-4">
-        {tests.map((test) => (
-          <TestCard key={test.id} {...test} />
+        {tests.map((test: ITestCard, index) => (
+          <TestCard key={index} {...test} />
         ))}
       </Box>
     </Box>

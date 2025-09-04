@@ -1,9 +1,9 @@
-// services/test.service.ts
+import { ITestCard } from "../types/Test";
 import axiosClient from "./axiosClient";
 
 const testService = {
-  getTests: async (page = 1, limit = 6, search? : string) => {
-  const res = await axiosClient.get("/tests", { params: { page, limit, search } });
+  getTests: async (page = 1, limit = 6, search?: string) => {
+    const res = await axiosClient.get("/tests", { params: { page, limit, search } });
     return res.data;
   },
   // Lấy test theo id với query tùy chọn
@@ -33,6 +33,21 @@ const testService = {
     });
     return res.data;
   },
+  getLatestTests: async (): Promise<ITestCard[]> => {
+    const res = await axiosClient.get('/tests/latest?limit=3');
+    const data: ITestCard[] = res.data.map((test: any) => (
+      { ...test, isNew: true }
+    ))
+    return data
+  },
+  getUserRecentTest: async (): Promise<ITestCard[]> => {
+    const res = await axiosClient.get('/tests/recent?limit=3');
+    const data: ITestCard[] = res.data.map((test: any) => ({
+      ...test,
+      _id: test.test_id
+    }))
+    return data;
+  }
 };
 
 export default testService;

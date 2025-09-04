@@ -7,31 +7,18 @@ import {
   ScoreboardOutlined,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+import { ITestCard } from "../../types/Test";
 
-interface TestCardProps {
-  id: string;
-  title: string;
-  score?: number;
-  details: string; // Thêm prop này để chứa thông tin chi tiết
-  isNew?: boolean;
-}
-
-const TestCard: React.FC<TestCardProps> = ({ id, title, score, details }) => {
+const TestCard: React.FC<ITestCard> = ({ _id, title, score, topic, countComment, countSubmit, isNew }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
-  } as const;
 
   return (
     <Box
       component={motion.div}
-      variants={cardVariants}
       className="flex flex-col gap-2 p-3 rounded-xl shadow-md w-full sm:w-[calc(33.33%-16px)] lg:w-[calc(33.33%-16px)] hover:shadow-lg hover:scale-[1.02] transition-all duration-200 cursor-pointer"
       sx={{ background: theme.palette.background.paper }}
-      onClick={() => navigate(`/exam/${id}`)}
+      onClick={() => navigate(`/exam/${_id}`)}
     >
       <Box className="flex items-center justify-between mb-2">
         <Typography
@@ -45,17 +32,18 @@ const TestCard: React.FC<TestCardProps> = ({ id, title, score, details }) => {
           className="text-xs font-bold text-white px-2 py-1 rounded-full"
           style={{ background: theme.palette.primary.main }}
         >
-          Đề thi thật
+          {isNew ? "Đề thi mới" : "Đề thi thật"}
         </span>
       </Box>
 
-      {details && (
+      {topic && (
         <Typography
           variant="body2"
           sx={{ color: theme.palette.text.secondary }}
         >
-          <p>{details}</p>
-          <p>• 120 phút • 7 phần thi • 200 câu hỏi</p>
+          <span>{topic}</span>
+          <br />
+          <span>• 120 phút • 7 phần thi • 200 câu hỏi</span>
         </Typography>
       )}
 
@@ -67,7 +55,7 @@ const TestCard: React.FC<TestCardProps> = ({ id, title, score, details }) => {
           className="flex items-center gap-[2px]"
         >
           <ModeEditOutlineOutlined fontSize="small" />
-          <span className="flex items-center">13200</span>
+          <span className="flex items-center">{countSubmit}</span>
         </Typography>
         <Typography
           variant="body2"
@@ -75,7 +63,7 @@ const TestCard: React.FC<TestCardProps> = ({ id, title, score, details }) => {
           className="flex items-center gap-[2px]"
         >
           <ChatOutlined fontSize="small" />
-          <span className="flex items-center">4520</span>
+          <span className="flex items-center">{countComment}</span>
         </Typography>
       </Box>
 

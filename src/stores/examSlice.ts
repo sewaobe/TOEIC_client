@@ -4,12 +4,24 @@ import { ExamGroup } from '../types/Exam';
 import testService from '../services/test.service';
 
 // ----------------- Async thunk để fetch test -----------------
+interface FetchExamOptions {
+  testId: string;
+  parts?: number[]; // mảng số các part
+}
+
 export const fetchExamById = createAsyncThunk(
   'exam/fetchById',
-  async (id: string, thunkAPI) => {
+  async (options: FetchExamOptions, thunkAPI) => {
     try {
-      const { test } = await testService.getTestById(id, { full: true });
+      const { testId, parts } = options;
+
+      const { test } = await testService.getTestById(testId, {
+        full: !parts,          // nếu không có parts thì lấy full
+        parts: parts?.map(String), // chuyển mảng số sang mảng string
+      });
+
       const groups = formatTestToGroups(test);
+      console.log(groups)
       return { testId: test._id, groups };
     } catch (err) {
       return thunkAPI.rejectWithValue(err);
@@ -21,7 +33,7 @@ function formatTestToGroups(test: any): ExamGroup[] {
   const groups: ExamGroup[] = [];
   const parts = Object.keys(test.questions || {});
 
-  parts.forEach((partName, partIndex) => {
+  parts.forEach((partName) => {
     const partData = test.questions[partName];
     const partGroups = partData.groups || [];
 
@@ -29,7 +41,7 @@ function formatTestToGroups(test: any): ExamGroup[] {
       const qs = g.questions || [];
       groups.push({
         _id: `${partName}-${gi}`, // unique id
-        part: partIndex + 1,
+        part: Number(partName.match(/\d+/)),
         audioUrl: g.audioUrl?.url || null,
         imagesUrl: g.imagesUrl?.map((i: any) => i.url) || [],
         transcriptEnglish: g.transcriptEnglish || "",

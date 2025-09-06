@@ -1,7 +1,7 @@
-import React from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../stores/store';
-import { setAnswer, toggleFlag } from '../../stores/answerSlice';
+import React from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../stores/store";
+import { setAnswer, toggleFlag } from "../../stores/answerSlice";
 
 interface QuestionItemProps {
   id: string;
@@ -10,33 +10,42 @@ interface QuestionItemProps {
   options: string[];
 }
 
-const QuestionItem: React.FC<QuestionItemProps> = ({ id,name, text, options }) => {
+const QuestionItem: React.FC<QuestionItemProps> = ({
+  id,
+  name,
+  text,
+  options,
+}) => {
   const dispatch = useDispatch<AppDispatch>();
 
   const answer = useSelector(
-  (state: RootState) => state.answer.answers[name - 1] || { answer: "", isFlagged: false }
-);
+    (state: RootState) =>
+      state.answer.answers.find((ans) => ans.question === name) || {
+        answer: "",
+        isFlagged: false,
+      }
+  );
 
   const handleSelect = (opt: string) => {
-    dispatch(setAnswer({question: name, answer: opt }));
+    dispatch(setAnswer({ question: name, answer: opt }));
   };
 
   const handleToggleFlag = () => {
     dispatch(toggleFlag({ question: name }));
   };
   return (
-    <div className='w-full md:w-1/2'>
-      <h3 className='font-bold mb-4'>{name}.</h3>
-      <p className='mb-4'>{text}</p>
+    <div className="w-full md:w-1/2">
+      <h3 className="font-bold mb-4">{name}.</h3>
+      <p className="mb-4">{text}</p>
 
-      <ul className='space-y-2'>
+      <ul className="space-y-2">
         {options.map((opt, index) => (
           <li key={index}>
-            <label className='flex items-center gap-2 cursor-pointer'>
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
-                type='radio'
+                type="radio"
                 name={`q${id}`}
-                className='form-radio'
+                className="form-radio"
                 checked={answer.answer === opt}
                 onChange={() => handleSelect(opt)}
               />
@@ -49,10 +58,10 @@ const QuestionItem: React.FC<QuestionItemProps> = ({ id,name, text, options }) =
       <button
         onClick={handleToggleFlag}
         className={`mt-3 px-3 py-1 rounded ${
-          answer.isFlagged ? 'bg-yellow-500 text-white' : 'bg-gray-200'
+          answer.isFlagged ? "bg-yellow-500 text-white" : "bg-gray-200"
         }`}
       >
-        {answer.isFlagged ? 'Bỏ gắn cờ' : 'Gắn cờ'}
+        {answer.isFlagged ? "Bỏ gắn cờ" : "Gắn cờ"}
       </button>
     </div>
   );

@@ -13,10 +13,12 @@ interface TestCardProps {
   title: string;
   score?: number;
   details: string; // Thêm prop này để chứa thông tin chi tiết
-  isNew?: boolean;
+  totalUsers: number;
+  totalComments: number;
+  isNew?: boolean;  
 }
 
-const TestCard: React.FC<TestCardProps> = ({ id, title, score, details }) => {
+const TestCard: React.FC<TestCardProps> = ({ id, title, score, details, totalUsers, totalComments }) => {
   const theme = useTheme();
   const navigate = useNavigate();
 
@@ -67,7 +69,7 @@ const TestCard: React.FC<TestCardProps> = ({ id, title, score, details }) => {
           className="flex items-center gap-[2px]"
         >
           <ModeEditOutlineOutlined fontSize="small" />
-          <span className="flex items-center">13200</span>
+          <span className="flex items-center">{totalUsers}</span>
         </Typography>
         <Typography
           variant="body2"
@@ -75,7 +77,7 @@ const TestCard: React.FC<TestCardProps> = ({ id, title, score, details }) => {
           className="flex items-center gap-[2px]"
         >
           <ChatOutlined fontSize="small" />
-          <span className="flex items-center">4520</span>
+          <span className="flex items-center">{totalComments}</span>
         </Typography>
       </Box>
 

@@ -20,7 +20,7 @@ const AppProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
+  // <StrictMode>
     <BrowserRouter>
       <Provider store={store}>
         <ThemeProviderWrapper>
@@ -30,5 +30,5 @@ createRoot(document.getElementById('root')!).render(
         </ThemeProviderWrapper>
       </Provider>
     </BrowserRouter>
-  </StrictMode>,
+  // </StrictMode>,
 );

@@ -5,7 +5,7 @@ import { AppDispatch, RootState } from "../../stores/store";
 import TestHeader from "../../components/testDemo/TestHeader";
 import RightSidebar from "../../components/testDemo/RightSidebar";
 import { AnimatePresence } from "framer-motion";
-import Joyride, { Step, CallBackProps, STATUS } from "react-joyride";
+import Joyride, { Step,  STATUS } from "react-joyride";
 import ExamContainer from "../../components/testDemo/ExamContainer";
 import { setInitialAnswers } from "../../stores/answerSlice";
 import { ExamGroup, ExamQuestion } from "../../types/Exam";
@@ -36,29 +36,26 @@ const steps: Step[] = [
 const TestDemoPage: FC = () => {
   const [searchParams] = useSearchParams();
   const testId = searchParams.get("testId");
+  const partsQuery = searchParams.get("parts"); // ví dụ "1,2"
+  const parts = partsQuery ? partsQuery.split(",").map(Number) : undefined;
 
   const navigate = useNavigate();
   const [isShowSideBar, setIsShowSideBar] = useState<boolean>(false);
   const [_, setStepIndex] = useState<number>(0);
   const [isTourRunning, setIsTourRunning] = useState<boolean>(true);
-  const handleJoyrideCallback = (data: CallBackProps) => {
-    const { status } = data;
-
-    // Khi tour kết thúc hoặc bị skip
-    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status as any)) {
-      setStepIndex(0); // reset tour
-      setIsTourRunning(false);
-    }
-  };
 
   const dispatch = useDispatch<AppDispatch>();
   const groups = useSelector((s: RootState) => s.exam.groups);
+
+  // fetch test khi vào page
   useEffect(() => {
-    dispatch(fetchExamById(testId!))
+    if (!testId) return;
+    dispatch(fetchExamById({ testId, parts })); // luôn dùng object
   }, [dispatch]);
-  
+
+  // set initial answers khi groups thay đổi
   useEffect(() => {
-    if (groups.length > 0) {
+    if (groups && groups.length > 0) {
       const initialAnswers = groups.flatMap((g: ExamGroup) =>
         g.questions.map((q: ExamQuestion) => ({
           _id: q._id,
@@ -70,6 +67,15 @@ const TestDemoPage: FC = () => {
       dispatch(setInitialAnswers(initialAnswers));
     }
   }, [groups, dispatch]);
+
+  
+  const handleJoyrideCallback = (data: any) => {
+    const { status } = data;
+    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
+      setStepIndex(0);
+      setIsTourRunning(false);
+    }
+  };
   return (
     <div className="relative flex flex-col min-h-screen bg-gray-50 overflow-hidden">
       {/* Tour */}
@@ -101,8 +107,7 @@ const TestDemoPage: FC = () => {
       </div>
 
       {/* Modal khi ấn reload */}
-      <F5Modal onConfirm={() => navigate('/home')}/>
-
+      <F5Modal onConfirm={() => navigate("/home")} />
     </div>
   );
 };

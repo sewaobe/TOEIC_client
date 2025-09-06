@@ -1,87 +1,76 @@
-import { Button, TextField, Avatar } from '@mui/material';
-import { forwardRef } from 'react';
+import React, { forwardRef, useEffect, useState } from "react";
+import { Box, Button, Typography, useTheme } from "@mui/material";
+import commentService from "../../services/comment.service";
+import { IComment } from "../../types/comment.type";
+import CommentForm from "./CommentForm";
+import CommentItem from "./CommentItem";
 
-const Comments = forwardRef<HTMLDivElement>((_, ref) => {
-  return (
-    <div ref={ref} className='p-6'>
-      <h2 className='font-semibold text-lg mb-4'>Bình luận</h2>
+interface CommentsProps {
+  testId: string;
+}
 
-      {/* Form nhập bình luận */}
-      <div className='flex gap-3 mb-5'>
-        <Avatar sx={{ bgcolor: '#1976d2' }}>U</Avatar>
-        <TextField
-          placeholder='Chia sẻ cảm nghĩ của bạn...'
-          multiline
-          rows={3}
-          fullWidth
-        />
-      </div>
-      <div className='flex justify-end mb-6'>
-        <Button variant='contained' color='primary'>
-          Gửi
-        </Button>
-      </div>
+const Comments = forwardRef<HTMLDivElement, CommentsProps>(
+  ({ testId }, ref) => {
+    const theme = useTheme();
+    const [comments, setComments] = useState<IComment[]>([]);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
 
-      {/* Danh sách bình luận */}
-      <div className='space-y-4'>
-        <div className='flex gap-3'>
-          <Avatar sx={{ bgcolor: '#ef5350' }}>A</Avatar>
-          <div className='bg-gray-50 p-3 rounded-lg w-full'>
-            <p className='font-medium'>
-              @user1{' '}
-              <span className='text-xs text-gray-500 ml-2'>2 giờ trước</span>
-            </p>
-            <p className='text-gray-700'>
-              Test này rất hữu ích cho việc luyện thi TOEIC.
-            </p>
-          </div>
-        </div>
+    // Fetch comment list
+    useEffect(() => {
+      const fetchComments = async () => {
+        try {
+          const res = await commentService.getCommentsByTest(testId, page, 5);
+          setComments((prev) => [...prev, ...res.comments]);
+          setHasMore(page < res.pagination.totalPages);
+        } catch (error) {
+          console.error("Error fetching comments:", error);
+        }
+      };
+      fetchComments();
+    }, [testId, page]);
 
-        <div className='flex gap-3'>
-          <Avatar sx={{ bgcolor: '#42a5f5' }}>N</Avatar>
-          <div className='bg-gray-50 p-3 rounded-lg w-full'>
-            <p className='font-medium'>
-              @nguyenbao{' '}
-              <span className='text-xs text-gray-500 ml-2'>1 ngày trước</span>
-            </p>
-            <p className='text-gray-700'>Mình đã đạt 900+ nhờ luyện đề này!</p>
-          </div>
-        </div>
-        <div className='flex gap-3'>
-          <Avatar sx={{ bgcolor: '#42a5f5' }}>N</Avatar>
-          <div className='bg-gray-50 p-3 rounded-lg w-full'>
-            <p className='font-medium'>
-              @nguyenbao{' '}
-              <span className='text-xs text-gray-500 ml-2'>1 ngày trước</span>
-            </p>
-            <p className='text-gray-700'>Mình đã đạt 900+ nhờ luyện đề này!</p>
-          </div>
-        </div>
-        <div className='flex gap-3'>
-          <Avatar sx={{ bgcolor: '#42a5f5' }}>N</Avatar>
-          <div className='bg-gray-50 p-3 rounded-lg w-full'>
-            <p className='font-medium'>
-              @nguyenbao{' '}
-              <span className='text-xs text-gray-500 ml-2'>1 ngày trước</span>
-            </p>
-            <p className='text-gray-700'>Mình đã đạt 900+ nhờ luyện đề này!</p>
-          </div>
-        </div>
-        <div className='flex gap-3'>
-          <Avatar sx={{ bgcolor: '#42a5f5' }}>N</Avatar>
-          <div className='bg-gray-50 p-3 rounded-lg w-full'>
-            <p className='font-medium'>
-              @nguyenbao{' '}
-              <span className='text-xs text-gray-500 ml-2'>1 ngày trước</span>
-            </p>
-            <p className='text-gray-700'>Mình đã đạt 900+ nhờ luyện đề này!</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-});
+    // Submit new comment
+    const handleSubmit = async (content: string) => {
+      if (!content.trim()) return;
 
-Comments.displayName = 'Comments';
+      try {
+        const newComment = await commentService.createComment(testId, content);
+        setComments((prev) => [newComment, ...prev]);
+      } catch (error) {
+        console.error("Error creating comment:", error);
+      }
+    };
 
+    return (
+      <Box ref={ref} sx={{ p: 3, backgroundColor: theme.palette.background.default }}>
+        {/* Tiêu đề */}
+        <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3, color: theme.palette.text.primary }}>
+          Bình luận
+        </Typography>
+
+        {/* Form bình luận chính */}
+        <CommentForm onSubmit={(text) => handleSubmit(text)} />
+
+        {/* Danh sách */}
+        <Box sx={{ mt: 3 }}>
+          {comments.map((cmt) => (
+            <CommentItem key={cmt._id} comment={cmt} />
+          ))}
+        </Box>
+
+        {/* Xem thêm */}
+        {hasMore && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+            <Button variant="outlined" onClick={() => setPage((p) => p + 1)}>
+              Xem thêm
+            </Button>
+          </Box>
+        )}
+      </Box>
+    );
+  }
+);
+
+Comments.displayName = "Comments";
 export default Comments;

@@ -1,218 +1,208 @@
-import React, { useState, useRef } from 'react';
-import { Part } from '../../types/examDetail';
-import Header from '../../components/examDetail/Header';
-import PracticeTab from '../../components/examDetail/PracticeTab';
-import Comments from '../../components/examDetail/Comments';
-import FullTestTab from '../../components/examDetail/FullTestTab';
-import Tabs from '../../components/examDetail/Tabs';
-import MainLayout from '../layouts/MainLayout';
-import { Box, Button, Typography } from '@mui/material';
-import UserExamCard from '../../components/exams/UserExamCard';
+import React, { useReducer, useRef, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Box, Typography, CircularProgress } from "@mui/material";
+import MainLayout from "../layouts/MainLayout";
+import Header from "../../components/examDetail/Header";
+import PracticeTab from "../../components/examDetail/PracticeTab";
+import Comments from "../../components/examDetail/Comments";
+import FullTestTab from "../../components/examDetail/FullTestTab";
+import Tabs from "../../components/examDetail/Tabs";
+import UserExamCard from "../../components/exams/UserExamCard";
+import testService from "../../services/test.service";
+import { examParts } from "../../constants/examParts"; // ✅ import mảng parts đã tách riêng
+// import { Part } from "../../types/examDetail";
+
+// --------- Kiểu state tổng ---------
+interface State {
+  selectedParts: string[];
+  timeLimit: string;
+  activeTab: "practice" | "full";
+  loading: boolean;
+  test: any;
+  page: number;
+}
+
+type Action =
+  | { type: "TOGGLE_PART"; payload: string }
+  | { type: "SET_TIME_LIMIT"; payload: string }
+  | { type: "SET_ACTIVE_TAB"; payload: "practice" | "full" }
+  | { type: "SET_LOADING"; payload: boolean }
+  | { type: "SET_TEST"; payload: any }
+  | { type: "SET_PAGE"; payload: number };
+
+// --------- Reducer ---------
+const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case "TOGGLE_PART":
+      return {
+        ...state,
+        selectedParts: state.selectedParts.includes(action.payload)
+          ? state.selectedParts.filter((p) => p !== action.payload)
+          : [...state.selectedParts, action.payload],
+      };
+    case "SET_TIME_LIMIT":
+      return { ...state, timeLimit: action.payload };
+    case "SET_ACTIVE_TAB":
+      return { ...state, activeTab: action.payload };
+    case "SET_LOADING":
+      return { ...state, loading: action.payload };
+    case "SET_TEST":
+      return { ...state, test: action.payload };
+    case "SET_PAGE":
+      return { ...state, page: action.payload };
+    default:
+      return state;
+  }
+};
+
+const initialState: State = {
+  selectedParts: [],
+  timeLimit: "",
+  activeTab: "practice",
+  loading: true,
+  test: null,
+  page: 1,
+};
 
 const ExamDetailPage: React.FC = () => {
-  const [selectedParts, setSelectedParts] = useState<string[]>([]);
-  const [timeLimit, setTimeLimit] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'practice' | 'full'>('practice');
-
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const commentRef = useRef<HTMLDivElement | null>(null);
 
-  const togglePart = (label: string) => {
-    setSelectedParts((prev) =>
-      prev.includes(label)
-        ? prev.filter((item) => item !== label)
-        : [...prev, label],
-    );
-  };
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { selectedParts, timeLimit, activeTab, loading, test, page } = state;
+  const limit = 5;
 
+  // --------- Fetch test detail ---------
+  useEffect(() => {
+    const fetchDetail = async () => {
+      if (!id) return;
+      dispatch({ type: "SET_LOADING", payload: true });
+      try {
+        const res = await testService.getTestDetail(id, page, limit);
+        dispatch({ type: "SET_TEST", payload: res });
+      } catch (err) {
+        console.error("Lỗi load test detail", err);
+      } finally {
+        dispatch({ type: "SET_LOADING", payload: false });
+      }
+    };
+    fetchDetail();
+  }, [id, page]);
+
+  // --------- Handlers ---------
   const handlePractice = () => {
+    if (!selectedParts.length) {
+      alert("Vui lòng chọn ít nhất 1 phần để luyện tập");
+      return;
+    }
+
+    const partNumbers = selectedParts.map((p) => {
+      const match = p.match(/\d+/);
+      return match ? match[0] : p;
+    });
+
     alert(
-      'Bạn đã chọn: ' +
-      selectedParts.join(', ') +
-      ' | Giới hạn: ' +
-      (timeLimit || 'No limit'),
+      "Bạn đã chọn part: " +
+        partNumbers.join(",") +
+        " | Giới hạn: " +
+        (timeLimit || "No limit")
     );
+
+    const params = new URLSearchParams();
+    if (test?._id) params.append("testId", test._id);
+
+    if (partNumbers.length < 7) {
+      params.append("parts", partNumbers.join(","));
+    }
+    if (timeLimit) params.append("timeLimit", timeLimit);
+
+    navigate(`/overview-test?${params.toString()}`);
   };
 
-  const parts: Part[] = [
-    {
-      label: 'Part 1 (6 câu hỏi)',
-      tags: [
-        { name: '#[Part 1] Tranh tả người', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 1] Tranh tả vật', color: 'bg-[#EEEEEE] text-gray-800' },
-      ],
-    },
-    {
-      label: 'Part 2 (25 câu hỏi)',
-      tags: [
-        { name: '#[Part 2] Câu hỏi WHAT', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 2] Câu hỏi WHO', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 2] Câu hỏi WHERE', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 2] Câu hỏi WHEN', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 2] Câu hỏi HOW', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 2] Câu hỏi WHY', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 2] Câu hỏi YES/NO', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 2] Câu hỏi đuôi', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 2] Câu hỏi lựa chọn', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 2] Câu yêu cầu, đề nghị', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 2] Câu trần thuật', color: 'bg-[#EEEEEE] text-gray-800' },
-      ],
-    },
-    {
-      label: 'Part 3 (39 câu hỏi)',
-      tags: [
-        { name: '#[Part 3] Câu hỏi về chủ đề, mục đích', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 3] Câu hỏi về danh tính người nói', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 3] Câu hỏi về chi tiết cuộc hội thoại', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 3] Câu hỏi về hành động tương lai', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 3] Câu hỏi kết hợp bảng biểu', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 3] Câu hỏi về hàm ý câu nói', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 3] Chủ đề: Company - General Office Work', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 3] Chủ đề: Company - Personnel', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 3] Chủ đề: Company - Event, Project', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 3] Chủ đề: Company - Facility', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 3] Chủ đề: Shopping, Service', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 3] Chủ đề: Order, delivery', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 3] Chủ đề: Transportation', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 3] Câu hỏi về yêu cầu, gợi ý', color: 'bg-[#EEEEEE] text-gray-800' },
-      ],
-    },
-    {
-      label: 'Part 4 (30 câu hỏi)',
-      tags: [
-        { name: '#[Part 4] Câu hỏi về chủ đề, mục đích', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 4] Câu hỏi về danh tính, địa điểm', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 4] Câu hỏi về chi tiết', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 4] Câu hỏi về hành động tương lai', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 4] Câu hỏi kết hợp bảng biểu', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 4] Câu hỏi về hàm ý câu nói', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 4] Dạng bài: Telephone message - Tin nhắn thoại', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 4] Dạng bài: Announcement - Thông báo', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 4] Dạng bài: News report, Broadcast - Bản tin', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 4] Dạng bài: Talk - Bài phát biểu, diễn văn', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 4] Dạng bài: Excerpt from a meeting - Trích dẫn từ buổi họp', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 4] Câu hỏi yêu cầu, gợi ý', color: 'bg-[#EEEEEE] text-gray-800' },
-      ],
-    },
-    {
-      label: 'Part 5 (30 câu hỏi)',
-      tags: [
-        { name: '#[Part 5] Câu hỏi từ loại', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 5] Câu hỏi ngữ pháp', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 5] Câu hỏi từ vựng', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Danh từ', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Đại từ', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Tính từ', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Thì', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Trạng từ', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Động từ nguyên mẫu có to', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Giới từ', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Liên từ', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Mệnh đề quan hệ', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Cấu trúc so sánh', color: 'bg-[#EEEEEE] text-gray-800' },
-      ],
-    },
-    {
-      label: 'Part 6 (16 câu hỏi)',
-      tags: [
-        { name: '[Grammar] Danh từ', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Tính từ', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Thì', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Thể', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Phân từ và Cấu trúc phân từ', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Giới từ', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '[Grammar] Liên từ', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 6] Câu hỏi từ loại', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 6] Câu hỏi ngữ pháp', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 6] Câu hỏi từ vựng', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 6] Câu hỏi điền câu vào đoạn văn', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 6] Hình thức: Thư điện tử/ thư tay (Email/ Letter)', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 6] Hình thức: Thông báo/ văn bản hướng dẫn (Notice/ Announcement Information)', color: 'bg-[#EEEEEE] text-gray-800' },
-      ],
-    },
-    {
-      label: 'Part 7 (54 câu hỏi)',
-      tags: [
-        { name: '#[Part 7] Câu hỏi tìm thông tin', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Câu hỏi tìm chi tiết sai', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Câu hỏi về chủ đề, mục đích', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Câu hỏi suy luận', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Câu hỏi điền câu', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Cấu trúc: một đoạn', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Cấu trúc: nhiều đoạn', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Dạng bài: Email/ Letter: Thư điện tử/ Thư tay', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Dạng bài: Form - Đơn từ, biểu mẫu', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Dạng bài: Article/ Review: Bài báo/ Bài đánh giá', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Dạng bài: Advertisement - Quảng cáo', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Dạng bài: Announcement: Thông báo', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Dạng bài: Text message chain - Chuỗi tin nhắn', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Câu hỏi tìm từ đồng nghĩa', color: 'bg-[#EEEEEE] text-gray-800' },
-        { name: '#[Part 7] Câu hỏi về hàm ý câu nói', color: 'bg-[#EEEEEE] text-gray-800' },
-      ],
-    },
-  ];
+  const handleFullTest = () => { 
+    navigate(`/overview-test?testId=${id}`);
+  };
 
   const handleScrollToComments = () => {
     if (commentRef.current) {
-      commentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      commentRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
+  // --------- Render ---------
+  if (loading) return <CircularProgress />;
+  if (!test) return <Typography>Không tìm thấy đề thi</Typography>;
+
   return (
     <MainLayout>
-      <Box className='w-full flex flex-col p-8 gap-4'>
-        <Box className='w-full flex justify-between'>
-          <div className='w-full bg-gray-50 min-h-screen px-4 font-inter'>
+      <Box className="w-full flex flex-col p-8 gap-4">
+        <Box className="w-full flex justify-between">
+          <div className="w-full bg-gray-50 min-h-screen px-4 font-inter">
             {/* Card Nội dung chính */}
-            <div className='max-w-4xl mx-auto bg-white shadow-md rounded-xl p-6'>
+            <div className="max-w-4xl mx-auto bg-white shadow-md rounded-xl p-6">
               <Header />
 
-              <h1 className='text-2xl font-bold mb-2 font-montserrat'>
-                New Economy TOEIC Test 1
+              <h1 className="text-2xl font-bold mb-2 font-montserrat">
+                {test.title}
               </h1>
-              <div className='text-gray-600 mb-4'>
+              <div className="text-gray-600 mb-4">
                 <p>
-                  ⏱ Thời gian làm: 120 phút | 7 phần | 200 câu hỏi | 3268 bình
-                  luận
+                  ⏱ Thời gian làm: 120 phút | 7 phần | 200 câu hỏi |{" "}
+                  {test.totalComments} bình luận
                 </p>
-                <p>👥 24.072 người đã luyện đề này</p>
+                <p>👥 {test.totalUsers} người đã luyện đề này</p>
+                <p>
+                  ⭐ Điểm cao nhất bạn đạt được:{" "}
+                  {test.highestScore !== null ? test.highestScore : "Chưa có"}
+                </p>
               </div>
 
               <Tabs
                 activeTab={activeTab}
-                setActiveTab={setActiveTab}
+                setActiveTab={(tab) =>
+                  dispatch({ type: "SET_ACTIVE_TAB", payload: tab })
+                }
                 onDiscussionClick={handleScrollToComments}
               />
 
-              {activeTab === 'practice' && (
+              {activeTab === "practice" && (
                 <PracticeTab
-                  parts={parts}
+                  parts={examParts} // ✅ dùng dữ liệu import
                   selectedParts={selectedParts}
-                  togglePart={togglePart}
+                  togglePart={(label) =>
+                    dispatch({ type: "TOGGLE_PART", payload: label })
+                  }
                   timeLimit={timeLimit}
-                  setTimeLimit={setTimeLimit}
+                  setTimeLimit={(val) =>
+                    dispatch({ type: "SET_TIME_LIMIT", payload: val })
+                  }
                   onPractice={handlePractice}
                 />
               )}
 
-              {activeTab === 'full' && <FullTestTab />}
+              {activeTab === "full" && (
+                <FullTestTab onClickFullTest={handleFullTest} />
+              )}
             </div>
 
             {/* Card Comment */}
             <div
               ref={commentRef}
-              className='max-w-4xl mx-auto bg-white shadow-md rounded-xl  mt-6'
+              className="max-w-4xl mx-auto bg-white shadow-md rounded-xl  mt-6"
             >
-              <Comments />
+              <Comments testId={test._id} />
             </div>
           </div>
-          <div className='basis-1/3'>
+
+          <div className="basis-1/3">
             <UserExamCard
-              userId='22110285'
-              examDate='30/08/2025'
+              userId="22110285"
+              examDate="30/08/2025"
               daysLeft={2}
               targetScore={700}
-              onEditDate={() => console.log('Edit date')}
-              onViewStats={() => console.log('View stats')}
+              onEditDate={() => console.log("Edit date")}
+              onViewStats={() => console.log("View stats")}
             />
           </div>
         </Box>

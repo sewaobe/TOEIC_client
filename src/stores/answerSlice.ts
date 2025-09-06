@@ -33,14 +33,14 @@ const answerSlice = createSlice({
       action: PayloadAction<{ question: number; answer: string }>
     ) => {
       const { question, answer } = action.payload;
-      const idx = question - 1; // index trong mảng
+      const idx = state.answers.findIndex((a) => a.question === question); // index trong mảng
       if (idx >= 0 && idx < state.answers.length) {
         state.answers[idx].answer = answer;
       }
     },
     toggleFlag: (state, action: PayloadAction<{ question: number }>) => {
       const { question } = action.payload;
-      const idx = question - 1;
+      const idx = state.answers.findIndex((a) => a.question === question); // index trong mảng
       if (idx >= 0 && idx < state.answers.length) {
         state.answers[idx].isFlagged = !state.answers[idx].isFlagged;
       }
@@ -51,5 +51,6 @@ const answerSlice = createSlice({
   },
 });
 
-export const { setInitialAnswers, setAnswer, toggleFlag, resetAnswers } = answerSlice.actions;
+export const { setInitialAnswers, setAnswer, toggleFlag, resetAnswers } =
+  answerSlice.actions;
 export default answerSlice.reducer;

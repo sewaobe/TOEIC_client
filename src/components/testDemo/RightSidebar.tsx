@@ -35,7 +35,7 @@ const RightSidebar: FC<RightSidebarProps> = ({ isShow }) => {
             {groupsOfPart.map((g) =>
               g.questions.map((q) => {
                 const question = q.name.replace(/^Question\s*/, "");
-                const a = answers[Number(question)-1];
+                const a = answers.find(ans => ans.question === Number(question));
                 return (
                   <QuestionChipRightBar
                     key={question}

@@ -94,7 +94,7 @@ const FeatureSection: React.FC = () => {
           variant='contained'
           size='large'
           className='rounded-full px-8 py-3 normal-case font-bold'
-          onClick={() => navigate(`/overview-test?testId=68af851b1918226d4c424e7f`)}
+          onClick={() => navigate(`/overview-test?testId=68af851b1918226d4c424e7f&demo_test=true`)}
           sx={{
             // background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
             backgroundColor: theme.palette.primary.main,

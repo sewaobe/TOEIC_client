@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useState } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import { Box, Button, Typography, useTheme } from "@mui/material";
 import commentService from "../../services/comment.service";
 import { IComment } from "../../types/comment.type";

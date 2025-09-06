@@ -57,7 +57,9 @@ const TestHeader: FC<TestHeaderProps> = ({ setIsShowSideBar, isTourRunning }) =>
   // 👇 Lấy query params trực tiếp
   const [searchParams] = useSearchParams();
   const timeLimitParam = searchParams.get("timeLimit"); // phút
-  const parts = searchParams.get("parts") || ""; // nếu có parts thì là practice
+  const parts = searchParams.get("parts"); // nếu có parts thì là practice
+  const isDemoTest = searchParams.get("demo_test") === 'true';
+
   const duration = timeLimitParam
     ? parseInt(timeLimitParam, 10) * 60 // practice có giới hạn
     : parts
@@ -79,13 +81,23 @@ const TestHeader: FC<TestHeaderProps> = ({ setIsShowSideBar, isTourRunning }) =>
     }));
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
 
+    // Xác định completedPart dựa trên logic mới
+    let completedPart = "";
+    if (isDemoTest) {
+      completedPart = "demo_test";
+    } else if (parts) {
+      completedPart = parts;
+    } else {
+      completedPart = "full_test";
+    }
+
     try {
       const result = await testService.submitTest(
         testId,
         userId,
         answersMap,
         elapsed,
-        parts
+        completedPart
       );
       console.log("Chi tiết từng câu:", result.answers);
       console.log("số điểm đạt được:", result.score);

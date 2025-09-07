@@ -112,10 +112,10 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, depth = 0 }) => {
   };
 
   return (
-    <Box sx={{ 
-      ml: depth > 0 ? 5 : 0, 
-      mb: 2, 
-      position: 'relative' 
+    <Box sx={{
+      ml: depth > 0 ? 5 : 0,
+      mb: 2,
+      position: 'relative'
     }}>
       {/* Connector Line for nested comments */}
       {depth > 0 && (
@@ -142,7 +142,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, depth = 0 }) => {
           transition: "all 0.2s ease",
           "&:hover": {
             boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-            transform: "translateY(-2px)",
+            transform: "translateY(-1px)",
           },
         }}
       >

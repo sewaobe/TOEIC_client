@@ -12,13 +12,12 @@ import { ITestCard } from "../../types/Test";
 const TestCard: React.FC<ITestCard> = ({ _id, title, score, topic, countComment, countSubmit, isNew }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-
   return (
     <Box
       component={motion.div}
       className="flex flex-col gap-2 p-3 rounded-xl shadow-md w-full sm:w-[calc(33.33%-16px)] lg:w-[calc(33.33%-16px)] hover:shadow-lg hover:scale-[1.02] transition-all duration-200 cursor-pointer"
       sx={{ background: theme.palette.background.paper }}
-      onClick={() => navigate(`/exam/${_id}`)}
+      onClick={() => navigate(`/tests/${_id}`)}
     >
       <Box className="flex items-center justify-between mb-2">
         <Typography

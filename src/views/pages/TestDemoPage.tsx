@@ -5,7 +5,7 @@ import { AppDispatch, RootState } from "../../stores/store";
 import TestHeader from "../../components/testDemo/TestHeader";
 import RightSidebar from "../../components/testDemo/RightSidebar";
 import { AnimatePresence } from "framer-motion";
-import Joyride, { Step,  STATUS } from "react-joyride";
+import Joyride, { Step, STATUS } from "react-joyride";
 import ExamContainer from "../../components/testDemo/ExamContainer";
 import { setInitialAnswers } from "../../stores/answerSlice";
 import { ExamGroup, ExamQuestion } from "../../types/Exam";
@@ -68,7 +68,7 @@ const TestDemoPage: FC = () => {
     }
   }, [groups, dispatch]);
 
-  
+
   const handleJoyrideCallback = (data: any) => {
     const { status } = data;
     if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {

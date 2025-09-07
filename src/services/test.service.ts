@@ -23,26 +23,26 @@ const testService = {
     const test = res.data;
     return { test };
   },
-  getTestDetail: async (testId: string, page = 1, limit = 5) =>{
+  getTestDetail: async (testId: string, page = 1, limit = 5) => {
     const res = await axiosClient.get(`/tests/${testId}/detail`, { params: { page, limit } });
-    console.log("testService" ,res.data )
+    console.log("testService", res.data)
     return res.data
   },
-    
+
   submitTest: async (
     testId: string,
     userId: string,
     answers: { question_id: string; selectedOption: string }[],
-    duration: number, 
+    duration: number,
     completedPart?: string,
   ): Promise<{ score: number; answers: any[] }> => {
-    console.log(duration,completedPart)
     const res = await axiosClient.post(`/tests/${testId}/submit`, {
       userId,
       answers,
       duration,
-      ...(completedPart ? { completedPart } : {}), 
+      ...(completedPart ? { completedPart } : {}),
     });
+    console.log(res.data);
     return res.data;
   },
   getLatestTests: async (): Promise<ITestCard[]> => {

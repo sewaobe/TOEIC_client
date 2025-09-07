@@ -5,9 +5,10 @@ import { useCountdown } from "../../hooks/useCountDown";
 import { useSelector } from "react-redux";
 import { RootState } from "../../stores/store";
 import testService from "./../../services/test.service";
-import ScoreModal from "../modals/ScoreModal";
+import ScoreModal, { ResultPayload } from "../modals/ToeicQuickResultModal";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ConfirmModal from "../modals/ConfirmModal";
+import ToeicQuickResultModal from "../modals/ToeicQuickResultModal";
 
 interface TestHeaderProps {
   setIsShowSideBar: React.Dispatch<React.SetStateAction<boolean>>;
@@ -49,7 +50,7 @@ function reducer(state: State, action: Action): State {
 
 const TestHeader: FC<TestHeaderProps> = ({ setIsShowSideBar, isTourRunning }) => {
   const [state, dispatchLocal] = useReducer(reducer, initialState);
-
+  const [answerTest, setAnswerTest] = useState<ResultPayload>({ score: 0, answers: [] });
   const navigate = useNavigate();
   const theme = useTheme();
   const answers = useSelector((state: RootState) => state.answer.answers);
@@ -63,8 +64,8 @@ const TestHeader: FC<TestHeaderProps> = ({ setIsShowSideBar, isTourRunning }) =>
   const duration = timeLimitParam
     ? parseInt(timeLimitParam, 10) * 60 // practice có giới hạn
     : parts
-    ? Infinity // practice không giới hạn
-    : 120 * 60; // full test mặc định 120 phút
+      ? Infinity // practice không giới hạn
+      : 120 * 60; // full test mặc định 120 phút
 
   const { timeLeft, formatTime } = useCountdown(duration, isTourRunning);
 
@@ -101,7 +102,13 @@ const TestHeader: FC<TestHeaderProps> = ({ setIsShowSideBar, isTourRunning }) =>
       );
       console.log("Chi tiết từng câu:", result.answers);
       console.log("số điểm đạt được:", result.score);
-
+      setAnswerTest({
+        score: result.score,
+        answers: result.answers.map((answer, index) => ({
+          ...answer,
+          question_no: index + 1
+        }))
+      });
       dispatchLocal({ type: "OPEN_SCORE", payload: result.score });
     } catch (err) {
       console.error("Submit test failed", err);
@@ -175,9 +182,11 @@ const TestHeader: FC<TestHeaderProps> = ({ setIsShowSideBar, isTourRunning }) =>
         onCancel={() => dispatchLocal({ type: "CLOSE_SUBMIT" })}
       />
 
-      <ScoreModal
+      <ToeicQuickResultModal
         open={state.scoreOpen}
-        score={state.score}
+        data={answerTest}
+        onReviewDetails={() => navigate(`/tests/${testId}/result/1`)}
+        onSuggestPlan={() => console.log("SuggestPlan clicked")}
         onClose={handleCloseScoreModal}
       />
     </header>

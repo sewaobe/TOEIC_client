@@ -15,11 +15,11 @@ import MainLayout from "../layouts/MainLayout";
 import { styled, useTheme } from "@mui/material/styles";
 import { useReducer, useEffect } from "react";
 import SearchIcon from "@mui/icons-material/Search";
-import UserExamCard from "../../components/exams/UserExamCard";
 import TestCard from "../../components/Home/TestCard";
 import PaginationContainer from "../../components/PaginationContainer";
 import testService from "../../services/test.service";
 import { useThrottledCallback } from "../../hooks/useThrottledCallback";
+import { SecondLayout } from "../layouts/SecondLayout";
 
 const initialState = {
   searchValue: "",
@@ -88,7 +88,7 @@ const ExamPage = () => {
   }));
 
   const [state, dispatch] = useReducer(reducer, initialState);
-  const limit = 2;
+  const limit = 3;
 
   // --- Fetch tests chính ---
   const fetchTests = async (p: number = 1, search?: string) => {
@@ -156,104 +156,95 @@ const ExamPage = () => {
     <MainLayout>
       <Box className="w-full flex flex-col p-8 gap-4">
         <Box className="w-full flex items-center justify-between">
-          <Box className="w-full flex flex-col gap-4">
-            <Typography
-              variant="h2"
-              sx={{
-                color: theme.palette.primary.main,
-                fontSize: { xs: "3rem", md: "48px" },
-              }}
-              className="font-bold mb-2"
-            >
-              Thư viện đề thi
-            </Typography>
+          <SecondLayout>
+            <Box className="w-full flex flex-col gap-4">
+              <Typography
+                variant="h2"
+                sx={{
+                  color: theme.palette.primary.main,
+                  fontSize: { xs: "3rem", md: "48px" },
+                }}
+                className="font-bold mb-2"
+              >
+                Thư viện đề thi
+              </Typography>
 
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={{ xs: 1, md: 4 }}
-            >
-              {["New economy", "2024", "2023", "2022", "2021"].map((item) => (
-                <Item key={item} onClick={() => fetchTests(1, item)}>
-                  {item}
-                </Item>
-              ))}
-            </Stack>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={{ xs: 1, md: 4 }}
+              >
+                {["New economy", "2024", "2023", "2022", "2021"].map((item) => (
+                  <Item key={item} onClick={() => fetchTests(1, item)}>
+                    {item}
+                  </Item>
+                ))}
+              </Stack>
 
-            <TextField
-              placeholder="Tìm kiếm..."
-              variant="outlined"
-              value={state.searchValue}
-              onChange={handleInputChange}
-              size="small"
-              className="w-2/3"
-              sx={{ backgroundColor: theme.palette.background.paper }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
+              <TextField
+                placeholder="Tìm kiếm..."
+                variant="outlined"
+                value={state.searchValue}
+                onChange={handleInputChange}
+                size="small"
+                className="w-2/3"
+                sx={{ backgroundColor: theme.palette.background.paper }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
 
-            <Popper
-              open={Boolean(state.anchorEl && state.suggestions.length > 0)}
-              anchorEl={state.anchorEl}
-              placement="bottom-start"
-              style={{ zIndex: 1300 }}
-            >
-              <ClickAwayListener onClickAway={() => dispatch({ type: "SET_ANCHOR", payload: null })}>
-                <Paper
-                  elevation={3}
-                  sx={{
-                    mt: 0.5,
-                    width: state.anchorEl ? state.anchorEl.offsetWidth + 48 : 348,
-                    maxHeight: 250,
-                    overflowY: "auto",
-                    borderRadius: 2,
-                    ml: -6,
-                  }}
-                >
-                  {state.loadingSuggest ? (
-                    <MenuItem sx={{ justifyContent: "center" }}>
-                      <CircularProgress size={24} />
-                      <Typography className="ml-2">Đang tìm...</Typography>
-                    </MenuItem>
-                  ) : (
-                    state.suggestions.map((t) => (
-                      <MenuItem
-                        key={t.id}
-                        onClick={() => handleSelectSuggestion(t.title)}
-                        sx={{ "&:hover": { backgroundColor: theme.palette.action.hover } }}
-                      >
-                        {t.title}
+              <Popper
+                open={Boolean(state.anchorEl && state.suggestions.length > 0)}
+                anchorEl={state.anchorEl}
+                placement="bottom-start"
+                style={{ zIndex: 1300 }}
+              >
+                <ClickAwayListener onClickAway={() => dispatch({ type: "SET_ANCHOR", payload: null })}>
+                  <Paper
+                    elevation={3}
+                    sx={{
+                      mt: 0.5,
+                      width: state.anchorEl ? state.anchorEl.offsetWidth + 48 : 348,
+                      maxHeight: 250,
+                      overflowY: "auto",
+                      borderRadius: 2,
+                      ml: -6,
+                    }}
+                  >
+                    {state.loadingSuggest ? (
+                      <MenuItem sx={{ justifyContent: "center" }}>
+                        <CircularProgress size={24} />
+                        <Typography className="ml-2">Đang tìm...</Typography>
                       </MenuItem>
-                    ))
-                  )}
-                </Paper>
-              </ClickAwayListener>
-            </Popper>
+                    ) : (
+                      state.suggestions.map((t) => (
+                        <MenuItem
+                          key={t.id}
+                          onClick={() => handleSelectSuggestion(t.title)}
+                          sx={{ "&:hover": { backgroundColor: theme.palette.action.hover } }}
+                        >
+                          {t.title}
+                        </MenuItem>
+                      ))
+                    )}
+                  </Paper>
+                </ClickAwayListener>
+              </Popper>
 
-            <Button
-              variant="contained"
-              color="primary"
-              className="rounded-full flex items-center gap-2 w-28"
-              onClick={handleSearchClick}
-            >
-              Tìm kiếm
-            </Button>
-          </Box>
-
-          <div className="basis-1/3">
-            <UserExamCard
-              userId="22110285"
-              examDate="30/08/2025"
-              daysLeft={2}
-              targetScore={700}
-              onEditDate={() => console.log("Edit date")}
-              onViewStats={() => console.log("View stats")}
-            />
-          </div>
+              <Button
+                variant="contained"
+                color="primary"
+                className="rounded-full flex items-center gap-2 w-28"
+                onClick={handleSearchClick}
+              >
+                Tìm kiếm
+              </Button>
+            </Box>
+          </SecondLayout>
         </Box>
 
         <Box className="mt-8 w-full">

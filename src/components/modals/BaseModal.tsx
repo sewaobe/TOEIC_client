@@ -1,10 +1,12 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, PaperProps } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, PaperProps, Stack, IconButton } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import InfoIcon from '@mui/icons-material/Info';
 import WarningIcon from '@mui/icons-material/Warning';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { ReactNode } from 'react';
+import { CloseOutlined } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 
 type ModalType = 'success' | 'error' | 'info' | 'warning' | 'confirm';
 
@@ -17,6 +19,7 @@ interface BaseModalProps {
   onCancel?: () => void;
   confirmText?: string;
   cancelText?: string;
+  buttonOther?: ReactNode;
   className?: string; // thêm className
   PaperProps?: PaperProps; // để tùy chỉnh Paper
 }
@@ -38,11 +41,12 @@ const BaseModal = ({
   onCancel,
   confirmText = 'OK',
   cancelText = 'Hủy',
+  buttonOther,
   className,
   PaperProps: customPaperProps,
 }: BaseModalProps) => {
   const { icon, color } = typeConfig[type];
-
+  const navigate = useNavigate();
   return (
     <Dialog
       open={open}
@@ -54,10 +58,15 @@ const BaseModal = ({
         ...customPaperProps,
       }}
     >
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color }}>
-        {icon}
-        {title || type.charAt(0).toUpperCase() + type.slice(1)}
-      </DialogTitle>
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color }}>
+          {icon}
+          {title || type.charAt(0).toUpperCase() + type.slice(1)}
+        </DialogTitle>
+        {buttonOther && <IconButton onClick={() => navigate("/home")}>
+          <CloseOutlined />
+        </IconButton>}
+      </Stack>
       <DialogContent>
         <Box>{children}</Box>
       </DialogContent>
@@ -76,6 +85,7 @@ const BaseModal = ({
             {confirmText}
           </Button>
         )}
+        {buttonOther}
       </DialogActions>
     </Dialog>
   );

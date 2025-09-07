@@ -28,7 +28,7 @@ interface NavLink {
 const navLinks: NavLink[] = [
   { label: 'Trang chủ', href: '/' },
   { label: 'Chương trình học', href: '/programs' },
-  { label: 'Đề thi online', href: '/exams' },
+  { label: 'Đề thi online', href: '/tests' },
   { label: 'Flash Card', href: '/flash-cards' },
 ];
 

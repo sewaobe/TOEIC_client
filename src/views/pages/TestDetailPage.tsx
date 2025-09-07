@@ -2,14 +2,15 @@ import React, { useReducer, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Box, Typography, CircularProgress } from "@mui/material";
 import MainLayout from "../layouts/MainLayout";
-import Header from "../../components/examDetail/Header";
-import PracticeTab from "../../components/examDetail/PracticeTab";
-import Comments from "../../components/examDetail/Comments";
-import FullTestTab from "../../components/examDetail/FullTestTab";
-import Tabs from "../../components/examDetail/Tabs";
-import UserExamCard from "../../components/exams/UserExamCard";
+import Header from "../../components/testDetail/Header";
+import PracticeTab from "../../components/testDetail/PracticeTab";
+import Comments from "../../components/testDetail/Comments";
+import FullTestTab from "../../components/testDetail/FullTestTab";
+import Tabs from "../../components/testDetail/Tabs";
 import testService from "../../services/test.service";
 import { examParts } from "../../constants/examParts"; // ✅ import mảng parts đã tách riêng
+import TestHistoryTable from "../../components/testDetail/TestHistoryTable";
+import { SecondLayout } from "../layouts/SecondLayout";
 // import { Part } from "../../types/examDetail";
 
 // --------- Kiểu state tổng ---------
@@ -64,6 +65,7 @@ const initialState: State = {
   page: 1,
 };
 
+
 const ExamDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -104,9 +106,9 @@ const ExamDetailPage: React.FC = () => {
 
     alert(
       "Bạn đã chọn part: " +
-        partNumbers.join(",") +
-        " | Giới hạn: " +
-        (timeLimit || "No limit")
+      partNumbers.join(",") +
+      " | Giới hạn: " +
+      (timeLimit || "No limit")
     );
 
     const params = new URLSearchParams();
@@ -120,7 +122,7 @@ const ExamDetailPage: React.FC = () => {
     navigate(`/overview-test?${params.toString()}`);
   };
 
-  const handleFullTest = () => { 
+  const handleFullTest = () => {
     navigate(`/overview-test?testId=${id}`);
   };
 
@@ -137,75 +139,72 @@ const ExamDetailPage: React.FC = () => {
   return (
     <MainLayout>
       <Box className="w-full flex flex-col p-8 gap-4">
-        <Box className="w-full flex justify-between">
-          <div className="w-full bg-gray-50 min-h-screen px-4 font-inter">
-            {/* Card Nội dung chính */}
-            <div className="max-w-4xl mx-auto bg-white shadow-md rounded-xl p-6">
-              <Header />
+        <SecondLayout>
+          <Box className="w-full flex justify-between">
+            <div className="w-full bg-gray-50 min-h-screen px-4 font-inter">
+              {/* Card Nội dung chính */}
+              <div className="max-w-4xl mx-auto bg-white shadow-md rounded-xl p-6">
+                <Header />
 
-              <h1 className="text-2xl font-bold mb-2 font-montserrat">
-                {test.title}
-              </h1>
-              <div className="text-gray-600 mb-4">
-                <p>
-                  ⏱ Thời gian làm: 120 phút | 7 phần | 200 câu hỏi |{" "}
-                  {test.totalComments} bình luận
-                </p>
-                <p>👥 {test.totalUsers} người đã luyện đề này</p>
-                <p>
-                  ⭐ Điểm cao nhất bạn đạt được:{" "}
-                  {test.highestScore !== null ? test.highestScore : "Chưa có"}
-                </p>
+                <h1 className="text-2xl font-bold mb-2 font-montserrat">
+                  {test.title}
+                </h1>
+                <div className="text-gray-600">
+                  <p>
+                    ⏱ Thời gian làm: 120 phút | 7 phần | 200 câu hỏi |{" "}
+                    {test.totalComments} bình luận
+                  </p>
+                  <p>👥 {test.totalUsers} người đã luyện đề này</p>
+                  <p>
+                    ⭐ Điểm cao nhất bạn đạt được:{" "}
+                    {test.highestScore !== null ? test.highestScore : "Chưa có"}
+                  </p>
+                </div>
+
+                {/* Bảng lịch sử các lần làm đề thi */}
+                <div className="my-8">
+                  <TestHistoryTable />
+                </div>
+
+                {/* Các tab */}
+                <Tabs
+                  activeTab={activeTab}
+                  setActiveTab={(tab) =>
+                    dispatch({ type: "SET_ACTIVE_TAB", payload: tab })
+                  }
+                  onDiscussionClick={handleScrollToComments}
+                />
+
+                {activeTab === "practice" && (
+                  <PracticeTab
+                    parts={examParts} // ✅ dùng dữ liệu import
+                    selectedParts={selectedParts}
+                    togglePart={(label) =>
+                      dispatch({ type: "TOGGLE_PART", payload: label })
+                    }
+                    timeLimit={timeLimit}
+                    setTimeLimit={(val) =>
+                      dispatch({ type: "SET_TIME_LIMIT", payload: val })
+                    }
+                    onPractice={handlePractice}
+                  />
+                )}
+
+                {activeTab === "full" && (
+                  <FullTestTab onClickFullTest={handleFullTest} />
+                )}
               </div>
 
-              <Tabs
-                activeTab={activeTab}
-                setActiveTab={(tab) =>
-                  dispatch({ type: "SET_ACTIVE_TAB", payload: tab })
-                }
-                onDiscussionClick={handleScrollToComments}
-              />
-
-              {activeTab === "practice" && (
-                <PracticeTab
-                  parts={examParts} // ✅ dùng dữ liệu import
-                  selectedParts={selectedParts}
-                  togglePart={(label) =>
-                    dispatch({ type: "TOGGLE_PART", payload: label })
-                  }
-                  timeLimit={timeLimit}
-                  setTimeLimit={(val) =>
-                    dispatch({ type: "SET_TIME_LIMIT", payload: val })
-                  }
-                  onPractice={handlePractice}
-                />
-              )}
-
-              {activeTab === "full" && (
-                <FullTestTab onClickFullTest={handleFullTest} />
-              )}
+              {/* Card Comment */}
+              <div
+                ref={commentRef}
+                className="max-w-4xl mx-auto bg-white shadow-md rounded-xl  mt-6"
+              >
+                <Comments testId={test._id} />
+              </div>
             </div>
-
-            {/* Card Comment */}
-            <div
-              ref={commentRef}
-              className="max-w-4xl mx-auto bg-white shadow-md rounded-xl  mt-6"
-            >
-              <Comments testId={test._id} />
-            </div>
-          </div>
-
-          <div className="basis-1/3">
-            <UserExamCard
-              userId="22110285"
-              examDate="30/08/2025"
-              daysLeft={2}
-              targetScore={700}
-              onEditDate={() => console.log("Edit date")}
-              onViewStats={() => console.log("View stats")}
-            />
-          </div>
-        </Box>
+          </Box>
+        </SecondLayout>
       </Box>
     </MainLayout>
   );

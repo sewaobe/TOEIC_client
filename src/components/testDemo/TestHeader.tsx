@@ -186,7 +186,7 @@ const TestHeader: FC<TestHeaderProps> = ({ setIsShowSideBar, isTourRunning }) =>
         open={state.scoreOpen}
         data={answerTest}
         onReviewDetails={() => navigate(`/tests/${testId}/result/1`)}
-        onSuggestPlan={() => console.log("SuggestPlan clicked")}
+        onSuggestPlan={() => navigate('/plan')}
         onClose={handleCloseScoreModal}
       />
     </header>

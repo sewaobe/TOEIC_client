@@ -21,7 +21,7 @@ const TestSection: React.FC<TestSectionProps> = ({
   return (
     <Box
       component={motion.div}
-      className="p-6 md:p-14 rounded-xl max-w-6xl m-auto mt-8"
+      className="p-6 md:p-0 rounded-xl max-w-6xl m-auto mt-8"
     // sx={{ background: theme.palette.background.paper }}
     >
       <Box className="flex justify-between items-center mb-6 mr-6">
@@ -39,7 +39,7 @@ const TestSection: React.FC<TestSectionProps> = ({
           <Button
             variant="text"
             sx={{ color: theme.palette.primary.main, textTransform: "none" }}
-            onClick={() => navigate("/exams")}
+            onClick={() => navigate("/tests")}
           >
             Xem kho đề thi
           </Button>

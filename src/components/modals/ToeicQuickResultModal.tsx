@@ -169,11 +169,6 @@ export default function ToeicQuickResultModal({
     return { total, correct, accuracy, toeic, cefr, byPart };
   }, [answers]);
 
-  const handleSuggest = () => {
-    if (onSuggestPlan) onSuggestPlan();
-    else console.log('[ToeicResult] Gợi ý lộ trình học');
-  };
-
   const renderFooter = () => (
     <Stack
       direction={{ xs: 'column', sm: 'row' }}
@@ -207,7 +202,7 @@ export default function ToeicQuickResultModal({
       <Button
         variant="contained"
         color="primary"
-        onClick={onSuggestPlan ?? (() => console.log('[ToeicResult] Gợi ý lộ trình học'))}
+        onClick={onSuggestPlan}
         startIcon={<TrendingUpRounded />}
         sx={{
           textTransform: 'none',

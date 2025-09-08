@@ -28,7 +28,7 @@ const TestCard: React.FC<ITestCard> = ({ _id, title, score, topic, countComment,
           {title}
         </Typography>
         <span
-          className="text-xs font-bold text-white px-2 py-1 rounded-full"
+          className="text-xs font-bold text-white px-2 py-1 rounded-lg"
           style={{ background: theme.palette.primary.main }}
         >
           {isNew ? "Đề thi mới" : "Đề thi thật"}

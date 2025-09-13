@@ -16,7 +16,7 @@ const ResetPasswordPage = lazy(
 const ExamPage = lazy(() => import('../../views/pages/TestPage'));
 const ExamDetailPage = lazy(() => import('../../views/pages/TestDetailPage'));
 const PlanWizardPage = lazy(() => import('../../views/pages/PlanWizardPage'));
-const DashboardLearningPathPage = lazy(() => import('../../views/pages/DashboardLearningPath'))
+const DashboardDemo = lazy(() => import('../../views/pages/DashboardDemo'))
 const LessonPage = lazy(() => import('../../views/pages/LessonPage'))
 
 const publicRoutes: AppRoute[] = [
@@ -29,7 +29,7 @@ const publicRoutes: AppRoute[] = [
   { path: '/test', element: TestDemoPage },
   { path: '/tests/:id', element: ExamDetailPage },
   { path: '/plan', element: PlanWizardPage },
-  { path: '/programs', element: DashboardLearningPathPage },
+  { path: '/programs', element: DashboardDemo },
   { path: '/lesson', element: LessonPage }
 ];
 

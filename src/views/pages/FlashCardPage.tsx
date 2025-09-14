@@ -5,11 +5,11 @@ import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import MainLayout from '../layouts/MainLayout';
-import PaginationContainer from '../../components/PaginationContainer';
+import PaginationContainer from '../../components/common/PaginationContainer';
 import AlertBox from '../../components/flashCardItem/AlertBox';
-import FlashcardsHeader from '../../components/flashcard/FlashCardHeader';
-import FlashcardsLearningSection from '../../components/flashcard/FlashcardLearningSection';
-import FlashcardsList from '../../components/flashcard/FlashcardList';
+import FlashcardsList from '../../components/flashCard/FlashcardList';
+import FlashcardsLearningSection from '../../components/flashCard/FlashcardLearningSection';
+import FlashcardsHeader from '../../components/flashCard/FlashCardHeader';
 
 // src/mock/flashcardMock.ts
 export interface FlashcardList {

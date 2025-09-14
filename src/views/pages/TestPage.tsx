@@ -16,7 +16,7 @@ import { styled, useTheme } from "@mui/material/styles";
 import { useReducer, useEffect } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import TestCard from "../../components/Home/TestCard";
-import PaginationContainer from "../../components/PaginationContainer";
+import PaginationContainer from "../../components/common/PaginationContainer";
 import testService from "../../services/test.service";
 import { useThrottledCallback } from "../../hooks/useThrottledCallback";
 import { SecondLayout } from "../layouts/SecondLayout";

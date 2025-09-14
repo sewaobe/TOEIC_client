@@ -1,7 +1,7 @@
 import { FC, lazy, Suspense, useEffect, useState } from 'react';
 import { Box, Typography, Container, useTheme, alpha } from '@mui/material';
 import { motion } from 'framer-motion';
-const LazyLottieAnimation = lazy(() => import('../LottieAnimation.tsx'));
+const LazyLottieAnimation = lazy(() => import('../common/LottieAnimation.tsx'));
 
 const DelayedLottie = () => {
   const [shouldLoad, setShouldLoad] = useState(false);

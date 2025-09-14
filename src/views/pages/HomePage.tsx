@@ -4,7 +4,7 @@ import FeatureSection from '../../components/Home/FeatureSection';
 import MainLayout from '../layouts/MainLayout';
 import { Box } from '@mui/material';
 import TestSection from '../../components/Home/TestSection';
-import ScrollToTopButton from '../../components/ScrollToTopButton';
+import ScrollToTopButton from '../../components/common/ScrollToTopButton';
 import testService from '../../services/test.service';
 import { ITestCard } from '../../types/Test';
 

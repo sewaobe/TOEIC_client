@@ -10,7 +10,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import BatchFlashcardModal from '../../components/modals/BatchFlashcardModal';
-import PaginationContainer from '../../components/PaginationContainer';
+import PaginationContainer from '../../components/common/PaginationContainer';
 import CreateFlashcardItemModal, { FlashcardData } from '../../components/modals/CreateFlashcardItemModal';
 import CreateFlashcardModal from '../../components/modals/CreateFlashcardModal';
 import MainLayout from '../layouts/MainLayout';

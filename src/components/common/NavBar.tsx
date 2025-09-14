@@ -16,9 +16,9 @@ import MenuIcon from '@mui/icons-material/Menu';
 import SchoolIcon from '@mui/icons-material/School';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../stores/store';
-import { logout } from '../stores/userSlice';
-import authService from '../services/authService';
+import { RootState } from '../../stores/store';
+import { logout } from '../../stores/userSlice';
+import authService from '../../services/authService';
 
 interface NavLink {
   label: string;

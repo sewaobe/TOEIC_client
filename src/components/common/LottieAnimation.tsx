@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import lottie from 'lottie-web/build/player/lottie_light';
-import animationData from '../assets/roadmap.json';
+import animationData from '../../assets/roadmap.json';
 
 const LottieAnimation: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,7 +58,7 @@ const LottieAnimation: React.FC = () => {
     <div
       ref={containerRef}
       className='inline-flex justify-center opacity-90 transition-transform duration-300 ease-in-out  '
-      style={{ minHeight: '300px', minWidth: '300px' }} 
+      style={{ minHeight: '300px', minWidth: '300px' }}
     />
   );
 };

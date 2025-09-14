@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Typography } from '@mui/material';
-import PaginationContainer from '../../components/PaginationContainer';
+import PaginationContainer from '../common/PaginationContainer';
 import FlashcardCard from './FlashcardCard';
 import { FlashcardList } from '../../views/pages/FlashCardPage';
 import CreateFlashcardModal from '../modals/CreateFlashcardModal';

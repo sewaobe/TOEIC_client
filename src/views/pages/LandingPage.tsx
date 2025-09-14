@@ -6,7 +6,7 @@ import CTA from '../../components/sections/CTA';
 import SmartRoadmap from '../../components/sections/SmartRoadmap';
 import Testimonials from '../../components/sections/Testimonials';
 import { Box } from '@mui/material';
-import ScrollToTopButton from '../../components/ScrollToTopButton';
+import ScrollToTopButton from '../../components/common/ScrollToTopButton';
 import MainLayout from '../layouts/MainLayout';
 
 const LandingPage: FC = () => {

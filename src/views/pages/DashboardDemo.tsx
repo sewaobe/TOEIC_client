@@ -56,7 +56,10 @@ function MethodCard({
         height: "100%",
         cursor: "pointer",
         transition: "all .15s ease",
-        "&:hover": { boxShadow: "0 6px 18px rgba(0,0,0,.08)", transform: "translateY(-1px)" },
+        "&:hover": {
+          boxShadow: "0 6px 18px rgba(0,0,0,.08)",
+          transform: "translateY(-1px)",
+        },
       }}
       onClick={onToggle}
     >
@@ -93,7 +96,12 @@ function MethodDetailsView({ details }: { details: MethodDetails }) {
         {details.explain}
       </Typography>
 
-      <Typography variant="subtitle2" fontWeight={700} gutterBottom sx={{ mt: 2 }}>
+      <Typography
+        variant="subtitle2"
+        fontWeight={700}
+        gutterBottom
+        sx={{ mt: 2 }}
+      >
         Áp dụng TOEIC
       </Typography>
       <ul style={{ margin: 0, paddingLeft: "1.5rem" }}>
@@ -152,44 +160,65 @@ export default function DashboardDemo() {
   }, []);
 
   const handleConfirm = async () => {
-    // 1) phương pháp chọn
+    // 1) Gom phương pháp đã chọn
     const methods = Array.from(selected);
 
-    // 2) lấy plan draft + placement từ localStorage
+    // 2) Lấy draft plan + placement từ localStorage
     let draft: any = {};
     let placement: any = null;
+
     try {
       const raw = localStorage.getItem(LS_KEY);
       if (raw) draft = JSON.parse(raw);
-    } catch {}
+    } catch (err) {
+      console.warn("Parse draft plan failed:", err);
+    }
+
     try {
       const rawP = localStorage.getItem(LS_PLACEMENT_KEY);
       if (rawP) placement = JSON.parse(rawP);
-    } catch {}
+    } catch (err) {
+      console.warn("Parse placement result failed:", err);
+    }
 
-    // 3) chuẩn payload để gửi BE
+    // 3) Chuẩn payload gửi về BE
     const payload = {
-      methods,                                // mảng key phương pháp
+      methods, // mảng key phương pháp
       targetScore: draft?.targetScore ?? null,
       endDate: draft?.endDate ?? null,
       weeklyTotals: draft?.weeklyTotals ?? [],
-      weeklyPlan: draft?.weeklyPlan ?? null,  // { Mon, Tue, ... }
-      placement: placement ?? null,           // optional
+      weeklyPlan: draft?.weeklyPlan ?? null, // { Mon, Tue, ... }
+      placement: placement ?? null, // optional
     };
 
+    // Debug log
     console.log("CREATE_LEARNING_PATH_PAYLOAD:", payload);
 
-    // 4) TODO: gọi API tạo lộ trình
-    // const res = await learningPathService.createUserLearningPath(payload);
+    // 4) TODO: gọi API tạo lộ trình (giữ comment để test trước)
+    try {
+      const res = await learningPathService.createUserLearningPath(payload);
+      if (res.success) {
+        setHasPlan(true);
+        setChooseMethod(false);
+      }
+    } catch (err) {
+      console.error("Create learning path failed:", err);
+    }
 
-    setChooseMethod(false);
-    setHasPlan(true);
+    // 5) Tạm set state để flow UI tiếp tục (sau này bỏ khi gọi API thật)
+    // setChooseMethod(false);
+    // setHasPlan(true);
   };
 
   if (loading) {
     return (
       <MainLayout>
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          minHeight="100vh"
+        >
           <CircularProgress />
         </Box>
       </MainLayout>
@@ -274,7 +303,11 @@ export default function DashboardDemo() {
                 <Typography variant="subtitle1" fontWeight={900}>
                   {group.name}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 2 }}
+                >
                   Bao gồm: {group.includes}
                 </Typography>
 

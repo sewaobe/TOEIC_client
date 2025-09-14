@@ -7,9 +7,19 @@ interface ApiResponse<T> {
 }
 
 const learningPathService = {
+  // Lấy lộ trình hiện tại của user
   getUserLearningPath: async () => {
     const res = await axiosClient.get<ApiResponse<any>>("/learning-path/");
-    console.log("User Learning Path:", res.data);
+    return res.data;
+  },
+
+  // Tạo lộ trình mới từ draft payload
+  createUserLearningPath: async (payload: any) => {
+    const res = await axiosClient.post<ApiResponse<any>>(
+      "/learning-path/",
+      payload
+    );
+    console.log(res);
     return res.data;
   },
 };

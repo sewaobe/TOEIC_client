@@ -18,7 +18,7 @@ const privateRoutes: AppRoute[] = [
   { path: '/flash-cards', element: FlashCardPage, guard: ProtectedRoute },
   { path: '/flash-cards/:id', element: FlashCardDetailPage, guard: ProtectedRoute },
   { path: '/flash-cards/:id/practice', element: PracticeFlashCardPage, guard: ProtectedRoute },
-  { path: '/tests/:id/result/:id', element: ResultTestPage, guard: ProtectedRoute }
+  { path: '/tests/:testId/result/:historyId', element: ResultTestPage, guard: ProtectedRoute }
 ];
 
 export default privateRoutes;

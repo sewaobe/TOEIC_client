@@ -1,14 +1,15 @@
 import * as React from "react";
 import {
     Stack, Tabs, Tab, Typography,
-    Table, TableHead, TableRow, TableCell, TableBody, Chip, Card, CardContent
+    Table, TableHead, TableRow, TableCell, TableBody, Chip, Card, CardContent,
+    TableFooter
 } from "@mui/material";
 
 import { mapAnswersToParts } from "../../utils/mapAnswersToParts";
 import type { RawAnswer } from "../../utils/mapAnswersToParts";
-import { examParts } from "../../constants/examParts";
 
 function Bubble({ n, status }: { n: number; status: "correct" | "wrong" | "skipped" }) {
+    console.log("Bubble", n)
     const color =
         status === "correct" ? "success" :
             status === "wrong" ? "error" : "default";
@@ -19,14 +20,14 @@ function Bubble({ n, status }: { n: number; status: "correct" | "wrong" | "skipp
             label={n}
             color={color as any}
             variant="outlined"
-            className="rounded-full"
+            className="rounded-full !cursor-pointer"
             sx={{ width: 32, height: 32, fontSize: "11px", "& .MuiChip-label": { px: 0 } }}
         />
     );
 }
 
 
-export default function DetailAnalysis({ answers }: { answers: RawAnswer[] }) {
+export default function DetailAnalysis({ answers, tab_parts }: { answers: RawAnswer[], tab_parts: string[] }) {
     const [tab, setTab] = React.useState<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7>(1);
 
     // Gom theo Part từ util (đúng type, không cần cast)
@@ -34,6 +35,7 @@ export default function DetailAnalysis({ answers }: { answers: RawAnswer[] }) {
 
     console.log("Parts", parts);
     const renderBubble = (part: RawAnswer[]) => {
+        console.log("Part", part)
         return (
             <Stack direction="row" gap={1} flexWrap="wrap">
                 {part.map(question => {
@@ -44,26 +46,36 @@ export default function DetailAnalysis({ answers }: { answers: RawAnswer[] }) {
         )
     }
     const renderBody = () => {
-        const tagsByPart = examParts[tab].tags.map(tag => tag.name);
-        const count_correct_question = parts[tab].filter(part => part.isCorrect === true).length;
-        const count_incorrect_question = parts[tab].filter(part => part.isCorrect === false && part.selectedOption !== "").length;
+        const tagsByPart = parts[tab]
+            .flatMap((q) => q.tags)
+            .filter((tag, idx, arr) => arr.indexOf(tag) === idx);
+
         return (
             <>
-                {tagsByPart.map(tagByPart => {
+                {tagsByPart.map((tagByPart) => {
+                    //  lọc những câu có tag này
+                    const questionsWithTag = parts[tab].filter((q) =>
+                        q?.tags?.includes(tagByPart!)
+                    );
+
+                    const count_correct_question = questionsWithTag.filter(q => q.isCorrect === true).length;
+                    const count_incorrect_question = questionsWithTag.filter(q => q.isCorrect === false && q.selectedOption !== "").length;
+                    const count_skip_question = questionsWithTag.length - count_correct_question - count_incorrect_question;
+
                     return (
                         <TableRow key={tagByPart}>
                             <TableCell>{tagByPart}</TableCell>
-                            <TableCell>{0}</TableCell>
-                            <TableCell>{0}</TableCell>
-                            <TableCell>{0}</TableCell>
-                            <TableCell>{0}</TableCell>
-                            <TableCell>{renderBubble(parts[tab])}</TableCell>
+                            <TableCell>{count_correct_question}</TableCell>
+                            <TableCell>{count_incorrect_question}</TableCell>
+                            <TableCell>{count_skip_question}</TableCell>
+                            <TableCell>{(count_correct_question + count_incorrect_question) === 0 ? 0 : (count_correct_question * 100 / (count_correct_question + count_incorrect_question))}%</TableCell>
+                            <TableCell>{renderBubble(questionsWithTag)}</TableCell>
                         </TableRow>
-                    )
+                    );
                 })}
             </>
-        )
-    }
+        );
+    };
 
 
     return (
@@ -86,13 +98,11 @@ export default function DetailAnalysis({ answers }: { answers: RawAnswer[] }) {
                         }
                     }}
                 >
-                    <Tab label="Part 1" value={1} />
-                    <Tab label="Part 2" value={2} />
-                    <Tab label="Part 3" value={3} />
-                    <Tab label="Part 4" value={4} />
-                    <Tab label="Part 5" value={5} />
-                    <Tab label="Part 6" value={6} />
-                    <Tab label="Part 7" value={7} />
+                    {tab_parts.map(tab => {
+                        return (
+                            <Tab label={`Part ${tab}`} value={parseInt(tab)} />
+                        )
+                    })}
                     <Tab label="Tổng quát" value={0} />
                 </Tabs>
 
@@ -113,6 +123,24 @@ export default function DetailAnalysis({ answers }: { answers: RawAnswer[] }) {
                     <TableBody>
                         {renderBody()}
                     </TableBody>
+                    <TableFooter>
+                        <TableRow
+                            sx={{
+                                backgroundColor: "action.hover",
+                                "& td": {
+                                    fontWeight: "900",
+                                    fontSize: "0.9rem", // 16px
+                                },
+                            }}
+                        >
+                            <TableCell>Tổng</TableCell>
+                            <TableCell align="left">{parts[tab].filter(q => q.isCorrect === true).length}</TableCell>
+                            <TableCell align="left">{parts[tab].filter(q => q.isCorrect === false && q.selectedOption !== "").length}</TableCell>
+                            <TableCell align="left">{parts[tab].length - parts[tab].filter(q => q.isCorrect === true).length - parts[tab].filter(q => q.isCorrect === false && q.selectedOption !== "").length}</TableCell>
+                            <TableCell align="left">{(parts[tab].filter(q => q.isCorrect === true).length + parts[tab].filter(q => q.isCorrect === false && q.selectedOption !== "").length) === 0 ? 0 : (parts[tab].filter(q => q.isCorrect === true).length * 100 / (parts[tab].filter(q => q.isCorrect === true).length + parts[tab].filter(q => q.isCorrect === false && q.selectedOption !== "").length))}%</TableCell>
+                            <TableCell />
+                        </TableRow>
+                    </TableFooter>
                 </Table>
             </CardContent>
         </Card>

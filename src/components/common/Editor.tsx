@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import ReactQuill, { Quill } from "react-quill";
 import ImageResize from "quill-image-resize-module-react";
 import EditNoteIcon from "@mui/icons-material/EditNote";
+import SaveIcon from "@mui/icons-material/Save";
+import { Button } from "@mui/material";
 
 // Đăng ký module resize ảnh
 const ImageResizeModule = (ImageResize as any).default || ImageResize;
@@ -118,8 +120,27 @@ export default function Editor() {
         }
     }, []);
 
+    // Load content đã lưu
+    useEffect(() => {
+        const saved = localStorage.getItem("editorContent");
+        if (saved) {
+            setValue(saved);
+        }
+        const el = document.querySelector(".ql-editor");
+        if (el) {
+            el.setAttribute("spellcheck", "false");
+            el.setAttribute("lang", "vi");
+        }
+    }, []);
+
+    // Hàm lưu
+    const handleSave = () => {
+        localStorage.setItem("editorContent", value);
+        alert("✅ Nội dung đã được lưu!");
+    };
+
     return (
-        <div className="p-4 max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto">
             <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
                 <EditNoteIcon className="!w-7 !h-7 text-blue-600" />
                 <span className="text-gray-800">Tóm tắt nội dung bài học</span>
@@ -138,6 +159,18 @@ export default function Editor() {
                 placeholder="Viết tóm tắt tại đây..."
                 className="bg-white rounded-xl [&_.ql-editor]:[spellcheck=false]"
             />
+
+            {/* Nút lưu */}
+            <div className="mt-4 flex justify-end">
+                <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<SaveIcon />}
+                    onClick={handleSave}
+                >
+                    Lưu
+                </Button>
+            </div>
 
             {/* <div className="mt-4 p-3 border rounded-lg bg-gray-50">
                 <h3 className="font-semibold mb-2">📄 Preview</h3>

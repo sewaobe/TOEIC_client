@@ -225,7 +225,7 @@ export default function DashboardDemo() {
     );
   }
 
-  if (hasPlan) return <DashboardLearningPath />;
+  if (!hasPlan) return <DashboardLearningPath />;
 
   return (
     <MainLayout>

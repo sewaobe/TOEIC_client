@@ -1,3 +1,4 @@
+import { RawAnswer } from "../utils/mapAnswersToParts";
 import axiosClient from "./axiosClient"
 
 const userTestService = {
@@ -9,6 +10,17 @@ const userTestService = {
             }
         });
         console.log("History Test", res.data);
+        return res.data;
+    },
+    getTestHistoryDetail: async (historyId: string): Promise<{
+        score: number,
+        answers: RawAnswer[],
+        completedPart: string,
+        duration: number;
+        submit_at: Date
+    }> => {
+        const res = await axiosClient.get(`/user-test/${historyId}`);
+        console.log("Test Detail", res);
         return res.data;
     }
 }

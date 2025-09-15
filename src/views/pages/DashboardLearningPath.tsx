@@ -33,15 +33,15 @@ import { useNavigate } from "react-router-dom";
 // ===============================================
 // Mock data (bạn nối real data sau)
 // ===============================================
-type LessonStatus = "locked" | "todo" | "done" | "progress";
-type LessonType = "core" | "quiz";
+type DayStatus = "locked" | "todo" | "done" | "progress";
+type DayType = "core" | "quiz";
 
-interface Lesson {
+interface Day {
     id: string;
     week: number;
     title: string;
-    type: LessonType;
-    status: LessonStatus;
+    type: DayType;
+    status: DayStatus;
     progress?: number;
 }
 
@@ -50,21 +50,24 @@ const PACE = "5 buổi/tuần";
 const DAILY = "~90’/ngày";
 
 const WEEKS = 8;
-const ACTIVE_WEEK = 1; // W2 (0-based)
+const ACTIVE_WEEK = 0; // W2 (0-based)
 
 const WEEK_DONE = 3;
 const WEEK_TOTAL = 5;
 
-const LESSONS: Lesson[] = [
-    { id: "W1-L1", week: 1, title: "Core Lesson 1", type: "core", status: "done", progress: 100 },
-    { id: "W1-L2", week: 1, title: "Core Lesson 2", type: "core", status: "progress", progress: 60 },
-    { id: "W1-Q1", week: 1, title: "Quick Quiz A", type: "quiz", status: "todo" },
-    { id: "W1-L3", week: 1, title: "Core Lesson 3", type: "core", status: "locked" },
-    { id: "W1-T1", week: 1, title: "Mini Test 1", type: "quiz", status: "locked" },
+const DAYS: Day[] = [
+    { id: "mon", week: 1, title: "Thứ 2", type: "core", status: "done", progress: 100 },
+    { id: "tue", week: 1, title: "Thứ 3", type: "core", status: "progress", progress: 60 },
+    { id: "wed", week: 1, title: "Thứ 4", type: "core", status: "todo" },
+    { id: "thu", week: 1, title: "Thứ 5", type: "core", status: "locked" },
+    { id: "fri", week: 1, title: "Thứ 6", type: "core", status: "locked" },
+    { id: "sat", week: 1, title: "Thứ 7", type: "core", status: "locked" },
+    { id: "sun", week: 1, title: "Chủ nhật", type: "quiz", status: "locked" },
 ];
 
+
 // ===============================================
-// Small UI helpers (glass section / stat item / lesson item)
+// Small UI helpers (glass section / stat item / day item)
 // ===============================================
 function Section({ children }: { children: React.ReactNode }) {
     return (
@@ -114,7 +117,7 @@ function StatItem({ icon, label, value }: { icon: React.ReactNode; label: string
     );
 }
 
-function LessonItem({ data, onOpen }: { data: Lesson; onOpen: (l: Lesson) => void }) {
+function DayItem({ data, onOpen }: { data: Day; onOpen: (l: Day) => void }) {
     const isLocked = data.status === "locked";
     const isDone = data.status === "done";
     const inProgress = data.status === "progress";
@@ -143,7 +146,7 @@ function LessonItem({ data, onOpen }: { data: Lesson; onOpen: (l: Lesson) => voi
                     <Box>
                         <Typography variant="subtitle2" fontWeight={700}>{data.title}</Typography>
                         <Typography variant="caption" color="text.secondary">
-                            {data.type === "core" ? "Bài học nền tảng" : "Bài kiểm tra nhanh"}
+                            {data.type === "core" ? "Ngày học nền tảng" : "Bài kiểm tra nhanh"}
                         </Typography>
                     </Box>
                 </Stack>
@@ -169,11 +172,10 @@ export default function DashboardDemo() {
     const [activeWeek, setActiveWeek] = React.useState<number>(ACTIVE_WEEK);
     const weekPercent = Math.round((WEEK_DONE / WEEK_TOTAL) * 100);
     const navigate = useNavigate();
-    // Điều hướng sang trang học — không cần router
-    const openLesson = (l: Lesson) => {
-        localStorage.setItem("current_lesson", JSON.stringify(l));
-        // bạn có router thì thay bằng navigate("/lesson/" + l.id)
-        navigate("/lesson")
+
+    const openDay = (d: Day) => {
+        localStorage.setItem("current_day", JSON.stringify(d));
+        navigate(`/lesson?week=${activeWeek + 1}&day=${d.id}`);
     };
 
     return (
@@ -202,6 +204,7 @@ export default function DashboardDemo() {
                         direction="row"
                         alignItems="center"
                         justifyContent="center"
+                        gap={2}
                         className="sticky top-0 z-10"
                         sx={{
                             border: "1px solid rgba(0,0,0,0.06)",
@@ -235,7 +238,7 @@ export default function DashboardDemo() {
                         <Stack spacing={2}>
                             <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ sm: "center" }} justifyContent="space-between">
                                 <Typography variant="h6" fontWeight={800}>
-                                    Week {activeWeek + 1} · {WEEK_DONE}/{WEEK_TOTAL} bài
+                                    Tuần {activeWeek + 1} · {WEEK_DONE}/{WEEK_TOTAL} ngày
                                 </Typography>
                                 <Box sx={{ position: "relative", display: "inline-flex" }}>
                                     <CircularProgress
@@ -291,17 +294,17 @@ export default function DashboardDemo() {
 
                     <Box sx={{ my: 2.5 }} />
 
-                    {/* ===== Lessons ===== */}
+                    {/* ===== Days ===== */}
                     <Section>
                         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-                            <Typography variant="h6" fontWeight={800}>Danh sách bài học</Typography>
+                            <Typography variant="h6" fontWeight={800}>Danh sách ngày học</Typography>
                             <Chip size="small" variant="outlined" label={`Week ${activeWeek + 1}`} />
                         </Stack>
 
                         <Grid container spacing={1.5}>
-                            {LESSONS.filter(l => l.week === 1).map((l) => (
-                                <Grid size={{ xs: 12, sm: 6 }} key={l.id}>
-                                    <LessonItem data={l} onOpen={openLesson} />
+                            {DAYS.filter(d => d.week === 1).map((d) => (
+                                <Grid size={{ xs: 12, sm: 6 }} key={d.id}>
+                                    <DayItem data={d} onOpen={openDay} />
                                 </Grid>
                             ))}
                         </Grid>

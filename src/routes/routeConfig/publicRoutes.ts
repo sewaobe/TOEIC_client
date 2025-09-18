@@ -18,6 +18,7 @@ const ExamDetailPage = lazy(() => import('../../views/pages/TestDetailPage'));
 const PlanWizardPage = lazy(() => import('../../views/pages/PlanWizardPage'));
 const DashboardDemo = lazy(() => import('../../views/pages/DashboardDemo'))
 const LessonPage = lazy(() => import('../../views/pages/LessonPage'))
+const CrudPage = lazy(() => import('../../views/pages/CrudPage'))
 
 const publicRoutes: AppRoute[] = [
   { path: '/', element: LandingPage },
@@ -30,7 +31,8 @@ const publicRoutes: AppRoute[] = [
   { path: '/tests/:id', element: ExamDetailPage },
   { path: '/plan', element: PlanWizardPage },
   { path: '/programs', element: DashboardDemo },
-  { path: '/lesson', element: LessonPage }
+  { path: '/lesson', element: LessonPage },
+  { path: '/curd-tesst', element: CrudPage },
 ];
 
 export default publicRoutes;

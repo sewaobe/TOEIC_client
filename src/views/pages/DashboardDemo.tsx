@@ -119,6 +119,7 @@ function MethodDetailsView({ details }: { details: MethodDetails }) {
 export default function DashboardDemo() {
   const [loading, setLoading] = React.useState(true);
   const [hasPlan, setHasPlan] = React.useState(false);
+  const [plan, setPlan] = React.useState<any | null>(null);
 
   // Modal 1: báo chưa có lộ trình
   const [open, setOpen] = React.useState(false);
@@ -145,7 +146,9 @@ export default function DashboardDemo() {
     const fetchPlan = async () => {
       try {
         const res = await learningPathService.getUserLearningPath();
-        if (res?.success && res?.data) {
+        console.log("res", res);
+        if (res) {
+          setPlan(res);
           setHasPlan(true);
         } else {
           setOpen(true);
@@ -163,32 +166,36 @@ export default function DashboardDemo() {
     // 1) Gom phương pháp đã chọn
     const methods = Array.from(selected);
 
-    // 2) Lấy draft plan + placement từ localStorage
+    // 2) Lấy draft plan từ localStorage
     let draft: any = {};
-    let placement: any = null;
 
     try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (raw) draft = JSON.parse(raw);
+      const totalsRaw = localStorage.getItem("weekly_totals");
+      if (totalsRaw) draft.weeklyTotals = JSON.parse(totalsRaw);
+
+      const daysRaw = localStorage.getItem("weekly_days");
+      if (daysRaw) {
+        const allWeeks = JSON.parse(daysRaw);
+        draft.weeklyPlan = allWeeks["0"]; // tạm lấy tuần đầu tiên làm mẫu plan
+      }
+
+      const scoreRaw = localStorage.getItem("score_target_plan");
+      if (scoreRaw) draft.targetScore = JSON.parse(scoreRaw);
+
+      const endRaw = localStorage.getItem("plan_end");
+      if (endRaw) draft.endDate = JSON.parse(endRaw);
     } catch (err) {
       console.warn("Parse draft plan failed:", err);
-    }
-
-    try {
-      const rawP = localStorage.getItem(LS_PLACEMENT_KEY);
-      if (rawP) placement = JSON.parse(rawP);
-    } catch (err) {
-      console.warn("Parse placement result failed:", err);
     }
 
     // 3) Chuẩn payload gửi về BE
     const payload = {
       methods, // mảng key phương pháp
-      targetScore: draft?.targetScore ?? null,
-      endDate: draft?.endDate ?? null,
-      weeklyTotals: draft?.weeklyTotals ?? [],
-      weeklyPlan: draft?.weeklyPlan ?? null, // { Mon, Tue, ... }
-      placement: placement ?? null, // optional
+      targetScore: draft.targetScore ?? null,
+      endDate: draft.endDate ?? null,
+      weeklyTotals: draft.weeklyTotals ?? [],
+      weeklyPlan: draft.weeklyPlan ?? {},
+      // placement: placement ?? null, // optional nếu cần
     };
 
     // Debug log
@@ -197,7 +204,7 @@ export default function DashboardDemo() {
     // 4) TODO: gọi API tạo lộ trình (giữ comment để test trước)
     try {
       const res = await learningPathService.createUserLearningPath(payload);
-      if (res.success) {
+      if (res) {
         setHasPlan(true);
         setChooseMethod(false);
       }
@@ -225,7 +232,7 @@ export default function DashboardDemo() {
     );
   }
 
-  if (!hasPlan) return <DashboardLearningPath />;
+  if (hasPlan && plan) return <DashboardLearningPath plan={plan} />;
 
   return (
     <MainLayout>

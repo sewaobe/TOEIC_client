@@ -1,12 +1,13 @@
-import { FC, useEffect, useState } from 'react';
-import HeroSection from '../../components/Home/HeroSection';
-import FeatureSection from '../../components/Home/FeatureSection';
-import MainLayout from '../layouts/MainLayout';
-import { Box } from '@mui/material';
-import TestSection from '../../components/Home/TestSection';
-import ScrollToTopButton from '../../components/common/ScrollToTopButton';
-import testService from '../../services/test.service';
-import { ITestCard } from '../../types/Test';
+import { FC, useEffect, useState } from "react";
+import HeroSection from "../../components/Home/HeroSection";
+import FeatureSection from "../../components/Home/FeatureSection";
+import MainLayout from "../layouts/MainLayout";
+import { Box } from "@mui/material";
+import TestSection from "../../components/Home/TestSection";
+import ScrollToTopButton from "../../components/common/ScrollToTopButton";
+import testService from "../../services/test.service";
+import { ITestCard } from "../../types/Test";
+import Editor from "../../components/common/Editor";
 
 const HomePage: FC = () => {
   const [latestTests, setLatestTests] = useState<ITestCard[]>([]);
@@ -39,14 +40,15 @@ const HomePage: FC = () => {
       <Box sx={{ px: { xs: 2, sm: 4, md: 6 } }}>
         <HeroSection />
         <FeatureSection />
-        <TestSection title='Bài làm gần đây' tests={userRecentTests} />
+        <TestSection title="Bài làm gần đây" tests={userRecentTests} />
         {/* Sử dụng component tái sử dụng */}
         <TestSection
-          title='Đề thi mới nhất'
+          title="Đề thi mới nhất"
           tests={latestTests}
           showViewMoreButton
         />
         <ScrollToTopButton scrollThreshold={700} />
+        <Editor />
       </Box>
     </MainLayout>
   );

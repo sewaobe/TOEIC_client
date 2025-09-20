@@ -27,8 +27,8 @@ import {
 } from "../../constants/learningMethods";
 
 /* LocalStorage keys (để gom plan khi xác nhận) */
-const LS_KEY = "toeic_plan_draft";
-const LS_PLACEMENT_KEY = "toeic_placement_result";
+// const LS_KEY = "toeic_plan_draft";
+// const LS_PLACEMENT_KEY = "toeic_placement_result";
 
 /* ============== Card phương pháp ============== */
 function MethodCard({

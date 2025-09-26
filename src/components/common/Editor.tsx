@@ -21,9 +21,9 @@ Quill.register(Font, true);
 
 // Custom toolbar
 const CustomToolbar = () => (
-    <div id="toolbar" className="flex items-center justify-between gap-2">
+    <div id="toolbar" className="flex items-center gap-2 flex-wrap">
         {/* Nhóm Select bên trái */}
-        <div className="w-1/2 flex items-center gap-2">
+        <div className="w-1/2 basis-full flex items-center gap-2">
             <select className="ql-header" defaultValue="" title="Tiêu đề">
                 <option value="1">Heading 1</option>
                 <option value="2">Heading 2</option>
@@ -62,7 +62,7 @@ const CustomToolbar = () => (
         </div>
 
         {/* Nhóm Button bên phải */}
-        <div className="w-full flex items-center justify-end gap-2">
+        <div className="w-full flex items-center gap-2 flex-wrap">
             <button className="ql-bold" title="In đậm"></button>
             <button className="ql-italic" title="In nghiêng"></button>
             <button className="ql-underline" title="Gạch chân"></button>
@@ -82,9 +82,19 @@ const CustomToolbar = () => (
     </div>
 );
 
-export default function Editor() {
-    const [value, setValue] = useState("");
+export default function Editor({
+    initialValue = "",
+    onSave,
+}: {
+    initialValue?: string;
+    onSave?: (value: string) => void;
+}) {
+    const [value, setValue] = useState(initialValue);
     const quillRef = useRef<ReactQuill>(null);
+    // update khi prop initialValue đổi
+    useEffect(() => {
+        setValue(initialValue);
+    }, [initialValue]);
 
     const modules = {
         toolbar: {
@@ -136,15 +146,16 @@ export default function Editor() {
     // Hàm lưu
     const handleSave = () => {
         localStorage.setItem("editorContent", value);
+        if (onSave) onSave(value);
         alert("✅ Nội dung đã được lưu!");
     };
 
     return (
         <div className="max-w-4xl mx-auto">
-            <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
+            {/* <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
                 <EditNoteIcon className="!w-7 !h-7 text-blue-600" />
                 <span className="text-gray-800">Tóm tắt nội dung bài học</span>
-            </h2>
+            </h2> */}
 
             {/* Toolbar tuỳ chỉnh */}
             <CustomToolbar />

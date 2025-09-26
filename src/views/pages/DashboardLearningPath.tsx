@@ -17,6 +17,9 @@ import {
   Typography,
   Tooltip,
   Paper,
+  Drawer,
+  Dialog,
+  IconButton,
 } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import SchoolIcon from "@mui/icons-material/School";
@@ -29,6 +32,8 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import MainLayout from "../layouts/MainLayout";
 import { useNavigate } from "react-router-dom";
+import LearningProgress from "../../components/learningProgress/LearningProgress";
+import CloseIcon from "@mui/icons-material/Close";
 
 // ===============================================
 // Mock data (bạn nối real data sau)
@@ -157,9 +162,9 @@ function DayItem({ data, onOpen }: { data: Day; onOpen: (l: Day) => void }) {
         transition: "all .15s ease",
         "&:hover": !isLocked
           ? {
-              boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
-              transform: "translateY(-1px)",
-            }
+            boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
+            transform: "translateY(-1px)",
+          }
           : {},
       }}
       onClick={() => !isLocked && onOpen(data)}
@@ -257,7 +262,7 @@ export default function DashboardLearningPath({
     localStorage.setItem("current_day", JSON.stringify(d));
     navigate(`/lesson?week=${activeWeek + 1}&day=${d.id}`);
   };
-
+  const [showProgress, setShowProgress] = React.useState(true);
   return (
     <MainLayout>
       <Box
@@ -435,6 +440,36 @@ export default function DashboardLearningPath({
             </Grid>
           </Section>
         </Container>
+
+        <Dialog
+          open={showProgress}
+          onClose={() => setShowProgress(false)}
+          fullWidth
+          maxWidth="md"
+          disableScrollLock
+          PaperProps={{
+            sx: {
+              borderRadius: 4,
+              p: 2,
+              maxHeight: "90vh",
+              maxWidth: "1000px"
+            },
+          }}
+        >
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+            <Typography variant="h6" fontWeight={800}>
+              Tiến trình học
+            </Typography>
+            <IconButton onClick={() => setShowProgress(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+          <Divider sx={{ mb: 2 }} />
+          <Box sx={{ overflowY: "auto", maxHeight: "75vh", pr: 1 }}>
+            <LearningProgress />
+          </Box>
+        </Dialog>
+
       </Box>
     </MainLayout>
   );

@@ -2,15 +2,27 @@ import { Route, Routes } from 'react-router-dom';
 import privateRoutes from './routeConfig/privateRoutes';
 import publicRoutes from './routeConfig/publicRoutes';
 import { RouteWrapper } from './guards/RouteWrapper';
-import { Suspense} from 'react';
+import { Suspense } from 'react';
 import { Toaster } from 'sonner';
 
 
 export const AppRouter = () => {
- 
+
   return (
     <>
-      <Toaster position='top-right' richColors />
+      <Toaster
+        position='top-right'
+        richColors
+        toastOptions={{
+          classNames: {
+            loading: `
+              !text-blue-400 
+              [&>svg]:!text-blue-400 
+              [&>svg]:!stroke-blue-400 
+              [&>svg]:!fill-blue-400
+            `,
+          },
+        }} />
       <Suspense fallback={<div>Loading....</div>}>
         <Routes>
           {publicRoutes.map(({ path, element: Element, guard: Guard }) => (

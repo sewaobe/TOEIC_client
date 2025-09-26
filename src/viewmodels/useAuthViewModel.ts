@@ -35,15 +35,25 @@ export const useAuthViewModel = () => {
   // -------- Login ----------
   const login = async (data: LoginFormInputs) => {
     try {
-      const res = await authService.login(data);
-      dispatch(setAuth(true));
-      dispatch(getUserThunk());
-      showToastAndRedirect(
-        'success',
-        'Bạn đã đăng nhập thành công',
-        '/home',
-        'login-toast',
-      );
+      const res = await authService.login(data) as any;
+      if (res?.meta?.role_name === "student") {
+        dispatch(setAuth(true));
+        dispatch(getUserThunk());
+        showToastAndRedirect(
+          'success',
+          'Bạn đã đăng nhập thành công',
+          '/home',
+          'login-toast',
+        );
+      }
+      else {
+        showToastAndRedirect(
+          'error',
+          'Đăng nhập thất bại!',
+          '/login',
+          'login-toast',
+        );
+      }
     } catch (error) {
       showToastAndRedirect(
         'error',

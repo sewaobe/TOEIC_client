@@ -75,3 +75,7 @@ input[type='password']::-ms-clear {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #818cf8;
 }
+
+.milkdown .ProseMirror {
+  padding: 60px 80px !important;
+}

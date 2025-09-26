@@ -3,9 +3,11 @@ import { VolumeUp, Sync } from '@mui/icons-material';
 import { useState } from 'react';
 
 export interface Word {
+  _id: string;
   word: string;
   meaning: string;
   example: string;
+  weight: number;
 }
 
 interface FlashcardProps {

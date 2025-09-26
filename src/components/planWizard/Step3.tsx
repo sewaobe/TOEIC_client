@@ -1,4 +1,5 @@
-import { Weekday, WeeklyPlan } from "../../types/PlanWizard";
+import * as React from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Card,
@@ -10,6 +11,9 @@ import {
   Slider,
   Stack,
   Typography,
+  Tabs,
+  Tab,
+  Box,
 } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
@@ -17,14 +21,20 @@ import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
 import useLocalStorage from "../../hooks/useLocalStorage";
 import { diffInWeeks } from "../../utils/date";
 import { getHoursNeeded } from "../../utils/estimatedStudyHour";
-import {
-  WEEKDAYS,
-  redistributeWeeks,
-  redistributeDays,
-} from "../../utils/planDistribution";
-import { useEffect, useMemo, useState } from "react";
+import { WEEKDAYS, redistributeWeeks, redistributeDays } from "../../utils/planDistribution";
+import { PieChart } from "@mui/x-charts/PieChart";
+import { Weekday } from "../../types/PlanWizard";
+import { pieArcClasses, pieClasses } from "@mui/x-charts/PieChart";
 
-const WEEK_LABELS: Record<Weekday, string> = {
+// Hàm tạo dải màu HSL đều nhau
+const generateColors = (count: number): string[] => {
+  return Array.from({ length: count }, (_, i) => {
+    const hue = (i * 360) / count; // xoay đều quanh vòng màu
+    return `hsl(${hue}, 70%, 50%)`;
+  });
+};
+
+const WEEK_LABELS: Record<string, string> = {
   Mon: "Thứ 2",
   Tue: "Thứ 3",
   Wed: "Thứ 4",
@@ -34,10 +44,10 @@ const WEEK_LABELS: Record<Weekday, string> = {
   Sun: "Chủ nhật",
 };
 
-const MIN_DAY = 30; // phút/ngày
-const MAX_DAY = 600; // phút/ngày
-const MIN_WEEK = 7 * MIN_DAY; // 210
-const MAX_WEEK = 7 * 1440; // tuỳ bạn, ở đây cho phép tối đa 7 ngày * 1440 phút
+const MIN_DAY = 30;
+const MAX_DAY = 600;
+const MIN_WEEK = 7 * MIN_DAY;
+const MAX_WEEK = 7 * 1440;
 
 export const DetailedPlanStep = () => {
   const [planEnd] = useLocalStorage<string>("plan_end", "");
@@ -49,32 +59,14 @@ export const DetailedPlanStep = () => {
   const totalMinutes = Math.max(0, Math.round(totalHours * 60));
   const weeklyHours = totalWeek > 0 ? Math.round(totalHours / totalWeek) : 0;
 
-  // phút mỗi tuần (length = totalWeek)
-  const [weeklyTotals, setWeeklyTotals] = useLocalStorage<number[]>(
-    "weekly_totals",
-    []
-  );
-  // phân bổ theo ngày cho từng tuần: key = tuần (string), value = WeeklyPlan
-  const [weekDays, setWeekDays] = useLocalStorage<Record<string, WeeklyPlan>>(
-    "weekly_days",
-    {}
-  );
-  // tuần đang chọn để hiển thị panel phải
+  const [weeklyTotals, setWeeklyTotals] = useLocalStorage<number[]>("weekly_totals", []);
+  const [weekDays, setWeekDays] = useLocalStorage<Record<string, any>>("weekly_days", {});
   const [selectedWeek, setSelectedWeek] = useState<number>(0);
+  const [tab, setTab] = useState(0);
 
-  // helper: tạo WeeklyPlan đều theo tổng phút/tuần
-  const makeEvenWeekPlan = (weekTotal: number): WeeklyPlan => {
+  const makeEvenWeekPlan = (weekTotal: number) => {
     const per = Math.max(MIN_DAY, Math.round(weekTotal / 7));
-    // chia đều + cân chỉnh dư cho đúng tổng
-    const base: WeeklyPlan = {
-      Mon: per,
-      Tue: per,
-      Wed: per,
-      Thu: per,
-      Fri: per,
-      Sat: per,
-      Sun: per,
-    };
+    const base: any = { Mon: per, Tue: per, Wed: per, Thu: per, Fri: per, Sat: per, Sun: per };
     let sum = WEEKDAYS.reduce((a, d) => a + base[d], 0);
     let adjust = Math.max(0, weekTotal) - sum;
     let idx = 0;
@@ -92,24 +84,15 @@ export const DetailedPlanStep = () => {
     return base;
   };
 
-  // Khởi tạo dữ liệu khi số tuần/tổng phút thay đổi hoặc lần đầu vào
   useEffect(() => {
     if (totalWeek <= 0 || totalMinutes <= 0) {
       setWeeklyTotals([]);
       setWeekDays({});
       return;
     }
-    if (
-      weeklyTotals.length === totalWeek &&
-      Object.keys(weekDays).length === totalWeek
-    )
-      return;
+    if (weeklyTotals.length === totalWeek && Object.keys(weekDays).length === totalWeek) return;
 
-    const evenPerWeek = Math.max(
-      MIN_WEEK,
-      Math.round(totalMinutes / totalWeek)
-    );
-    // Phân phối đều, phần dư dồn dần từng tuần
+    const evenPerWeek = Math.max(MIN_WEEK, Math.round(totalMinutes / totalWeek));
     const totals = Array(totalWeek).fill(evenPerWeek);
     let diff = totalMinutes - totals.reduce((a, b) => a + b, 0);
     let i = 0;
@@ -123,7 +106,7 @@ export const DetailedPlanStep = () => {
       i++;
     }
 
-    const daysMap: Record<string, WeeklyPlan> = {};
+    const daysMap: Record<string, any> = {};
     totals.forEach((t, idx) => {
       daysMap[String(idx)] = makeEvenWeekPlan(t);
     });
@@ -131,44 +114,28 @@ export const DetailedPlanStep = () => {
     setWeeklyTotals(totals);
     setWeekDays(daysMap);
     setSelectedWeek(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalWeek, totalMinutes]);
 
-  // Tổng minutes thực tế (để hiển thị header)
   const actualTotalMinutes = useMemo(
-    () =>
-      weeklyTotals.length
-        ? weeklyTotals.reduce((a, b) => a + b, 0)
-        : totalMinutes,
+    () => (weeklyTotals.length ? weeklyTotals.reduce((a, b) => a + b, 0) : totalMinutes),
     [weeklyTotals, totalMinutes]
   );
 
-  // --- Handlers --------------------------------------------------------------
   const handleWeekChange = (index: number, newVal: number) => {
     if (!weeklyTotals.length) return;
 
-    // phân phối lại phút giữa các tuần
-    const redistributed = redistributeWeeks(
-      weeklyTotals,
-      index,
-      Math.round(newVal),
-      MIN_WEEK,
-      MAX_WEEK
-    );
+    const redistributed = redistributeWeeks(weeklyTotals, index, Math.round(newVal), MIN_WEEK, MAX_WEEK);
 
-    // scale phân bổ ngày của TẤT CẢ các tuần theo tổng mới để đảm bảo khớp
-    const newWeekDays: Record<string, WeeklyPlan> = { ...weekDays };
+    const newWeekDays: Record<string, any> = { ...weekDays };
     redistributed.forEach((newTotal, i) => {
       const key = String(i + 1);
       const oldPlan = newWeekDays[key] ?? makeEvenWeekPlan(newTotal);
       const oldSum = WEEKDAYS.reduce((a, d) => a + oldPlan[d], 0) || 1;
-      // scale theo tỉ lệ + clamp + cân chỉnh tổng
-      const scaled: WeeklyPlan = { ...oldPlan };
+      const scaled: any = { ...oldPlan };
       WEEKDAYS.forEach((d) => {
         const v = Math.round((oldPlan[d] * newTotal) / oldSum);
         scaled[d] = Math.max(MIN_DAY, Math.min(MAX_DAY, v));
       });
-      // fix tổng lệch 1-2 phút
       let adjust = newTotal - WEEKDAYS.reduce((a, d) => a + scaled[d], 0);
       let guard = 0;
       while (adjust !== 0 && guard < 21) {
@@ -190,23 +157,14 @@ export const DetailedPlanStep = () => {
     setSelectedWeek(index + 1);
   };
 
-  const handleDayChange = (day: Weekday, newVal: number) => {
+  const handleDayChange = (day: string, newVal: number) => {
     const key = String(selectedWeek);
     const cur = weekDays[key];
     if (!cur) return;
 
-    const updated = redistributeDays(
-      cur,
-      day,
-      Math.round(newVal),
-      MIN_DAY,
-      MAX_DAY
-    );
+    const updated = redistributeDays(cur, day as Weekday, Math.round(newVal), MIN_DAY, MAX_DAY);
 
-    // đảm bảo tổng ngày = tổng tuần hiện tại
-    const weekTotal =
-      weeklyTotals[selectedWeek - 1] ??
-      WEEKDAYS.reduce((a, d) => a + updated[d], 0);
+    const weekTotal = weeklyTotals[selectedWeek - 1] ?? WEEKDAYS.reduce((a, d) => a + updated[d], 0);
     let adjust = weekTotal - WEEKDAYS.reduce((a, d) => a + updated[d], 0);
     let guard = 0;
     while (adjust !== 0 && guard < 21) {
@@ -223,11 +181,25 @@ export const DetailedPlanStep = () => {
 
     setWeekDays({ ...weekDays, [key]: updated });
   };
-  // ---------------------------------------------------------------------------
+
+  const weeklyPieData = weeklyTotals.map((m, i) => ({
+    id: i + 1,
+    value: m,
+    label: `Tuần ${i + 1}`,
+    color: generateColors(weeklyTotals.length)[i],
+  }));
+
+  const dailyPieData = WEEKDAYS.map((d, idx) => ({
+    id: idx + 1,
+    value: weekDays[String(selectedWeek)]?.[d] || 0,
+    label: WEEK_LABELS[d],
+    color: generateColors(WEEKDAYS.length)[idx],
+  }));
+
 
   return (
     <Stack spacing={3}>
-      {/* Header summary bar */}
+      {/* Header */}
       <Paper
         elevation={0}
         className="rounded-2xl"
@@ -250,20 +222,10 @@ export const DetailedPlanStep = () => {
           </Typography>
         </Stack>
         <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Chip label={`Số tuần: ${totalWeek}`} size="small" variant="outlined" />
+          <Chip label={`TB/tuần: ${weeklyHours * 60} phút (~${weeklyHours} giờ)`} size="small" variant="outlined" />
           <Chip
-            label={`Số tuần: ${totalWeek}`}
-            size="small"
-            variant="outlined"
-          />
-          <Chip
-            label={`TB/tuần: ${weeklyHours * 60} phút (~${weeklyHours} giờ)`}
-            size="small"
-            variant="outlined"
-          />
-          <Chip
-            label={`TB/ngày: ${Math.ceil(
-              (weeklyHours * 60) / 7
-            )} phút (~${Math.ceil(weeklyHours / 7)} giờ)`}
+            label={`TB/ngày: ${Math.ceil((weeklyHours * 60) / 7)} phút (~${Math.ceil(weeklyHours / 7)} giờ)`}
             size="small"
             variant="outlined"
           />
@@ -273,12 +235,8 @@ export const DetailedPlanStep = () => {
           variant="contained"
           startIcon={<AutoFixHighIcon />}
           onClick={() => {
-            // reset đều lại theo kế hoạch hiện tại
             if (totalWeek <= 0) return;
-            const evenPerWeek = Math.max(
-              MIN_WEEK,
-              Math.round(actualTotalMinutes / totalWeek)
-            );
+            const evenPerWeek = Math.max(MIN_WEEK, Math.round(actualTotalMinutes / totalWeek));
             const totals = Array(totalWeek).fill(evenPerWeek);
             let diff = actualTotalMinutes - totals.reduce((a, b) => a + b, 0);
             let i = 0;
@@ -291,7 +249,7 @@ export const DetailedPlanStep = () => {
               }
               i++;
             }
-            const daysMap: Record<string, WeeklyPlan> = {};
+            const daysMap: Record<string, any> = {};
             totals.forEach((t, idx) => {
               daysMap[String(idx + 1)] = makeEvenWeekPlan(t);
             });
@@ -304,41 +262,82 @@ export const DetailedPlanStep = () => {
         </Button>
       </Paper>
 
-      {/* Two-column cards */}
-      <Grid container spacing={3}>
-        {/* Left card — Week totals */}
-        <Grid size={{ xs: 12, md: 7 }}>
-          <Card
-            variant="outlined"
-            className="rounded-2xl"
-            sx={{
-              borderColor: "rgba(255,255,255,.15)",
-              bgcolor: "rgba(255,255,255,.06)",
-              backdropFilter: "blur(10px)",
-            }}
-          >
-            <CardContent className="p-4">
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Tổng thời gian từng tuần
-              </Typography>
-              <Stack spacing={1.25} sx={{ pr: 1 }}>
-                {Array.from({ length: totalWeek }, (_, i) => i + 1).map(
-                  (week) => {
-                    const m =
-                      weeklyTotals[week - 1] ?? Math.ceil(weeklyHours * 60);
+      {/* Tabs */}
+      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)}>
+          <Tab label="📊 Biểu đồ" />
+          <Tab label="✏️ Chỉnh sửa" />
+        </Tabs>
+      </Box>
+
+      {/* Tab 1 - Biểu đồ */}
+      {tab === 0 && (
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card variant="outlined" className="rounded-2xl">
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Biểu đồ tổng quan thời gian theo tuần
+                </Typography>
+                <PieChart
+                  series={[
+                    {
+                      data: weeklyPieData,
+                      innerRadius: 40,
+                      outerRadius: 120,
+                      paddingAngle: 2,
+                      highlightScope: { fade: 'global', highlight: 'item' },
+                      faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
+                      arcLabel: (item) => `${item.label}`, // hoặc `${item.value} phút`
+                      arcLabelMinAngle: 20, // chỉ hiện label nếu slice đủ lớn
+                    }
+                  ]}
+                  height={300}
+                  onItemClick={(e, d) => setSelectedWeek(d.dataIndex + 1)}
+
+                />
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card variant="outlined" className="rounded-2xl">
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Biểu đồ phân bổ thời gian trong tuần {selectedWeek}
+                </Typography>
+                <PieChart
+                  series={[{ data: dailyPieData, innerRadius: 40, outerRadius: 120, paddingAngle: 2, highlightScope: { fade: 'global', highlight: 'item' }, }]}
+                  height={300}
+                  sx={{
+                    [`.${pieClasses.series}[data-series="outer"] .${pieArcClasses.root}`]: {
+                      opacity: 0.6,
+                    },
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* Tab 2 - Chỉnh sửa */}
+      {tab === 1 && (
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, md: 7 }}>
+            <Card variant="outlined" className="rounded-2xl">
+              <CardContent className="p-4">
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Tổng thời gian từng tuần
+                </Typography>
+                <Stack spacing={1.25} sx={{ pr: 1 }}>
+                  {Array.from({ length: totalWeek }, (_, i) => i + 1).map((week) => {
+                    const m = weeklyTotals[week - 1] ?? Math.ceil(weeklyHours * 60);
                     return (
-                      <Stack
-                        key={week}
-                        spacing={0.5}
-                        onClick={() => setSelectedWeek(week)}
-                      >
-                        <Stack
-                          direction="row"
-                          justifyContent="space-between"
-                          alignItems="center"
-                        >
+                      <Stack key={week} spacing={0.5} onClick={() => setSelectedWeek(week)}>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center">
                           <Typography variant="body2" color="text.secondary">
-                            Tuần {week + 1}
+                            Tuần {week}
                           </Typography>
                           <Typography variant="body2" fontWeight={600}>
                             {m} phút • ~{Math.round(m / 60)} giờ
@@ -350,126 +349,90 @@ export const DetailedPlanStep = () => {
                           max={MAX_WEEK}
                           step={15}
                           value={m}
-                          onChange={(_, v) =>
-                            handleWeekChange(week - 1, v as number)
-                          }
+                          onChange={(_, v) => handleWeekChange(week - 1, v as number)}
                         />
                         <Divider sx={{ opacity: 0.2 }} />
                       </Stack>
                     );
-                  }
-                )}
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
+                  })}
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
 
-        {/* Right card — Daily template */}
-        <Grid size={{ xs: 12, md: 5 }}>
-          <Card
-            variant="outlined"
-            className="rounded-2xl"
-            sx={{
-              borderColor: "rgba(255,255,255,.15)",
-              bgcolor: "rgba(255,255,255,.06)",
-              backdropFilter: "blur(10px)",
-            }}
-          >
-            <CardContent className="p-4">
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Thời gian mỗi ngày trong tuần {selectedWeek}
-              </Typography>
-              <Stack spacing={1}>
-                {WEEKDAYS.map((d) => {
-                  const plan =
-                    weekDays[String(selectedWeek)] ||
-                    makeEvenWeekPlan(Math.ceil(weeklyHours * 60));
-                  const val = plan[d];
-                  return (
-                    <Stack key={d} spacing={0.5}>
-                      <Stack direction="row" justifyContent="space-between">
-                        <Typography variant="body2" color="text.secondary">
-                          {WEEK_LABELS[d]}
-                        </Typography>
-                        <Typography variant="body2" fontWeight={600}>
-                          {val} phút
-                        </Typography>
-                      </Stack>
-                      <Slider
-                        aria-label={`Phút ngày ${WEEK_LABELS[d]}`}
-                        min={MIN_DAY}
-                        max={MAX_DAY}
-                        step={5}
-                        value={val}
-                        onChange={(_, v) => handleDayChange(d, v as number)}
-                      />
-                    </Stack>
-                  );
-                })}
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Full-width rationale section (vertical, eye-catching) */}
-        <Grid size={{ xs: 12 }}>
-          <Card
-            variant="outlined"
-            className="rounded-2xl"
-            sx={{
-              borderColor: "rgba(255,255,255,.15)",
-              bgcolor: "rgba(255,255,255,.06)",
-              backdropFilter: "blur(10px)",
-            }}
-          >
-            <CardContent className="p-4 sm:p-5">
-              {/* Header */}
-              <Stack
-                direction="row"
-                alignItems="center"
-                spacing={1}
-                sx={{ mb: 2 }}
-              >
-                <TipsAndUpdatesIcon color="primary" />
-                <Typography variant="h6" fontWeight={800}>
-                  Vì sao gợi ý như vậy?
+          <Grid size={{ xs: 12, md: 5 }}>
+            <Card variant="outlined" className="rounded-2xl">
+              <CardContent className="p-4">
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Thời gian mỗi ngày trong tuần {selectedWeek}
                 </Typography>
-              </Stack>
-
-              {/* Vertical explanation list */}
-              <Stack spacing={1.25}>
-                {["Lý do 1", "Lý do 2", "Lý do 3", "Lý do 4 "].map(
-                  (text, idx) => (
-                    <Paper
-                      key={idx}
-                      elevation={0}
-                      className="rounded-xl"
-                      sx={{
-                        p: 1.25,
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: 1,
-                        border: "1px solid rgba(255,255,255,.15)",
-                        bgcolor: "rgba(255,255,255,.08)",
-                        backdropFilter: "blur(8px)",
-                      }}
-                    >
-                      <Chip
-                        size="small"
-                        color="primary"
-                        label={idx + 1}
-                        sx={{ fontWeight: 700, minWidth: 28 }}
-                      />
-                      <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
-                        {text}
-                      </Typography>
-                    </Paper>
-                  )
-                )}
-              </Stack>
-            </CardContent>
-          </Card>
+                <Stack spacing={1}>
+                  {WEEKDAYS.map((d) => {
+                    const plan = weekDays[String(selectedWeek)] || makeEvenWeekPlan(Math.ceil(weeklyHours * 60));
+                    const val = plan[d];
+                    return (
+                      <Stack key={d} spacing={0.5}>
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography variant="body2" color="text.secondary">
+                            {WEEK_LABELS[d]}
+                          </Typography>
+                          <Typography variant="body2" fontWeight={600}>
+                            {val} phút
+                          </Typography>
+                        </Stack>
+                        <Slider
+                          aria-label={`Phút ngày ${WEEK_LABELS[d]}`}
+                          min={MIN_DAY}
+                          max={MAX_DAY}
+                          step={5}
+                          value={val}
+                          onChange={(_, v) => handleDayChange(d, v as number)}
+                        />
+                      </Stack>
+                    );
+                  })}
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
+      )}
+      <Grid size={{ xs: 12, md: 12 }}>
+        <Card variant="outlined" className="rounded-2xl">
+          <CardContent className="p-4 sm:p-5">
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+              <TipsAndUpdatesIcon color="primary" />
+              <Typography variant="h6" fontWeight={800}>
+                Vì sao gợi ý như vậy?
+              </Typography>
+            </Stack>
+            <Stack spacing={1.25}>
+              {["Giữ cân bằng tổng thời gian", "Phân bổ hợp lý từng ngày", "Tối ưu hiệu suất học", "Dễ dàng điều chỉnh"].map(
+                (text, idx) => (
+                  <Paper
+                    key={idx}
+                    elevation={0}
+                    className="rounded-xl"
+                    sx={{
+                      p: 1.25,
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 1,
+                      border: "1px solid rgba(255,255,255,.15)",
+                      bgcolor: "rgba(255,255,255,.08)",
+                      backdropFilter: "blur(8px)",
+                    }}
+                  >
+                    <Chip size="small" color="primary" label={idx + 1} sx={{ fontWeight: 700, minWidth: 28 }} />
+                    <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
+                      {text}
+                    </Typography>
+                  </Paper>
+                )
+              )}
+            </Stack>
+          </CardContent>
+        </Card>
       </Grid>
     </Stack>
   );

@@ -1,68 +1,83 @@
-import { Card, CardContent, Stack, Typography, Paper, Chip } from "@mui/material";
-import QuizIcon from "@mui/icons-material/Quiz";
-import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import { CurrentLesson, LessonItem } from "../../types/Lesson";
+import { Box, Chip } from "@mui/material";
+import { LessonItem } from "../../types/Lesson";
 
-export default function LessonSidebar({
+export default function LessonQueue({
     lessons,
-    lesson,
-    goToLesson,
+    currentLesson,
+    onSelect,
 }: {
     lessons: LessonItem[];
-    lesson: CurrentLesson | null;
-    goToLesson: (target: LessonItem) => void;
+    currentLesson: LessonItem | null;
+    onSelect: (t: LessonItem) => void;
 }) {
     return (
-        <Card variant="outlined" className="rounded-3xl">
-            <CardContent className="p-4 sm:p-6">
-                <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
-                    Bài trong ngày
-                </Typography>
-
-                <Stack spacing={1.25}>
-                    {lessons.map((it) => {
-                        const isActive = lesson?.id === it.id;
-                        const icon = it.type === "quiz" || it.type === "mini"
-                            ? <QuizIcon color="secondary" fontSize="small" />
-                            : <PlayCircleOutlineIcon color="primary" fontSize="small" />;
-                        const right = it.status === "locked"
-                            ? <Chip size="small" variant="outlined" icon={<LockOutlinedIcon />} label="Locked" />
-                            : it.status === "done"
-                                ? <Chip size="small" color="success" variant="outlined" icon={<CheckCircleIcon />} label="Done" />
-                                : it.status === "progress"
-                                    ? <Chip size="small" color="primary" variant="outlined" label={`${it.progress ?? 0}%`} />
-                                    : <Chip size="small" label="Todo" variant="outlined" />;
-
+        <Box>
+            {/* Lesson Queue */}
+            <Box
+                sx={{
+                    position: "sticky",
+                    bottom: 0,
+                    zIndex: 5,
+                    mt: 2,
+                    borderTop: "1px solid",
+                    borderColor: "divider",
+                    bgcolor: (t) =>
+                        t.palette.mode === "light"
+                            ? "rgba(255,255,255,0.92)"
+                            : "rgba(20,24,33,0.86)",
+                    backdropFilter: "blur(10px)",
+                    px: 1.5,
+                    py: 1,
+                    borderRadius: "0 0 28px 28px",
+                }}
+            >
+                <Box
+                    sx={{
+                        display: "flex",
+                        gap: 1,
+                        overflowX: "auto",
+                        pb: 0.5,
+                        "&::-webkit-scrollbar": { height: 8 },
+                        "&::-webkit-scrollbar-thumb": {
+                            bgcolor: "action.selected",
+                            borderRadius: 999,
+                        },
+                    }}
+                >
+                    {lessons.map((ls, index) => {
+                        const isActive = currentLesson?.id === ls.id;
+                        const color =
+                            ls.status === "completed"
+                                ? "success"
+                                : ls.status === "in_progress"
+                                ? "default"
+                                : "warning";
                         return (
-                            <Paper
-                                key={it.id}
-                                variant="outlined"
-                                className="rounded-lg"
+                            <Chip
+                                key={index}
+                                label={ls.title}
+                                color={color}
+                                variant={isActive ? "filled" : "outlined"}
+                                onClick={() => onSelect(ls)}
                                 sx={{
-                                    p: 1.25,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    gap: 1,
-                                    borderColor: isActive ? "primary.main" : "rgba(0,0,0,0.08)",
-                                    bgcolor: isActive ? "rgba(37,99,235,0.06)" : "background.paper",
-                                    opacity: it.status === "locked" ? 0.6 : 1,
-                                    cursor: it.status === "locked" ? "not-allowed" : "pointer",
+                                    cursor: ls.status === "lock" ? "not-allowed" : "pointer",
+                                    opacity: ls.status === "lock" ? 0.5 : 1,
+                                    borderRadius: 2,
+                                    fontWeight: isActive ? 700 : 500,
+                                    "&.MuiChip-filled": {
+                                        bgcolor:
+                                            color === "success"
+                                                ? "success.main"
+                                                : "primary.main",
+                                        color: "primary.contrastText",
+                                    },
+                                    "& .MuiChip-label": { px: 1.25 },
                                 }}
-                                onClick={() => it.status !== "locked" && goToLesson(it)}
-                            >
-                                <Stack direction="row" spacing={1} alignItems="center">
-                                    {icon}
-                                    <Typography variant="body2" fontWeight={600}>{it.title}</Typography>
-                                </Stack>
-                                {right}
-                            </Paper>
+                            />
                         );
                     })}
-                </Stack>
-            </CardContent>
-        </Card>
+                </Box>
+            </Box>
+        </Box>
     );
 }

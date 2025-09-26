@@ -7,7 +7,6 @@ import TestSection from "../../components/Home/TestSection";
 import ScrollToTopButton from "../../components/common/ScrollToTopButton";
 import testService from "../../services/test.service";
 import { ITestCard } from "../../types/Test";
-import Editor from "../../components/common/Editor";
 
 const HomePage: FC = () => {
   const [latestTests, setLatestTests] = useState<ITestCard[]>([]);
@@ -48,7 +47,6 @@ const HomePage: FC = () => {
           showViewMoreButton
         />
         <ScrollToTopButton scrollThreshold={700} />
-        <Editor />
       </Box>
     </MainLayout>
   );

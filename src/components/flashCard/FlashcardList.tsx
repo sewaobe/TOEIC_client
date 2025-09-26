@@ -31,7 +31,10 @@ const FlashcardsList: React.FC<FlashcardsListProps> = ({ items, itemsPerPage = 8
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 4 }}>
                 <PaginationContainer
                     items={items}
+                    pageCount={10}
                     itemsPerPage={itemsPerPage}
+                    page={1}
+                    onPageChange={() => {}}
                     renderItem={(item) => (
                         <Box key={'id' in item ? item.id : 'create'} sx={{ flex: '1 1 calc(25% - 16px)', minWidth: 250 }}>
                             <FlashcardCard

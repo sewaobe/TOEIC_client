@@ -1,7 +1,18 @@
-import { Card, CardContent, Divider, Stack, Typography, Paper, RadioGroup, FormControlLabel, Radio, Button } from "@mui/material";
+import {
+    Card,
+    CardContent,
+    Divider,
+    Stack,
+    Typography,
+    Paper,
+    RadioGroup,
+    FormControlLabel,
+    Radio,
+    Button,
+} from "@mui/material";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import TimerIcon from "@mui/icons-material/Timer";
-import { QCQuestion } from "../../types/Lesson";
+import { QCQuestion } from "../../../types/Lesson";
 
 export default function LessonExam({
     questions,
@@ -25,7 +36,8 @@ export default function LessonExam({
     return (
         <Card variant="outlined" className="rounded-3xl">
             <CardContent className="p-4 sm:p-6">
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                {/* Header */}
+                <Stack direction="row" justifyContent="space-between" sx={{ mb: 1.5 }}>
                     <Stack direction="row" spacing={1} alignItems="center">
                         <AssignmentTurnedInIcon color="primary" />
                         <Typography variant="subtitle1" fontWeight={800}>
@@ -34,12 +46,15 @@ export default function LessonExam({
                     </Stack>
                     <Stack direction="row" spacing={1} alignItems="center">
                         <TimerIcon color={timeLeft < 60 ? "error" : "action"} />
-                        <Typography variant="subtitle2" fontWeight={700}>{mmss}</Typography>
+                        <Typography variant="subtitle2" fontWeight={700}>
+                            {mmss}
+                        </Typography>
                     </Stack>
                 </Stack>
 
                 <Divider sx={{ mb: 2 }} />
 
+                {/* Questions */}
                 <Stack id="exam-questions" spacing={1.25}>
                     {questions.map((q, idx) => (
                         <Paper key={q.id} variant="outlined" className="rounded-xl" sx={{ p: 1.5 }}>
@@ -48,7 +63,9 @@ export default function LessonExam({
                             </Typography>
                             <RadioGroup
                                 value={answers[q.id] ?? ""}
-                                onChange={(e) => setAnswers((s) => ({ ...s, [q.id]: e.target.value }))}
+                                onChange={(e) =>
+                                    setAnswers((s) => ({ ...s, [q.id]: e.target.value }))
+                                }
                             >
                                 {q.options.map((op) => (
                                     <FormControlLabel
@@ -63,6 +80,7 @@ export default function LessonExam({
                     ))}
                 </Stack>
 
+                {/* Submit */}
                 <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
                     <Button variant="contained" onClick={onSubmit}>
                         Nộp bài

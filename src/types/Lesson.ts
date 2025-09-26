@@ -1,5 +1,5 @@
-export type LessonStatus = "locked" | "todo" | "done" | "progress";
-export type LessonType = "core" | "quiz" | "mini";
+export type LessonStatus = "lock" | "in_progress" | "completed";
+export type LessonType = "flash_card" | "shadowing" | "dictation" | "quiz" | "lesson";
 
 export interface LessonItem {
     id: string;
@@ -7,15 +7,19 @@ export interface LessonItem {
     title: string;
     type: LessonType;
     status: LessonStatus;
-    progress?: number; // 0..100
 }
-
-export interface CurrentLesson {
-    id: string;
-    week: number;
-    title: string;
-    type: LessonType;
+export interface LessonResponse {
+    accuracy_overall: number;
+    sessions: {
+        session_no: number;
+        status: LessonStatus;
+        part_type: number;
+        items: {
+            kind: string;
+            activity_id: string;
+            status: LessonStatus
+        }[]
+    }[]
 }
-
 export type QCOption = { key: string; text: string };
 export type QCQuestion = { id: string; text: string; options: QCOption[]; answer: string };

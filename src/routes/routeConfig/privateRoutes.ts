@@ -5,7 +5,8 @@ const ProfilePage = lazy(() => import('../../views/pages/ProfilePage'));
 const PracticeFlashCardPage = lazy(() => import('../../views/pages/PracticeFlashCardPage'));
 const FlashCardPage = lazy(() => import('../../views/pages/FlashCardPage'));
 const FlashCardDetailPage = lazy(() => import('../../views/pages/FlashcardDetailPage'));
-const ResultTestPage = lazy(() => import('../../views/pages/ResultTestPage'))
+const ResultTestPage = lazy(() => import('../../views/pages/ResultTestPage'));
+const StudyCalendarPage = lazy(() => import('../../views/pages/StudyCalendarPage'));
 export interface AppRoute {
   path: string;
   element: ComponentType;
@@ -18,7 +19,8 @@ const privateRoutes: AppRoute[] = [
   { path: '/flash-cards', element: FlashCardPage, guard: ProtectedRoute },
   { path: '/flash-cards/:id', element: FlashCardDetailPage, guard: ProtectedRoute },
   { path: '/flash-cards/:id/practice', element: PracticeFlashCardPage, guard: ProtectedRoute },
-  { path: '/tests/:testId/result/:historyId', element: ResultTestPage, guard: ProtectedRoute }
+  { path: '/tests/:testId/result/:historyId', element: ResultTestPage, guard: ProtectedRoute },
+  { path: '/study-calendar', element: StudyCalendarPage, guard: ProtectedRoute }
 ];
 
 export default privateRoutes;

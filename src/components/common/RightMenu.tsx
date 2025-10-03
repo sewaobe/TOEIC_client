@@ -7,26 +7,37 @@ import {
   ListItemIcon,
   Tooltip,
 } from "@mui/material";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
-import DescriptionIcon from "@mui/icons-material/Description";
+import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import LeaderboardIcon from '@mui/icons-material/Leaderboard';
+import SpellcheckIcon from '@mui/icons-material/Spellcheck';
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 interface RightMenuDrawerProps {
-  setShowNotebook: (show: boolean) => void;
+  onShowNotebook: (show: boolean) => void;
+  onShowProgress: (show: boolean) => void; // ✨ 2. Thêm prop mới để mở modal tiến độ
 }
-export default function RightMenuDrawer({setShowNotebook}: RightMenuDrawerProps) {
-  const [open, setOpen] = useState(true); // ✅ mặc định mở
+
+export default function RightMenuDrawer({
+  onShowNotebook,
+  onShowProgress, // ✨ 2. Nhận prop mới
+}: RightMenuDrawerProps) {
+  const [open, setOpen] = useState(true);
 
   const items = [
     {
       label: "Sổ tóm tắt",
-      icon: <MenuBookIcon sx={{ color: "#388e3c" }} />, // xanh lá
-      onClick: () => setShowNotebook(true),
+      icon: <AutoStoriesIcon sx={{ color: "#ef5350" }} />,
+      onClick: () => onShowNotebook(true),
+    },
+    {
+      label: "Tiến độ học tập",
+      icon: <LeaderboardIcon sx={{ color: "#009688" }} />,
+      onClick: () => onShowProgress(true),
     },
     {
       label: "Từ điển",
-      icon: <DescriptionIcon sx={{ color: "#1976d2" }} />, // xanh dương
+      icon: <SpellcheckIcon sx={{ color: "#4527a0" }} />,
       onClick: () => alert("Đi tới Từ điển"),
     },
   ];
@@ -44,9 +55,9 @@ export default function RightMenuDrawer({setShowNotebook}: RightMenuDrawerProps)
         zIndex: 1200,
         transform: open
           ? "translateX(0) translateY(-50%)"
-          : "translateX(80%) translateY(-50%)",
-        transition: "transform 0.3s ease-in-out",
-        width: open ? 64 : 48, // chỉ đủ chứa icon
+          : "translateX(110%) translateY(-50%)",
+        transition: "transform 0.3s ease-in-out, width 0.3s ease-in-out",
+        width: open ? 64 : 48,
         border: "1px solid #e0e0e0",
       }}
     >
@@ -68,26 +79,29 @@ export default function RightMenuDrawer({setShowNotebook}: RightMenuDrawerProps)
       </IconButton>
 
       {/* List menu */}
-      {open && (
-        <List sx={{ p: 1 }}>
-          {items.map((item) => (
-            <Tooltip key={item.label} title={item.label} placement="left">
-              <ListItemButton
-                onClick={item.onClick}
-                sx={{
-                  borderRadius: "12px",
-                  mb: 1,
-                  "&:hover": {
-                    bgcolor: "#f5f5f5",
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 32 }}>{item.icon}</ListItemIcon>
-              </ListItemButton>
-            </Tooltip>
-          ))}
-        </List>
-      )}
+      {/* Luôn render List để giữ chiều cao, nhưng ẩn icon đi */}
+      <List sx={{ p: 1, transition: 'opacity 0.3s', opacity: open ? 1 : 0 }}>
+        {items.map((item) => (
+          <Tooltip key={item.label} title={item.label} placement="left">
+            <ListItemButton
+              onClick={item.onClick}
+              sx={{
+                borderRadius: "12px",
+                mb: 1,
+                justifyContent: "center",
+                p: 1.5,
+                "&:hover": {
+                  bgcolor: "#f0f0f0",
+                },
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: "auto" }}>
+                {item.icon}
+              </ListItemIcon>
+            </ListItemButton>
+          </Tooltip>
+        ))}
+      </List>
     </Box>
   );
 }

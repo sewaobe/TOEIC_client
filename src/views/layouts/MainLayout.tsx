@@ -8,6 +8,7 @@ import HighlightPopup from '../../components/common/HighlightPopup';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../stores/store';
 import { showSnackbar } from '../../stores/snackbarSlice';
+import { LearningProgressModal } from '../../components/modals/LearningProgressModal';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -15,6 +16,8 @@ interface MainLayoutProps {
 
 function MainLayout({ children }: MainLayoutProps) {
   const [showNotebook, setShowNotebook] = useState(false);
+  const [showLearningProgress, setShowLearningProgress] = useState(false);
+
   const { selectedText, rect, clearSelection } = useTextSelection();
   const dispatch = useDispatch<AppDispatch>();
   const handleSaveNotebook = () => {
@@ -44,8 +47,9 @@ function MainLayout({ children }: MainLayoutProps) {
         )}
       </div>
       <Footer />
-      <RightMenuDrawer setShowNotebook={setShowNotebook} />
+      <RightMenuDrawer onShowNotebook={setShowNotebook} onShowProgress={setShowLearningProgress} />
       <StudyNotebookFlip3D isOpen={showNotebook} onClose={() => setShowNotebook(false)} />
+      <LearningProgressModal isFirstVisitToday={showLearningProgress} setIsFirstVisitToday={setShowLearningProgress}/>
     </div>
   );
 }

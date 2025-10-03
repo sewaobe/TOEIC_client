@@ -1,11 +1,6 @@
 import * as React from "react";
-import { Box, Button, Container, Grid } from "@mui/material";
+import { Alert, Box, Button, Container, Grid } from "@mui/material";
 import MainLayout from "../layouts/MainLayout";
-import {
-  getDurationMinutes,
-  getQuestionSet,
-  grade,
-} from "../../constants/questionBank";
 import LessonHeader from "../../components/lesson/LessonHeader";
 import LessonMedia from "../../components/lesson/LessonMedia";
 import LessonNotes from "../../components/lesson/LessonNotes";
@@ -15,13 +10,16 @@ import { LessonItem } from "../../types/Lesson";
 import LessonIntroExam from "../../components/lesson/LessonIntroExam";
 import LessonQueue from "../../components/lesson/LessonSidebar";
 import { useSearchParams } from "react-router-dom";
-import useLocalStorage from "../../hooks/useLocalStorage"; // hook bạn viết
-import { dayStudyService } from "../../services/dayStudy.service";
-import Flashcard, { Word } from "../../components/flashCardItem/FlashCard";
 import { LessonFlashcard } from "../../components/lesson/LessTypeStudy/LessonFlashcard";
-import { flashCardService } from "../../services/flashCard.service";
 import { LessonShadowing } from "../../components/lesson/LessTypeStudy/LessonShadowing";
 import { LessonDictation } from "../../components/lesson/LessTypeStudy/LessonDictation";
+import { LessonIntroCard } from "../../components/lesson/LessTypeStudy/LessonFlashcardIntro";
+import { useLessonViewModel } from "../../viewmodels/useLessonViewModel";
+import { LessonFinishCard } from "../../components/flashCardItem/FinishedFlashCard";
+import { motion, AnimatePresence } from 'framer-motion'; // <-- 1. IMPORT
+import { StatisticsModal } from "../../components/flashCardItem/StatisticsModal";
+import { LessonContentSkeleton } from "../../components/lesson/LessonSketelon";
+import { FlashcardHistoryModal } from "../../components/flashCardItem/FlashCardHistory";
 
 // Transcript giả định
 const LessonTranscript = ({ lesson }: { lesson: LessonItem | null }) => {
@@ -55,134 +53,106 @@ export default function LessonPage() {
   const [searchParam] = useSearchParams();
   const dayId = (searchParam.get("day") || "").toString();
   const week = (searchParam.get("week") || "").toString();
+
   // sử dụng hook custom cho state
-  const [lessons, setLessons] = useLocalStorage<LessonItem[]>("week_lessons", []);
-  const [lesson, setLesson] = useLocalStorage<LessonItem | null>("current_lesson", null);
-  const [vocabularies, setVocabularies] = useLocalStorage<Word[]>("vocabularies", []);
-  const [topicId, setTopicId] = React.useState(""); // dùng để lưu topic_id khi lesson = flash card.
-  const [answers, setAnswers] = React.useState<Record<string, string>>({});
-  const [examStarted, setExamStarted] = React.useState(false);
-  const [timeLeft, setTimeLeft] = React.useState(0);
-
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const currentIndex = React.useMemo(() => {
-    if (!lesson) return -1;
-    return lessons.findIndex((l) => l.id === lesson.id);
-  }, [lesson, lessons]);
-
-  // Call API
+  const {
+    loading, error, lessons, currentLesson, vocabularies, topicId, isReviewMode, activityKey,
+    examStarted, questions, answers, scorePct, mmss, timeLeft,
+    selectLesson, retryLesson, completeAndGoToNext, startExam, submitExam, setAnswers,
+    activityStatus, startLesson, finishLesson, redoLesson,
+    showHistory, handleOpenModalStatistic, handleCloseModalStatistic
+  } = useLessonViewModel(dayId, week);
+  
+  // Auto Scroll top
   React.useEffect(() => {
-    let mounted = true;
-    if (!dayId) return;
+    window.scroll(0, 0);
+  }, [currentLesson])
+  // Một hàm phụ để render nội dung bài học đang hoạt động
+  const renderActiveLesson = () => {
+    if (!currentLesson) return null;
 
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data: LessonItem[] = await dayStudyService.getDayStudyById(dayId, week);
-        if (!mounted) return;
-        setLessons(data);
-
-        // Set bài học hiện tại, nếu tất cả đều khác in_progress thì mặc định lấy bài đầu
-        const cur = data.find((l) => l.status === "in_progress");
-        if (cur) setLesson(cur);
-        else setLesson(data[0]);
-
-
-      } catch (e: any) {
-        console.error(e);
-        if (!mounted) return;
-        setError(e?.message || "Không thể tải dữ liệu ngày học.");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dayId]);
-
-  React.useEffect(() => {
-    if (!lesson) return;
-
-    const fetchFlashcards = async () => {
-      if (lesson.type === "flash_card") {
-        try {
-          const { topic_id, dataVocabularies } = await flashCardService.getFlashcardById(lesson.id);
-          setVocabularies(dataVocabularies);
-          setTopicId(topic_id)
-        } catch (err) {
-          console.error("❌ Lỗi lấy flashcards:", err);
-          setVocabularies([]);
-        }
-      }
-    };
-
-    fetchFlashcards();
-  }, [lesson?.id, lesson?.type]);
-
-  const goToLesson = async (target: LessonItem) => {
-    if (target.status === "lock") return;
-    if (target.type === "flash_card") {
-      const { topic_id, dataVocabularies } = await flashCardService.getFlashcardById(target.id);
-      setVocabularies(dataVocabularies);
-      setTopicId(topic_id)
+    // Đây là logic switch-case cũ của bạn, giờ được đặt trong một hàm riêng
+    switch (currentLesson.type) {
+      case 'flash_card':
+        return <LessonFlashcard vocabularies={vocabularies} topicId={topicId} activityId={activityStatus} dayId={dayId} onFinish={finishLesson} />;
+      case 'shadowing':
+        return <LessonShadowing />;
+      case 'dictation':
+        return <LessonDictation key={activityKey} />;
+      case 'quiz':
+        return (
+          <>
+            <Grid size={{ xs: 12, md: 8 }}>
+              {!examStarted ? (
+                <LessonIntroExam lesson={currentLesson} onStart={startExam} />
+              ) : (
+                <LessonExam questions={questions} answers={answers} setAnswers={setAnswers}
+                  scorePct={scorePct} timeLeft={timeLeft} mmss={mmss}
+                  lessonType={currentLesson.type} onSubmit={submitExam} />
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              {examStarted && (
+                <LessonSidebarExam questions={questions} answers={answers} scorePct={scorePct}
+                  timeLeft={timeLeft} mmss={mmss} onSubmit={submitExam} />
+              )}
+            </Grid>
+          </>
+        );
+      case 'lesson':
+        return (
+          <>
+            <Grid size={{ xs: 12, md: 8 }}>
+              <LessonMedia src="https://youtu.be/4QnqpWLT5m4" type="video" />
+              <Box mt={2}><LessonNotes /></Box>
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <LessonTranscript lesson={currentLesson} />
+            </Grid>
+          </>
+        );
+      default:
+        return <div>Loại bài học không xác định.</div>;
     }
-    setLesson(target);
-    setAnswers({});
-    setExamStarted(false);
-    setTimeLeft(0);
-    requestAnimationFrame(() => {
-      document.getElementById("lesson-top")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
   };
 
-  const markCompleteAndNext = (scorePct?: number) => {
-    if (currentIndex >= 0) {
-      const newList = [...lessons];
-      const cur = { ...newList[currentIndex] };
-      cur.status = "completed";
-      newList[currentIndex] = cur;
+  const renderLessonContent = () => {
+    if (!currentLesson) return <Box>Chọn một bài học để bắt đầu.</Box>;
 
-      const next = newList[currentIndex + 1];
-      if (next && next.status === "lock") next.status = "in_progress";
-
-      setLessons(newList); // hook auto lưu localStorage
+    if (currentLesson.status === "completed" && activityStatus === "intro") {
+      return <LessonFinishCard
+        title={"Bài học đã được hoàn thành"}
+        onRedo={redoLesson}    // Hàm từ ViewModel
+        onNext={completeAndGoToNext} // Hàm từ ViewModel
+        onStats={handleOpenModalStatistic}
+      />
     }
 
-    const nextItem = lessons[currentIndex + 1];
-    if (nextItem) goToLesson(nextItem);
+    // Logic render giờ đây cực kỳ rõ ràng, chỉ dựa vào activityStatus
+    switch (activityStatus) {
+      case 'intro':
+        return <LessonIntroCard
+          title={currentLesson.title}
+          description="Sẵn sàng để bắt đầu bài học mới. Nhấn nút bên dưới để tiếp tục."
+          onStart={startLesson}
+          type={currentLesson.type} />;
+      case 'studying':
+        return renderActiveLesson();
+      case 'finished':
+        return (
+          <LessonFinishCard
+            title={"🎉 Chúc mừng bạn đã hoàn thành!"}
+            onRedo={redoLesson}    // Hàm từ ViewModel
+            onNext={completeAndGoToNext} // Hàm từ ViewModel
+            onStats={handleOpenModalStatistic}
+          />
+        );
+
+      default:
+        return null;
+    }
   };
 
-  React.useEffect(() => {
-    setExamStarted(false);
-    setAnswers({});
-    const durMin = getDurationMinutes(lesson);
-    setTimeLeft(durMin > 0 ? durMin * 60 : 0);
-  }, [lesson?.id, lesson?.type]);
-
-  const questions = React.useMemo(
-    () => getQuestionSet(lesson),
-    [lesson?.id, lesson?.type]
-  );
-  const scorePct = React.useMemo(
-    () => grade(questions, answers),
-    [questions, answers]
-  );
-
-  const mmss = React.useMemo(() => {
-    const m = Math.floor(timeLeft / 60).toString().padStart(2, "0");
-    const s = Math.floor(timeLeft % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
-  }, [timeLeft]);
-  console.log("Lesson", lesson);
   return (
     <MainLayout>
       <Box sx={{ minHeight: "100vh", width: "100%", background: "linear-gradient(135deg, #F5F7FA 0%, #E6EDF6 100%)", py: "3%" }}>
@@ -198,90 +168,54 @@ export default function LessonPage() {
             pb: 2,
           }}
         >
-          <LessonHeader lesson={lesson} />
+          <LessonHeader lesson={currentLesson} />
 
-          <Grid container spacing={2}>
-            {lesson?.type === "lesson" && (
-              <>
-                <Grid size={{ xs: 12, md: 8 }}>
-                  <LessonMedia src="https://youtu.be/4QnqpWLT5m4?list=PLNPwQbkRm9Gu9eiGlHuzrHL6pCSj2Y8qJ" type="video" />
-                  <Box mt={2}>
-                    <LessonNotes />
-                  </Box>
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <LessonTranscript lesson={lesson} />
-                </Grid>
-              </>
-            )}
+          <Grid container spacing={2} sx={{ mt: 2, justifyContent: "center", minHeight: "340px" }}>
+            {loading ? (
+              <LessonContentSkeleton lessonType={currentLesson ? currentLesson.type : "flash_card"} />
+            ) : error ? (
+              <Alert severity="error">{error}</Alert>
+            ) : (
+              // --- PHẦN NÂNG CẤP CHÍNH NẰM Ở ĐÂY ---
+              <Box sx={{ width: '100%', position: 'relative' }}>
+                <AnimatePresence mode="wait">
+                  {/* Mỗi khi currentLesson thay đổi, `activityKey` cũng thay đổi.
+                    AnimatePresence sẽ nhận biết sự thay đổi `key` này để chạy animation.
+                  */}
+                  <motion.div
+                    key={activityKey || currentLesson?.id} // Sử dụng activityKey hoặc id của lesson
 
-            {lesson?.type === "flash_card" && vocabularies.length > 0 && (
-              <LessonFlashcard vocabularies={vocabularies} topicId={topicId} activityId={lesson.id} dayId={dayId}/>
-            )}
+                    // Thêm prop "thần thánh" layout
+                    layout="position"
 
-            {lesson?.type === "shadowing" && (
-              <LessonShadowing />
-            )}
+                    // Hiệu ứng mờ dần ra/vào
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
 
-            {lesson?.type === "dictation" && (
-              <LessonDictation />
-            )}
-
-            {lesson?.type === "quiz" && (
-              <>
-                <Grid size={{ xs: 12, md: 8 }}>
-                  {!examStarted ? (
-                    <LessonIntroExam
-                      lesson={lesson}
-                      onStart={() => {
-                        setExamStarted(true);
-                        const durMin = getDurationMinutes(lesson);
-                        setTimeLeft(durMin > 0 ? durMin * 60 : 0);
-                      }}
-                    />
-                  ) : (
-                    <LessonExam
-                      questions={questions}
-                      answers={answers}
-                      setAnswers={setAnswers}
-                      scorePct={scorePct}
-                      timeLeft={timeLeft}
-                      mmss={mmss}
-                      lessonType={lesson.type}
-                      onSubmit={() => {
-                        const sc = scorePct;
-                        alert(`Bạn đã nộp bài. Điểm: ${sc}%`);
-                        markCompleteAndNext(sc);
-                      }}
-                    />
-                  )}
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 4 }}>
-                  {examStarted && (
-                    <LessonSidebarExam
-                      questions={questions}
-                      answers={answers}
-                      scorePct={scorePct}
-                      timeLeft={timeLeft}
-                      mmss={mmss}
-                      onSubmit={() => {
-                        const sc = scorePct;
-                        alert(`Bạn đã nộp bài. Điểm: ${sc}%`);
-                        markCompleteAndNext(sc);
-                      }}
-                    />
-                  )}
-                </Grid>
-              </>
+                    // Thời gian và kiểu chuyển động
+                    transition={{
+                      duration: 0.4,
+                      ease: [0.4, 0, 0.2, 1] // Easing mượt mà
+                    }}
+                  >
+                    {renderLessonContent()}
+                  </motion.div>
+                </AnimatePresence>
+              </Box>
             )}
           </Grid>
 
           <LessonQueue
             lessons={lessons}
-            currentLesson={lesson}
-            onSelect={goToLesson}
+            currentLesson={currentLesson}
+            onSelect={selectLesson}
           />
+
+          {showHistory && <FlashcardHistoryModal
+            open={showHistory}
+            onClose={handleCloseModalStatistic}
+            topicId={topicId} />}
         </Container>
       </Box>
     </MainLayout>

@@ -1,5 +1,5 @@
 import { Word } from "../components/flashCardItem/FlashCard";
-import { Attempt } from "../components/flashCardItem/FlashcardHistory";
+import { Attempt } from "../components/flashCardItem/FlashCardHistory";
 import { Log } from "../components/flashCardItem/StatisticsModal";
 import axiosClient from "./axiosClient";
 import { ApiResponse } from "./learningPath.service";

@@ -3,10 +3,15 @@ import { useEffect, useState } from 'react';
 import BaseModal from './BaseModal';
 
 interface F5ModalProps {
+  title?: string;
+  content?: string;
   onConfirm: () => void; // reload page hoặc navigate
 }
 
-const F5Modal = ({ onConfirm }: F5ModalProps) => {
+const F5Modal = ({
+  title = "Cảnh báo rời trang",
+  content = "Bạn có chắc chắn muốn rời khỏi trang không? Mọi dữ liệu chưa lưu có thể bị mất.",
+  onConfirm }: F5ModalProps) => {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -25,7 +30,7 @@ const F5Modal = ({ onConfirm }: F5ModalProps) => {
     <BaseModal
       open={open}
       type="error"
-      title="Cảnh báo rời trang"
+      title={title}
       onConfirm={() => {
         setOpen(false);
         onConfirm();
@@ -34,7 +39,7 @@ const F5Modal = ({ onConfirm }: F5ModalProps) => {
       confirmText="Xác nhận"
       cancelText="Hủy"
     >
-      Bạn có chắc chắn muốn rời khỏi trang không? Mọi dữ liệu chưa lưu có thể bị mất.
+      {content}
     </BaseModal>
   );
 };

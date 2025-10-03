@@ -80,9 +80,7 @@ export const StatisticsModal: FC<StatisticsModalProps> = ({
             durations.push(l.response_time);
         });
         const avgTime = durations.length
-            ? Math.round(
-                durations.reduce((a, b) => a + b, 0) / durations.length / 1000
-            )
+            ? (durations.reduce((a, b) => a + b, 0) / durations.length / 1000).toFixed(2)
             : 0;
         const accuracy =
             total > 0

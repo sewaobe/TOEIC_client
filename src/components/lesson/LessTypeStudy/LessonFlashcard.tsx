@@ -3,17 +3,19 @@ import { AnimatePresence, motion } from "framer-motion";
 import Flashcard, { Word } from "../../flashCardItem/FlashCard";
 import SpeechOptions from "../../flashCardItem/SpeechOptions";
 import EvaluationSection, { EvalType } from "../../flashCardItem/EvaluationSection";
-import FinishedFlashCard from "../../flashCardItem/FinishedFlashCard";
 import { StatisticsModal, Log } from "../../flashCardItem/StatisticsModal";
-import { FlashcardHistoryModal } from "../../flashCardItem/FlashcardHistory";
 import { toast } from "sonner";
 import { flashCardService } from "../../../services/flashCard.service";
+import { FlashcardHistoryModal } from "../../flashCardItem/FlashCardHistory";
+import F5Modal from "../../modals/F5Modal";
+import { useNavigate } from "react-router-dom";
 
 interface LessonFlashcardProps {
     vocabularies: Word[];
     topicId: string;
     activityId: string;
     dayId: string;
+    onFinish: () => void
 }
 
 type Attempt = {
@@ -26,7 +28,12 @@ type Attempt = {
     logs: Log[];
 };
 
-export const LessonFlashcard: FC<LessonFlashcardProps> = ({ vocabularies, topicId, activityId, dayId }) => {
+export const LessonFlashcard: FC<LessonFlashcardProps> = ({
+    vocabularies,
+    topicId,
+    activityId,
+    dayId,
+    onFinish }) => {
     const [queue, setQueue] = useState<Word[]>([]);
     const [current, setCurrent] = useState<Word | null>(null);
     const [voice, setVoice] = useState<"US" | "UK">("US");
@@ -40,11 +47,13 @@ export const LessonFlashcard: FC<LessonFlashcardProps> = ({ vocabularies, topicI
     const [logs, setLogs] = useState<Log[]>([]);
     const [startTime, setStartTime] = useState<number>(Date.now());
 
+    const navigate = useNavigate();
 
     // Khi hết queue → show FinishedFlashCard trước, rồi mở StatisticModal sau
     useEffect(() => {
         if (!current && logs.length > 0) {
             setShowFinished(true); // hiển thị card trước
+            onFinish();
             // gọi API + toast loading
             toast.promise(
                 (async () => {
@@ -182,6 +191,11 @@ export const LessonFlashcard: FC<LessonFlashcardProps> = ({ vocabularies, topicI
                         <EvaluationSection onNext={(type: EvalType) => handleEvaluate(type)} />
                     </motion.div>
                 </AnimatePresence>
+                {/* Modal khi ấn reload */}
+                <F5Modal
+                    title="Cảnh báo rời khỏi bài học"
+                    content="Bạn có chắc chắn muốn rời khỏi trang không? Mọi dữ liệu chưa lưu có thể bị mất."
+                    onConfirm={() => navigate("/home")} />
             </div>
         );
     }
@@ -190,7 +204,7 @@ export const LessonFlashcard: FC<LessonFlashcardProps> = ({ vocabularies, topicI
     return (
         <>
             {/* 1) Vừa hoàn thành → mở FinishedFlashCard và StatisticModal của session hiện tại */}
-            <AnimatePresence>
+            {/* <AnimatePresence>
                 {showFinished && (
                     <motion.div
                         key="finished"
@@ -220,7 +234,7 @@ export const LessonFlashcard: FC<LessonFlashcardProps> = ({ vocabularies, topicI
                         />
                     </motion.div>
                 )}
-            </AnimatePresence>
+            </AnimatePresence> */}
 
             {openStats && currentAttempt && (
                 <StatisticsModal

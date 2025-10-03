@@ -22,22 +22,29 @@ const CalendarHeader: React.FC<Props> = ({ month, onChangeMonth }) => {
     >
       {/* Nút Hôm nay */}
       <Button
-        variant="outlined"
+        variant="contained"
         size="small"
         onClick={handleToday}
-        sx={{ borderRadius: 20 }}
+        sx={{
+          borderRadius: 20,
+          textTransform: "none",
+          bgcolor: "linear-gradient(90deg, #3B82F6, #2563EB)",
+          color: "white",
+          px: 2.5,
+          "&:hover": { bgcolor: "#2563EB" }
+        }}
       >
         Hôm nay
       </Button>
-      {/* Tháng + năm */}
+
       <Box display="flex" alignItems="center" gap={1}>
-        <IconButton onClick={handlePrev}>
+        <IconButton sx={{ bgcolor: "grey.100" }} onClick={handlePrev}>
           <ArrowBack />
         </IconButton>
         <Typography variant="h6" fontWeight="bold">
-          {`Tháng ${month.getMonth() + 1}, ${month.getFullYear()}`}
+          {month.toLocaleDateString("vi-VN", { month: "long", year: "numeric" })}
         </Typography>
-        <IconButton onClick={handleNext}>
+        <IconButton sx={{ bgcolor: "grey.100" }} onClick={handleNext}>
           <ArrowForward />
         </IconButton>
       </Box>

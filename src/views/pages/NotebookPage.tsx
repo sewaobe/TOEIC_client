@@ -179,9 +179,8 @@ const Sidebar: React.FC<{
             >
               {/* Row chính */}
               <div
-                className={`flex items-center justify-between px-2 py-2 cursor-pointer hover:bg-gray-50 ${
-                  isActive ? "bg-gray-100" : ""
-                }`}
+                className={`flex items-center justify-between px-2 py-2 cursor-pointer hover:bg-gray-50 ${isActive ? "bg-gray-100" : ""
+                  }`}
                 onClick={() => setActiveId(l.id)}
               >
                 <div className="flex items-center gap-1">
@@ -330,6 +329,24 @@ export default function StudyNotebookFlip3D({
     setLessons(arr);
   }, [notes]);
 
+  useEffect(() => {
+    // Tìm đến thẻ <html>
+    const htmlElement = document.documentElement;
+
+    if (isOpen) {
+      // Khi modal mở, thêm class
+      htmlElement.classList.add('lock-action');
+    }
+
+    // --- Hàm dọn dẹp (Cleanup Function) ---
+    // Hàm này sẽ chạy khi modal đóng
+    return () => {
+      // Xóa class đi để trả lại scroll cho trang
+      htmlElement.classList.remove('lock-action');
+    };
+
+  }, [isOpen]); // useEffect sẽ chạy lại mỗi khi isOpen thay đổi
+  
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
 
@@ -368,11 +385,10 @@ export default function StudyNotebookFlip3D({
       />
 
       <div
-        className={`relative z-[2001] bg-white shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
-          isMaximized
+        className={`relative z-[2001] bg-white shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${isMaximized
             ? "w-screen h-screen max-w-none max-h-none rounded-none"
             : "w-[90%] h-[85%] max-w-6xl max-h-[750px] rounded-3xl"
-        }`}
+          }`}
       >
         <header className="flex items-center justify-between p-3 border-b bg-white/90 backdrop-blur shrink-0">
           <h1 className="text-lg font-bold">TOEIC Study Notebook</h1>

@@ -20,21 +20,87 @@ import {
   Drawer,
   Dialog,
   IconButton,
+  styled,
 } from "@mui/material";
-import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import SchoolIcon from "@mui/icons-material/School";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import SpeedIcon from "@mui/icons-material/Speed";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
-import QuizIcon from "@mui/icons-material/Quiz";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import MainLayout from "../layouts/MainLayout";
 import { useNavigate } from "react-router-dom";
 import LearningProgress from "../../components/learningProgress/LearningProgress";
 import CloseIcon from "@mui/icons-material/Close";
+// Import các icon bạn cần từ thư viện @mui/icons-material
+import HeadphonesIcon from '@mui/icons-material/Headphones';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import CreateIcon from '@mui/icons-material/Create';
+import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import SyncIcon from '@mui/icons-material/Sync';
+import FlagIcon from '@mui/icons-material/Flag';
+import BookIcon from '@mui/icons-material/Book';
+import useLocalStorage from "../../hooks/useLocalStorage";
 
+// Tạo một đối tượng chứa màu sắc để dễ dàng thay đổi và quản lý
+const studyDayColors = {
+  listening: '#1976d2', // Xanh dương
+  reading: '#d32f2f',   // Đỏ
+  review: '#ed6c02',    // Cam
+  test: '#2e7d32',      // Xanh lá
+  default: 'rgba(0, 0, 0, 0.54)', // Xám
+};
+/**
+ * Trả về một component icon MUI đã được style sẵn màu sắc.
+ * @param {number} dayValue - Giá trị đại diện cho ngày học (0-6).
+ */
+export function getStyledStudyIcon(dayValue: number) {
+  switch (dayValue) {
+    case 1:
+      return styled(HeadphonesIcon)({ color: studyDayColors.listening });
+    case 2:
+      return styled(ChatBubbleOutlineIcon)({ color: studyDayColors.listening });
+    case 3:
+      return styled(CreateIcon)({ color: studyDayColors.reading });
+    case 4:
+      return styled(ArticleOutlinedIcon)({ color: studyDayColors.reading });
+    case 5:
+      return styled(MenuBookIcon)({ color: studyDayColors.reading });
+    case 6:
+      return styled(SyncIcon)({ color: studyDayColors.review });
+    case 0:
+      return styled(FlagIcon)({ color: studyDayColors.test });
+    default:
+      return styled(BookIcon)({ color: studyDayColors.default });
+  }
+}
+
+/**
+ * Trả về tên ngày học TOEIC tương ứng với giá trị đầu vào.
+ * @param {number} dayValue - Giá trị đại diện cho ngày học (0-6).
+ * @returns {string} - Tên của ngày học.
+ */
+function getStudyDayName(dayValue: number) {
+  switch (dayValue) {
+    case 1:
+      return "Khởi động thính tai";
+    case 2:
+      return "Giải mã hội thoại";
+    case 3:
+      return "Vững chắc ngữ pháp";
+    case 4:
+      return "Hoàn thiện văn bản";
+    case 5:
+      return "Tăng tốc đọc hiểu";
+    case 6:
+      return "Củng cố toàn diện";
+    case 0:
+      return "Ngày thi chinh phục";
+    default:
+      return "Ngày học tự do";
+  }
+}
 // ===============================================
 // Mock data (bạn nối real data sau)
 // ===============================================
@@ -45,7 +111,7 @@ interface Day {
   id: string;
   week: number;
   title: string;
-  type: DayType;
+  no: number;
   status: DayStatus;
   progress?: number;
 }
@@ -141,12 +207,7 @@ function DayItem({ data, onOpen }: { data: Day; onOpen: (l: Day) => void }) {
   const isDone = data.status === "done";
   const inProgress = data.status === "progress";
 
-  const leftIcon =
-    data.type === "quiz" ? (
-      <QuizIcon color="secondary" />
-    ) : (
-      <PlayCircleOutlineIcon color="primary" />
-    );
+  const IconCustom = getStyledStudyIcon(data.no);
 
   return (
     <Paper
@@ -176,15 +237,13 @@ function DayItem({ data, onOpen }: { data: Day; onOpen: (l: Day) => void }) {
         spacing={1.5}
       >
         <Stack direction="row" spacing={1.25} alignItems="center">
-          {leftIcon}
+          <IconCustom />
           <Box>
             <Typography variant="subtitle2" fontWeight={700}>
               {data.title}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {data.type === "core"
-                ? "Ngày học nền tảng"
-                : "Bài kiểm tra nhanh"}
+              {getStudyDayName(data.no)}
             </Typography>
           </Box>
         </Stack>
@@ -237,7 +296,7 @@ export default function DashboardLearningPath({
       id: d._id,
       week: week.name,
       title: d.title || `Ngày ${idx + 1}`,
-      type: d.type ?? "core",
+      no: d.dayOfWeek ?? 1,
       status: d.status ?? "locked",
       progress: d.progress ?? 0,
     }));
@@ -262,7 +321,23 @@ export default function DashboardLearningPath({
     localStorage.setItem("current_day", JSON.stringify(d));
     navigate(`/lesson?week=${activeWeek + 1}&day=${d.id}`);
   };
-  const [showProgress, setShowProgress] = React.useState(true);
+  const [lastVisitDate, setLastVisitDate] = useLocalStorage<string>('lastVisitDate', '');
+  const [isFirstVisitToday, setIsFirstVisitToday] = React.useState(false);
+
+  React.useEffect(() => {
+    // Lấy ngày hôm nay theo định dạng 'YYYY-MM-DD'
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // So sánh ngày truy cập cuối cùng đã lưu với ngày hôm nay
+    if (lastVisitDate !== todayStr) {
+      // Cập nhật state để hiển thị thông báo đặc biệt
+      setIsFirstVisitToday(true);
+
+      // QUAN TRỌNG: Cập nhật lại localStorage với ngày hôm nay
+      setLastVisitDate(todayStr);
+    }
+  }, []);
+
   return (
     <MainLayout>
       <Box
@@ -442,8 +517,8 @@ export default function DashboardLearningPath({
         </Container>
 
         <Dialog
-          open={showProgress}
-          onClose={() => setShowProgress(false)}
+          open={isFirstVisitToday}
+          onClose={() => setIsFirstVisitToday(false)}
           fullWidth
           maxWidth="md"
           disableScrollLock
@@ -460,7 +535,7 @@ export default function DashboardLearningPath({
             <Typography variant="h6" fontWeight={800}>
               Tiến trình học
             </Typography>
-            <IconButton onClick={() => setShowProgress(false)}>
+            <IconButton onClick={() => setIsFirstVisitToday(false)}>
               <CloseIcon />
             </IconButton>
           </Stack>

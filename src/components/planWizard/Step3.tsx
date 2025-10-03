@@ -14,6 +14,8 @@ import {
   Tabs,
   Tab,
   Box,
+  Alert,
+  Collapse,
 } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
@@ -25,6 +27,7 @@ import { WEEKDAYS, redistributeWeeks, redistributeDays } from "../../utils/planD
 import { PieChart } from "@mui/x-charts/PieChart";
 import { Weekday } from "../../types/PlanWizard";
 import { pieArcClasses, pieClasses } from "@mui/x-charts/PieChart";
+import { Pulse, Shake } from "../animations/motionWrappers";
 
 // Hàm tạo dải màu HSL đều nhau
 const generateColors = (count: number): string[] => {
@@ -57,12 +60,36 @@ export const DetailedPlanStep = () => {
   const totalWeek = diffInWeeks(planStart, planEnd);
   const totalHours = getHoursNeeded(400, targetScore);
   const totalMinutes = Math.max(0, Math.round(totalHours * 60));
-  const weeklyHours = totalWeek > 0 ? Math.round(totalHours / totalWeek) : 0;
+  const weeklyHours = totalWeek > 0 ? parseFloat((totalHours / totalWeek).toFixed(1)) : 0;
 
   const [weeklyTotals, setWeeklyTotals] = useLocalStorage<number[]>("weekly_totals", []);
   const [weekDays, setWeekDays] = useLocalStorage<Record<string, any>>("weekly_days", {});
-  const [selectedWeek, setSelectedWeek] = useState<number>(0);
+  const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [tab, setTab] = useState(0);
+  const [warning, setWarning] = useState<string>("");
+
+  useEffect(() => {
+    // Chỉ kiểm tra khi có dữ liệu
+    if (!weeklyTotals || weeklyTotals.length === 0) {
+      setWarning("");
+      return;
+    }
+
+    // Tìm số phút học cao nhất trong tất cả các tuần
+    const maxMinutesInAnyWeek = Math.max(...weeklyTotals);
+    const maxHoursInAnyWeek = maxMinutesInAnyWeek / 60;
+
+    // So sánh với ngưỡng đã định nghĩa
+    if (maxHoursInAnyWeek > 32) {
+      setWarning(
+        `Khối lượng học ${weeklyHours} giờ/tuần vượt quá mức tối đa 32 giờ/tuần. Bạn nên nới lỏng thời gian học để đạt được hiệu quả tốt nhất.`
+      );
+    } else {
+      // Nếu không có tuần nào vượt ngưỡng, xóa cảnh báo
+      setWarning("");
+    }
+
+  }, [weeklyTotals]);
 
   const makeEvenWeekPlan = (weekTotal: number) => {
     const per = Math.max(MIN_DAY, Math.round(weekTotal / 7));
@@ -183,19 +210,21 @@ export const DetailedPlanStep = () => {
   };
 
   const weeklyPieData = weeklyTotals.map((m, i) => ({
-    id: i + 1,
+    id: i,
     value: m,
     label: `Tuần ${i + 1}`,
     color: generateColors(weeklyTotals.length)[i],
   }));
 
   const dailyPieData = WEEKDAYS.map((d, idx) => ({
-    id: idx + 1,
+    id: idx,
     value: weekDays[String(selectedWeek)]?.[d] || 0,
     label: WEEK_LABELS[d],
     color: generateColors(WEEKDAYS.length)[idx],
   }));
 
+  console.log("weeklyPieData", weeklyPieData);
+  console.log("dailyPieData", dailyPieData);
 
   return (
     <Stack spacing={3}>
@@ -262,6 +291,12 @@ export const DetailedPlanStep = () => {
         </Button>
       </Paper>
 
+      <Collapse in={!!warning}>
+        {/* Dùng !!warning để chuyển chuỗi thành boolean (true/false) */}
+        <Alert severity="warning" variant="filled" sx={{ borderRadius: 2, mb: warning ? 3 : 0 }}>
+          {warning}
+        </Alert>
+      </Collapse>
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
         <Tabs value={tab} onChange={(_, v) => setTab(v)}>

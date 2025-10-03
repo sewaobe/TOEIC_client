@@ -43,7 +43,7 @@ export const EndDateStep: FC<IEndDateStep> = ({ score }) => {
     // tính thời gian dựa vô gap điểm
     const gap = targetScore - score;
     const totalHours = getHoursNeeded(score, targetScore);
-    const weeklyHours = weeks > 0 ? Math.round(totalHours / weeks) : 0;
+    const weeklyHours = weeks > 0 ? parseFloat((totalHours / weeks).toFixed(1)) : 0;
 
     const quickPresets = [
         { label: "4 tuần", addDays: 28 },

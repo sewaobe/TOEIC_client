@@ -1,4 +1,4 @@
-import { Box, Typography, LinearProgress } from "@mui/material";
+import { Box, Typography, LinearProgress, CircularProgress } from "@mui/material";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
@@ -30,82 +30,58 @@ const StudyOverview: React.FC<Props> = ({
     <Box>
       {/* === Card trắng: Tiến độ học === */}
       <Box
-        p={2.5}
+        p={3}
         bgcolor="white"
-        borderRadius={3}
-        boxShadow="0 4px 12px rgba(0,0,0,0.08)"
-        mb={2}
+        borderRadius={4}
+        boxShadow="0 6px 20px rgba(0,0,0,0.08)"
+        mb={3}
       >
-        <Typography variant="h6" fontWeight="bold" mb={1.5}>
+        <Typography variant="h6" fontWeight="bold" mb={2}>
           Tiến độ học
         </Typography>
 
-        {/* Số ngày còn lại */}
-        <Typography variant="body2" color="text.secondary" mb={1}>
-          Số ngày còn lại: <b>{remainingDays}</b>/21 ngày
-        </Typography>
-
-        {/* Số cúp */}
-        <Box display="flex" alignItems="center" mb={1}>
-          <EmojiEventsIcon sx={{ color: "#F59E0B" }} fontSize="small" />
-          <Typography ml={0.5} fontWeight={500}>
-            {achievedCups}/{totalCups} cúp đã đạt
-          </Typography>
-        </Box>
-
-        {/* Progress bar */}
-        <Box mb={1.5}>
-          <Typography variant="body2" mb={0.5}>
-            Số Units đạt 2 cúp trở lên
-          </Typography>
-          <LinearProgress
+        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              Ngày còn lại
+            </Typography>
+            <Typography fontWeight="bold">{remainingDays}/21</Typography>
+          </Box>
+          <CircularProgress
             variant="determinate"
             value={progressPercent}
-            sx={{
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: "#E5E7EB",
-              "& .MuiLinearProgress-bar": { bgcolor: "#10B981" },
-            }}
+            size={60}
+            thickness={5}
+            sx={{ color: "#10B981" }}
           />
         </Box>
 
-        {/* Thông tin chi tiết */}
+        {/* Cups & Units */}
         <Box>
-          <Box display="flex" alignItems="center" mb={0.5}>
-            <CheckCircleIcon sx={{ color: "#10B981", fontSize: 18, mr: 0.5 }} />
-            <Typography
-              fontSize={14}
-              sx={{ color: "#059669", fontWeight: 500 }}
-            >
-              Hoàn thành: {completedUnits}/{totalUnits} Units
-            </Typography>
-          </Box>
-
-          <Box display="flex" alignItems="center">
-            <MenuBookIcon sx={{ color: "#2563EB", fontSize: 18, mr: 0.5 }} />
-            <Typography
-              fontSize={14}
-              sx={{ color: "#2563EB", fontWeight: 500 }}
-            >
-              Kế hoạch: {plannedUnits}/{totalUnits} Units
-            </Typography>
-          </Box>
+          <Typography variant="body2" fontWeight="500" mb={1}>
+            🏆 {achievedCups}/{totalCups} cúp
+          </Typography>
+          <Typography variant="body2" fontWeight="500" mb={1}>
+            ✅ {completedUnits}/{totalUnits} Units
+          </Typography>
+          <Typography variant="body2" fontWeight="500">
+            📘 {plannedUnits}/{totalUnits} Kế hoạch
+          </Typography>
         </Box>
       </Box>
 
-      {/* === Card nhắc nhở xanh === */}
       <Box
-        bgcolor="#3B82F6"
+        bgcolor="linear-gradient(90deg,#3B82F6,#2563EB)"
         color="white"
-        p={2}
-        borderRadius={3}
-        boxShadow="0 4px 12px rgba(0,0,0,0.08)"
+        p={2.5}
+        borderRadius={4}
+        boxShadow="0 6px 16px rgba(0,0,0,0.1)"
       >
         <Typography fontWeight="bold" fontSize={15}>
-          Ồ! Hôm nay bạn có buổi cần hoàn thành. Cố gắng lên nào!
+          🚀 Hôm nay có buổi học! Cố gắng nào 💪
         </Typography>
       </Box>
+
     </Box>
   );
 };

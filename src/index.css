@@ -79,3 +79,7 @@ input[type='password']::-ms-clear {
 .milkdown .ProseMirror {
   padding: 60px 80px !important;
 }
+
+.lock-action {
+  overflow: hidden;
+}

@@ -31,7 +31,10 @@ const axiosRefresh = axios.create({
 });
 
 axiosClient.interceptors.response.use(
-  (response: AxiosResponse) => response.data,
+  (response: AxiosResponse) => {
+    console.log(">>>>>>>>Axios Call API:", response.data);
+    return response.data
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 

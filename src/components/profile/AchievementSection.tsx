@@ -6,10 +6,13 @@ import {
   useTheme,
   Tooltip,
   IconButton,
+  Box,
+  Paper
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "@mui/icons-material";
+import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined"
 
 const achievementVariants = {
   hidden: { scale: 0, opacity: 0 },
@@ -52,60 +55,98 @@ const AchievementSection: React.FC<{ achievements: any[] }> = ({
 
   return (
     <Card className="rounded-xl shadow-lg">
-      <CardContent>
-        <Typography
-          variant="h6"
-          className="font-bold text-text-primary mb-4"
-          sx={{ color: theme.palette.primary.main }}
+      {achievements.length === 0 && (
+        <Paper
+          elevation={3}
+          className="rounded-2xl mx-auto"
+          sx={{
+            maxWidth: 400,
+            p: 4,
+            background: "linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%)",
+            border: "1px dashed #D1D5DB",
+            textAlign: "center",
+          }}
         >
-          Thành tích đạt được
-        </Typography>
+          <Box
+            className="flex items-center justify-center mb-4"
+            sx={{
+              width: 80,
+              height: 80,
+              mx: "auto",
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)",
+              border: "2px solid #FACC15",
+            }}
+          >
+            <EmojiEventsOutlinedIcon sx={{ fontSize: 40, color: "#CA8A04" }} />
+          </Box>
+          <Typography
+            variant="h6"
+            className="font-semibold mb-2"
+            sx={{ color: "#111827" }}
+          >
+            Bạn chưa có huy hiệu nào
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#6B7280" }}>
+            Hoàn thành khóa học hoặc thử thách để nhận huy hiệu đầu tiên 🎉
+          </Typography>
+        </Paper>
+      )}
+      {achievements.length !== 0 &&
+        <CardContent>
+          <Typography
+            variant="h6"
+            className="font-bold text-text-primary mb-4"
+            sx={{ color: theme.palette.primary.main }}
+          >
+            Thành tích đạt được
+          </Typography>
 
-        {/* Hàng chứa nút và list thành tích */}
-        <div className="relative flex justify-center">
-          {/* Nút trái */}
-          {currentIndex > 0 && (
-            <IconButton
-              onClick={() => scroll("left")}
-              className="absolute -left-3  z-10 bg-white/70 dark:bg-black/50 hover:bg-white dark:hover:bg-black"
-            >
-              <ChevronLeft />
-            </IconButton>
-          )}
-
-          {/* Container scroll ngang */}
-          <div className="flex overflow-hidden flex-1 gap-2">
-            {achievements.map((achievement: any, idx) => (
-              <motion.div
-                key={achievement._id}
-                ref={(el) => (itemRefs.current[idx] = el)}
-                variants={achievementVariants}
-                className="flex-shrink-0 flex flex-col items-center text-center p-4
-                 bg-gray-100 dark:bg-gray-800 rounded-lg cursor-pointer min-w-[80px]"
-                whileHover={{ scale: 1.1 }}
+          {/* Hàng chứa nút và list thành tích */}
+          <div className="relative flex justify-center">
+            {/* Nút trái */}
+            {currentIndex > 0 && (
+              <IconButton
+                onClick={() => scroll("left")}
+                className="absolute -left-3  z-10 bg-white/70 dark:bg-black/50 hover:bg-white dark:hover:bg-black"
               >
-                <Tooltip title={achievement.name} arrow>
-                  <img
-                    src={achievement.image}
-                    alt={achievement.name}
-                    className="w-10 h-10 object-contain"
-                  />
-                </Tooltip>
-              </motion.div>
-            ))}
-          </div>
+                <ChevronLeft />
+              </IconButton>
+            )}
 
-          {/* Nút phải */}
-          {currentIndex < achievements.length - 1 && (
-            <IconButton
-              onClick={() => scroll("right")}
-              className="absolute -right-3 z-10 bg-white/70 dark:bg-black/50 hover:bg-white dark:hover:bg-black"
-            >
-              <ChevronRight />
-            </IconButton>
-          )}
-        </div>
-      </CardContent>
+            {/* Container scroll ngang */}
+            <div className="flex overflow-hidden flex-1 gap-2">
+              {achievements.map((achievement: any, idx) => (
+                <motion.div
+                  key={achievement._id}
+                  ref={(el) => (itemRefs.current[idx] = el)}
+                  variants={achievementVariants}
+                  className="flex-shrink-0 flex flex-col items-center text-center p-4
+                 bg-gray-100 dark:bg-gray-800 rounded-lg cursor-pointer min-w-[80px]"
+                  whileHover={{ scale: 1.1 }}
+                >
+                  <Tooltip title={achievement.name} arrow>
+                    <img
+                      src={achievement.image}
+                      alt={achievement.name}
+                      className="w-10 h-10 object-contain"
+                    />
+                  </Tooltip>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Nút phải */}
+            {currentIndex < achievements.length - 1 && (
+              <IconButton
+                onClick={() => scroll("right")}
+                className="absolute -right-3 z-10 bg-white/70 dark:bg-black/50 hover:bg-white dark:hover:bg-black"
+              >
+                <ChevronRight />
+              </IconButton>
+            )}
+          </div>
+        </CardContent>}
     </Card>
   );
 };

@@ -55,7 +55,7 @@ const UserCard = ({ user, isEditing, setIsEditing }: any) => {
               <Typography variant="body2" className="text-text-secondary">
                 Điểm TOEIC cao nhất:
               </Typography>
-              <Typography variant="h6" className="text-primary-main font-bold">{user.highestTest.score}</Typography>
+              <Typography variant="h6" className="text-primary-main font-bold">{user.highestTest ? user.highestTest.score : 0}</Typography>
             </Box>
             <Box className="flex justify-between items-center text-left">
               <Typography variant="body2" className="text-text-secondary">

@@ -37,6 +37,7 @@ export const useAuthViewModel = () => {
     try {
       const res = await authService.login(data) as any;
       if (res?.meta?.role_name === "student") {
+        localStorage.setItem("activeUserId", res.meta.user_id)
         dispatch(setAuth(true));
         dispatch(getUserThunk());
         showToastAndRedirect(

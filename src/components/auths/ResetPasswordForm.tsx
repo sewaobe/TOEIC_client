@@ -23,13 +23,14 @@ import {
 import authService from '../../services/authService';
 import { useNavigateToast } from '../../hooks/useNavigateToast';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 type ResetStep = 1 | 2 | 3;
 
 const ResetPasswordForm: FC = () => {
-  const { showToastAndRedirect } = useNavigateToast();
   const [resetStep, setResetStep] = useState<ResetStep>(1);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const navigate = useNavigate();
   // form step 1: email
@@ -52,39 +53,50 @@ const ResetPasswordForm: FC = () => {
 
   const handleStep1 = async (data: Step1Inputs) => {
     console.log('Step1 data:', data);
-    await authService.sendOtp(data);
-    showToastAndRedirect('success', 'OTP đã được gửi', '', 'otp-toast');
-    setResetStep(2);
+    await toast.promise(authService.sendOtp(data), {
+      loading: 'Đang gửi OTP...',
+      success: () => {
+        setResetStep(2);
+        return 'OTP đã được gửi đến email của bạn'
+      },
+      error: 'Gửi OTP thất bại. Vui lòng thử lại.',
+    });
+
   };
 
   const handleStep2 = async (data: Step2Inputs) => {
     console.log('Step2 data:', data);
     const emailFromStep1 = form1.getValues('email');
-
-    await authService.verifyOtp({ ...data, email: emailFromStep1 });
-    showToastAndRedirect('success', 'OTP hợp lệ', '', 'otp-toast');
-    setResetStep(3);
+    await toast.promise(authService.verifyOtp({ ...data, email: emailFromStep1 }), {
+      loading: 'Đang xác thực OTP...',
+      success: () => {
+        setResetStep(3);
+        return 'Xác thực OTP thành công'
+      },
+      error: 'Xác thực OTP thất bại. Vui lòng thử lại.',
+    });
   };
 
   const handleStep3 = async (data: Step3Inputs) => {
     console.log('Step3 data:', data);
     const emailFromStep1 = form1.getValues('email');
     const otpFromStep2 = form2.getValues('otp');
-    await authService.resetPassword({
+    await toast.promise(authService.resetPassword({
       newPassword: data.newPassword,
       email: emailFromStep1,
       otp: otpFromStep2,
+    }), {
+      loading: 'Đang đặt lại mật khẩu...',
+      success: () => {
+        navigate('/login');
+        return 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.'
+      },
+      error: 'Đặt lại mật khẩu thất bại. Vui lòng thử lại.',
     });
-    showToastAndRedirect(
-      'success',
-      'Đổi mật khẩu thành công',
-      '/login',
-      'reset-toast',
-    );
+
     form1.reset();
     form2.reset();
     form3.reset();
-    setResetStep(1);
   };
 
   return (
@@ -194,10 +206,19 @@ const ResetPasswordForm: FC = () => {
               <TextField
                 {...field}
                 label='Confirm Password'
-                type='password'
+                type={showConfirmPassword ? 'text' : 'password'}
                 error={!!form3.formState.errors.confirmNewPassword}
                 helperText={form3.formState.errors.confirmNewPassword?.message}
                 fullWidth
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position='end'>
+                      <IconButton onClick={() => setShowConfirmPassword((p) => !p)}>
+                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
             )}
           />

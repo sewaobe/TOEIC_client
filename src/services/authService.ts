@@ -12,7 +12,7 @@ export type ResetPasswordPayload = Omit<
   'confirmNewPassword'
 >;
 const authService = {
-  login: (data: LoginFormInputs) => axiosClient.post('/auth/login', data),
+  login: (data: LoginFormInputs, isRemember: boolean) => axiosClient.post('/auth/login', { ...data, isRemember }),
   register: (data: RegisterFormInputs) =>
     axiosClient.post('/auth/register', data),
   sendOtp: (data: Step1Inputs) => axiosClient.post('/auth/request-otp', data),

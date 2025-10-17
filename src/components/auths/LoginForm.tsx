@@ -36,7 +36,9 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  const onSubmit = handleSubmit(authViewModel.login);
+  const onSubmit = handleSubmit((data) => {
+    authViewModel.login(data, rememberMe);
+  });
 
   return (
     <Box

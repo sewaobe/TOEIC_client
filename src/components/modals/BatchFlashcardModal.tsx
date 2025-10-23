@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
     Dialog,
     DialogTitle,
@@ -19,19 +19,19 @@ import "react-data-grid/lib/styles.css"; // <- quan trọng
 
 // Kiểu dữ liệu row
 interface FlashcardRow {
-    id: number;
+    _id: number;
     word: string;
     definition: string;
     example1: string;
     example2: string;
-    pronunciation: string;
-    note: string;
+    phonetic: string;
+    notes: string;
 }
 
 interface BatchFlashcardModalProps {
     open: boolean;
     onClose: () => void;
-    onSave: (rows: FlashcardRow[]) => void;
+    onSave: (rows: any[]) => void;
 }
 
 // Editor component (input)
@@ -61,31 +61,35 @@ function TextEditor<R, SR>({
     );
 }
 
+function PlaceholderCell<R>({ row, column }: { row: R; column: any }) {
+    const value = (row as any)[column.key];
+    const placeholderMap: Record<string, string> = {
+        word: "Nhập từ mới...",
+        definition: "Nhập định nghĩa...",
+        example1: "Ví dụ 1...",
+        example2: "Ví dụ 2...",
+        phonetic: "Phiên âm...",
+        notes: "Ghi chú..."
+    };
+
+    return (
+        <span
+            style={{
+                color: value ? "inherit" : "#9e9e9e",
+                fontStyle: value ? "normal" : "italic"
+            }}
+        >
+            {value || placeholderMap[column.key] || ""}
+        </span>
+    );
+}
+
 const BatchFlashcardModal: React.FC<BatchFlashcardModalProps> = ({
     open,
     onClose,
     onSave
 }) => {
-    const [rows, setRows] = useState<FlashcardRow[]>([
-        {
-            id: 1,
-            word: "Hello",
-            definition: "Xin chào",
-            example1: "Hello, how are you?",
-            example2: "She said hello to me.",
-            pronunciation: "/həˈləʊ/",
-            note: "Basic greeting"
-        },
-        {
-            id: 2,
-            word: "Dog",
-            definition: "Con chó",
-            example1: "The dog is barking.",
-            example2: "She has a big dog.",
-            pronunciation: "/dɒɡ/",
-            note: "Common animal"
-        }
-    ]);
+    const [rows, setRows] = useState<FlashcardRow[]>([]);
 
     const [contextMenu, setContextMenu] = useState<{
         mouseX: number;
@@ -94,13 +98,13 @@ const BatchFlashcardModal: React.FC<BatchFlashcardModalProps> = ({
     } | null>(null);
 
     const columns: Column<FlashcardRow>[] = [
-        { key: "id", name: "ID", width: 60, frozen: true },
-        { key: "word", name: "Từ mới", renderEditCell: TextEditor },
-        { key: "definition", name: "Định nghĩa", renderEditCell: TextEditor },
-        { key: "example1", name: "Ví dụ 1", renderEditCell: TextEditor },
-        { key: "example2", name: "Ví dụ 2", renderEditCell: TextEditor },
-        { key: "pronunciation", name: "Phiên âm", renderEditCell: TextEditor },
-        { key: "note", name: "Ghi chú", renderEditCell: TextEditor }
+        { key: "_id", name: "ID", width: 60, frozen: true },
+        { key: "word", name: "Từ mới", renderCell: PlaceholderCell, renderEditCell: TextEditor },
+        { key: "definition", name: "Định nghĩa", renderCell: PlaceholderCell, renderEditCell: TextEditor },
+        { key: "example1", name: "Ví dụ 1", renderCell: PlaceholderCell, renderEditCell: TextEditor },
+        { key: "example2", name: "Ví dụ 2", renderCell: PlaceholderCell, renderEditCell: TextEditor },
+        { key: "phonetic", name: "Phiên âm", renderCell: PlaceholderCell, renderEditCell: TextEditor },
+        { key: "notes", name: "Ghi chú", renderCell: PlaceholderCell, renderEditCell: TextEditor }
     ];
 
     // Fill data (Excel-like)
@@ -118,13 +122,13 @@ const BatchFlashcardModal: React.FC<BatchFlashcardModalProps> = ({
             if (event.key === "Enter" && args.rowIdx === rows.length - 1) {
                 event.preventDefault();
                 const newRow: FlashcardRow = {
-                    id: rows.length + 1,
+                    _id: rows.length + 1,
                     word: "",
                     definition: "",
                     example1: "",
                     example2: "",
-                    pronunciation: "",
-                    note: ""
+                    phonetic: "",
+                    notes: ""
                 };
                 setRows([...rows, newRow]);
             }
@@ -135,17 +139,17 @@ const BatchFlashcardModal: React.FC<BatchFlashcardModalProps> = ({
     // Insert row (dịch id xuống)
     const insertRow = useCallback(
         (rowId: number, position: "above" | "below") => {
-            const rowIdx = rows.findIndex(r => r.id === rowId);
+            const rowIdx = rows.findIndex(r => r._id === rowId);
             if (rowIdx === -1) return;
 
             const newRow: FlashcardRow = {
-                id: 0,
+                _id: 0,
                 word: "",
                 definition: "",
                 example1: "",
                 example2: "",
-                pronunciation: "",
-                note: ""
+                phonetic: "",
+                notes: ""
             };
 
             const newRows = [...rows];
@@ -153,7 +157,7 @@ const BatchFlashcardModal: React.FC<BatchFlashcardModalProps> = ({
             newRows.splice(insertIndex, 0, newRow);
 
             // normalize id
-            const normalized = newRows.map((r, i) => ({ ...r, id: i + 1 }));
+            const normalized = newRows.map((r, i) => ({ ...r, _id: i + 1 }));
             setRows(normalized);
             setContextMenu(null);
         },
@@ -162,18 +166,27 @@ const BatchFlashcardModal: React.FC<BatchFlashcardModalProps> = ({
 
     const deleteRow = useCallback(
         (rowId: number) => {
-            const rowIdx = rows.findIndex(r => r.id === rowId);
+            const rowIdx = rows.findIndex(r => r._id === rowId);
             if (rowIdx === -1) return;
 
-            const newRows = rows.filter((r) => r.id !== rowId)
-                .map((r, i) => ({ ...r, id: i + 1 }));
+            const newRows = rows.filter((r) => r._id !== rowId)
+                .map((r, i) => ({ ...r, _id: i + 1 }));
             setRows(newRows);
             setContextMenu(null);
         },
         [rows]
     );
 
-
+    useEffect(() => {
+        if (open && rows.length === 0) {
+            setRows([
+                { _id: 1, word: "", definition: "", example1: "", example2: "", phonetic: "", notes: "" }
+            ]);
+        }
+        return () => {
+            setRows([]);
+        }
+    }, [open]);
 
     const handleCloseMenu = () => setContextMenu(null);
 
@@ -182,7 +195,7 @@ const BatchFlashcardModal: React.FC<BatchFlashcardModalProps> = ({
         setContextMenu({
             mouseX: event.clientX - 2,
             mouseY: event.clientY - 4,
-            rowId: args.row.id
+            rowId: args.row._id
         });
     }, []);
 
@@ -194,7 +207,7 @@ const BatchFlashcardModal: React.FC<BatchFlashcardModalProps> = ({
                     <DataGrid
                         columns={columns}
                         rows={rows}
-                        rowKeyGetter={(row) => row.id}
+                        rowKeyGetter={(row) => row._id}
                         onRowsChange={setRows}
                         onFill={handleFill}
                         onCellKeyDown={handleCellKeyDown}
@@ -243,7 +256,31 @@ const BatchFlashcardModal: React.FC<BatchFlashcardModalProps> = ({
                 <Button onClick={onClose}>Hủy</Button>
                 <Button
                     onClick={() => {
-                        onSave(rows);
+                        const filteredRows = rows
+                            .filter(row => {
+                                const hasWord = row.word.trim() !== "";
+                                const hasAnyContent = Object.entries(row)
+                                    .some(([key, value]) => key !== "_id" && String(value || "").trim() !== "");
+                                return hasWord && hasAnyContent;
+                            })
+                            .map(({ _id, example1, example2, ...rest }) => {
+                                // 🔁 Gom 2 example vào 1 mảng examples[]
+                                const examples = [];
+                                if (example1?.trim()) examples.push({ en: example1.trim(), vi: "" });
+                                if (example2?.trim()) examples.push({ en: example2.trim(), vi: "" });
+
+                                return {
+                                    ...rest,
+                                    examples,
+                                };
+                            });
+
+                        if (filteredRows.length === 0) {
+                            alert("Vui lòng nhập ít nhất một từ vựng hợp lệ.");
+                            return;
+                        }
+
+                        onSave(filteredRows);
                         onClose();
                     }}
                     variant="contained"
@@ -251,7 +288,7 @@ const BatchFlashcardModal: React.FC<BatchFlashcardModalProps> = ({
                     Xác nhận
                 </Button>
             </DialogActions>
-        </Dialog>
+        </Dialog >
     );
 };
 

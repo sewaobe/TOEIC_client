@@ -1,25 +1,39 @@
 import React, { useState } from 'react';
-import { Box, TextField, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
+import { Box, TextField, Autocomplete } from '@mui/material';
 import BaseModal from './BaseModal';
+import { toast } from 'sonner';
+import { TOEIC_TAGS } from '../../constants/toeicTags';
 
 interface CreateFlashcardModalProps {
     titleModal: string;
     open: boolean;
     onClose: () => void;
-    onSave: (data: { title: string; type: string; description: string }) => void;
+    onSave: (data: { title: string; tags: string[]; description: string }) => void;
+    data?: { title: string; tags: string[]; description: string };
 }
 
-const CreateFlashcardModal: React.FC<CreateFlashcardModalProps> = ({ titleModal, open, onClose, onSave }) => {
-    const [title, setTitle] = useState('');
-    const [type, setType] = useState('');
-    const [description, setDescription] = useState('');
+const CreateFlashcardModal: React.FC<CreateFlashcardModalProps> = ({ titleModal, open, onClose, onSave, data }) => {
+    const [formData, setFormData] = useState<{
+        title: string;
+        tags: string[];
+        description: string;
+    }>({
+        title: data?.title || '',
+        tags: data?.tags || [],
+        description: data?.description || '',
+    });
 
     const handleConfirm = () => {
-        if (!title.trim()) return;
-        onSave({ title, type, description });
-        setTitle('');
-        setType('');
-        setDescription('');
+        if (!formData.title.trim()) {
+            toast.error('Tiêu đề không được để trống');
+            return;
+        }
+        onSave({ title: formData.title, tags: formData.tags, description: formData.description });
+        setFormData({
+            title: '',
+            tags: [],
+            description: '',
+        });
         onClose();
     };
 
@@ -44,21 +58,39 @@ const CreateFlashcardModal: React.FC<CreateFlashcardModalProps> = ({ titleModal,
                     label="Tiêu đề list từ"
                     variant="outlined"
                     fullWidth
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 />
 
-                <FormControl fullWidth>
-                    <InputLabel>Loại ngôn ngữ</InputLabel>
-                    <Select
-                        value={type}
-                        label="Loại ngôn ngữ"
-                        onChange={(e) => setType(e.target.value)}
-                    >
-                        <MenuItem value="Anh-Anh">Anh-Anh</MenuItem>
-                        <MenuItem value="Anh-Mỹ">Anh-Mỹ</MenuItem>
-                    </Select>
-                </FormControl>
+                <Autocomplete
+                    multiple
+                    freeSolo
+                    options={TOEIC_TAGS}
+                    getOptionLabel={(option) =>
+                        typeof option === "string" ? option : option
+                    }
+                    isOptionEqualToValue={(option, value) =>
+                        typeof option === "string" && typeof value === "string"
+                            ? option === value
+                            : option === (typeof value === "string" ? value : value)
+                    }
+                    value={formData.tags || []}
+                    onChange={(_, newValue) =>
+                        setFormData({
+                            ...formData,
+                            tags: newValue.map((item) =>
+                                typeof item === "string" ? item : item
+                            ),
+                        })
+                    }
+                    renderInput={(params) => (
+                        <TextField
+                            {...params}
+                            label="Thẻ (tags)"
+                            placeholder="Thêm thẻ liên quan đến chủ đề TOEIC"
+                        />
+                    )}
+                />
 
                 <TextField
                     label="Mô tả"
@@ -66,8 +98,8 @@ const CreateFlashcardModal: React.FC<CreateFlashcardModalProps> = ({ titleModal,
                     fullWidth
                     multiline
                     rows={3}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
             </Box>
         </BaseModal>

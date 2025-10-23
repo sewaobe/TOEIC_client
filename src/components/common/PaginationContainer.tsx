@@ -29,7 +29,7 @@ function PaginationContainer<T>({
         {currentItems.map((item, index) => renderItem(item, index))}
       </Box>
 
-      {pageCount > 1 && (
+      {pageCount > 0 && (
         <Box className='mt-6 flex justify-center'>
           <Pagination
             count={pageCount}

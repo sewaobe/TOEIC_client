@@ -1,89 +1,333 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Box,
     Button,
     Typography,
     Paper,
     IconButton,
+    Skeleton,
 } from '@mui/material';
+import LibraryBooksOutlinedIcon from "@mui/icons-material/LibraryBooksOutlined";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import BatchFlashcardModal from '../../components/modals/BatchFlashcardModal';
 import PaginationContainer from '../../components/common/PaginationContainer';
-import CreateFlashcardItemModal, { FlashcardData } from '../../components/modals/CreateFlashcardItemModal';
+import CreateFlashcardItemModal, { FlashcardItem } from '../../components/modals/CreateFlashcardItemModal';
 import CreateFlashcardModal from '../../components/modals/CreateFlashcardModal';
 import MainLayout from '../layouts/MainLayout';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { topicService } from '../../services/topic.service';
+import { uploadToCloudinaryFromString } from '../../services/cloudinary.service';
+import { vocabularyService } from '../../services/vocabulary.service';
 
-interface FlashcardItem {
-    id: string;
-    word: string;
-    definition: string;
-}
-const mockFlashcards: FlashcardItem[] = [
-    { id: '1', word: 'History', definition: 'Lịch sử' },
-    { id: '2', word: 'Example', definition: 'Ví dụ' },
-    { id: '3', word: 'Book', definition: 'Sách' },
-    { id: '4', word: 'Teacher', definition: 'Giáo viên' },
-    { id: '5', word: 'Student', definition: 'Học sinh' },
-    { id: '6', word: 'School', definition: 'Trường học' },
-    { id: '7', word: 'Lesson', definition: 'Bài học' },
-    { id: '8', word: 'Exam', definition: 'Kỳ thi' },
-    { id: '9', word: 'Knowledge', definition: 'Kiến thức' },
-    { id: '10', word: 'Classroom', definition: 'Lớp học' },
-];
+import {
+    Collapse,
+    Divider,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 
+export const FlashcardItemPaper = ({
+    f,
+    handleOpenItemModal,
+    handleDelete,
+    expandedId,
+    setExpandedId,
+}: {
+    f: FlashcardItem;
+    handleOpenItemModal: (item: FlashcardItem) => void;
+    handleDelete: (id: string) => void;
+    expandedId: string | null;
+    setExpandedId: (id: string | null) => void;
+}) => {
+    const isExpanded = expandedId === f._id;
+
+    const handleToggle = () => {
+        setExpandedId(isExpanded ? null : f._id || null);
+    };
+
+    return (
+        <Paper
+            sx={{
+                p: 2,
+                mb: 2,
+                width: "100%", // ✅ full width
+                borderRadius: 2,
+                boxShadow: isExpanded ? 4 : 1,
+                transition: "all 0.25s ease",
+            }}
+        >
+            {/* --- Header row --- */}
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                }}
+            >
+                <Box>
+                    <Typography
+                        variant="subtitle1"
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                    >
+                        <strong>{f.word}</strong>
+                        {f.phonetic && (
+                            <Typography variant="body2" color="text.secondary">
+                                [{f.phonetic}]
+                            </Typography>
+                        )}
+                        <VolumeUpIcon
+                            fontSize="small"
+                            sx={{ cursor: "pointer", color: "primary.main" }}
+                        />
+                        <IconButton size="small" onClick={() => handleOpenItemModal(f)}>
+                            <EditIcon fontSize="small" />
+                        </IconButton>
+                    </Typography>
+
+                    <Typography variant="body2" color="text.secondary">
+                        Định nghĩa: {f.definition}
+                    </Typography>
+                </Box>
+
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <IconButton onClick={handleToggle}>
+                        {isExpanded ? (
+                            <ExpandLessIcon color="action" />
+                        ) : (
+                            <ExpandMoreIcon color="action" />
+                        )}
+                    </IconButton>
+                    <IconButton
+                        onClick={() => f._id && handleDelete(f._id)}
+                        size="small"
+                    >
+                        <DeleteIcon color="error" fontSize="small" />
+                    </IconButton>
+                </Box>
+            </Box>
+
+            {/* --- Expandable content --- */}
+            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                <Divider sx={{ my: 1.5 }} />
+                <Box sx={{ display: "flex", gap: 2 }}>
+                    {/* Left content */}
+                    <Box sx={{ flex: 1 }}>
+                        {f.type && (
+                            <Typography
+                                variant="caption"
+                                sx={{
+                                    bgcolor: "primary.light",
+                                    color: "white",
+                                    px: 1,
+                                    py: 0.3,
+                                    borderRadius: 1,
+                                    fontWeight: 500,
+                                    display: "inline-block",
+                                    mb: 1,
+                                }}
+                            >
+                                {f.type}
+                            </Typography>
+                        )}
+
+                        {/* Ví dụ */}
+                        {f.examples && f.examples.length > 0 && (
+                            <Box sx={{ mb: 1 }}>
+                                <Typography variant="subtitle2" fontWeight={600}>
+                                    Ví dụ:
+                                </Typography>
+                                {f.examples.slice(0, 2).map((ex, i) => (
+                                    <Box key={i} sx={{ pl: 1, mb: 0.5 }}>
+                                        <Typography variant="body2" sx={{ fontStyle: "italic" }}>
+                                            “{ex.en}”
+                                        </Typography>
+                                        {ex.vi && (
+                                            <Typography variant="body2" color="text.secondary">
+                                                → {ex.vi}
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                ))}
+                                {f.examples.length > 2 && (
+                                    <Typography
+                                        variant="body2"
+                                        color="text.disabled"
+                                        sx={{ pl: 1 }}
+                                    >
+                                        +{f.examples.length - 2} ví dụ khác...
+                                    </Typography>
+                                )}
+                            </Box>
+                        )}
+
+                        {f.notes && (
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    fontStyle: "italic",
+                                    color: "text.secondary",
+                                    bgcolor: "rgba(0,0,0,0.03)",
+                                    p: 1,
+                                    borderRadius: 1,
+                                }}
+                            >
+                                📝 {f.notes}
+                            </Typography>
+                        )}
+                    </Box>
+
+                    {f.image && (
+                        <Box
+                            sx={{
+                                width: 90,
+                                height: 90,
+                                borderRadius: 1.5,
+                                overflow: "hidden",
+                                border: "1px solid #eee",
+                                flexShrink: 0,
+                            }}
+                        >
+                            <img
+                                src={f.image}
+                                alt={f.word}
+                                style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                }}
+                            />
+                        </Box>
+                    )}
+                </Box>
+            </Collapse>
+        </Paper>
+    );
+};
 
 const FlashcardDetail: React.FC = () => {
-    const [flashcards, setFlashcards] = useState<FlashcardItem[]>(mockFlashcards);
+    const [flashcards, setFlashcards] = useState<FlashcardItem[]>([]);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
+    const [page, setPage] = useState(1);
+    const [pageCount, setPageCount] = useState(1);
+    const itemsPerPage = 10;
+    const location = useLocation();
+    const topicId = location.pathname.split("/").pop();
+    const [flashcardInfo, setFlashcardInfo] = useState<{ title: string; tags: string[]; description: string } | null>(() => {
+        const storedInfo = localStorage.getItem('flashcardInfo');
+        return storedInfo ? JSON.parse(storedInfo) : null;
+    });
     // Modal states
     const [openBatchModal, setOpenBatchModal] = useState(false);
     const [openItemModal, setOpenItemModal] = useState(false);
-    const [editWord, setEditWord] = useState<FlashcardItem | null>(null);
+    const [editWord, setEditWord] = useState<FlashcardItem>();
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleDelete = (id: string) => {
-        setFlashcards(flashcards.filter((f) => f.id !== id));
+    const fetchData = async () => {
+        try {
+            setIsLoading(true);
+            if (topicId) {
+                const res = await topicService.getTopicVocabularyDetail(topicId, page, itemsPerPage);
+                setFlashcards(res.items);
+                setPageCount(res.pageCount);
+                toast.success('Lấy danh sách flashcards thành công!');
+            } else {
+                toast.error('Topic ID không hợp lệ.');
+            }
+        }
+        catch (err) {
+            toast.error('Lấy danh sách flashcards thất bại. Vui lòng thử lại.');
+        } finally {
+            setIsLoading(false);
+        }
+    }
+    useEffect(() => {
+        fetchData();
+    }, [page])
+
+    const handleDelete = async (id: string) => {
+        try {
+            if (topicId) {
+                await vocabularyService.deleteVocabulary(id, topicId);
+                setFlashcards(flashcards.filter((f) => f._id !== id));
+                toast.success('Xóa flashcard thành công!');
+            }
+        } catch (error) {
+            toast.error('Xóa flashcard thất bại. Vui lòng thử lại.');
+        }
     };
 
     // Mở modal tạo mới / chỉnh sửa
     const handleOpenItemModal = (item?: FlashcardItem) => {
-        setEditWord(item || null);
+        setEditWord(item);
         setOpenItemModal(true);
     };
 
     // Lưu từ mới hoặc chỉnh sửa
-    const handleSaveItem = (data: FlashcardData) => {
-        if (editWord) {
-            // chỉnh sửa
-            setFlashcards(flashcards.map(f =>
-                f.id === editWord.id ? { ...f, word: data.word, definition: data.definition } : f
-            ));
-        } else {
-            // thêm mới
-            setFlashcards([...flashcards, { id: Date.now().toString(), word: data.word, definition: data.definition }]);
+    const handleSaveItem = async (data: FlashcardItem) => {
+        const finalImageUrl = await uploadToCloudinaryFromString(data.image || null);
+        if (!data.word.trim()) {
+            toast.error('Từ vựng không được để trống.');
+            return;
         }
+        if (editWord?._id) {
+            await vocabularyService.updateVocabulary(editWord._id, {
+                ...data,
+                image: finalImageUrl,
+            });
+            toast.success('Cập nhật từ thành công!');
+        } else {
+            if (topicId) {
+                await vocabularyService.createVocabulary({
+                    ...data,
+                    image: finalImageUrl,
+                    topicId,
+                    tags: flashcardInfo?.tags || [],
+                });
+                toast.success('Tạo từ mới thành công!');
+            }
+        }
+
+        fetchData();
         setOpenItemModal(false);
     };
 
-    const handleSaveBatch = (data: { word: string; definition: string }[]) => {
-        const newFlashcards = data.map(d => ({ id: Date.now().toString() + Math.random(), ...d }));
-        setFlashcards([...flashcards, ...newFlashcards]);
-        setOpenBatchModal(false);
+    const handleSaveBatch = async (data: any[]) => {
+        try {
+            setIsLoading(true);
+            if (topicId) {
+                const dataWithTopic = data.map(item => ({
+                    ...item,
+                    topicId: topicId,
+                }));
+                await vocabularyService.createVocabulary(dataWithTopic);
+                toast.success('Tạo từ hàng loạt thành công!');
+            }
+        } catch (error) {
+            toast.error('Tạo từ hàng loạt thất bại. Vui lòng thử lại.');
+        } finally {
+            setOpenBatchModal(false);
+            setIsLoading(false);
+            fetchData();
+        }
     };
     const [openCreateModal, setOpenCreateModal] = useState(false);
     const navigate = useNavigate();
-
     return (
         <MainLayout>
             <Box sx={{ p: { xs: 2, md: 6 }, maxWidth: 900, mx: 'auto' }}>
                 {/* Header */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                        Flashcards: Chủ đề business
+                    <Typography variant="h5" sx={{ fontWeight: 700 }} className="cursor-pointer" onClick={() => {
+                        navigate(-1);
+                    }}>
+                        Flashcards: Chủ đề {flashcardInfo ? flashcardInfo.title : 'đang bị lỗi'}
                     </Typography>
-                    <Button variant="contained" size="small" onClick={() => setOpenCreateModal(true)}>
+                    <Button variant="contained" size="small" onClick={() => setOpenCreateModal(true)} sx={{ ml: 'auto' }}>
                         Chỉnh sửa
                     </Button>
                     <Button variant="contained" size="small" onClick={() => handleOpenItemModal()}>
@@ -97,8 +341,7 @@ const FlashcardDetail: React.FC = () => {
                 {/* Info box */}
                 <Paper sx={{ p: 2, bgcolor: '#DFFBF0', mb: 2 }}>
                     <Typography variant="body2">
-                        Chú ý: nếu list từ vựng là tiếng Trung, Nhật, Hàn, click chỉnh sửa để thay đổi ngôn ngữ.
-                        Audio mặc định là tiếng Anh-Anh và Anh-Mỹ. Các ngôn ngữ khác chỉ hỗ trợ trên máy tính.
+                        Chú ý: Audio mặc định là tiếng Anh-Anh và Anh-Mỹ. Các ngôn ngữ khác chỉ hỗ trợ trên máy tính.
                     </Typography>
                 </Paper>
 
@@ -112,43 +355,111 @@ const FlashcardDetail: React.FC = () => {
                 </Typography>
 
                 {/* Flashcard list + pagination */}
-                <PaginationContainer
-                    items={flashcards}
-                    itemsPerPage={5}
-                    renderItem={(f: FlashcardItem) => (
-                        <Paper
-                            key={f.id}
-                            sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
+                {isLoading ? (
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        {/* Hiển thị 5 skeleton giả lập flashcards */}
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <Paper
+                                key={i}
+                                sx={{
+                                    p: 2,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    width: "100%",
+                                }}
+                            >
+                                <Box sx={{ width: "80%" }}>
+                                    <Skeleton variant="text" width="40%" height={28} sx={{ mb: 1 }} />
+                                    <Skeleton variant="text" width="60%" height={20} />
+                                </Box>
+                                <Skeleton variant="circular" width={32} height={32} />
+                            </Paper>
+                        ))}
+                    </Box>
+                ) : flashcards.length === 0 ? (
+                    <Box
+                        sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            mt: 6,
+                            color: "text.secondary",
+                            textAlign: "center",
+                        }}
+                    >
+                        <LibraryBooksOutlinedIcon
+                            sx={{ fontSize: 60, mb: 1, color: "grey.400" }}
+                        />
+                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                            Chưa có từ nào trong list
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 2 }}>
+                            Vui lòng thêm từ mới để bắt đầu học nhé.
+                        </Typography>
+
+                        <Button
+                            variant="outlined"
+                            startIcon={<AddCircleOutlineIcon />}
+                            onClick={() => handleOpenItemModal()}
                         >
-                            <Box>
-                                <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    {f.word} <VolumeUpIcon fontSize="small" sx={{ cursor: 'pointer' }} />
-                                    <IconButton size="small" onClick={() => handleOpenItemModal(f)}>
-                                        <EditIcon fontSize="small" />
-                                    </IconButton>
-                                </Typography>
-                                <Typography variant="body2">Định nghĩa: {f.definition}</Typography>
-                            </Box>
-                            <IconButton onClick={() => handleDelete(f.id)}>
-                                <DeleteIcon color="error" />
-                            </IconButton>
-                        </Paper>
-                    )}
-                />
+                            Thêm từ mới
+                        </Button>
+                    </Box>
+                ) : (
+                    <PaginationContainer
+                        items={flashcards}
+                        pageCount={pageCount}
+                        page={page}
+                        onPageChange={setPage}
+                        itemsPerPage={itemsPerPage}
+                        renderItem={(f: FlashcardItem) => (
+                            <FlashcardItemPaper
+                                key={f._id}
+                                f={f}
+                                handleOpenItemModal={handleOpenItemModal}
+                                handleDelete={handleDelete}
+                                expandedId={expandedId}
+                                setExpandedId={setExpandedId}
+                            />
+                        )}
+                    />
+                )}
 
                 {/* Modals */}
                 <CreateFlashcardModal
+                    key={flashcardInfo ? flashcardInfo.title : 'create-item-modal'}
                     titleModal='Chỉnh sửa List từ'
                     open={openCreateModal}
                     onClose={() => setOpenCreateModal(false)}
-                    onSave={() => { console.log("Edited") }}
+                    onSave={async (data) => {
+                        try {
+                            if (topicId) {
+                                const res = await toast.promise(topicService.updateTopicVocabulary(topicId, data), {
+                                    loading: 'Đang cập nhật...',
+                                    success: 'Cập nhật thành công!',
+                                    error: 'Cập nhật thất bại. Vui lòng thử lại.',
+                                })
+                                setFlashcardInfo(data);
+                                localStorage.setItem('flashcardInfo', JSON.stringify(data));
+                            } else {
+                                toast.error('Topic ID không hợp lệ.');
+                            }
+                        } catch (err) {
+                            toast.error('Cập nhật thất bại. Vui lòng thử lại.');
+                        }
+                    }}
+                    data={flashcardInfo || undefined}
                 />
 
                 <CreateFlashcardItemModal
+                    key={editWord ? editWord._id : 'create-new-item'}
                     open={openItemModal}
-                    listName="Flashcard List Chủ đề business"
+                    listName={`Flashcard List Chủ đề ${flashcardInfo ? flashcardInfo.title : 'đang bị lỗi'}`}
                     onClose={() => setOpenItemModal(false)}
                     onSave={handleSaveItem}
+                    editData={editWord}
                 />
 
                 <BatchFlashcardModal

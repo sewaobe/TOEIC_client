@@ -53,7 +53,6 @@ export const FlashcardItemPaper = ({
         <Paper
             sx={{
                 p: 2,
-                mb: 2,
                 width: "100%", // ✅ full width
                 borderRadius: 2,
                 boxShadow: isExpanded ? 4 : 1,
@@ -214,7 +213,8 @@ const FlashcardDetail: React.FC = () => {
 
     const [page, setPage] = useState(1);
     const [pageCount, setPageCount] = useState(1);
-    const itemsPerPage = 10;
+    const [totalItems, setTotalItems] = useState(0);
+    const itemsPerPage = 5;
     const location = useLocation();
     const topicId = location.pathname.split("/").pop();
     const [flashcardInfo, setFlashcardInfo] = useState<{ title: string; tags: string[]; description: string } | null>(() => {
@@ -230,21 +230,31 @@ const FlashcardDetail: React.FC = () => {
     const fetchData = async () => {
         try {
             setIsLoading(true);
+            const startTime = Date.now();
+
             if (topicId) {
                 const res = await topicService.getTopicVocabularyDetail(topicId, page, itemsPerPage);
                 setFlashcards(res.items);
                 setPageCount(res.pageCount);
+                setTotalItems(res.total);
                 toast.success('Lấy danh sách flashcards thành công!');
             } else {
                 toast.error('Topic ID không hợp lệ.');
             }
-        }
-        catch (err) {
+
+            // 🕒 Giữ skeleton ít nhất 500ms
+            const elapsed = Date.now() - startTime;
+            const minDelay = 500; // có thể điều chỉnh 400–700 tùy cảm nhận
+            if (elapsed < minDelay) {
+                await new Promise((resolve) => setTimeout(resolve, minDelay - elapsed));
+            }
+        } catch (err) {
             toast.error('Lấy danh sách flashcards thất bại. Vui lòng thử lại.');
         } finally {
             setIsLoading(false);
         }
-    }
+    };
+
     useEffect(() => {
         fetchData();
     }, [page])
@@ -323,7 +333,7 @@ const FlashcardDetail: React.FC = () => {
                 {/* Header */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
                     <Typography variant="h5" sx={{ fontWeight: 700 }} className="cursor-pointer" onClick={() => {
-                        navigate(-1);
+                        navigate('/flash-cards');
                     }}>
                         Flashcards: Chủ đề {flashcardInfo ? flashcardInfo.title : 'đang bị lỗi'}
                     </Typography>
@@ -346,7 +356,31 @@ const FlashcardDetail: React.FC = () => {
                 </Paper>
 
                 {/* Luyện tập button */}
-                <Button variant="contained" fullWidth sx={{ mb: 1 }} onClick={() => navigate("practice")}>
+                <Button
+                    variant="contained"
+                    fullWidth sx={{ mb: 1 }}
+                    onClick={async () => {
+                        if (!topicId) {
+                            toast.error("Topic ID không hợp lệ.");
+                            return;
+                        }
+
+                        try {
+                            // Gọi API lấy tất cả từ vựng của topic, không giới hạn phân trang
+                            const res = await topicService.getTopicVocabularyDetail(topicId, 1, totalItems);
+
+                            if (!res.items || res.items.length === 0) {
+                                toast.error('Danh sách từ trống. Vui lòng thêm từ mới để luyện tập.');
+                                return;
+                            }
+
+                            localStorage.setItem("vocabularies", JSON.stringify(res.items));
+                            navigate("practice");
+                        } catch (error) {
+                            toast.error("Lấy toàn bộ flashcards thất bại. Vui lòng thử lại.");
+                        }
+                    }}
+                >
                     Luyện tập flashcards
                 </Button>
 
@@ -413,7 +447,11 @@ const FlashcardDetail: React.FC = () => {
                         pageCount={pageCount}
                         page={page}
                         onPageChange={setPage}
-                        itemsPerPage={itemsPerPage}
+                        containerSx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2,
+                        }}
                         renderItem={(f: FlashcardItem) => (
                             <FlashcardItemPaper
                                 key={f._id}

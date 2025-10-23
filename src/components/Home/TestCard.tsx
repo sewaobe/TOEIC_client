@@ -15,7 +15,7 @@ const TestCard: React.FC<ITestCard> = ({ _id, title, score, topic, countComment,
   return (
     <Box
       component={motion.div}
-      className="flex flex-col gap-2 p-3 rounded-xl shadow-md w-full sm:w-[calc(33.33%-16px)] lg:w-[calc(33.33%-16px)] hover:shadow-lg hover:scale-[1.02] transition-all duration-200 cursor-pointer"
+      className="flex flex-col gap-2 p-3 rounded-xl shadow-md w-full sm:w-[calc(33.33%-16px)] lg:w-[calc(33.33%-16px)] hover:shadow-lg hover:scale-[1.02] transition-all duration-200 cursor-pointer max-w-[470px]"
       sx={{ background: theme.palette.background.paper }}
       onClick={() => navigate(`/tests/${_id}`)}
     >

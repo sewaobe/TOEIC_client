@@ -22,6 +22,7 @@ body {
   background-color: #f5f7fd;
   scroll-behavior: smooth;
   overflow-x: hidden; /* Không ảnh hưởng scroll-y */
+  overflow-y: hidden;
 }
 
 input[type='password']::-ms-reveal,
@@ -50,7 +51,6 @@ input[type='password']::-ms-clear {
 .custom-scrollbar {
   overflow-y: scroll;
   scrollbar-width: thin; /* Firefox */
-  scrollbar-color: #a5b4fc #f5f7fd; /* Firefox */
 }
 
 /* Webkit (Chrome, Edge, Safari) */

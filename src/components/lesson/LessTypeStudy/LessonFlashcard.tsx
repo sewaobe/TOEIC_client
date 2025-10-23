@@ -1,6 +1,6 @@
 import { FC, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import Flashcard, { Word } from "../../flashCardItem/FlashCard";
+import Flashcard from "../../flashCardItem/FlashCard";
 import SpeechOptions from "../../flashCardItem/SpeechOptions";
 import EvaluationSection, { EvalType } from "../../flashCardItem/EvaluationSection";
 import { StatisticsModal, Log } from "../../flashCardItem/StatisticsModal";
@@ -9,6 +9,11 @@ import { flashCardService } from "../../../services/flashCard.service";
 import { FlashcardHistoryModal } from "../../flashCardItem/FlashCardHistory";
 import F5Modal from "../../modals/F5Modal";
 import { useNavigate } from "react-router-dom";
+import { FlashcardItem } from "../../modals/CreateFlashcardItemModal";
+
+export interface Word extends FlashcardItem {
+    weight?: number; // dùng để sắp xếp ưu tiên học
+}
 
 interface LessonFlashcardProps {
     vocabularies: Word[];

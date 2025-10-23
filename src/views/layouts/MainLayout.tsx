@@ -33,7 +33,7 @@ function MainLayout({ children }: MainLayoutProps) {
   };
 
   return (
-    <div>
+    <div className='max-h-screen custom-scrollbar'>
       <Navbar />
       <div className='pt-16'>
         {children}
@@ -49,7 +49,7 @@ function MainLayout({ children }: MainLayoutProps) {
       <Footer />
       <RightMenuDrawer onShowNotebook={setShowNotebook} onShowProgress={setShowLearningProgress} />
       <StudyNotebookFlip3D isOpen={showNotebook} onClose={() => setShowNotebook(false)} />
-      <LearningProgressModal isFirstVisitToday={showLearningProgress} setIsFirstVisitToday={setShowLearningProgress}/>
+      <LearningProgressModal isFirstVisitToday={showLearningProgress} setIsFirstVisitToday={setShowLearningProgress} />
     </div>
   );
 }

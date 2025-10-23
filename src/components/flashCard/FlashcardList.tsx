@@ -86,7 +86,7 @@ const FlashcardsList: React.FC<FlashcardsListProps> = ({ }) => {
             <Typography variant="h5" sx={{ mb: 4, fontWeight: 700 }}>
                 List từ đã tạo
             </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 4 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 4, width: "100%" }}>
                 {isLoading ? (
                     Array.from({ length: 4 }).map((_, index) => (
                         <Paper
@@ -109,13 +109,17 @@ const FlashcardsList: React.FC<FlashcardsListProps> = ({ }) => {
                     ))
                 ) : (
                     <AnimatePresence mode="popLayout">
-                        <div>
+                        <div className="w-full">
                             <PaginationContainer
                                 items={displayedItems}
                                 pageCount={pageCount}
-                                itemsPerPage={itemsPerPage}
                                 page={page}
                                 onPageChange={setPage}
+                                containerSx={{
+                                    display: 'grid',
+                                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+                                    gap: 2,
+                                }}
                                 renderItem={(item) => (
                                     <motion.div
                                         key={item._id}

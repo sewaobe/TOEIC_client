@@ -32,6 +32,7 @@ export interface FlashcardItem {
     phonetic?: string;
     examples?: { en: string; vi: string }[];
     notes?: string;
+    weight?:number;
 }
 
 const CreateFlashcardItemModal: React.FC<CreateFlashcardItemModalProps> = ({

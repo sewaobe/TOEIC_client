@@ -264,9 +264,14 @@ const ExamPage = () => {
             <PaginationContainer
               items={state.tests}
               pageCount={Number(state.totalPages)}
-              itemsPerPage={limit}
               page={state.page}
               onPageChange={(p) => fetchTests(p, state.searchValue)}
+              containerSx={{
+                display: "flex",
+                flexWrap: "wrap",
+                justifyContent: "center", // căn giữa cả hàng
+                gap: 2
+              }}
               renderItem={(t) => (
                 <TestCard
                   key={t.id}

@@ -4,55 +4,67 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
 interface ScrollToTopButtonProps {
   /**
-   * Ngưỡng cuộn (bằng pixel) để nút bắt đầu hiện ra.
+   * Ngưỡng cuộn (px) để nút hiện ra.
    * @default 1000
    */
   scrollThreshold?: number;
+
+  /**
+   * Selector của container scroll tùy chỉnh (VD: ".custom-scrollbar").
+   * Nếu không truyền, mặc định lắng nghe window.
+   */
+  scrollContainerSelector?: string;
 }
 
 const ScrollToTopButton: FC<ScrollToTopButtonProps> = ({
   scrollThreshold = 1000,
+  scrollContainerSelector = '.custom-scrollbar', // 🔹 default cho bạn
 }) => {
   const theme = useTheme();
   const [isVisible, setIsVisible] = useState(false);
+  const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
 
-  // Hàm xử lý việc hiển thị/ẩn nút dựa trên vị trí cuộn
-  const handleScroll = () => {
-    if (window.scrollY > scrollThreshold) {
-      setIsVisible(true);
+  // ✅ Lấy reference đến container scroll
+  useEffect(() => {
+    const el = document.querySelector(scrollContainerSelector) as HTMLElement | null;
+    setScrollEl(el);
+  }, [scrollContainerSelector]);
+
+  // ✅ Lắng nghe sự kiện cuộn của container (hoặc window nếu không có)
+  useEffect(() => {
+    if (!scrollEl) return;
+
+    const handleScroll = () => {
+      const scrollTop = scrollEl.scrollTop;
+      setIsVisible(scrollTop > scrollThreshold);
+    };
+
+    scrollEl.addEventListener('scroll', handleScroll);
+    return () => {
+      scrollEl.removeEventListener('scroll', handleScroll);
+    };
+  }, [scrollEl, scrollThreshold]);
+
+  // ✅ Cuộn container về đầu
+  const scrollToTop = () => {
+    if (scrollEl) {
+      scrollEl.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      setIsVisible(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
-
-  // Hàm xử lý việc cuộn lên đầu trang
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth',
-    });
-  };
-
-  useEffect(() => {
-    // Thêm event listener khi component được mount
-    window.addEventListener('scroll', handleScroll);
-
-    // Dọn dẹp event listener khi component unmount
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [scrollThreshold]); // Chỉ chạy lại effect nếu threshold thay đổi
 
   return (
     <Zoom in={isVisible}>
       <Fab
-        color='primary'
-        aria-label='scroll back to top'
+        color="primary"
+        aria-label="scroll back to top"
         onClick={scrollToTop}
         sx={{
           position: 'fixed',
-          bottom: theme.spacing(4), // Cách dưới 32px
-          right: theme.spacing(4), // Cách phải 32px
+          bottom: theme.spacing(4),
+          right: theme.spacing(4),
+          zIndex: 1500,
         }}
       >
         <KeyboardArrowUpIcon />

@@ -138,26 +138,26 @@ export const useFlashcardSession = ({
         if (!current && logs.length > 0 && currentAttempt) {
             onFinish?.();
             console.log("Hoàn thành luyện tập cá nhân!", currentAttempt);
-            // toast.promise(
-            //     flashCardService.submitAttemptFlashCard(
-            //         topicId,
-            //         currentAttempt.total,
-            //         currentAttempt.accuracy,
-            //         currentAttempt.started_at,
-            //         currentAttempt.finished_at,
-            //         currentAttempt.logs,
-            //         dayId,
-            //         activityId
-            //     ),
-            //     {
-            //         loading: "Đang lưu kết quả...",
-            //         success: () => {
-            //             setOpenStats(true);
-            //             return "Lưu thành công!";
-            //         },
-            //         error: "Lưu thất bại!",
-            //     }
-            // );
+            toast.promise(
+                flashCardService.submitAttemptFlashCard(
+                    topicId,
+                    currentAttempt.total,
+                    currentAttempt.accuracy,
+                    currentAttempt.started_at,
+                    currentAttempt.finished_at,
+                    currentAttempt.logs,
+                    "-1",
+                    "-1"
+                ),
+                {
+                    loading: "Đang lưu kết quả...",
+                    success: () => {
+                        setOpenStats(true);
+                        return "Lưu thành công!";
+                    },
+                    error: "Lưu thất bại!",
+                }
+            );
         }
     }, [current, logs, currentAttempt]);
 
@@ -168,7 +168,7 @@ export const useFlashcardSession = ({
         currentAttempt,
         openStats,
         setOpenStats,
-        handleEvaluate, 
+        handleEvaluate,
         initialTotal,             // tổng số từ ngay lúc bắt đầu
         remaining: queue.length,  // số từ còn lại trong queue
     };

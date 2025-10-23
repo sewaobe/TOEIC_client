@@ -1,16 +1,16 @@
-import { Word } from "../components/flashCardItem/FlashCard";
 import { Attempt } from "../components/flashCardItem/FlashCardHistory";
 import { Log } from "../components/flashCardItem/StatisticsModal";
+import { FlashcardItem } from "../components/modals/CreateFlashcardItemModal";
 import axiosClient from "./axiosClient";
 import { ApiResponse } from "./learningPath.service";
 
 
 export const flashCardService = {
-  getFlashcardById: async (id: string): Promise<{ topic_id: string, dataVocabularies: Word[] }> => {
+  getFlashcardById: async (id: string): Promise<{ topic_id: string, dataVocabularies: FlashcardItem[] }> => {
     const res = await axiosClient.get<ApiResponse<any[]>>(`/flash-card/${id}`);
     console.log('getFlashcardById', res);
-    // map từ API response sang Word[]
-    const words: Word[] = res.data ? res.data.map((item: any) => ({
+    // map từ API response sang FlashcardItem[]
+    const words: FlashcardItem[] = res.data ? res.data.map((item: any) => ({
       _id: item._id,
       word: item.word,
       meaning: item.definition,
@@ -39,7 +39,7 @@ export const flashCardService = {
           accuracy,
           started_at,
           finished_at,
-          duration: new Date(started_at).getTime() - new Date(finished_at).getTime()
+          duration: new Date(finished_at).getTime() - new Date(started_at).getTime()
         },
         logs,
         dayStudyId,

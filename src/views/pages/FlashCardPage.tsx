@@ -5,7 +5,7 @@ import AlertBox from '../../components/flashCardItem/AlertBox';
 import FlashcardsList from '../../components/flashCard/FlashcardList';
 import FlashcardsLearningSection from '../../components/flashCard/FlashcardLearningSection';
 import FlashcardsHeader from '../../components/flashCard/FlashCardHeader';
-
+import { VideoModal } from '../../components/modals/VideoModal';
 // src/mock/flashcardMock.ts
 export interface FlashcardList {
     _id: string;
@@ -19,7 +19,9 @@ export interface FlashcardList {
 const FlashcardsPage: React.FC = () => {
     const theme = useTheme();
     const [activeTab, setActiveTab] = useState<'myList' | 'learning' | 'explore'>('myList');
-
+    const [openVideoModal, setOpenVideoModal] = useState(false);
+    const handleOpen = () => setOpenVideoModal(true);
+    const handleClose = () => setOpenVideoModal(false);
     return (
         <MainLayout>
             <Box sx={{ p: { xs: 3, md: 6 }, bgcolor: theme.palette.background.default, minHeight: '100vh' }}>
@@ -41,13 +43,25 @@ const FlashcardsPage: React.FC = () => {
                             severity="info"
                             message={
                                 <>
-                                    Bạn có thể tạo flashcards từ highlights trong trang chi tiết kết quả bài thi.{' '}
-                                    <a
-                                        href="#"
-                                        style={{ textDecoration: 'underline', fontWeight: 600, color: theme.palette.primary.main }}
+                                    Bạn có thể tạo flashcards từ highlights trong trang chi tiết kết quả bài thi.{" "}
+                                    <Typography
+                                        component="span"
+                                        variant="body2"
+                                        onClick={handleOpen}
+                                        sx={{
+                                            color: "#1976d2", // Màu giống <a> mặc định của MUI (blue[700])
+                                            fontWeight: 500,
+                                            cursor: "pointer",
+                                            textDecoration: "none",
+                                            transition: "color 0.2s ease",
+                                            "&:hover": {
+                                                color: "#0d47a1", // xanh đậm hơn khi hover
+                                                textDecoration: "underline",
+                                            },
+                                        }}
                                     >
-                                        Xem hướng dẫn
-                                    </a>
+                                        Xem Video Giới Thiệu
+                                    </Typography>
                                 </>
                             }
                         />
@@ -63,6 +77,13 @@ const FlashcardsPage: React.FC = () => {
                     </Box>
                 </Box>
             </Box>
+
+            <VideoModal
+                open={openVideoModal}
+                onClose={handleClose}
+                videoUrl="https://youtu.be/RGNMCXzvt4s"
+                title="Giới thiệu về Flashcards"
+            />
         </MainLayout>
     );
 };

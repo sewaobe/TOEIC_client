@@ -1,0 +1,1770 @@
+[
+  {
+    "id": "BAO_TOEIC_001",
+    "title": "BAO TOEIC 001",
+    "description": "Kiểm thử giao diện Kết quả bài thi TOEIC",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "",
+      "Học viên đã đăng nhập": "",
+      "Học viên vừa làm đề thi": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Thực hiện bài thi và ấn nút \"Nộp bài\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị modal xác nhận với nội dung \"Bạn có chắc chắn muốn nộp bài không?\""
+      },
+      {
+        "type": "action",
+        "description": "Ấn nút \"Xác nhận\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị modal Kết quả bài thi TOEIC"
+      }
+    ]
+  },
+  {
+    "id": "BAO_TOEIC_002",
+    "title": "BAO TOEIC 002",
+    "description": "Kiểm thử để trống ô \"Tìm kiếm\" trong trang Tìm kiếm đề thi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "",
+      "Học viên đã đăng nhập": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Án vào chức năng \"Đề thi online\" trên thanh navbar"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống chuyển hướng sang trang Đề thi online bao gồm các thành phần tìm kiếm đề thi, thông tin cá nhân, kết quả tìm kiếm"
+      },
+      {
+        "type": "action",
+        "description": "Người dùng không nhập vô ô \"Tìm kiếm\" và ấn nút Tìm kiếm"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị thông báo \"Vui lòng nhập đề thi để tìm kiếm!\""
+      }
+    ]
+  },
+  {
+    "id": "BAO_TOEIC_003",
+    "title": "BAO TOEIC 003",
+    "description": "Kiểm thử gợi ý tìm kiếm trong trang Tìm kiếm đề thi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Tìm kiếm  = \"Economy\"",
+      "Học viên đã đăng nhập": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Án vào chức năng \"Đề thi online\" trên thanh navbar"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống chuyển hướng sang trang Đề thi online bao gồm các thành phần tìm kiếm đề thi, thông tin cá nhân, kết quả tìm kiếm"
+      },
+      {
+        "type": "action",
+        "description": "Người dùng nhập vào ô \"Tìm kiếm\" với giá trị \"Economy\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị gợi ý các đề thi gần đúng với từ khóa đó."
+      }
+    ]
+  },
+  {
+    "id": "BAO_TOEIC_004",
+    "title": "BAO TOEIC 004",
+    "description": "Kiểm thử tìm kiếm đề thi không tồn tại trong trang Tìm kiếm đề thi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Tìm kiếm  = \"New Economy TOEIC Test 11\"",
+      "Học viên đã đăng nhập": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Án vào chức năng \"Đề thi online\" trên thanh navbar"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống chuyển hướng sang trang Đề thi online bao gồm các thành phần tìm kiếm đề thi, thông tin cá nhân, kết quả tìm kiếm"
+      },
+      {
+        "type": "action",
+        "description": "Người dùng nhập vào ô \"Tìm kiếm\" với giá trị \"New Economy TOEIC Test 11\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị ở phần Kết quả tìm kiếm với nội dung \"Không tìm thấy kết quả phù hợp.\""
+      }
+    ]
+  },
+  {
+    "id": "BAO_TOEIC_005",
+    "title": "BAO TOEIC 005",
+    "description": "Kiểm thử để trống ô \"Viết bình luận\" trong phần Bình luận đề thi của trang Xem chi tiết đề thi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "",
+      "Học viên đã đăng nhập": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Án vào chức năng \"Đề thi online\" trên thanh navbar"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống chuyển hướng sang trang Đề thi online bao gồm các thành phần tìm kiếm đề thi, thông tin cá nhân, kết quả tìm kiếm"
+      },
+      {
+        "type": "action",
+        "description": "Người dùng ấn vào đề thi New Economy TOEIC Test 6"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống chuyển hướng sang trang Xem chi tiết Đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Người dùng kéo xuống phần bình luận và nhấn nút gửi với nội dung rỗng"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị con trỏ chuột với dạng \"not allow\" màu đỏ"
+      }
+    ]
+  },
+  {
+    "id": "BAO_TOEIC_006",
+    "title": "BAO TOEIC 006",
+    "description": "Kiểm thử nhập ô \"Viết bình luận\" trong phần Bình luận đề thi của trang Xem chi tiết đề thi với giá trị space",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "ô Viết bình luận = \"                              \"",
+      "Học viên đã đăng nhập": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Án vào chức năng \"Đề thi online\" trên thanh navbar"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống chuyển hướng sang trang Đề thi online bao gồm các thành phần tìm kiếm đề thi, thông tin cá nhân, kết quả tìm kiếm"
+      },
+      {
+        "type": "action",
+        "description": "Người dùng ấn vào đề thi New Economy TOEIC Test 6"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống chuyển hướng sang trang Xem chi tiết Đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Người dùng kéo xuống phần bình luận"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị tất cả nội dung bình luận của đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Người dùng nhập ô \"Viết bình luận\" với giá trị \"             \""
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển \"            \""
+      },
+      {
+        "type": "action",
+        "description": "Người dùng ấn vào nút gửi"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống không cho ấn vào nút gửi (Disable nút gửi)"
+      }
+    ]
+  },
+  {
+    "id": "BAO_TOEIC_007",
+    "title": "BAO TOEIC 007",
+    "description": "Kiểm thử nhập ô \"Viết bình luận\" trong phần Bình luận đề thi của trang Xem chi tiết đề thi với giá trị dài hơn 255 ký tự",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "ô Viết bình luận = \"Trong thời đại số, con người không ngừng tìm kiếm sự cân bằng giữa công việc và cuộc sống. Công nghệ hiện đại giúp kết nối nhanh hơn, nhưng cũng đòi hỏi khả năng quản lý thời gian và cảm xúc để duy trì hạnh phúc bền vững. Hay lắm nha\"",
+      "Học viên đã đăng nhập": ""
+    },
+    "steps": []
+  },
+  {
+    "id": "BAO_TOEIC_008",
+    "title": "BAO TOEIC 008",
+    "description": "Kiểm thử giao diện sau khi bình luận đề thi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "ô Viết bình luận = \"Đề này rất hay\"",
+      "Học viên đã đăng nhập": ""
+    },
+    "steps": []
+  },
+  {
+    "id": "TAM_TOEIC_001",
+    "title": "TAM TOEIC 001",
+    "description": "Kiểm thử để trống ô \"Tiêu đề đề thi\" khi chỉnh sửa đề thi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi \"test 4\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản Nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Xóa nội dung có sẵn ở ô Tiêu đề đề thi rồi nhấn  button Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị thông báo \"Vui lòng nhập đủ tiêu đề và chủ đề trước khi tiếp tục\", bên dưới input Tiêu đề đề thi hiển thị dòng chữ đỏ 'Vui lòng nhập tiêu đề đề thi'"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_002",
+    "title": "TAM TOEIC 002",
+    "description": "Kiểm thử để trống ô \"Chủ đề\" khi chỉnh sửa đề thi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi \"test 4\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản Nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Xóa nội dung có sẵn ở ô Chủ đề rồi nhấn button Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị thông báo \"Vui lòng nhập đủ tiêu đề và chủ đề trước khi tiếp tục\", bên dưới input Tiêu đề đề thi hiển thị dòng chữ đỏ 'Vui lòng nhập tiêu đề đề thi'"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_003",
+    "title": "TAM TOEIC 003",
+    "description": "Kiểm thử chỉnh sửa đề thi đang mở với vai trò cộng tác viên ",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi đang mở: \"New Economy TOEIC Test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Đang mở trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Quan sát đề thi \"New Economy TOEIC Test 2\""
+      },
+      {
+        "type": "assertion",
+        "description": "Biểu tượng button chỉnh sửa disable, nó màu xám khác với khi enable màu cam"
+      },
+      {
+        "type": "action",
+        "description": "Thử click vào button chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Không có gì xảy ra"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_004",
+    "title": "TAM TOEIC 004",
+    "description": "Kiểm thử sửa image hợp lệ cho câu hỏi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bảng nháp: \"test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Bấm Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 2)"
+      },
+      {
+        "type": "action",
+        "description": "Chọn một Group 1 trong Part 1"
+      },
+      {
+        "type": "assertion",
+        "description": "Tổng quan về Question 1 hiện ra (dropdown xổ xuống), và phần Media preview đã có ảnh trước đó"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Xóa góc trên bên phải của ảnh"
+      },
+      {
+        "type": "assertion",
+        "description": "Ảnh xóa khỏi Media preview"
+      },
+      {
+        "type": "action",
+        "description": "Chọn upload Images"
+      },
+      {
+        "type": "assertion",
+        "description": "Cửa sổ chọn ảnh hiện lên"
+      },
+      {
+        "type": "action",
+        "description": "Chọn một ảnh hợp lệ bất kỳ"
+      },
+      {
+        "type": "assertion",
+        "description": "Ảnh được cập nhật trong Media Preview"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_005",
+    "title": "TAM TOEIC 005",
+    "description": "Kiểm thử sửa image không hợp lệ cho câu hỏi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bảng nháp: \"test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Bấm Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 2)"
+      },
+      {
+        "type": "action",
+        "description": "Chọn một Group 1 trong Part 1"
+      },
+      {
+        "type": "assertion",
+        "description": "Tổng quan về Question 1 hiện ra (dropdown xổ xuống), và phần Media preview đã có ảnh trước đó"
+      },
+      {
+        "type": "action",
+        "description": "Chọn Upload Images"
+      },
+      {
+        "type": "assertion",
+        "description": "Cửa sổ để chọn ảnh hiện lên"
+      },
+      {
+        "type": "action",
+        "description": "Chọn một file bất kỳ không phải ảnh hợp lệ"
+      },
+      {
+        "type": "assertion",
+        "description": "File không được tải lên"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_006",
+    "title": "TAM TOEIC 006",
+    "description": "Kiểm thử upload nhiều image cho câu hỏi ở part 1, part 1 chỉ yêu cầu một ảnh cho một câu hỏi ",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bảng nháp: \"test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Bấm Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 2)"
+      },
+      {
+        "type": "action",
+        "description": "Chọn một Group 1 trong Part 1"
+      },
+      {
+        "type": "assertion",
+        "description": "Tổng quan về Question 1 hiện ra (dropdown xổ xuống)"
+      },
+      {
+        "type": "action",
+        "description": "Chọn Upload Images"
+      },
+      {
+        "type": "assertion",
+        "description": "Cửa sổ để chọn ảnh hiện lên"
+      },
+      {
+        "type": "action",
+        "description": "Chọn nhiều file ảnh hợp lệ bất kỳ"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị thông báo 'Bạn chỉ có thể upload tối đa  01 ảnh.'"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_007",
+    "title": "TAM TOEIC 007",
+    "description": "Kiểm thử sửa audio hợp lệ cho câu hỏi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bảng nháp: \"test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Bấm Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 2)"
+      },
+      {
+        "type": "action",
+        "description": "Chọn một Group 1 trong Part 1"
+      },
+      {
+        "type": "assertion",
+        "description": "Tổng quan về Question 1 hiện ra (dropdown xổ xuống) và Media preview đã có audio trước đó"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Xóa góc trên bên phải audio"
+      },
+      {
+        "type": "assertion",
+        "description": "Audio biến mất khỏi Media preview"
+      },
+      {
+        "type": "action",
+        "description": "Chọn Upload Audio"
+      },
+      {
+        "type": "assertion",
+        "description": "Cửa sổ chọn audio hiện ra"
+      },
+      {
+        "type": "action",
+        "description": "Chọn một file audio hợp lệ"
+      },
+      {
+        "type": "assertion",
+        "description": "Audio được tải lên và có thể thấy được trên Media preview"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_008",
+    "title": "TAM TOEIC 008",
+    "description": "Kiểm thử sửa audio không hợp lệ cho câu hỏi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bảng nháp: \"test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Bấm Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 2)"
+      },
+      {
+        "type": "action",
+        "description": "Chọn một Group 1 trong Part 1"
+      },
+      {
+        "type": "assertion",
+        "description": "Tổng quan về Question 1 hiện ra (dropdown xổ xuống) và Media preview đã có audio trước đó"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Xóa góc trên bên phải audio"
+      },
+      {
+        "type": "assertion",
+        "description": "Audio biến mất khỏi Media preview"
+      },
+      {
+        "type": "action",
+        "description": "Chọn Upload Audio"
+      },
+      {
+        "type": "assertion",
+        "description": "Cửa sổ chọn audio hiện ra"
+      },
+      {
+        "type": "action",
+        "description": "Chọn một file không phải audio hợp lệ"
+      },
+      {
+        "type": "assertion",
+        "description": "File không hợp lệ không được upload lên hệ thống"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_009",
+    "title": "TAM TOEIC 009",
+    "description": "Kiểm thử bỏ trống đáp án cho câu hỏi ",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bảng nháp: \"test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Bấm Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 2)"
+      },
+      {
+        "type": "action",
+        "description": "Chọn một Group 1 trong Part 1"
+      },
+      {
+        "type": "assertion",
+        "description": "Tổng quan về Question 1 hiện ra (dropdown xổ xuống)"
+      },
+      {
+        "type": "action",
+        "description": "Chọn dropdown Question 1"
+      },
+      {
+        "type": "assertion",
+        "description": "Chi tiết về Question 1 hiện ra (dropdown xổ xuống)"
+      },
+      {
+        "type": "action",
+        "description": "Xóa một đáp án bất kỳ rồi nhấn Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị thông báo \"Vui lòng điền đầy đủ thông tin trước khi tiếp tục\""
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_010",
+    "title": "TAM TOEIC 010",
+    "description": "Kiểm thử bỏ trống nội dung câu hỏi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bảng nháp: \"test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Bấm Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 2)"
+      },
+      {
+        "type": "action",
+        "description": "Chọn một Group 1 trong Part 1"
+      },
+      {
+        "type": "assertion",
+        "description": "Tổng quan về Question 1 hiện ra (dropdown xổ xuống)"
+      },
+      {
+        "type": "action",
+        "description": "Chọn dropdown Question 1"
+      },
+      {
+        "type": "assertion",
+        "description": "Chi tiết về Question 1 hiện ra (dropdown xổ xuống)"
+      },
+      {
+        "type": "action",
+        "description": "Xóa (để trống) nội dung câu hỏi bất kỳ rồi nhấn 'Tiếp Tục'"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị thông báo \"Vui lòng điền đầy đủ thông tin trước khi tiếp tục\""
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_011",
+    "title": "TAM TOEIC 011",
+    "description": "Kiểm thử chức năng chỉnh sửa sau khi cập nhật tất cả dữ liệu một cách hợp lệ và nhấn Lưu ",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bảng nháp: \"test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Chỉnh sửa các trường một cách hợp lệ rồi bấm Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 2)"
+      },
+      {
+        "type": "action",
+        "description": "Chỉnh sửa các trường một cách hợp lệ rồi bấm Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 3)"
+      },
+      {
+        "type": "action",
+        "description": "Chọn Lưu đề thi"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị thông báo \"Đề thi đã được cập nhật thành công\" và điều hường về trang Đề thi lớn (Full test)"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_012",
+    "title": "TAM TOEIC 012",
+    "description": "Kiểm thử bấm thoát khi đang chỉnh sửa ",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bản nháp: \"test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Chỉnh sửa Bất kỳ rồi nhấn Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 2)"
+      },
+      {
+        "type": "action",
+        "description": "Chỉnh sửa Bất kỳ rồi nhấn Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 3)"
+      },
+      {
+        "type": "action",
+        "description": "Bấm thoát"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị cảnh báo \"Bạn có chắc chắn muốn thoát, những thay đổi sẽ không được lưu lại?\""
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_013",
+    "title": "TAM TOEIC 013",
+    "description": "Kiểm thử chức năng chỉnh sửa sau khi cập nhật tất cả dữ liệu một cách hợp lệ nhưng không chọn Lưu ",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bảng nháp: \"test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Chỉnh sửa các trường một cách hợp lệ rồi bấm Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 2)"
+      },
+      {
+        "type": "action",
+        "description": "Chỉnh sửa các trường một cách hợp lệ rồi bấm Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 3)"
+      },
+      {
+        "type": "action",
+        "description": "Không chọn lưu, thoát ra rồi vào nhấn chỉnh sửa lại"
+      },
+      {
+        "type": "assertion",
+        "description": "Đề thi giữ nguyên như lúc đầu không có gì thay đổi"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_014",
+    "title": "TAM TOEIC 014",
+    "description": "Kiểm thử xóa hết, bỏ trống ảnh của câu hỏi ở Part 1",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bảng nháp: \"test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Chọn một Group 1 trong Part 1"
+      },
+      {
+        "type": "assertion",
+        "description": "Tổng quan về Question 1 hiện ra (dropdown xổ xuống), và phần Media preview đã có ảnh trước đó"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Xóa góc trên bên phải của ảnh"
+      },
+      {
+        "type": "assertion",
+        "description": "Ảnh xóa khỏi Media preview"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống thông báo \"Vui lòng điền đầy đủ thông tin trước khi tiếp tục\""
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_015",
+    "title": "TAM TOEIC 015",
+    "description": "Kiểm thử button quay lại ",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bảng nháp: \"test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn biểu tượng Sửa tại đề thi cần chỉnh sửa"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      },
+      {
+        "type": "action",
+        "description": "Chỉnh sửa các trường một cách hợp lệ rồi bấm Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 2)"
+      },
+      {
+        "type": "action",
+        "description": "Chỉnh sửa các trường một cách hợp lệ rồi bấm Tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 3)"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn Quay lại"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 2)"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn Quay lại"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa (step 1)"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_016",
+    "title": "TAM TOEIC 016",
+    "description": "Kiểm tra quyền truy cập trang chỉnh sửa khi chưa đăng nhập",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Người dùng truy cập URL chỉnh sửa bài thi có được từ đâu đó (cộng tác viên chưa đăng nhập nhưng biết URL, hoặc một ai đó được chia sẻ)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống tự động điều hướng về trang Login"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_017",
+    "title": "TAM TOEIC 017",
+    "description": "Kiểm tra quyền truy cập trang chỉnh sửa với vai trò học viên ",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "",
+      "Học viên đã đăng nhập thành công": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Học viên truy cập URL chỉnh sửa bài thi có được từ đâu đó"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống tự điều hướng về trang home"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_018",
+    "title": "TAM TOEIC 018",
+    "description": "Kiểm thử chức năng xóa đề thi bản nháp khi chọn \"OK\" trong popup xác nhận ",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bản nháp: \"test 4\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Click vào biểu tượng của nút Xóa của đề thi cần xóa"
+      },
+      {
+        "type": "assertion",
+        "description": "Popup xác nhận hiện lên"
+      },
+      {
+        "type": "action",
+        "description": "Chọn \"Có\""
+      },
+      {
+        "type": "assertion",
+        "description": "Đề thi bị xóa khỏi hệ thống và UI được cập nhật ngay sau đó"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_019",
+    "title": "TAM TOEIC 019",
+    "description": "Kiểm thử chức năng xóa đề thi bản nháp khi chọn \"Cancel\" trong popup xác nhận ",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi bản nháp: \"test 4\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Bản nháp trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Click vào biểu tượng của nút Xóa của đề thi cần xóa"
+      },
+      {
+        "type": "assertion",
+        "description": "Popup xác nhận hiện lên"
+      },
+      {
+        "type": "action",
+        "description": "Chọn \"Không\""
+      },
+      {
+        "type": "assertion",
+        "description": "Đề thi vẫn còn nguyên trên hệ thống"
+      }
+    ]
+  },
+  {
+    "id": "TAM_TOEIC_020",
+    "title": "TAM TOEIC 020",
+    "description": "Kiểm thử xóa với vai trò cộng tác viên với đề thi Đang mở",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi đang mở: \"New Economy TOEIC Test 2\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Đang mở trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Quan sát biểu tượng của nút Xóa của đề thi đang mở"
+      },
+      {
+        "type": "assertion",
+        "description": "Nút xóa disable, (có màu xám)"
+      },
+      {
+        "type": "action",
+        "description": "Thử click vào"
+      },
+      {
+        "type": "assertion",
+        "description": "Không có gì xảy ra"
+      }
+    ]
+  },
+  {
+    "id": "THANH_TOEIC_011",
+    "title": "THANH TOEIC 011",
+    "description": "Kiểm thử để trống \"tên đề\" của đề thi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "",
+      "Cộng tác viên đã đăng nhập thành công.": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn vô nút \"Tạo mới\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form bước 1: thông tin đề của tạo đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Không nhập \"Tên đề\" mà nhấn tiếp tục"
+      },
+      {
+        "type": "assertion",
+        "description": "Form vẫn ở bước 1. Hệ thống hiển thị thông báo lỗi dưới trường “Tên đề”: “Tên đề không được để trống.”"
+      }
+    ]
+  },
+  {
+    "id": "THANH_TOEIC_017",
+    "title": "THANH TOEIC 017",
+    "description": "Kiểm thử lưu khi để trống các trường của câu hỏi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Tên đề = \"Đề thi TOEIC 2025\"",
+      "Cộng tác viên đã đăng nhập thành công.": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn vô nút \"Tạo mới\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form bước 1: thông tin đề của tạo đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhập \"Tên đề\" với giá trị \"Đề thi TOEIC 2025\""
+      },
+      {
+        "type": "assertion",
+        "description": "Ô \"Tên đề\" hiện \"Đề thi TOEIC 2025\""
+      },
+      {
+        "type": "action",
+        "description": "Ấn \"Tiếp tục\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form bước 2: Thêm câu hỏi"
+      },
+      {
+        "type": "action",
+        "description": "Không điền bất kì giá trị gì và ấn \"Tiếp tục\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form bước 3: Xem trước & lưu"
+      },
+      {
+        "type": "action",
+        "description": "Ấn \"Lưu đề thi\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiện thông báo \"Vui lòng điền các thông tin cơ bản của các câu hỏi trước khi lưu\""
+      }
+    ]
+  },
+  {
+    "id": "THANH_TOEIC_018",
+    "title": "THANH TOEIC 018",
+    "description": "Kiểm thử lưu khi điền đầy đủ thông tin các trường của đề thi",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Tên đề = \"Đề thi TOEIC 2025\"",
+      "Cộng tác viên đã đăng nhập thành công.": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn vô nút \"Tạo mới\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form bước 1: thông tin đề của tạo đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhập \"Tên đề\" với giá trị \"Đề thi TOEIC 2025\""
+      },
+      {
+        "type": "assertion",
+        "description": "Ô \"Tên đề\" hiện \"Đề thi TOEIC 2025\""
+      },
+      {
+        "type": "action",
+        "description": "Ấn \"Tiếp tục\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form bước 2: Thêm câu hỏi"
+      },
+      {
+        "type": "action",
+        "description": "Điền tất cả các thông tin cần thiết và ấn \"Tiếp tục\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form bước 3: Xem trước & lưu"
+      },
+      {
+        "type": "action",
+        "description": "Ấn \"Lưu đề thi\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiện thông báo \"Lưu dề thi thành công\" và quay về trang danh sách đề thi"
+      }
+    ]
+  },
+  {
+    "id": "THANH_TOEIC_019",
+    "title": "THANH TOEIC 019",
+    "description": "Kiểm thử upload ảnh thành công",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "",
+      "Cộng tác viên đã đăng nhập thành công.": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn vô nút \"Tạo mới\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form bước 1: thông tin đề của tạo đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhập \"Tên đề\" với giá trị \"Đề thi TOEIC 2025\""
+      },
+      {
+        "type": "assertion",
+        "description": "Ô \"Tên đề\" hiện \"Đề thi TOEIC 2025\""
+      },
+      {
+        "type": "action",
+        "description": "Ấn \"Tiếp tục\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form bước 2: Thêm câu hỏi"
+      },
+      {
+        "type": "action",
+        "description": "Ân \"upload images\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiện cửa sổ chọn file"
+      },
+      {
+        "type": "action",
+        "description": "Chọn file ảnh và bấm \"open\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiện ảnh ở Media Preview"
+      }
+    ]
+  },
+  {
+    "id": "THANH_TOEIC_020",
+    "title": "THANH TOEIC 020",
+    "description": "Kiểm thử upload audio thành công",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "",
+      "Cộng tác viên đã đăng nhập thành công.": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Vào mục Đề thi lớn (Full Test)"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn vô nút \"Tạo mới\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form bước 1: thông tin đề của tạo đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Nhập \"Tên đề\" với giá trị \"Đề thi TOEIC 2025\""
+      },
+      {
+        "type": "assertion",
+        "description": "Ô \"Tên đề\" hiện \"Đề thi TOEIC 2025\""
+      },
+      {
+        "type": "action",
+        "description": "Ấn \"Tiếp tục\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form bước 2: Thêm câu hỏi"
+      },
+      {
+        "type": "action",
+        "description": "Ân \"upload audio\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiện cửa sổ chọn file"
+      },
+      {
+        "type": "action",
+        "description": "Chọn file audio và bấm \"open\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiện audio ở Media Preview"
+      }
+    ]
+  },
+  {
+    "id": "VINH_TOEIC_012",
+    "title": "VINH TOEIC 012",
+    "description": "Cập nhật hồ sơ với email và username hợp lệ",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "email = \"nguyenhuuvinh3702@gmail.com\"",
+      "Học viên đã đăng nhập thành công.": "username = \"Huu Vinh\""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Nhấn vào biểu tượng avatar bên trái chọn vào mục \"Trang cá nhân\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiện thị ra trang cá nhân"
+      },
+      {
+        "type": "action",
+        "description": "Chọn vào nút “Chỉnh sửa hồ sơ”"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa"
+      },
+      {
+        "type": "action",
+        "description": "Nhập email \"nguyenhuuvinh3702@gmail.com\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị email \"nguyenhuuvinh3702@gmail.com\""
+      },
+      {
+        "type": "action",
+        "description": "Nhập tên  \"Huu Vinh\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị tên \"Huu Vinh\""
+      },
+      {
+        "type": "action",
+        "description": "Nhấn nút \"Lưu\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị thông báo “Cập nhật thành công”; Hồ sơ hiển thị giá trị mới"
+      }
+    ]
+  },
+  {
+    "id": "VINH_TOEIC_013",
+    "title": "VINH TOEIC 013",
+    "description": "Cập nhật hồ sơ học viên với email học viên không đúngi định dạng",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "email = \"an@abc\"",
+      "Học viên đã đăng nhập thành công.": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Nhấn vào biểu tượng avatar bên trái chọn vào mục \"Trang cá nhân\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiện thị ra trang cá nhân"
+      },
+      {
+        "type": "action",
+        "description": "Chọn vào nút “Chỉnh sửa hồ sơ”"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa"
+      },
+      {
+        "type": "action",
+        "description": "Nhập email \"an@abc\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị email \"an@abc\""
+      },
+      {
+        "type": "action",
+        "description": "Không đổi tên học viên"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị tên học viên hiện tại."
+      },
+      {
+        "type": "action",
+        "description": "Nhấn nút \"Lưu\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị thông báo “Email có định dạng chưa hợp lệ”; quay lại bước cập nhật để chỉnh sửa lại"
+      }
+    ]
+  },
+  {
+    "id": "VINH_TOEIC_014",
+    "title": "VINH TOEIC 014",
+    "description": "Cập nhật hồ sơ với tên học viên không đúng định dạng, tên học viên chỉ được chứa kí tự chữ",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "username = \"123213\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Draft hoặc Pending trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Nhấn vào biểu tượng avatar bên trái chọn vào mục \"Trang cá nhân\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiện thị ra trang cá nhân"
+      },
+      {
+        "type": "action",
+        "description": "Chọn vào nút “Chỉnh sửa hồ sơ”"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa"
+      },
+      {
+        "type": "action",
+        "description": "Không đổi email"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị email của học viên hiện tại."
+      },
+      {
+        "type": "action",
+        "description": "Nhập tên học viên là 123213"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị tên học viên là \"Nhập tên học viên là 123213\""
+      },
+      {
+        "type": "action",
+        "description": "Nhấn nút \"Lưu\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị thông báo \"Tên học viên không hợp lệ chưa dúng định dạng”; quay lại bước cập nhật để chỉnh sửa lại"
+      }
+    ]
+  },
+  {
+    "id": "VINH_TOEIC_015",
+    "title": "VINH TOEIC 015",
+    "description": "Cập nhật hồ sơ học với hình ảnh không đúng định dạng ví dụ như (.txt, .rar, .exe, ...)",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "Đề thi mẫu (Pending): \"New Economy TOEIC Test 6\"",
+      "Cộng tác viên đã đăng nhập thành công.": "",
+      "Có ít nhất 1 đề thi ở trạng thái Draft hoặc Pending trong hệ thống": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Nhấn vào biểu tượng avatar bên trái chọn vào mục \"Trang cá nhân\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị danh sách đề thi"
+      },
+      {
+        "type": "action",
+        "description": "Chọn vào nút “Chỉnh sửa hồ sơ”"
+      },
+      {
+        "type": "assertion",
+        "description": "Hiển thị form chỉnh sửa"
+      },
+      {
+        "type": "action",
+        "description": "Chọn vào avatar học viên."
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị hộp thoại chọn file hình ảnh được hiển thị ra"
+      },
+      {
+        "type": "action",
+        "description": "Chọn file có định dạng .txt"
+      },
+      {
+        "type": "assertion",
+        "description": "Ảnh avatar không thay đổi, người quay lại bước chọn ảnh để chọn ảnh đúng định dạng"
+      }
+    ]
+  },
+  {
+    "id": "VINH_TOEIC_016",
+    "title": "VINH TOEIC 016",
+    "description": "Reset mật khẩu trong phần quên mật khẩu với giá trị OTP không đủ 6 ký tự số",
+    "category": "functional",
+    "priority": "Medium",
+    "test_data": {
+      "Chương trình chạy được": "email = \"nguyenhuuvinh3701@gmail.com\"",
+      "Tài khoản với email đã tồn tại trước đó": ""
+    },
+    "steps": [
+      {
+        "type": "action",
+        "description": "Nhấn vào nút \"Đăng nhập\" ở góc bên trái màn hình"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị ra trang đăng nhập"
+      },
+      {
+        "type": "action",
+        "description": "Nhấn vào dòng chữ quên mật khẩu"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị trang nhập email để trả về OTP"
+      },
+      {
+        "type": "action",
+        "description": "Nhập email = \"nguyenhuuvinh3701@gmail.com\""
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống thông báo lưu thành công"
+      },
+      {
+        "type": "action",
+        "description": "Nhập OTP với giá trị nhỏ hơn 6 kí tự số"
+      },
+      {
+        "type": "assertion",
+        "description": "Hệ thống hiển thị thông báo \"OTP phải đủ 6 ký tự\", người dùng nhập lại OTP"
+      }
+    ]
+  }
+]

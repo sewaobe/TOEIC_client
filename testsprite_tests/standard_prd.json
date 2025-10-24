@@ -1,0 +1,55 @@
+{
+  "project_name": "TOEIC_client",
+  "description": "TOEIC Learning Platform Frontend Application",
+  "features": [
+    {
+      "name": "User Authentication",
+      "description": "Login, registration, password reset functionality",
+      "requirements": [
+        "Users can log in with valid credentials",
+        "Users can register new accounts",
+        "Password reset via email OTP",
+        "Form validation for email and password fields"
+      ]
+    },
+    {
+      "name": "Test Management",
+      "description": "Create, edit, and manage TOEIC tests",
+      "requirements": [
+        "Collaborators can create new tests",
+        "Tests can be edited when in draft status",
+        "Image and audio uploads for test questions",
+        "Form validation for required fields"
+      ]
+    },
+    {
+      "name": "Test Taking",
+      "description": "Students can take TOEIC tests",
+      "requirements": [
+        "Display test questions with media",
+        "Timer functionality",
+        "Answer submission and result display",
+        "Test history tracking"
+      ]
+    },
+    {
+      "name": "User Profile",
+      "description": "User profile management",
+      "requirements": [
+        "View and edit personal information",
+        "Upload profile pictures",
+        "Email and username validation"
+      ]
+    },
+    {
+      "name": "Test Search and Comments",
+      "description": "Search tests and leave comments",
+      "requirements": [
+        "Search tests by name",
+        "View test details",
+        "Add comments to tests",
+        "Comment validation"
+      ]
+    }
+  ]
+}

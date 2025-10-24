@@ -13,6 +13,7 @@ import { StatisticsModal } from '../../components/flashCardItem/StatisticsModal'
 import { toast } from 'sonner';
 import PracticeCompletionCard from '../../components/flashCard/PracticeCompletionCard';
 import { useNavigate } from 'react-router-dom';
+import F5Modal from '../../components/modals/F5Modal';
 
 export default function PracticeFlashcardPage() {
   const [words, setWords] = useState<FlashcardItem[]>([]);
@@ -182,6 +183,22 @@ export default function PracticeFlashcardPage() {
             logs={currentAttempt.logs}
           />
         )}
+
+        <F5Modal
+          title="Cảnh báo rời trang"
+          content="Bạn có muốn lưu tiến độ học hiện tại trước khi rời trang không?"
+          onConfirm={() => {
+            // Lưu tiến độ học vào localStorage
+            const progressData = {
+              timestamp: Date.now(),
+              completedWords: logs.map(log => log.vocab_id),
+            };
+            console.log("Current Attempt:", currentAttempt);
+            localStorage.setItem('flashcardPracticeProgress', JSON.stringify(progressData));
+            // Rời trang
+            navigate(`/flash-cards/${topicId}`);
+          }}
+        />
       </div>
     </MainLayout>
   );

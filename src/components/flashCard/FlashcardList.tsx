@@ -6,19 +6,21 @@ import { FlashcardList } from '../../views/pages/FlashCardPage';
 import CreateFlashcardModal from '../modals/CreateFlashcardModal';
 import { toast } from 'sonner';
 import { topicService } from '../../services/topic.service';
-import { useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { FlashcardExplore } from './ExploreCard';
 
 interface FlashcardsListProps {
-
+    activeTab: 'myList' | 'learning' | 'explore';
+    title: string;
 }
 
-const FlashcardsList: React.FC<FlashcardsListProps> = ({ }) => {
+const FlashcardsList: React.FC<FlashcardsListProps> = ({ activeTab, title }) => {
     const [openCreateModal, setOpenCreateModal] = useState(false);
     const [flashcardItems, setFlashcardItems] = useState<FlashcardList[]>([]);
+    const [exploreData, setExploreData] = useState<FlashcardExplore[]>([]);
     const [page, setPage] = useState(1);
     const [pageCount, setPageCount] = useState(0);
-    const itemsPerPage = 7;
+    const itemsPerPage = 9;
     const [isLoading, setIsLoading] = useState(false);
 
     const fetchFlashcardItems = async () => {
@@ -34,9 +36,32 @@ const FlashcardsList: React.FC<FlashcardsListProps> = ({ }) => {
         }
     }
 
+    const fetchExploreItems = async () => {
+        try {
+            setIsLoading(true);
+            const res = await topicService.getTopicVocabularyExplore(page, itemsPerPage);
+            setExploreData(res.items);
+            setPageCount(res.pageCount);
+        }
+        catch (err) {
+            toast.error('Lấy danh sách list từ thất bại. Vui lòng thử lại.');
+        }
+        finally {
+            setIsLoading(false);
+        }
+    }
+
     useEffect(() => {
+        if (activeTab === 'explore') {
+            fetchExploreItems();
+            return;
+        }
         fetchFlashcardItems();
     }, [page]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [activeTab]);
 
     const handleCreateCard = () => {
         setOpenCreateModal(true);
@@ -84,7 +109,7 @@ const FlashcardsList: React.FC<FlashcardsListProps> = ({ }) => {
     return (
         <>
             <Typography variant="h5" sx={{ mb: 4, fontWeight: 700 }}>
-                List từ đã tạo
+                {title}
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 4, width: "100%" }}>
                 {isLoading ? (
@@ -111,13 +136,17 @@ const FlashcardsList: React.FC<FlashcardsListProps> = ({ }) => {
                     <AnimatePresence mode="popLayout">
                         <div className="w-full">
                             <PaginationContainer
-                                items={displayedItems}
+                                items={activeTab === 'explore' ? exploreData : displayedItems}
                                 pageCount={pageCount}
                                 page={page}
                                 onPageChange={setPage}
-                                containerSx={{
+                                contentSx={{
                                     display: 'grid',
-                                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+                                    gridTemplateColumns: {
+                                        xs: '1fr',
+                                        sm: '1fr 1fr',
+                                        md: '1fr 1fr 1fr',
+                                    },
                                     gap: 2,
                                 }}
                                 renderItem={(item) => (
@@ -137,6 +166,7 @@ const FlashcardsList: React.FC<FlashcardsListProps> = ({ }) => {
                                             item={item}
                                             onCreateCard={handleCreateCard}
                                             onDelete={handleDelete}
+                                            type={activeTab}
                                         />
                                     </motion.div>
                                 )}

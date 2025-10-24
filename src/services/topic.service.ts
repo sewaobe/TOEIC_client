@@ -1,3 +1,4 @@
+import { FlashcardExplore } from "../components/flashCard/ExploreCard";
 import { FlashcardList } from "../views/pages/FlashCardPage";
 import axiosClient from "./axiosClient"
 
@@ -17,6 +18,20 @@ export const topicService = {
         })
         return res.data
     },
+    getTopicVocabularyExplore: async (page = 1, limit = 7): Promise<{
+        items: FlashcardExplore[];
+        total: number;
+        page: number;
+        pageCount: number;
+    }> => {
+        const res = await axiosClient.get(`${BASE_URL}/explore`, {
+            params: {
+                page,
+                limit
+            }
+        })
+        return res.data
+    },
     createTopicVocabulary: async (data: any) => {
         const res = await axiosClient.post(`${BASE_URL}`, data)
         return res.data
@@ -29,7 +44,7 @@ export const topicService = {
         const res = await axiosClient.delete(`${BASE_URL}/${id}`)
         return res.data
     },
-    getTopicVocabularyDetail: async (topicId: string, page=1, limit=10) => {
+    getTopicVocabularyDetail: async (topicId: string, page = 1, limit = 10) => {
         const res = await axiosClient.get(`${BASE_URL}/${topicId}`, {
             params: {
                 page,

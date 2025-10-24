@@ -12,16 +12,14 @@ interface PaginationContainerProps<T> {
   onPageChange?: (page: number) => void;
   /** Hàm render từng item */
   renderItem: (item: T, index: number) => React.ReactNode;
-  /** Layout tuỳ chỉnh (tuỳ component cha quyết định) */
+  /** Style tùy chỉnh cho phần nội dung */
+  contentSx?: object;
+  /** Style cho toàn bộ container */
   containerSx?: object;
-  /** Có hiển thị pagination bar không (một số page có thể muốn ẩn) */
+  /** Ẩn pagination (ví dụ khi chỉ có 1 trang) */
   hidePagination?: boolean;
 }
 
-/**
- * PaginationContainer: chỉ xử lý logic phân trang và render.
- * Layout hiển thị item được định nghĩa bởi component cha.
- */
 function PaginationContainer<T>({
   items,
   pageCount,
@@ -29,14 +27,32 @@ function PaginationContainer<T>({
   onPageChange,
   renderItem,
   containerSx,
+  contentSx,
   hidePagination = false,
 }: PaginationContainerProps<T>) {
   return (
-    <Box sx={{ width: '100%', ...containerSx }}>
-      {/* Các phần tử hiển thị - cha quyết định kiểu layout */}
-      {items.map((item, index) => renderItem(item, index))}
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100%',
+        minHeight: '100%',
+        justifyContent: 'space-between', // đảm bảo pagination nằm cuối
+        ...containerSx,
+      }}
+    >
+      {/* Nội dung (list item, grid, card...) */}
+      <Box sx={{ flex: 1, width: '100%', ...contentSx }}>
+        {items.length > 0 ? (
+          items.map((item, index) => renderItem(item, index))
+        ) : (
+          <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}>
+            Không có dữ liệu
+          </Box>
+        )}
+      </Box>
 
-      {/* Thanh phân trang */}
+      {/* Thanh phân trang ở dưới cùng */}
       {!hidePagination && pageCount > 1 && (
         <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
           <Pagination

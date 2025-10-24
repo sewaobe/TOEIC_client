@@ -17,7 +17,7 @@ import PaginationContainer from '../../components/common/PaginationContainer';
 import CreateFlashcardItemModal, { FlashcardItem } from '../../components/modals/CreateFlashcardItemModal';
 import CreateFlashcardModal from '../../components/modals/CreateFlashcardModal';
 import MainLayout from '../layouts/MainLayout';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { topicService } from '../../services/topic.service';
 import { uploadToCloudinaryFromString } from '../../services/cloudinary.service';
@@ -29,6 +29,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import { useSpeech } from '../../hooks/useSpeech';
 
 export const FlashcardItemPaper = ({
     f,
@@ -48,6 +49,8 @@ export const FlashcardItemPaper = ({
     const handleToggle = () => {
         setExpandedId(isExpanded ? null : f._id || null);
     };
+
+    const { speak } = useSpeech();
 
     return (
         <Paper
@@ -81,6 +84,7 @@ export const FlashcardItemPaper = ({
                         <VolumeUpIcon
                             fontSize="small"
                             sx={{ cursor: "pointer", color: "primary.main" }}
+                            onClick={() => speak(f.word)}
                         />
                         <IconButton size="small" onClick={() => handleOpenItemModal(f)}>
                             <EditIcon fontSize="small" />
@@ -217,6 +221,8 @@ const FlashcardDetail: React.FC = () => {
     const itemsPerPage = 5;
     const location = useLocation();
     const topicId = location.pathname.split("/").pop();
+    const [searchParams] = useSearchParams();
+    const type = searchParams.get("type");
     const [flashcardInfo, setFlashcardInfo] = useState<{ title: string; tags: string[]; description: string } | null>(() => {
         const storedInfo = localStorage.getItem('flashcardInfo');
         return storedInfo ? JSON.parse(storedInfo) : null;
@@ -260,6 +266,10 @@ const FlashcardDetail: React.FC = () => {
     }, [page])
 
     const handleDelete = async (id: string) => {
+        if(type === 'explore') {
+            toast.error('Bạn không có quyền chỉnh sửa từ trong danh sách khám phá.');
+            return;
+        }
         try {
             if (topicId) {
                 await vocabularyService.deleteVocabulary(id, topicId);
@@ -273,6 +283,10 @@ const FlashcardDetail: React.FC = () => {
 
     // Mở modal tạo mới / chỉnh sửa
     const handleOpenItemModal = (item?: FlashcardItem) => {
+        if(type === 'explore') {
+            toast.error('Bạn không có quyền chỉnh sửa từ trong danh sách khám phá.');
+            return;
+        }
         setEditWord(item);
         setOpenItemModal(true);
     };
@@ -337,15 +351,19 @@ const FlashcardDetail: React.FC = () => {
                     }}>
                         Flashcards: Chủ đề {flashcardInfo ? flashcardInfo.title : 'đang bị lỗi'}
                     </Typography>
-                    <Button variant="contained" size="small" onClick={() => setOpenCreateModal(true)} sx={{ ml: 'auto' }}>
-                        Chỉnh sửa
-                    </Button>
-                    <Button variant="contained" size="small" onClick={() => handleOpenItemModal()}>
-                        Thêm từ mới
-                    </Button>
-                    <Button variant="contained" size="small" onClick={() => setOpenBatchModal(true)}>
-                        Tạo hàng loạt
-                    </Button>
+                    {type === 'myList' && (
+                        <>
+                            <Button variant="contained" size="small" onClick={() => setOpenCreateModal(true)} sx={{ ml: 'auto' }}>
+                                Chỉnh sửa
+                            </Button>
+                            <Button variant="contained" size="small" onClick={() => handleOpenItemModal()}>
+                                Thêm từ mới
+                            </Button>
+                            <Button variant="contained" size="small" onClick={() => setOpenBatchModal(true)}>
+                                Tạo hàng loạt
+                            </Button>
+                        </>
+                    )}
                 </Box>
 
                 {/* Info box */}
@@ -447,7 +465,7 @@ const FlashcardDetail: React.FC = () => {
                         pageCount={pageCount}
                         page={page}
                         onPageChange={setPage}
-                        containerSx={{
+                        contentSx={{
                             display: 'flex',
                             flexDirection: 'column',
                             gap: 2,

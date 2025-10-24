@@ -22,6 +22,7 @@ const FlashcardsPage: React.FC = () => {
     const [openVideoModal, setOpenVideoModal] = useState(false);
     const handleOpen = () => setOpenVideoModal(true);
     const handleClose = () => setOpenVideoModal(false);
+
     return (
         <MainLayout>
             <Box sx={{ p: { xs: 3, md: 6 }, bgcolor: theme.palette.background.default, minHeight: '100vh' }}>
@@ -67,12 +68,10 @@ const FlashcardsPage: React.FC = () => {
                         />
 
                         {/* Nội dung thay đổi theo activeTab */}
-                        {activeTab === 'myList' && <FlashcardsList />}
+                        {activeTab === 'myList' && <FlashcardsList activeTab='myList' title="List từ đã tạo"/>}
                         {activeTab === 'learning' && <FlashcardsLearningSection />}
                         {activeTab === 'explore' && (
-                            <Typography sx={{ mt: 2, color: 'text.secondary' }}>
-                                Khám phá flashcards mới tại đây...
-                            </Typography>
+                            <FlashcardsList activeTab='explore' title="Khám Phá Flashcards Mới"/>
                         )}
                     </Box>
                 </Box>

@@ -30,6 +30,8 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { useSpeech } from '../../hooks/useSpeech';
+import ContinueLearningFLModal from '../../components/modals/ContinueLearningFLModal';
+import { flashCardProgressService } from '../../services/flashcard_progress.service';
 
 export const FlashcardItemPaper = ({
     f,
@@ -214,7 +216,6 @@ export const FlashcardItemPaper = ({
 const FlashcardDetail: React.FC = () => {
     const [flashcards, setFlashcards] = useState<FlashcardItem[]>([]);
     const [expandedId, setExpandedId] = useState<string | null>(null);
-
     const [page, setPage] = useState(1);
     const [pageCount, setPageCount] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
@@ -266,7 +267,7 @@ const FlashcardDetail: React.FC = () => {
     }, [page])
 
     const handleDelete = async (id: string) => {
-        if(type === 'explore') {
+        if (type === 'explore') {
             toast.error('Bạn không có quyền chỉnh sửa từ trong danh sách khám phá.');
             return;
         }
@@ -283,7 +284,7 @@ const FlashcardDetail: React.FC = () => {
 
     // Mở modal tạo mới / chỉnh sửa
     const handleOpenItemModal = (item?: FlashcardItem) => {
-        if(type === 'explore') {
+        if (type === 'explore') {
             toast.error('Bạn không có quyền chỉnh sửa từ trong danh sách khám phá.');
             return;
         }
@@ -341,6 +342,21 @@ const FlashcardDetail: React.FC = () => {
     };
     const [openCreateModal, setOpenCreateModal] = useState(false);
     const navigate = useNavigate();
+    const [openContinueModal, setOpenContinueModal] = useState(false);
+    const [sessionId, setSessionId] = useState<string | null>(null);
+    useEffect(() => {
+        const fetchSession = async () => {
+            if (topicId) {
+                const sessions = await flashCardProgressService.getAllActiveSessionsByUser();
+                const currentSession = sessions.items.find((session: any) => session.topic._id === topicId);
+                if (currentSession) {
+                    setSessionId(currentSession.session_id);
+                    setOpenContinueModal(true);
+                }
+            }
+        }
+        fetchSession();
+    }, [topicId]);
     return (
         <MainLayout>
             <Box sx={{ p: { xs: 2, md: 6 }, maxWidth: 900, mx: 'auto' }}>
@@ -378,25 +394,7 @@ const FlashcardDetail: React.FC = () => {
                     variant="contained"
                     fullWidth sx={{ mb: 1 }}
                     onClick={async () => {
-                        if (!topicId) {
-                            toast.error("Topic ID không hợp lệ.");
-                            return;
-                        }
-
-                        try {
-                            // Gọi API lấy tất cả từ vựng của topic, không giới hạn phân trang
-                            const res = await topicService.getTopicVocabularyDetail(topicId, 1, totalItems);
-
-                            if (!res.items || res.items.length === 0) {
-                                toast.error('Danh sách từ trống. Vui lòng thêm từ mới để luyện tập.');
-                                return;
-                            }
-
-                            localStorage.setItem("vocabularies", JSON.stringify(res.items));
-                            navigate("practice");
-                        } catch (error) {
-                            toast.error("Lấy toàn bộ flashcards thất bại. Vui lòng thử lại.");
-                        }
+                        navigate("practice");
                     }}
                 >
                     Luyện tập flashcards
@@ -522,6 +520,25 @@ const FlashcardDetail: React.FC = () => {
                     open={openBatchModal}
                     onClose={() => setOpenBatchModal(false)}
                     onSave={handleSaveBatch}
+                />
+
+                {/* Continue modal */}
+                <ContinueLearningFLModal
+                    open={openContinueModal}
+                    topicTitle={flashcardInfo ? flashcardInfo.title : 'bài học này'}
+                    onClose={async () => {
+                        if (sessionId) {
+                            await flashCardProgressService.removeSession(sessionId);
+                        }
+                        setOpenContinueModal(false)
+                    }}
+                    onContinue={() => {
+                        setOpenContinueModal(false);
+                        if (sessionId) {
+                            localStorage.setItem("flashcard_session_id", sessionId);
+                            navigate(`/flash-cards/${topicId}/practice`);
+                        }
+                    }}
                 />
             </Box>
         </MainLayout>

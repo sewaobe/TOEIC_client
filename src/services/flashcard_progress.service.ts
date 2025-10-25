@@ -45,7 +45,12 @@ export const flashCardProgressService = {
         const res = await axiosClient.get(`${BASE_URL}/active-by-user`, {
             params: { page, limit }
         });
-        console.log(res);
+        const sessionItems = res.data.items.map((item: LearningFlashcard) => ({
+            session_id: item.session_id,
+            topic_vocabulary_id: item.topic._id,
+        }));
+
+        localStorage.setItem('learningFlashcardSessions', JSON.stringify(sessionItems));
         return res.data;
     },
 
@@ -70,4 +75,13 @@ export const flashCardProgressService = {
         });
         return res.data; // { message, attempt }
     },
+
+    removeSession: async (sessionId: string) => {
+        const res = await axiosClient.delete(`${BASE_URL}/remove/${sessionId}`);
+        if (res.success) {
+            await flashCardProgressService.getAllActiveSessionsByUser();
+            localStorage.removeItem("flashcard_session_id");
+        }
+        return res.data; // { message, session }
+    }
 };

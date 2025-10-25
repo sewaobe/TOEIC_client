@@ -12,23 +12,42 @@ import { useFlashcardSession } from '../../hooks/useFlashcardSession';
 import { StatisticsModal } from '../../components/flashCardItem/StatisticsModal';
 import { toast } from 'sonner';
 import PracticeCompletionCard from '../../components/flashCard/PracticeCompletionCard';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import F5Modal from '../../components/modals/F5Modal';
 import { flashCardProgressService } from '../../services/flashcard_progress.service';
+import { topicService } from '../../services/topic.service';
 
 export default function PracticeFlashcardPage() {
+  const location = useLocation();
+  const topicId = location.pathname.split('/')[2] || '';
   const [words, setWords] = useState<FlashcardItem[]>([]);
-  const [topicId, setTopicId] = useState<string>('');
   const [voice, setVoice] = useState<'US' | 'UK'>('US');
 
-  useEffect(() => {
-    const stored = localStorage.getItem('vocabularies');
-    if (stored) setWords(JSON.parse(stored));
+  const fetchData = async (topicId: string) => {
+    try {
+      // Gọi API lấy tất cả từ vựng của topic, không giới hạn phân trang
+      const res = await topicService.getTopicVocabularyDetail(topicId, 1, 100);
 
-    const storedTopicId = localStorage.getItem('flashcardInfo');
-    if (storedTopicId) {
-      const parsedInfo = JSON.parse(storedTopicId);
-      setTopicId(parsedInfo._id || '');
+      if (!res.items || res.items.length === 0) {
+        toast.error('Danh sách từ trống. Vui lòng thêm từ mới để luyện tập.');
+        return;
+      }
+
+      setWords(res.items);
+    } catch (error) {
+      toast.error("Lấy toàn bộ flashcards thất bại. Vui lòng thử lại.");
+    }
+  }
+  useEffect(() => {
+    if (!topicId) {
+      toast.error("Topic ID không hợp lệ.");
+      return;
+    }
+
+    fetchData(topicId);
+
+    return () => {
+      localStorage.removeItem("flashcard_session_id");
     }
   }, []);
 
@@ -46,6 +65,7 @@ export default function PracticeFlashcardPage() {
     vocabularies: words,
     topicId,
     withWeight: false,
+    resumeSessionId: localStorage.getItem("flashcard_session_id") || undefined,
     onFinish: () => console.log('Hoàn thành luyện tập cá nhân!'),
   });
   const uniqueWords = useMemo(() => {

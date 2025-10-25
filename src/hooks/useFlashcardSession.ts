@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { EvalType } from "../components/flashCardItem/EvaluationSection";
 import { FlashcardItem } from "../components/modals/CreateFlashcardItemModal";
 import { flashCardProgressService } from "../services/flashcard_progress.service";
-// import { lessonFlashcardService } from "../services/lesson_flashcard.service"; // sẽ dùng cho dayId sau
+// import { lessonFlashcardService } from "../services/lesson_flashcard.service"; // (future)
 
 export interface Log {
     vocab_id: string;
@@ -26,8 +26,9 @@ export interface Attempt {
 interface UseFlashcardSessionProps {
     vocabularies: FlashcardItem[];
     topicId: string;
-    dayId?: string;       // nếu có → bài học
-    activityId?: string;  // hoạt động trong bài học
+    dayId?: string;
+    activityId?: string;
+    resumeSessionId?: string; // 🔄 nếu có → load lại session
     withWeight?: boolean;
     onFinish?: () => void;
 }
@@ -37,6 +38,7 @@ export const useFlashcardSession = ({
     topicId,
     dayId,
     activityId,
+    resumeSessionId,
     withWeight = false,
     onFinish,
 }: UseFlashcardSessionProps) => {
@@ -48,42 +50,59 @@ export const useFlashcardSession = ({
     const [initialTotal, setInitialTotal] = useState(0);
     const [isFinished, setIsFinished] = useState(false);
 
-    // 🔹 1. Khởi tạo queue + tạo session
+    // 🧩 1. Khởi tạo hoặc khôi phục session
     useEffect(() => {
-        if (!vocabularies.length) return;
+        if (!vocabularies.length || isFinished) return; // chặn khi đã hoàn thành
 
-        let sorted = [...vocabularies];
-        sorted = withWeight
-            ? sorted.sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0))
-            : sorted.sort(() => Math.random() - 0.5);
+        const initSession = async () => {
+            try {
+                // Nếu có session_id => resume
+                if (resumeSessionId) {
+                    const res = await flashCardProgressService.getSession(resumeSessionId);
+                    const progress = res.progress;
 
-        setQueue(sorted);
-        setInitialTotal(sorted.length);
-        setCurrent(sorted[0]);
-        setLogs([]);
-        setStartTime(Date.now());
+                    // Map vocabularies theo id
+                    const vocabMap = new Map(vocabularies.map((v) => [v._id ?? v.word, v]));
 
-        // ⚡ PHÂN NHÁNH: luyện tập hay bài học
-        const orderIds = sorted.map((v) => v._id ?? v.word);
-        if (!dayId) {
-            // ✅ Luyện tập cá nhân
-            flashCardProgressService
-                .startSession(topicId, orderIds)
-                .then((res) => {
+                    const orderedQueue = progress.order_queue
+                        .map((id: string) => vocabMap.get(id))
+                        .filter((v: FlashcardItem | undefined): v is FlashcardItem => !!v);
+
+                    setQueue(orderedQueue);
+                    setCurrent(orderedQueue[progress.current_index] ?? orderedQueue[0] ?? null);
+                    setLogs(progress.logs ?? []);
+                    setInitialTotal(orderedQueue.length);
+                    setStartTime(Date.now());
+
+                    localStorage.setItem("flashcard_session_id", progress.session_id);
+                    toast.success("🔄 Đã khôi phục phiên học trước đó");
+                } else {
+                    // Nếu không có → tạo session mới
+                    let sorted = [...vocabularies];
+                    sorted = withWeight
+                        ? sorted.sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0))
+                        : sorted.sort(() => Math.random() - 0.5);
+
+                    setQueue(sorted);
+                    setCurrent(sorted[0]);
+                    setLogs([]);
+                    setInitialTotal(sorted.length);
+                    setStartTime(Date.now());
+
+                    const orderIds = sorted.map((v) => v._id ?? v.word);
+
+                    const res = await flashCardProgressService.startSession(topicId, orderIds);
                     localStorage.setItem("flashcard_session_id", res.sessionId);
-                })
-                .catch((err) => {
-                    toast.error("Lỗi khởi tạo phiên học: " + err.message);
-                });
-        } else {
-            // 🔸 Bài học (lesson) – để implement sau
-            console.log("Lesson mode – chưa implement, dayId:", dayId, "activityId:", activityId);
-            // example:
-            // lessonFlashcardService.startLessonSession(dayId, activityId, orderIds)
-        }
-    }, [vocabularies, withWeight]);
+                }
+            } catch (err: any) {
+                toast.error("❌ Lỗi khởi tạo phiên học: " + err.message);
+            }
+        };
 
-    // 🔹 2. Đánh giá từ vựng (FE logic giữ nguyên)
+        initSession();
+    }, [vocabularies, withWeight, resumeSessionId]);
+
+    // 🧩 2. Đánh giá từng từ
     const handleEvaluate = useCallback(
         (type: EvalType) => {
             if (!current) return;
@@ -98,6 +117,7 @@ export const useFlashcardSession = ({
                 response_time: duration,
                 attempted_at: new Date().toISOString(),
             };
+
             setLogs((prev) => [...prev, newLog]);
 
             // xử lý queue
@@ -112,7 +132,7 @@ export const useFlashcardSession = ({
                 const pos = Math.min(newQueue.length, 1 + Math.floor(Math.random() * 3));
                 newQueue.splice(pos, 0, current);
             }
-            // skip => remove luôn
+            // skip → remove khỏi queue
 
             setQueue(newQueue);
             setCurrent(newQueue[0] ?? null);
@@ -121,7 +141,7 @@ export const useFlashcardSession = ({
         [queue, current, startTime]
     );
 
-    // 🔹 3. Tính toán Attempt hiện tại
+    // 🧩 3. Tính toán thông số attempt hiện tại
     const currentAttempt: Attempt | null = useMemo(() => {
         if (logs.length === 0) return null;
         const started_at = logs[0].attempted_at;
@@ -152,7 +172,7 @@ export const useFlashcardSession = ({
         };
     }, [logs]);
 
-    // 🔹 4. Autosave (practice only)
+    // 🧩 4. Autosave định kỳ
     useEffect(() => {
         const sessionId = localStorage.getItem("flashcard_session_id");
         if (!sessionId || logs.length === 0 || dayId || isFinished) return;
@@ -164,21 +184,19 @@ export const useFlashcardSession = ({
                 clearInterval(interval);
                 return;
             }
-            if (logs.length > lastSavedCount) { // ✅ chỉ khi có log mới
+            if (logs.length > lastSavedCount) {
                 flashCardProgressService
                     .updateSession(
                         sessionId,
-                        queue
-                            .map((v) => v._id ?? v.word)
-                            .filter((id): id is string => typeof id === "string"),
+                        queue.map((v) => v._id ?? v.word).filter((id): id is string => !!id),
                         0,
                         logs
                     )
                     .then(() => {
-                        lastSavedCount = logs.length; // ✅ cập nhật mốc sau khi lưu thành công
-                        console.log(`[Autosave] Cập nhật ${logs.length} logs`);
+                        lastSavedCount = logs.length;
+                        console.log(`[Autosave] Đã cập nhật ${logs.length} logs`);
                     })
-                    .catch(() => console.warn("Autosave thất bại"));
+                    .catch(() => console.warn("⚠️ Autosave thất bại"));
             }
         }, 10000);
 
@@ -186,16 +204,11 @@ export const useFlashcardSession = ({
             if (logs.length === 0 || isFinished) return;
             const data = JSON.stringify({
                 session_id: sessionId,
-                order_queue: queue
-                    .map((q) => q._id ?? q.word)
-                    .filter((id): id is string => typeof id === "string"),
+                order_queue: queue.map((q) => q._id ?? q.word).filter((id): id is string => !!id),
                 current_index: 0,
                 logs_delta: logs,
             });
-            navigator.sendBeacon(
-                `${import.meta.env.VITE_API_URL}/flashcard-progress/update`,
-                data
-            );
+            navigator.sendBeacon(`${import.meta.env.VITE_API_URL}/flashcard-progress/update`, data);
         };
 
         window.addEventListener("beforeunload", handleBeforeUnload);
@@ -205,15 +218,15 @@ export const useFlashcardSession = ({
         };
     }, [queue, logs, dayId, isFinished]);
 
-    // 🔹 5. Khi học xong → finalize
+    // 🧩 5. Kết thúc bài học
     useEffect(() => {
         if (!current && logs.length > 0 && currentAttempt) {
             onFinish?.();
             const sessionId = localStorage.getItem("flashcard_session_id");
             setIsFinished(true);
-            // ⚡ PHÂN NHÁNH
+
             if (!dayId) {
-                // ✅ luyện tập
+                // luyện tập cá nhân
                 toast.promise(
                     flashCardProgressService.finalizeSession(
                         sessionId!,
@@ -229,16 +242,13 @@ export const useFlashcardSession = ({
                         success: () => {
                             localStorage.removeItem("flashcard_session_id");
                             setOpenStats(true);
-                            return "Lưu thành công!";
+                            return "✅ Lưu thành công!";
                         },
-                        error: "Lưu thất bại!",
+                        error: "❌ Lưu thất bại!",
                     }
                 );
             } else {
-                // 🔸 Bài học – sẽ xử lý sau
                 console.log("Finalize lesson session – dayId:", dayId);
-                // example:
-                // lessonFlashcardService.finalizeLesson(dayId, activityId, currentAttempt)
             }
         }
     }, [current, logs, currentAttempt]);

@@ -58,7 +58,6 @@ const FlashcardsList: React.FC<FlashcardsListProps> = ({ activeTab, title }) => 
         try {
             setIsLoading(true);
             const res = await flashCardProgressService.getAllActiveSessionsByUser(page, itemsPerPage);
-            console.log('Learning items fetched:', res);
             setLearningData(res.items);
             setPageCount(res.pageCount);
         }

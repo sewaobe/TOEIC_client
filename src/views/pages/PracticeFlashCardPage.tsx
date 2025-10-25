@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import PracticeCompletionCard from '../../components/flashCard/PracticeCompletionCard';
 import { useNavigate } from 'react-router-dom';
 import F5Modal from '../../components/modals/F5Modal';
+import { flashCardProgressService } from '../../services/flashcard_progress.service';
 
 export default function PracticeFlashcardPage() {
   const [words, setWords] = useState<FlashcardItem[]>([]);
@@ -40,6 +41,7 @@ export default function PracticeFlashcardPage() {
     logs,
     initialTotal,
     remaining,
+    queue
   } = useFlashcardSession({
     vocabularies: words,
     topicId,
@@ -187,15 +189,16 @@ export default function PracticeFlashcardPage() {
         <F5Modal
           title="Cảnh báo rời trang"
           content="Bạn có muốn lưu tiến độ học hiện tại trước khi rời trang không?"
-          onConfirm={() => {
-            // Lưu tiến độ học vào localStorage
-            const progressData = {
-              timestamp: Date.now(),
-              completedWords: logs.map(log => log.vocab_id),
-            };
-            console.log("Current Attempt:", currentAttempt);
-            localStorage.setItem('flashcardPracticeProgress', JSON.stringify(progressData));
-            // Rời trang
+          onConfirm={async () => {
+            const sessionId = localStorage.getItem("flashcard_session_id");
+            if (sessionId) {
+              await flashCardProgressService.updateSession(
+                sessionId,
+                queue.map(q => q._id).filter((_id): _id is string => typeof _id === "string"),
+                0,
+                logs
+              );
+            }
             navigate(`/flash-cards/${topicId}`);
           }}
         />

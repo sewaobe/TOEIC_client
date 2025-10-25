@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { topicService } from '../../services/topic.service';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FlashcardExplore } from './ExploreCard';
+import { flashCardProgressService } from '../../services/flashcard_progress.service';
+import { LearningFlashcard } from './LearningFlashcard';
 
 interface FlashcardsListProps {
     activeTab: 'myList' | 'learning' | 'explore';
@@ -18,6 +20,7 @@ const FlashcardsList: React.FC<FlashcardsListProps> = ({ activeTab, title }) => 
     const [openCreateModal, setOpenCreateModal] = useState(false);
     const [flashcardItems, setFlashcardItems] = useState<FlashcardList[]>([]);
     const [exploreData, setExploreData] = useState<FlashcardExplore[]>([]);
+    const [learningData, setLearningData] = useState<LearningFlashcard[]>([]);
     const [page, setPage] = useState(1);
     const [pageCount, setPageCount] = useState(0);
     const itemsPerPage = 9;
@@ -51,9 +54,28 @@ const FlashcardsList: React.FC<FlashcardsListProps> = ({ activeTab, title }) => 
         }
     }
 
+    const fetchLearningItems = async () => {
+        try {
+            setIsLoading(true);
+            const res = await flashCardProgressService.getAllActiveSessionsByUser(page, itemsPerPage);
+            console.log('Learning items fetched:', res);
+            setLearningData(res.items);
+            setPageCount(res.pageCount);
+        }
+        catch (err) {
+            toast.error('Lấy danh sách list từ thất bại. Vui lòng thử lại.');
+        }
+        finally {
+            setIsLoading(false);
+        }
+    }
+
     useEffect(() => {
         if (activeTab === 'explore') {
             fetchExploreItems();
+            return;
+        } else if (activeTab === 'learning') {
+            fetchLearningItems();
             return;
         }
         fetchFlashcardItems();
@@ -136,7 +158,7 @@ const FlashcardsList: React.FC<FlashcardsListProps> = ({ activeTab, title }) => 
                     <AnimatePresence mode="popLayout">
                         <div className="w-full">
                             <PaginationContainer
-                                items={activeTab === 'explore' ? exploreData : displayedItems}
+                                items={activeTab === 'explore' ? exploreData : (activeTab === 'learning' ? learningData : displayedItems)}
                                 pageCount={pageCount}
                                 page={page}
                                 onPageChange={setPage}

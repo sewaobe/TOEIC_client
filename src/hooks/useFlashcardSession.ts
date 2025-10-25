@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "sonner";
-import { flashCardService } from "../services/flashCard.service";
 import { EvalType } from "../components/flashCardItem/EvaluationSection";
 import { FlashcardItem } from "../components/modals/CreateFlashcardItemModal";
+import { flashCardProgressService } from "../services/flashcard_progress.service";
+// import { lessonFlashcardService } from "../services/lesson_flashcard.service"; // sẽ dùng cho dayId sau
 
 export interface Log {
     vocab_id: string;
@@ -25,9 +26,9 @@ export interface Attempt {
 interface UseFlashcardSessionProps {
     vocabularies: FlashcardItem[];
     topicId: string;
-    dayId?: string;
-    activityId?: string;
-    withWeight?: boolean; // true: sắp theo weight, false: random
+    dayId?: string;       // nếu có → bài học
+    activityId?: string;  // hoạt động trong bài học
+    withWeight?: boolean;
     onFinish?: () => void;
 }
 
@@ -45,25 +46,44 @@ export const useFlashcardSession = ({
     const [startTime, setStartTime] = useState<number>(Date.now());
     const [openStats, setOpenStats] = useState(false);
     const [initialTotal, setInitialTotal] = useState(0);
+    const [isFinished, setIsFinished] = useState(false);
 
-    // 🔹 Khởi tạo queue
+    // 🔹 1. Khởi tạo queue + tạo session
     useEffect(() => {
         if (!vocabularies.length) return;
+
         let sorted = [...vocabularies];
-        if (withWeight) {
-            sorted = sorted.sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0));
-        } else {
-            // random cho ôn luyện cá nhân
-            sorted = sorted.sort(() => Math.random() - 0.5);
-        }
+        sorted = withWeight
+            ? sorted.sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0))
+            : sorted.sort(() => Math.random() - 0.5);
+
         setQueue(sorted);
         setInitialTotal(sorted.length);
         setCurrent(sorted[0]);
         setLogs([]);
         setStartTime(Date.now());
+
+        // ⚡ PHÂN NHÁNH: luyện tập hay bài học
+        const orderIds = sorted.map((v) => v._id ?? v.word);
+        if (!dayId) {
+            // ✅ Luyện tập cá nhân
+            flashCardProgressService
+                .startSession(topicId, orderIds)
+                .then((res) => {
+                    localStorage.setItem("flashcard_session_id", res.sessionId);
+                })
+                .catch((err) => {
+                    toast.error("Lỗi khởi tạo phiên học: " + err.message);
+                });
+        } else {
+            // 🔸 Bài học (lesson) – để implement sau
+            console.log("Lesson mode – chưa implement, dayId:", dayId, "activityId:", activityId);
+            // example:
+            // lessonFlashcardService.startLessonSession(dayId, activityId, orderIds)
+        }
     }, [vocabularies, withWeight]);
 
-    // 🔹 Xử lý khi đánh giá
+    // 🔹 2. Đánh giá từ vựng (FE logic giữ nguyên)
     const handleEvaluate = useCallback(
         (type: EvalType) => {
             if (!current) return;
@@ -84,16 +104,15 @@ export const useFlashcardSession = ({
             const newQueue = [...queue];
             newQueue.shift();
 
-            if (type === "easy") {
-                newQueue.push(current);
-            } else if (type === "medium") {
+            if (type === "easy") newQueue.push(current);
+            else if (type === "medium") {
                 const pos = Math.min(newQueue.length, 5 + Math.floor(Math.random() * 6));
                 newQueue.splice(pos, 0, current);
             } else if (type === "hard") {
                 const pos = Math.min(newQueue.length, 1 + Math.floor(Math.random() * 3));
                 newQueue.splice(pos, 0, current);
             }
-            // skip => không thêm lại
+            // skip => remove luôn
 
             setQueue(newQueue);
             setCurrent(newQueue[0] ?? null);
@@ -102,7 +121,7 @@ export const useFlashcardSession = ({
         [queue, current, startTime]
     );
 
-    // 🔹 Tính toán Attempt hiện tại
+    // 🔹 3. Tính toán Attempt hiện tại
     const currentAttempt: Attempt | null = useMemo(() => {
         if (logs.length === 0) return null;
         const started_at = logs[0].attempted_at;
@@ -133,31 +152,94 @@ export const useFlashcardSession = ({
         };
     }, [logs]);
 
-    // 🔹 Khi hết từ => submit tự động
+    // 🔹 4. Autosave (practice only)
+    useEffect(() => {
+        const sessionId = localStorage.getItem("flashcard_session_id");
+        if (!sessionId || logs.length === 0 || dayId || isFinished) return;
+
+        let lastSavedCount = 0;
+
+        const interval = setInterval(() => {
+            if (isFinished) {
+                clearInterval(interval);
+                return;
+            }
+            if (logs.length > lastSavedCount) { // ✅ chỉ khi có log mới
+                flashCardProgressService
+                    .updateSession(
+                        sessionId,
+                        queue
+                            .map((v) => v._id ?? v.word)
+                            .filter((id): id is string => typeof id === "string"),
+                        0,
+                        logs
+                    )
+                    .then(() => {
+                        lastSavedCount = logs.length; // ✅ cập nhật mốc sau khi lưu thành công
+                        console.log(`[Autosave] Cập nhật ${logs.length} logs`);
+                    })
+                    .catch(() => console.warn("Autosave thất bại"));
+            }
+        }, 10000);
+
+        const handleBeforeUnload = () => {
+            if (logs.length === 0 || isFinished) return;
+            const data = JSON.stringify({
+                session_id: sessionId,
+                order_queue: queue
+                    .map((q) => q._id ?? q.word)
+                    .filter((id): id is string => typeof id === "string"),
+                current_index: 0,
+                logs_delta: logs,
+            });
+            navigator.sendBeacon(
+                `${import.meta.env.VITE_API_URL}/flashcard-progress/update`,
+                data
+            );
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, [queue, logs, dayId, isFinished]);
+
+    // 🔹 5. Khi học xong → finalize
     useEffect(() => {
         if (!current && logs.length > 0 && currentAttempt) {
             onFinish?.();
-            console.log("Hoàn thành luyện tập cá nhân!", currentAttempt);
-            toast.promise(
-                flashCardService.submitAttemptFlashCard(
-                    topicId,
-                    currentAttempt.total,
-                    currentAttempt.accuracy,
-                    currentAttempt.started_at,
-                    currentAttempt.finished_at,
-                    currentAttempt.logs,
-                    "-1",
-                    "-1"
-                ),
-                {
-                    loading: "Đang lưu kết quả...",
-                    success: () => {
-                        setOpenStats(true);
-                        return "Lưu thành công!";
-                    },
-                    error: "Lưu thất bại!",
-                }
-            );
+            const sessionId = localStorage.getItem("flashcard_session_id");
+            setIsFinished(true);
+            // ⚡ PHÂN NHÁNH
+            if (!dayId) {
+                // ✅ luyện tập
+                toast.promise(
+                    flashCardProgressService.finalizeSession(
+                        sessionId!,
+                        currentAttempt.accuracy,
+                        currentAttempt.avg_time,
+                        currentAttempt.total,
+                        currentAttempt.logs,
+                        currentAttempt.started_at,
+                        currentAttempt.finished_at
+                    ),
+                    {
+                        loading: "Đang lưu kết quả...",
+                        success: () => {
+                            localStorage.removeItem("flashcard_session_id");
+                            setOpenStats(true);
+                            return "Lưu thành công!";
+                        },
+                        error: "Lưu thất bại!",
+                    }
+                );
+            } else {
+                // 🔸 Bài học – sẽ xử lý sau
+                console.log("Finalize lesson session – dayId:", dayId);
+                // example:
+                // lessonFlashcardService.finalizeLesson(dayId, activityId, currentAttempt)
+            }
         }
     }, [current, logs, currentAttempt]);
 
@@ -169,7 +251,7 @@ export const useFlashcardSession = ({
         openStats,
         setOpenStats,
         handleEvaluate,
-        initialTotal,             // tổng số từ ngay lúc bắt đầu
-        remaining: queue.length,  // số từ còn lại trong queue
+        initialTotal,
+        remaining: queue.length,
     };
 };

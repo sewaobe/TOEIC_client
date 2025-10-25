@@ -266,7 +266,7 @@ const ExamPage = () => {
               pageCount={Number(state.totalPages)}
               page={state.page}
               onPageChange={(p) => fetchTests(p, state.searchValue)}
-              containerSx={{
+              contentSx={{
                 display: "flex",
                 flexWrap: "wrap",
                 justifyContent: "center", // căn giữa cả hàng

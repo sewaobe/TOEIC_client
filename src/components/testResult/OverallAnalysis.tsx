@@ -48,7 +48,7 @@ const SummaryInfoCard = ({ total_correct_question, accuracy_correct, completion_
                             <Typography variant="body2">Độ chính xác</Typography>
                         </Stack>
                         <Typography variant="body2" fontWeight={600}>
-                            {accuracy_correct}%
+                            {accuracy_correct || 0}%
                         </Typography>
                     </Stack>
 

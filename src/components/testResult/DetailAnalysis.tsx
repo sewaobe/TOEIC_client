@@ -8,8 +8,7 @@ import {
 import { mapAnswersToParts } from "../../utils/mapAnswersToParts";
 import type { RawAnswer } from "../../utils/mapAnswersToParts";
 
-function Bubble({ n, status }: { n: number; status: "correct" | "wrong" | "skipped" }) {
-    console.log("Bubble", n)
+function Bubble({ question, status, setSelected }: { question: RawAnswer; status: "correct" | "wrong" | "skipped"; setSelected?: (answer: RawAnswer | null) => void }) {
     const color =
         status === "correct" ? "success" :
             status === "wrong" ? "error" : "default";
@@ -17,44 +16,46 @@ function Bubble({ n, status }: { n: number; status: "correct" | "wrong" | "skipp
     return (
         <Chip
             size="small"
-            label={n}
+            label={question.question_no}
             color={color as any}
             variant="outlined"
             className="rounded-full !cursor-pointer"
             sx={{ width: 32, height: 32, fontSize: "11px", "& .MuiChip-label": { px: 0 } }}
-        />
+            onClick={() => {
+                if (setSelected) setSelected(question);
+            }} />
     );
 }
 
 
-export default function DetailAnalysis({ answers, tab_parts }: { answers: RawAnswer[], tab_parts: string[] }) {
+export default function DetailAnalysis({ answers, tab_parts, setSelected }: { answers: RawAnswer[], tab_parts: string[], setSelected: (answer: RawAnswer | null) => void }) {
     const [tab, setTab] = React.useState<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7>(1);
 
     // Gom theo Part từ util (đúng type, không cần cast)
     const parts = mapAnswersToParts(answers);
 
-    console.log("Parts", parts);
     const renderBubble = (part: RawAnswer[]) => {
-        console.log("Part", part)
         return (
             <Stack direction="row" gap={1} flexWrap="wrap">
                 {part.map(question => {
                     const question_status = question.isCorrect === true ? "correct" : (question.selectedOption === "" ? "skipped" : "wrong");
-                    return <Bubble key={question.question_no} n={question.question_no} status={question_status} />
+                    return <Bubble key={question.question_no} question={question} status={question_status} setSelected={setSelected} />
                 })}
             </Stack>
         )
     }
     const renderBody = () => {
-        const tagsByPart = parts[tab]
+        // Nếu tab = 0 => gom tất cả parts lại
+        const data = tab === 0 ? Object.values(parts).flat() : parts[tab];
+
+        const tagsByPart = data
             .flatMap((q) => q.tags)
             .filter((tag, idx, arr) => arr.indexOf(tag) === idx);
 
         return (
             <>
                 {tagsByPart.map((tagByPart) => {
-                    //  lọc những câu có tag này
-                    const questionsWithTag = parts[tab].filter((q) =>
+                    const questionsWithTag = data.filter((q) =>
                         q?.tags?.includes(tagByPart!)
                     );
 
@@ -68,7 +69,11 @@ export default function DetailAnalysis({ answers, tab_parts }: { answers: RawAns
                             <TableCell>{count_correct_question}</TableCell>
                             <TableCell>{count_incorrect_question}</TableCell>
                             <TableCell>{count_skip_question}</TableCell>
-                            <TableCell>{(count_correct_question + count_incorrect_question) === 0 ? 0 : (count_correct_question * 100 / (count_correct_question + count_incorrect_question))}%</TableCell>
+                            <TableCell>
+                                {(count_correct_question + count_incorrect_question) === 0
+                                    ? 0
+                                    : Math.round((count_correct_question * 100) / (count_correct_question + count_incorrect_question))}%
+                            </TableCell>
                             <TableCell>{renderBubble(questionsWithTag)}</TableCell>
                         </TableRow>
                     );
@@ -76,7 +81,6 @@ export default function DetailAnalysis({ answers, tab_parts }: { answers: RawAns
             </>
         );
     };
-
 
     return (
         <Card elevation={0} className="rounded-2xl border border-gray-200 dark:border-gray-700">
@@ -100,7 +104,7 @@ export default function DetailAnalysis({ answers, tab_parts }: { answers: RawAns
                 >
                     {tab_parts.map(tab => {
                         return (
-                            <Tab label={`Part ${tab}`} value={parseInt(tab)} />
+                            <Tab key={`part-${tab}`} label={`Part ${tab}`} value={parseInt(tab)} />
                         )
                     })}
                     <Tab label="Tổng quát" value={0} />
@@ -124,22 +128,29 @@ export default function DetailAnalysis({ answers, tab_parts }: { answers: RawAns
                         {renderBody()}
                     </TableBody>
                     <TableFooter>
-                        <TableRow
-                            sx={{
-                                backgroundColor: "action.hover",
-                                "& td": {
-                                    fontWeight: "900",
-                                    fontSize: "0.9rem", // 16px
-                                },
-                            }}
-                        >
-                            <TableCell>Tổng</TableCell>
-                            <TableCell align="left">{parts[tab].filter(q => q.isCorrect === true).length}</TableCell>
-                            <TableCell align="left">{parts[tab].filter(q => q.isCorrect === false && q.selectedOption !== "").length}</TableCell>
-                            <TableCell align="left">{parts[tab].length - parts[tab].filter(q => q.isCorrect === true).length - parts[tab].filter(q => q.isCorrect === false && q.selectedOption !== "").length}</TableCell>
-                            <TableCell align="left">{(parts[tab].filter(q => q.isCorrect === true).length + parts[tab].filter(q => q.isCorrect === false && q.selectedOption !== "").length) === 0 ? 0 : (parts[tab].filter(q => q.isCorrect === true).length * 100 / (parts[tab].filter(q => q.isCorrect === true).length + parts[tab].filter(q => q.isCorrect === false && q.selectedOption !== "").length))}%</TableCell>
-                            <TableCell />
-                        </TableRow>
+                        {(() => {
+                            const data = tab === 0 ? Object.values(parts).flat() : parts[tab];
+                            const correct = data.filter(q => q.isCorrect === true).length;
+                            const incorrect = data.filter(q => q.isCorrect === false && q.selectedOption !== "").length;
+                            const skip = data.length - correct - incorrect;
+                            const accuracy = (correct + incorrect) === 0 ? 0 : Math.round((correct * 100) / (correct + incorrect));
+
+                            return (
+                                <TableRow
+                                    sx={{
+                                        backgroundColor: "action.hover",
+                                        "& td": { fontWeight: "900", fontSize: "0.9rem" },
+                                    }}
+                                >
+                                    <TableCell>Tổng</TableCell>
+                                    <TableCell>{correct}</TableCell>
+                                    <TableCell>{incorrect}</TableCell>
+                                    <TableCell>{skip}</TableCell>
+                                    <TableCell>{accuracy}%</TableCell>
+                                    <TableCell />
+                                </TableRow>
+                            );
+                        })()}
                     </TableFooter>
                 </Table>
             </CardContent>

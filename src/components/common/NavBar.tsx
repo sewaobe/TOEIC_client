@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from "framer-motion"
 import {
   AppBar,
   Toolbar,
@@ -30,6 +31,7 @@ const navLinks: NavLink[] = [
   { label: 'Chương trình học', href: '/programs' },
   { label: 'Đề thi online', href: '/tests' },
   { label: 'Flash Card', href: '/flash-cards' },
+  { label: 'Luyện kỹ năng', href: '/practice-skill' },
 ];
 
 export default function Navbar() {
@@ -80,12 +82,34 @@ export default function Navbar() {
       >
         <Toolbar className='flex justify-between'>
           {/* Logo + tên website */}
-          <div className='flex items-center gap-2'>
-            <SchoolIcon sx={{ color: theme.palette.primary.main }} />
+          <div className="flex items-center gap-2 select-none">
+            {/* 🎓 Icon động */}
+            <motion.div
+              initial={{ y: 0, rotate: 0 }}
+              animate={{ y: [0, -6, 0], rotate: [0, -10, 0] }}
+              transition={{
+                duration: 2.4,
+                ease: "easeInOut",
+                repeat: Infinity,
+                repeatDelay: 2,
+              }}
+              whileHover={{ rotate: -15, scale: 1.1 }}
+              className="text-blue-600"
+            >
+              <SchoolIcon sx={{ fontSize: 36 }} />
+            </motion.div>
+
+            {/* 🌈 Chữ gradient */}
             <Typography
-              variant='h6'
-              component='div'
-              sx={{ fontWeight: 'bold', color: theme.palette.text.primary }}
+              variant="h6"
+              component="div"
+              sx={{
+                fontWeight: "bold",
+                background: "linear-gradient(90deg, #2563eb, #06b6d4, #f97316)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                letterSpacing: 0.3,
+              }}
             >
               TOEIC Master
             </Typography>

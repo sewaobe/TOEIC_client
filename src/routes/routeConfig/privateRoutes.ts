@@ -7,6 +7,11 @@ const FlashCardPage = lazy(() => import('../../views/pages/FlashCardPage'));
 const FlashCardDetailPage = lazy(() => import('../../views/pages/FlashcardDetailPage'));
 const ResultTestPage = lazy(() => import('../../views/pages/ResultTestPage'));
 const StudyCalendarPage = lazy(() => import('../../views/pages/StudyCalendarPage'));
+const PracticeSkillPage = lazy(() => import('../../views/pages/PracticeSkillPage'));
+const PracticeMiniTestPage = lazy(() => import('../../views/pages/PracticeMiniTestPage'));
+const PracticeDictationPage = lazy(() => import('../../views/pages/PracticeDictationPage'));
+const PracticeChallengePage = lazy(() => import('../../views/pages/PracticeChallengePage'));
+const PracticeShadowingPage = lazy(() => import('../../views/pages/PracticeShadowingPage'));
 export interface AppRoute {
   path: string;
   element: ComponentType;
@@ -20,7 +25,12 @@ const privateRoutes: AppRoute[] = [
   { path: '/flash-cards/:id', element: FlashCardDetailPage, guard: ProtectedRoute },
   { path: '/flash-cards/:id/practice', element: PracticeFlashCardPage, guard: ProtectedRoute },
   { path: '/tests/:testId/result/:historyId', element: ResultTestPage, guard: ProtectedRoute },
-  { path: '/study-calendar', element: StudyCalendarPage, guard: ProtectedRoute }
+  { path: '/study-calendar', element: StudyCalendarPage, guard: ProtectedRoute },
+  { path: '/practice-skill', element: PracticeSkillPage, guard: ProtectedRoute },
+  { path: '/practice-skill/mini-test', element: PracticeMiniTestPage, guard: ProtectedRoute },
+  { path: '/practice-skill/dictation', element: PracticeDictationPage, guard: ProtectedRoute },
+  { path: '/practice-skill/challenge', element: PracticeChallengePage, guard: ProtectedRoute },
+  { path: '/practice-skill/shadowing', element: PracticeShadowingPage, guard: ProtectedRoute },
 ];
 
 export default privateRoutes;

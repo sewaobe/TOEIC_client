@@ -12,6 +12,7 @@ export interface FlashcardList {
     description: string;
     vocabularies_id: string[];
     tags: string[];
+    isPublic: boolean;
     created_at: string;
 }
 

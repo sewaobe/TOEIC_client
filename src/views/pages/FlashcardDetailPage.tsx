@@ -224,7 +224,7 @@ const FlashcardDetail: React.FC = () => {
     const topicId = location.pathname.split("/").pop();
     const [searchParams] = useSearchParams();
     const type = searchParams.get("type");
-    const [flashcardInfo, setFlashcardInfo] = useState<{ title: string; tags: string[]; description: string } | null>(() => {
+    const [flashcardInfo, setFlashcardInfo] = useState<{ title: string; tags: string[]; description: string, isPublic: boolean } | null>(() => {
         const storedInfo = localStorage.getItem('flashcardInfo');
         return storedInfo ? JSON.parse(storedInfo) : null;
     });
@@ -394,6 +394,10 @@ const FlashcardDetail: React.FC = () => {
                     variant="contained"
                     fullWidth sx={{ mb: 1 }}
                     onClick={async () => {
+                        if(flashcards.length === 0) {
+                            toast.error('Danh sách từ trống. Vui lòng thêm từ để bắt đầu luyện tập.');
+                            return;
+                        }
                         navigate("practice");
                     }}
                 >

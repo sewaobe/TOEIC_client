@@ -15,6 +15,8 @@ import {
 } from "@mui/material";
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import DeleteIcon from "@mui/icons-material/Delete";
+import PublicIcon from "@mui/icons-material/Public";
+import LockIcon from "@mui/icons-material/Lock";
 
 export interface LearningFlashcard {
   _id: string;
@@ -23,6 +25,7 @@ export interface LearningFlashcard {
     _id: string;
     title: string;
     description: string;
+    isPublic: boolean;
   };
   last_activity: string;
   progress_count: number;
@@ -190,6 +193,32 @@ const MyLearningFlashcard: React.FC<LearningFlashcardProps> = ({ item, onClick, 
         >
           Cập nhật {formattedDate}
         </Typography>
+
+        {/* Hiển thị trạng thái công khai / riêng tư */}
+        <Box
+          sx={{
+            position: "absolute",
+            top: 8,
+            left: 8,
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+          }}
+        >
+          <Tooltip
+            title={item.topic.isPublic ? "Danh sách công khai" : "Danh sách riêng tư"}
+            arrow
+            placement="top"
+          >
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              {item.topic.isPublic ? (
+                <PublicIcon sx={{ fontSize: 18, color: "primary.main" }} />
+              ) : (
+                <LockIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+              )}
+            </Box>
+          </Tooltip>
+        </Box>
       </Paper>
 
       {/* Modal xác nhận xóa */}

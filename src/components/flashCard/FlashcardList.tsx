@@ -88,7 +88,7 @@ const FlashcardsList: React.FC<FlashcardsListProps> = ({ activeTab, title }) => 
         setOpenCreateModal(true);
     };
 
-    const handleSave = async (data: { title: string; tags: string[]; description: string }) => {
+    const handleSave = async (data: { title: string; tags: string[]; description: string, isPublic: boolean }) => {
         try {
             toast.promise(await topicService.createTopicVocabulary(data), {
                 loading: 'Đang tạo list từ...',

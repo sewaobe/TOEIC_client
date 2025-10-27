@@ -78,7 +78,10 @@ const HeroSection: React.FC = () => {
           <Typography
             variant="body1"
             className="text-base md:text-lg mb-6 max-w-lg"
-            sx={{ color: theme.palette.text.secondary }}
+            sx={{
+              color: theme.palette.text.secondary,
+              textAlign: "justify", 
+            }}
           >
             Chào mừng đến với <strong>TOEIC MASTER</strong>, trang web TOEIC
             cung cấp cho người học các bài luyện tập theo từng part, đề thi thử

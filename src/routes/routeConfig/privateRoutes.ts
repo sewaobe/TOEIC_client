@@ -12,6 +12,8 @@ const PracticeMiniTestPage = lazy(() => import('../../views/pages/PracticeMiniTe
 const PracticeDictationPage = lazy(() => import('../../views/pages/PracticeDictationPage'));
 const PracticeChallengePage = lazy(() => import('../../views/pages/PracticeChallengePage'));
 const PracticeShadowingPage = lazy(() => import('../../views/pages/PracticeShadowingPage'));
+const ResultStatisticPage = lazy(() => import('../../views/pages/ResultStatisticPage'));
+
 export interface AppRoute {
   path: string;
   element: ComponentType;
@@ -31,6 +33,7 @@ const privateRoutes: AppRoute[] = [
   { path: '/practice-skill/dictation', element: PracticeDictationPage, guard: ProtectedRoute },
   { path: '/practice-skill/challenge', element: PracticeChallengePage, guard: ProtectedRoute },
   { path: '/practice-skill/shadowing', element: PracticeShadowingPage, guard: ProtectedRoute },
+  { path: '/result-statistic', element: ResultStatisticPage, guard: ProtectedRoute },
 ];
 
 export default privateRoutes;

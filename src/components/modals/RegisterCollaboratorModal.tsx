@@ -30,6 +30,7 @@ import { requestCollaboratorService } from "../../services/request_collaborator.
 import { useSelector } from "react-redux";
 import { RootState } from "../../stores/store";
 import { uploadFileToFirebase } from "../../hooks/useFirebaseAuth";
+import { uploadFileToServer } from "../../services/uploadFile.service";
 
 // ---------- Constants ----------
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -164,7 +165,8 @@ function RegisterCollaboratorModal({
         try {
             let cvUrl = "";
             if (cvFile) {
-                cvUrl = await uploadFileToFirebase(cvFile);
+                const url = await uploadDocumentToCloudinary(cvFile);
+                cvUrl = url.url;
             }
 
             const payload = {

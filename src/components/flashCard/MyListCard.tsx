@@ -17,6 +17,8 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import { useNavigate } from "react-router-dom";
 import { FlashcardList } from "../../views/pages/FlashCardPage";
+import PublicIcon from "@mui/icons-material/Public";
+import LockIcon from "@mui/icons-material/Lock";
 
 interface MyListCardProps {
     item: FlashcardList;
@@ -161,6 +163,32 @@ export const MyListCard: React.FC<MyListCardProps> = ({ item, onCreateCard, onDe
                         ))}
                     </Box>
                 )}
+
+                {/* Hiển thị trạng thái công khai / riêng tư */}
+                <Box
+                    sx={{
+                        position: "absolute",
+                        top: 8,
+                        left: 8,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                    }}
+                >
+                    <Tooltip
+                        title={item.isPublic ? "Danh sách công khai" : "Danh sách riêng tư"}
+                        arrow
+                        placement="top"
+                    >
+                        <Box sx={{ display: "flex", alignItems: "center" }}>
+                            {item.isPublic ? (
+                                <PublicIcon sx={{ fontSize: 18, color: "primary.main" }} />
+                            ) : (
+                                <LockIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+                            )}
+                        </Box>
+                    </Tooltip>
+                </Box>
             </Paper>
 
             {/* Modal xác nhận xóa */}

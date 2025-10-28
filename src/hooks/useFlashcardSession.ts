@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "sonner";
-import { flashCardService } from "../services/flashCard.service";
 import { EvalType } from "../components/flashCardItem/EvaluationSection";
 import { FlashcardItem } from "../components/modals/CreateFlashcardItemModal";
+import { flashCardProgressService } from "../services/flashcard_progress.service";
+// import { lessonFlashcardService } from "../services/lesson_flashcard.service"; // (future)
 
 export interface Log {
     vocab_id: string;
@@ -27,7 +28,8 @@ interface UseFlashcardSessionProps {
     topicId: string;
     dayId?: string;
     activityId?: string;
-    withWeight?: boolean; // true: sắp theo weight, false: random
+    resumeSessionId?: string; // 🔄 nếu có → load lại session
+    withWeight?: boolean;
     onFinish?: () => void;
 }
 
@@ -36,6 +38,7 @@ export const useFlashcardSession = ({
     topicId,
     dayId,
     activityId,
+    resumeSessionId,
     withWeight = false,
     onFinish,
 }: UseFlashcardSessionProps) => {
@@ -45,25 +48,61 @@ export const useFlashcardSession = ({
     const [startTime, setStartTime] = useState<number>(Date.now());
     const [openStats, setOpenStats] = useState(false);
     const [initialTotal, setInitialTotal] = useState(0);
+    const [isFinished, setIsFinished] = useState(false);
 
-    // 🔹 Khởi tạo queue
+    // 🧩 1. Khởi tạo hoặc khôi phục session
     useEffect(() => {
-        if (!vocabularies.length) return;
-        let sorted = [...vocabularies];
-        if (withWeight) {
-            sorted = sorted.sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0));
-        } else {
-            // random cho ôn luyện cá nhân
-            sorted = sorted.sort(() => Math.random() - 0.5);
-        }
-        setQueue(sorted);
-        setInitialTotal(sorted.length);
-        setCurrent(sorted[0]);
-        setLogs([]);
-        setStartTime(Date.now());
-    }, [vocabularies, withWeight]);
+        if (!vocabularies.length || isFinished) return; // chặn khi đã hoàn thành
 
-    // 🔹 Xử lý khi đánh giá
+        const initSession = async () => {
+            try {
+                // Nếu có session_id => resume
+                if (resumeSessionId) {
+                    const res = await flashCardProgressService.getSession(resumeSessionId);
+                    const progress = res.progress;
+
+                    // Map vocabularies theo id
+                    const vocabMap = new Map(vocabularies.map((v) => [v._id ?? v.word, v]));
+
+                    const orderedQueue = progress.order_queue
+                        .map((id: string) => vocabMap.get(id))
+                        .filter((v: FlashcardItem | undefined): v is FlashcardItem => !!v);
+
+                    setQueue(orderedQueue);
+                    setCurrent(orderedQueue[progress.current_index] ?? orderedQueue[0] ?? null);
+                    setLogs(progress.logs ?? []);
+                    setInitialTotal(orderedQueue.length);
+                    setStartTime(Date.now());
+
+                    localStorage.setItem("flashcard_session_id", progress.session_id);
+                    toast.success("🔄 Đã khôi phục phiên học trước đó");
+                } else {
+                    // Nếu không có → tạo session mới
+                    let sorted = [...vocabularies];
+                    sorted = withWeight
+                        ? sorted.sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0))
+                        : sorted.sort(() => Math.random() - 0.5);
+
+                    setQueue(sorted);
+                    setCurrent(sorted[0]);
+                    setLogs([]);
+                    setInitialTotal(sorted.length);
+                    setStartTime(Date.now());
+
+                    const orderIds = sorted.map((v) => v._id ?? v.word);
+
+                    const res = await flashCardProgressService.startSession(topicId, orderIds);
+                    localStorage.setItem("flashcard_session_id", res.sessionId);
+                }
+            } catch (err: any) {
+                toast.error("❌ Lỗi khởi tạo phiên học: " + err.message);
+            }
+        };
+
+        initSession();
+    }, [vocabularies, withWeight, resumeSessionId]);
+
+    // 🧩 2. Đánh giá từng từ
     const handleEvaluate = useCallback(
         (type: EvalType) => {
             if (!current) return;
@@ -78,22 +117,22 @@ export const useFlashcardSession = ({
                 response_time: duration,
                 attempted_at: new Date().toISOString(),
             };
+
             setLogs((prev) => [...prev, newLog]);
 
             // xử lý queue
             const newQueue = [...queue];
             newQueue.shift();
 
-            if (type === "easy") {
-                newQueue.push(current);
-            } else if (type === "medium") {
+            if (type === "easy") newQueue.push(current);
+            else if (type === "medium") {
                 const pos = Math.min(newQueue.length, 5 + Math.floor(Math.random() * 6));
                 newQueue.splice(pos, 0, current);
             } else if (type === "hard") {
                 const pos = Math.min(newQueue.length, 1 + Math.floor(Math.random() * 3));
                 newQueue.splice(pos, 0, current);
             }
-            // skip => không thêm lại
+            // skip → remove khỏi queue
 
             setQueue(newQueue);
             setCurrent(newQueue[0] ?? null);
@@ -102,7 +141,7 @@ export const useFlashcardSession = ({
         [queue, current, startTime]
     );
 
-    // 🔹 Tính toán Attempt hiện tại
+    // 🧩 3. Tính toán thông số attempt hiện tại
     const currentAttempt: Attempt | null = useMemo(() => {
         if (logs.length === 0) return null;
         const started_at = logs[0].attempted_at;
@@ -133,31 +172,84 @@ export const useFlashcardSession = ({
         };
     }, [logs]);
 
-    // 🔹 Khi hết từ => submit tự động
+    // 🧩 4. Autosave định kỳ
+    useEffect(() => {
+        const sessionId = localStorage.getItem("flashcard_session_id");
+        if (!sessionId || logs.length === 0 || dayId || isFinished) return;
+
+        let lastSavedCount = 0;
+
+        const interval = setInterval(() => {
+            if (isFinished) {
+                clearInterval(interval);
+                return;
+            }
+            if (logs.length > lastSavedCount) {
+                flashCardProgressService
+                    .updateSession(
+                        sessionId,
+                        queue.map((v) => v._id ?? v.word).filter((id): id is string => !!id),
+                        0,
+                        logs
+                    )
+                    .then(() => {
+                        lastSavedCount = logs.length;
+                        console.log(`[Autosave] Đã cập nhật ${logs.length} logs`);
+                    })
+                    .catch(() => console.warn("⚠️ Autosave thất bại"));
+            }
+        }, 10000);
+
+        const handleBeforeUnload = () => {
+            if (logs.length === 0 || isFinished) return;
+            const data = JSON.stringify({
+                session_id: sessionId,
+                order_queue: queue.map((q) => q._id ?? q.word).filter((id): id is string => !!id),
+                current_index: 0,
+                logs_delta: logs,
+            });
+            navigator.sendBeacon(`${import.meta.env.VITE_API_URL}/flashcard-progress/update`, data);
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, [queue, logs, dayId, isFinished]);
+
+    // 🧩 5. Kết thúc bài học
     useEffect(() => {
         if (!current && logs.length > 0 && currentAttempt) {
             onFinish?.();
-            console.log("Hoàn thành luyện tập cá nhân!", currentAttempt);
-            toast.promise(
-                flashCardService.submitAttemptFlashCard(
-                    topicId,
-                    currentAttempt.total,
-                    currentAttempt.accuracy,
-                    currentAttempt.started_at,
-                    currentAttempt.finished_at,
-                    currentAttempt.logs,
-                    "-1",
-                    "-1"
-                ),
-                {
-                    loading: "Đang lưu kết quả...",
-                    success: () => {
-                        setOpenStats(true);
-                        return "Lưu thành công!";
-                    },
-                    error: "Lưu thất bại!",
-                }
-            );
+            const sessionId = localStorage.getItem("flashcard_session_id");
+            setIsFinished(true);
+
+            if (!dayId) {
+                // luyện tập cá nhân
+                toast.promise(
+                    flashCardProgressService.finalizeSession(
+                        sessionId!,
+                        currentAttempt.accuracy,
+                        currentAttempt.avg_time,
+                        currentAttempt.total,
+                        currentAttempt.logs,
+                        currentAttempt.started_at,
+                        currentAttempt.finished_at
+                    ),
+                    {
+                        loading: "Đang lưu kết quả...",
+                        success: () => {
+                            localStorage.removeItem("flashcard_session_id");
+                            setOpenStats(true);
+                            return "✅ Lưu thành công!";
+                        },
+                        error: "❌ Lưu thất bại!",
+                    }
+                );
+            } else {
+                console.log("Finalize lesson session – dayId:", dayId);
+            }
         }
     }, [current, logs, currentAttempt]);
 
@@ -169,7 +261,7 @@ export const useFlashcardSession = ({
         openStats,
         setOpenStats,
         handleEvaluate,
-        initialTotal,             // tổng số từ ngay lúc bắt đầu
-        remaining: queue.length,  // số từ còn lại trong queue
+        initialTotal,
+        remaining: queue.length,
     };
 };

@@ -1,10 +1,29 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Typography, useTheme } from "@mui/material";
 import { motion } from "framer-motion";
 import { Star, FileDownload } from "@mui/icons-material";
+import RocketLaunchIcon from "@mui/icons-material/RocketLaunch"
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome"
+import RegisterCollaboratorModal from "../modals/RegisterCollaboratorModal";
+import { requestCollaboratorService } from "../../services/request_collaborator.service";
 
 const HeroSection: React.FC = () => {
   const theme = useTheme();
+  const [isOpenRegisterModal, setIsOpenRegisterModal] = useState(false);
+  const [requestData, setRequestData] = useState(null);
+
+  useEffect(() => {
+    const fetchRequestData = async () => {
+      try {
+        const data = await requestCollaboratorService.getRequestCollaboratorByUser(); 
+        setRequestData(data);
+      } catch (error) {
+        console.error("Error fetching request data:", error);
+      }
+    };
+
+    fetchRequestData();
+  }, []);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -42,6 +61,7 @@ const HeroSection: React.FC = () => {
       },
     },
   } as const;
+  const [hovered, setHovered] = useState<"collab" | "practice" | null>(null)
 
   return (
     <Box
@@ -50,7 +70,7 @@ const HeroSection: React.FC = () => {
       initial="hidden"
       animate="visible"
       className="relative flex flex-col md:flex-row items-center justify-between p-8 md:p-16 rounded-xl overflow-hidden max-w-6xl mx-auto"
-      //   sx={{ background: theme.palette.background.paper }}
+    //   sx={{ background: theme.palette.background.paper }}
     >
       {/* Nội dung bên trái */}
       <Box className="flex flex-col items-center md:items-start text-center md:text-left z-10 md:w-2/3">
@@ -75,7 +95,10 @@ const HeroSection: React.FC = () => {
           <Typography
             variant="body1"
             className="text-base md:text-lg mb-6 max-w-lg"
-            sx={{ color: theme.palette.text.secondary }}
+            sx={{
+              color: theme.palette.text.secondary,
+              textAlign: "justify",
+            }}
           >
             Chào mừng đến với <strong>TOEIC MASTER</strong>, trang web TOEIC
             cung cấp cho người học các bài luyện tập theo từng part, đề thi thử
@@ -84,6 +107,94 @@ const HeroSection: React.FC = () => {
             chúng tôi ngay hôm nay!
           </Typography>
         </motion.div>
+
+        <motion.div
+          variants={itemVariants}
+          className="flex flex-col sm:flex-row gap-3 mt-4"
+        >
+          {/* 🚀 Nút 1: Cộng tác viên */}
+          <motion.button
+            onHoverStart={() => setHovered("collab")}
+            onHoverEnd={() => setHovered(null)}
+            onClick={() => setIsOpenRegisterModal(true)}
+            className="
+              group flex items-center justify-center gap-2
+              text-white font-semibold text-sm px-5 py-2.5 rounded-lg 
+              shadow-md overflow-hidden select-none
+              bg-cta-main bg-[length:400%_400%] animate-gradient-move
+            "
+            whileHover={{ scale: 1.04, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 250, damping: 15 }}
+          >
+            <motion.span
+              animate={
+                hovered === "collab"
+                  ? { y: -6, rotate: -15 }
+                  : { y: 0, rotate: 0 }
+              }
+              transition={{ type: "spring", stiffness: 250, damping: 10 }}
+            >
+              <RocketLaunchIcon
+                fontSize="small"
+                sx={{
+                  background: "linear-gradient(90deg, #4EE1FF, #B794F4)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  filter: "drop-shadow(0 0 4px rgba(139,92,246,0.4))",
+                  transition: "all 0.3s ease",
+                }}
+              />
+            </motion.span>
+            <span>{requestData ? "Xem yêu cầu chờ duyệt!" : "Đăng ký Cộng tác viên"}</span>
+          </motion.button>
+
+          {/* ✨ Nút 2: Bắt đầu luyện tập */}
+          <motion.button
+            onHoverStart={() => setHovered("practice")}
+            onHoverEnd={() => setHovered(null)}
+            onClick={() => (window.location.href = "/practice-skill")}
+            className="
+              group flex items-center justify-center gap-2
+              font-semibold text-sm px-5 py-2.5 rounded-lg 
+              border-2 text-cyan-600 select-none
+            "
+            style={{
+              borderImage: "linear-gradient(90deg, #06B6D4, #F59E0B) 1",
+              borderImageSlice: 1,
+            }}
+            whileHover={{
+              scale: 1.04,
+              y: -2,
+              background: "linear-gradient(90deg, #06B6D4, #F59E0B)",
+              color: "#fff",
+            }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 250, damping: 15 }}
+          >
+            <motion.span
+              animate={
+                hovered === "practice"
+                  ? { x: 6, rotate: 10 }
+                  : { x: 0, rotate: 0 }
+              }
+              transition={{ type: "spring", stiffness: 250, damping: 10 }}
+            >
+              <AutoAwesomeIcon
+                fontSize="small"
+                sx={{
+                  background: "linear-gradient(90deg, #00C6FF, #FFB347)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  filter: "drop-shadow(0 0 4px rgba(0, 198, 255, 0.4))",
+                  transition: "all 0.3s ease",
+                }}
+              />
+            </motion.span>
+            <span>Bắt đầu luyện tập</span>
+          </motion.button>
+        </motion.div>
+
       </Box>
 
       {/* Hình ảnh và các thẻ floating bên phải */}
@@ -142,6 +253,12 @@ const HeroSection: React.FC = () => {
           </Typography>
         </motion.div>
       </Box>
+
+      <RegisterCollaboratorModal
+        open={isOpenRegisterModal}
+        onClose={() => setIsOpenRegisterModal(false)}
+        requestData={requestData}
+      />
     </Box>
   );
 };

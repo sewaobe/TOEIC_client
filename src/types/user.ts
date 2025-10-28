@@ -5,7 +5,7 @@ export interface UserProfile {
 
 export interface User {
   _id: string;
-  role_id: string;
+  role_name: string;
   username: string;
   email: string;
   isActive: boolean;

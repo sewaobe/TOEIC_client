@@ -27,6 +27,7 @@
     "@uiw/react-md-editor": "^4.0.8",
     "axios": "^1.11.0",
     "canvas-confetti": "^1.9.3",
+    "firebase": "^12.4.0",
     "framer-motion": "^12.23.12",
     "idb-keyval": "^6.2.2",
     "lottie-web": "^5.13.0",

@@ -10,6 +10,7 @@ import {
   InputAdornment,
   Divider,
   Link as MuiLink,
+  CircularProgress,
 } from '@mui/material';
 import {
   Google,
@@ -19,6 +20,7 @@ import {
 } from '@mui/icons-material';
 import { Controller } from 'react-hook-form';
 import { useAuthViewModel } from '../../viewmodels/useAuthViewModel.ts';
+import { signInWithGoogle } from '../../hooks/useFirebaseAuth.ts';
 
 interface LoginFormProps {
   onSwitch: () => void; // chuyển sang Register
@@ -26,6 +28,30 @@ interface LoginFormProps {
 
 const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
   const authViewModel = useAuthViewModel();
+  const { loginWithGoogle } = authViewModel;
+
+  // 🌀 State cho Google login loading
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    try {
+      setGoogleLoading(true);
+      const cred = await signInWithGoogle();
+      if (cred) {
+        const { user } = cred;
+        const idToken = await user.getIdToken();
+        console.log('Google ID Token:', user);
+        await loginWithGoogle(idToken);
+      }
+    } catch (err: any) {
+      console.error('Google login failed:', err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        console.warn('User closed the popup.');
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const {
     control,
@@ -42,7 +68,7 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
 
   return (
     <Box
-      component='form'
+      component="form"
       onSubmit={onSubmit}
       sx={{
         width: '100%',
@@ -51,56 +77,50 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
         flexDirection: 'column',
       }}
     >
-      {/* Title & Description */}
+      {/* Title */}
       <Box sx={{ mb: 4, textAlign: 'center' }}>
-        <Typography
-          component='h1'
-          variant='h4'
-          sx={{ fontWeight: 'bold', mb: 1 }}
-        >
+        <Typography component="h1" variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
           Welcome Back
         </Typography>
-        <Typography variant='body1' color='text.secondary'>
+        <Typography variant="body1" color="text.secondary">
           Please enter your details to sign in.
         </Typography>
       </Box>
+
       {/* Inputs */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <Controller
-          name='username'
+          name="username"
           control={control}
           render={({ field }) => (
             <TextField
               {...field}
-              label='Username'
-              variant='outlined'
+              label="Username"
+              variant="outlined"
               error={!!errors.username}
               helperText={errors.username?.message}
-              size='small'
+              size="small"
               autoFocus
             />
           )}
         />
 
         <Controller
-          name='password'
+          name="password"
           control={control}
           render={({ field }) => (
             <TextField
               {...field}
-              label='Password'
+              label="Password"
               type={showPassword ? 'text' : 'password'}
-              variant='outlined'
+              variant="outlined"
               error={!!errors.password}
               helperText={errors.password?.message}
-              size='small'
+              size="small"
               InputProps={{
                 endAdornment: (
-                  <InputAdornment position='end'>
-                    <IconButton
-                      onClick={() => setShowPassword((p) => !p)}
-                      edge='end'
-                    >
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowPassword((p) => !p)} edge="end">
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>
@@ -110,6 +130,7 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
           )}
         />
       </Box>
+
       {/* Options */}
       <Box
         sx={{
@@ -124,32 +145,35 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
             <Checkbox
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              color='primary'
+              color="primary"
             />
           }
-          label={<Typography variant='body2'>Remember Me</Typography>}
+          label={<Typography variant="body2">Remember Me</Typography>}
         />
-        <MuiLink href='/reset-password' variant='body2' underline='hover'>
+        <MuiLink href="/reset-password" variant="body2" underline="hover">
           Forgot Password?
         </MuiLink>
       </Box>
-      {/* Login */}
+
+      {/* Login Button */}
       <Button
-        type='submit'
-        variant='contained'
-        size='small'
+        type="submit"
+        variant="contained"
+        size="small"
         fullWidth
         sx={{ py: 1, textTransform: 'uppercase', fontWeight: 'bold' }}
       >
         Login
       </Button>
+
       {/* Divider */}
       <Divider sx={{ my: 3 }}>
-        <Typography variant='body2' color='text.secondary'>
+        <Typography variant="body2" color="text.secondary">
           OR
         </Typography>
       </Divider>
-      {/* Social */}
+
+      {/* Social Buttons */}
       <Box
         sx={{
           display: 'flex',
@@ -158,9 +182,17 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
         }}
       >
         <Button
-          variant='outlined'
+          variant="outlined"
           fullWidth
-          startIcon={<Google />}
+          startIcon={
+            googleLoading ? (
+              <CircularProgress size={20} sx={{ color: '#DB4437' }} />
+            ) : (
+              <Google />
+            )
+          }
+          onClick={handleGoogleLogin}
+          disabled={googleLoading}
           sx={{
             color: '#DB4437',
             borderColor: '#DB4437',
@@ -170,10 +202,11 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
             },
           }}
         >
-          Google
+          {googleLoading ? 'Signing in...' : 'Google'}
         </Button>
+
         <Button
-          variant='outlined'
+          variant="outlined"
           fullWidth
           startIcon={<Facebook />}
           sx={{
@@ -188,7 +221,8 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
           Facebook
         </Button>
       </Box>
-      {/* Register link */}
+
+      {/* Register Link */}
       <Box
         sx={{
           display: 'flex',
@@ -198,20 +232,21 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
           mt: 3,
         }}
       >
-        <Typography variant='body2' color='text.secondary'>
+        <Typography variant="body2" color="text.secondary">
           Don't Have An Account?
         </Typography>
         <MuiLink
-          component='button'
-          type='button'
+          component="button"
+          type="button"
           onClick={onSwitch}
-          variant='body2'
-          underline='hover'
+          variant="body2"
+          underline="hover"
         >
           Register Now
         </MuiLink>
       </Box>
-      {/* Footer section */}{' '}
+
+      {/* Footer */}
       <Box
         sx={{
           width: '100%',
@@ -221,18 +256,17 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
           marginTop: '30px',
         }}
       >
-        <Typography variant='caption' color='text.secondary' textAlign='center'>
-          © {new Date().getFullYear()} TOEIC Master. All rights reserved.{' '}
+        <Typography variant="caption" color="text.secondary" textAlign="center">
+          © {new Date().getFullYear()} TOEIC Master. All rights reserved.
         </Typography>
         <Typography
-          variant='caption'
-          color='text.secondary'
-          textAlign='center'
+          variant="caption"
+          color="text.secondary"
+          textAlign="center"
           sx={{ cursor: 'pointer' }}
         >
-          {' '}
-          Private Policy{' '}
-        </Typography>{' '}
+          Private Policy
+        </Typography>
       </Box>
     </Box>
   );

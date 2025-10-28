@@ -4,6 +4,7 @@ export type RawAnswer = {
     question_no: number;
     selectedOption?: string;
     isCorrect: boolean;
+    correctAnswer: string;
     tags?: string[];
 };
 

@@ -3,7 +3,6 @@ import { Box, Typography, useTheme } from '@mui/material';
 import MainLayout from '../layouts/MainLayout';
 import AlertBox from '../../components/flashCardItem/AlertBox';
 import FlashcardsList from '../../components/flashCard/FlashcardList';
-import FlashcardsLearningSection from '../../components/flashCard/FlashcardLearningSection';
 import FlashcardsHeader from '../../components/flashCard/FlashCardHeader';
 import { VideoModal } from '../../components/modals/VideoModal';
 // src/mock/flashcardMock.ts
@@ -13,6 +12,7 @@ export interface FlashcardList {
     description: string;
     vocabularies_id: string[];
     tags: string[];
+    isPublic: boolean;
     created_at: string;
 }
 
@@ -68,10 +68,10 @@ const FlashcardsPage: React.FC = () => {
                         />
 
                         {/* Nội dung thay đổi theo activeTab */}
-                        {activeTab === 'myList' && <FlashcardsList activeTab='myList' title="List từ đã tạo"/>}
-                        {activeTab === 'learning' && <FlashcardsLearningSection />}
+                        {activeTab === 'myList' && <FlashcardsList activeTab='myList' title="List từ đã tạo" />}
+                        {activeTab === 'learning' && <FlashcardsList activeTab='learning' title="Danh sách từ đang học" />}
                         {activeTab === 'explore' && (
-                            <FlashcardsList activeTab='explore' title="Khám Phá Flashcards Mới"/>
+                            <FlashcardsList activeTab='explore' title="Khám Phá Flashcards Mới" />
                         )}
                     </Box>
                 </Box>

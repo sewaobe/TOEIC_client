@@ -1,12 +1,29 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Typography, useTheme } from "@mui/material";
 import { motion } from "framer-motion";
 import { Star, FileDownload } from "@mui/icons-material";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch"
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome"
+import RegisterCollaboratorModal from "../modals/RegisterCollaboratorModal";
+import { requestCollaboratorService } from "../../services/request_collaborator.service";
 
 const HeroSection: React.FC = () => {
   const theme = useTheme();
+  const [isOpenRegisterModal, setIsOpenRegisterModal] = useState(false);
+  const [requestData, setRequestData] = useState(null);
+
+  useEffect(() => {
+    const fetchRequestData = async () => {
+      try {
+        const data = await requestCollaboratorService.getRequestCollaboratorByUser(); 
+        setRequestData(data);
+      } catch (error) {
+        console.error("Error fetching request data:", error);
+      }
+    };
+
+    fetchRequestData();
+  }, []);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -80,7 +97,7 @@ const HeroSection: React.FC = () => {
             className="text-base md:text-lg mb-6 max-w-lg"
             sx={{
               color: theme.palette.text.secondary,
-              textAlign: "justify", 
+              textAlign: "justify",
             }}
           >
             Chào mừng đến với <strong>TOEIC MASTER</strong>, trang web TOEIC
@@ -99,7 +116,7 @@ const HeroSection: React.FC = () => {
           <motion.button
             onHoverStart={() => setHovered("collab")}
             onHoverEnd={() => setHovered(null)}
-            onClick={() => window.open("http://localhost:5174", "_blank")}
+            onClick={() => setIsOpenRegisterModal(true)}
             className="
               group flex items-center justify-center gap-2
               text-white font-semibold text-sm px-5 py-2.5 rounded-lg 
@@ -129,7 +146,7 @@ const HeroSection: React.FC = () => {
                 }}
               />
             </motion.span>
-            <span>Đăng ký Cộng tác viên</span>
+            <span>{requestData ? "Xem yêu cầu chờ duyệt!" : "Đăng ký Cộng tác viên"}</span>
           </motion.button>
 
           {/* ✨ Nút 2: Bắt đầu luyện tập */}
@@ -236,6 +253,12 @@ const HeroSection: React.FC = () => {
           </Typography>
         </motion.div>
       </Box>
+
+      <RegisterCollaboratorModal
+        open={isOpenRegisterModal}
+        onClose={() => setIsOpenRegisterModal(false)}
+        requestData={requestData}
+      />
     </Box>
   );
 };

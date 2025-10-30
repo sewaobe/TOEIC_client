@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   IconButton,
@@ -12,17 +12,27 @@ import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import SpellcheckIcon from '@mui/icons-material/Spellcheck';
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
 
 interface RightMenuDrawerProps {
   onShowNotebook: (show: boolean) => void;
-  onShowProgress: (show: boolean) => void; // ✨ 2. Thêm prop mới để mở modal tiến độ
+  onShowProgress: (show: boolean) => void;
+  onShowChatbot: (show: boolean) => void;
 }
 
 export default function RightMenuDrawer({
   onShowNotebook,
-  onShowProgress, // ✨ 2. Nhận prop mới
+  onShowProgress,
+  onShowChatbot,
 }: RightMenuDrawerProps) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const storedOpen = localStorage.getItem('rightMenuOpen');
+    if (storedOpen !== null) {
+      setOpen(JSON.parse(storedOpen));
+    }
+  }, []);
 
   const items = [
     {
@@ -40,6 +50,12 @@ export default function RightMenuDrawer({
       icon: <SpellcheckIcon sx={{ color: "#4527a0" }} />,
       onClick: () => alert("Đi tới Từ điển"),
     },
+    {
+      label: "Trợ lý luyện tập",
+      icon: <SmartToyIcon sx={{ color: "#3b82f6" }} />,
+      onClick: () => onShowChatbot(true),
+    }
+
   ];
 
   return (
@@ -54,8 +70,8 @@ export default function RightMenuDrawer({
         boxShadow: 4,
         zIndex: 1200,
         transform: open
-          ? "translateX(0) translateY(-50%)"
-          : "translateX(110%) translateY(-50%)",
+          ? "translateX(0) translateY(-48%)"
+          : "translateX(110%) translateY(-48%)",
         transition: "transform 0.3s ease-in-out, width 0.3s ease-in-out",
         width: open ? 64 : 48,
         border: "1px solid #e0e0e0",
@@ -63,7 +79,10 @@ export default function RightMenuDrawer({
     >
       {/* Toggle nút */}
       <IconButton
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          setOpen(!open);
+          localStorage.setItem('rightMenuOpen', JSON.stringify(!open));
+        }}
         sx={{
           position: "absolute",
           left: -36,

@@ -29,8 +29,6 @@ import { uploadDocumentToCloudinary } from "../../services/cloudinary.service";
 import { requestCollaboratorService } from "../../services/request_collaborator.service";
 import { useSelector } from "react-redux";
 import { RootState } from "../../stores/store";
-import { uploadFileToFirebase } from "../../hooks/useFirebaseAuth";
-import { uploadFileToServer } from "../../services/uploadFile.service";
 
 // ---------- Constants ----------
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -87,7 +85,6 @@ function RegisterCollaboratorModal({
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const isStudent = user?.role_name === "student";
-    const isDenied = user?.role_name === "collaborator" || user?.role_name === "admin";
 
     // ✅ Khi có requestData, tự fill vào form để hiển thị lại
     useEffect(() => {
@@ -379,8 +376,9 @@ function RegisterCollaboratorModal({
                                         helperText={fieldErrors.experience}
                                     >
                                         <MenuItem value="none">Chưa có</MenuItem>
-                                        <MenuItem value="1-2">1–2 năm</MenuItem>
-                                        <MenuItem value="3+">Trên 3 năm</MenuItem>
+                                        <MenuItem value="1-3">1–3 năm</MenuItem>
+                                        <MenuItem value="3-5">3-5 năm</MenuItem>
+                                        <MenuItem value="5+">Trên 5 năm</MenuItem>
                                     </TextField>
 
                                     {/* Chuyên môn */}

@@ -2,13 +2,15 @@ import React, { FC, useEffect, useReducer, useState } from "react";
 import { Button, useTheme } from "@mui/material";
 import AppsIcon from "@mui/icons-material/Apps";
 import { useCountdown } from "../../hooks/useCountDown";
-import { useSelector } from "react-redux";
-import { RootState } from "../../stores/store";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../stores/store";
 import testService from "./../../services/test.service";
-import ScoreModal, { ResultPayload } from "../modals/ToeicQuickResultModal";
+import { mapAnswersToParts } from "../../utils/mapAnswersToParts";
+import { ResultPayload } from "../modals/ToeicQuickResultModal";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ConfirmModal from "../modals/ConfirmModal";
 import ToeicQuickResultModal from "../modals/ToeicQuickResultModal";
+import { setInitialAnswers } from "../../stores/answerSlice";
 
 interface TestHeaderProps {
   setIsShowSideBar: React.Dispatch<React.SetStateAction<boolean>>;
@@ -40,7 +42,12 @@ function reducer(state: State, action: Action): State {
     case "CLOSE_SUBMIT":
       return { ...state, submitOpen: false };
     case "OPEN_SCORE":
-      return { ...state, scoreOpen: true, score: action.payload, submitOpen: false };
+      return {
+        ...state,
+        scoreOpen: true,
+        score: action.payload,
+        submitOpen: false,
+      };
     case "CLOSE_SCORE":
       return { ...state, scoreOpen: false };
     default:
@@ -48,24 +55,32 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-const TestHeader: FC<TestHeaderProps> = ({ setIsShowSideBar, isTourRunning }) => {
+const TestHeader: FC<TestHeaderProps> = ({
+  setIsShowSideBar,
+  isTourRunning,
+}) => {
   const [state, dispatchLocal] = useReducer(reducer, initialState);
-  const [answerTest, setAnswerTest] = useState<ResultPayload>({ score: 0, answers: [] });
+  const [answerTest, setAnswerTest] = useState<ResultPayload>({
+    score: 0,
+    answers: [],
+  });
   const navigate = useNavigate();
   const theme = useTheme();
+  const dispatch = useDispatch<AppDispatch>();
   const answers = useSelector((state: RootState) => state.answer.answers);
+  const groups = useSelector((state: RootState) => state.exam.groups);
 
   // 👇 Lấy query params trực tiếp
   const [searchParams] = useSearchParams();
   const timeLimitParam = searchParams.get("timeLimit"); // phút
   const parts = searchParams.get("parts"); // nếu có parts thì là practice
-  const isDemoTest = searchParams.get("demo_test") === 'true';
+  const isDemoTest = searchParams.get("demo_test") === "true";
 
   const duration = timeLimitParam
     ? parseInt(timeLimitParam, 10) * 60 // practice có giới hạn
     : parts
-      ? Infinity // practice không giới hạn
-      : 120 * 60; // full test mặc định 120 phút
+    ? Infinity // practice không giới hạn
+    : 120 * 60; // full test mặc định 120 phút
 
   const { timeLeft, formatTime } = useCountdown(duration, isTourRunning);
 
@@ -75,8 +90,15 @@ const TestHeader: FC<TestHeaderProps> = ({ setIsShowSideBar, isTourRunning }) =>
 
   const [startTime] = useState(Date.now());
 
-  const handleSubmit = async () => {
-    const answersMap = answers.map((a) => ({
+  type AnswerItem = RootState["answer"]["answers"][number];
+
+  const submitPreparedAnswers = async (preparedAnswers: AnswerItem[]) => {
+    if (!testId || !userId) {
+      console.warn("Thiếu testId hoặc userId để nộp bài");
+      return;
+    }
+
+    const answersMap = preparedAnswers.map((a) => ({
       question_id: a._id,
       selectedOption: a.answer,
     }));
@@ -106,14 +128,194 @@ const TestHeader: FC<TestHeaderProps> = ({ setIsShowSideBar, isTourRunning }) =>
         score: result.score,
         answers: result.answers.map((answer, index) => ({
           ...answer,
-          question_no: index + 1
-        }))
+          question_no: index + 1,
+        })),
       });
+      // --- Persist a lightweight summary (parts accuracy + score) to localStorage ---
+      try {
+        // Prefer server-provided parts summary if available
+        let partsSummary: { part_name: string; accuracy: number }[] = [];
+
+        if (
+          result &&
+          Array.isArray((result as any).parts) &&
+          (result as any).parts.length > 0
+        ) {
+          partsSummary = (result as any).parts.map((p: any) => {
+            const name = p?.part_name ?? p?.name ?? p?.part ?? "";
+            let acc = typeof p?.accuracy === "number" ? p.accuracy : 0;
+            // normalize fraction -> percent
+            if (acc <= 1) acc = acc * 100;
+            return { part_name: String(name), accuracy: acc };
+          });
+        } else if (result && Array.isArray((result as any).answers)) {
+          // Fallback: try to map answers to parts using local exam `groups` to find question numbers
+          try {
+            // build map questionId -> question_no using groups if available
+            const qIdToNo = new Map<string, number>();
+            if (groups && Array.isArray(groups)) {
+              let fallback = 1;
+              for (const g of groups) {
+                for (const q of (g.questions || []) as any[]) {
+                  const qRaw: any = q;
+                  const rawId = qRaw._id
+                    ? typeof qRaw._id === "string"
+                      ? qRaw._id
+                      : qRaw._id.$oid ?? String(qRaw._id)
+                    : undefined;
+                  const match = qRaw.name?.match(/\d+/);
+                  const qNo = match ? parseInt(match[0], 10) : fallback++;
+                  if (rawId) qIdToNo.set(rawId, qNo);
+                }
+              }
+            }
+
+            const rawAnswers = ((result as any).answers as any[]).map(
+              (a, idx) => {
+                const qidObj = a.question_id;
+                const qid =
+                  typeof qidObj === "string"
+                    ? qidObj
+                    : qidObj?.$oid ?? qidObj?._id ?? undefined;
+                const question_no = qIdToNo.get(qid) ?? idx + 1;
+                return {
+                  question_id: qid,
+                  question_no,
+                  selectedOption: a.selectedOption,
+                  isCorrect: !!a.isCorrect,
+                  tags: a.tags || undefined,
+                } as any;
+              }
+            );
+
+            const partsMap = mapAnswersToParts(rawAnswers as any);
+            partsSummary = Object.keys(partsMap).map((p) => {
+              const arr = partsMap[Number(p) as 1 | 2 | 3 | 4 | 5 | 6 | 7];
+              const total = arr.length;
+              const correct = arr.filter((a) => !!a.isCorrect).length;
+              const accuracy = total > 0 ? (correct / total) * 100 : 0;
+              return { part_name: `Part ${p}`, accuracy };
+            });
+          } catch (e) {
+            console.warn("Fallback mapping answers->parts failed", e);
+          }
+        }
+
+        const payload = {
+          testId,
+          userId,
+          score: result.score,
+          parts: partsSummary,
+          submit_at: new Date().toISOString(),
+        };
+
+        try {
+          localStorage.setItem("last_test_result", JSON.stringify(payload));
+          if (isDemoTest) {
+            localStorage.setItem("demo_test_result", JSON.stringify(payload));
+          }
+        } catch (e) {
+          console.warn("Không lưu được last_test_result vào localStorage", e);
+        }
+      } catch (e) {
+        console.warn("Tính toán parts summary thất bại", e);
+      }
       dispatchLocal({ type: "OPEN_SCORE", payload: result.score });
     } catch (err) {
       console.error("Submit test failed", err);
       dispatchLocal({ type: "CLOSE_SUBMIT" });
     }
+  };
+
+  const handleSubmit = async () => {
+    await submitPreparedAnswers(answers);
+  };
+
+  const shuffleArray = <T,>(arr: T[]): T[] => {
+    const cloned = [...arr];
+    for (let i = cloned.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [cloned[i], cloned[j]] = [cloned[j], cloned[i]];
+    }
+    return cloned;
+  };
+
+  const handleQuickSubmit = async () => {
+    if (!groups || groups.length === 0 || !answers || answers.length === 0) {
+      console.warn("Chưa có dữ liệu câu hỏi để nộp nhanh");
+      return;
+    }
+
+    let fallbackNumber = 1;
+    const questionMetas = groups.flatMap((group) =>
+      group.questions.map((q) => {
+        const match = q.name?.match(/\d+/);
+        const questionNumber = match
+          ? parseInt(match[0], 10)
+          : fallbackNumber++;
+        if (match) {
+          fallbackNumber = questionNumber + 1;
+        }
+        const options = Object.keys(q.choices || {});
+        return {
+          questionNumber,
+          correctAnswer: q.correctAnswer,
+          options,
+        };
+      })
+    );
+
+    if (questionMetas.length === 0) {
+      console.warn("Không tìm thấy câu hỏi để nộp nhanh");
+      return;
+    }
+
+    const questionNumbers = questionMetas.map((q) => q.questionNumber);
+    // Mục tiêu điểm ~400-420 → đặt tỷ lệ đúng khoảng 40% - 42%
+    const correctRatio = 0.4 + Math.random() * 0.02; // ~400-420 điểm
+    const targetCorrect = Math.max(
+      1,
+      Math.round(questionMetas.length * correctRatio)
+    );
+    const shuffledNumbers = shuffleArray(questionNumbers);
+    const correctSet = new Set(shuffledNumbers.slice(0, targetCorrect));
+
+    const metaMap = new Map<
+      number,
+      { correctAnswer: string; options: string[] }
+    >();
+    questionMetas.forEach((meta) => {
+      metaMap.set(meta.questionNumber, {
+        correctAnswer: meta.correctAnswer,
+        options: meta.options,
+      });
+    });
+
+    const autoFilledAnswers: AnswerItem[] = answers.map((item) => {
+      const meta = metaMap.get(item.question);
+      if (!meta) return item;
+
+      const { correctAnswer, options } = meta;
+      const shouldBeCorrect = correctSet.has(item.question);
+
+      let selected = correctAnswer;
+      if (!shouldBeCorrect) {
+        const wrongChoices = options.filter((opt) => opt !== correctAnswer);
+        if (wrongChoices.length > 0) {
+          selected =
+            wrongChoices[Math.floor(Math.random() * wrongChoices.length)];
+        }
+      }
+
+      return {
+        ...item,
+        answer: selected,
+        isFlagged: false,
+      };
+    });
+
+    dispatch(setInitialAnswers(autoFilledAnswers));
+    await submitPreparedAnswers(autoFilledAnswers);
   };
 
   useEffect(() => {
@@ -156,6 +358,15 @@ const TestHeader: FC<TestHeaderProps> = ({ setIsShowSideBar, isTourRunning }) =>
           onClick={() => dispatchLocal({ type: "OPEN_SUBMIT" })}
         >
           Nộp bài
+        </Button>
+
+        <Button
+          variant="outlined"
+          color="primary"
+          className="rounded-lg px-4 py-2 font-semibold"
+          onClick={handleQuickSubmit}
+        >
+          Nộp nhanh (mock)
         </Button>
 
         <span

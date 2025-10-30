@@ -6,114 +6,30 @@ import {
   Modal,
   Typography,
   CircularProgress,
-  Stack,
-  Paper,
-  IconButton,
-  Snackbar,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
 } from "@mui/material";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import MainLayout from "../layouts/MainLayout";
 import DashboardLearningPath from "./DashboardLearningPath";
 import learningPathService from "../../services/learningPath.service";
-import {
-  LEARNING_METHOD_GROUPS,
-  type Method,
-  type MethodDetails,
-} from "../../constants/learningMethods";
+// NOTE: Ẩn tính năng chọn phương pháp tạm thời để đơn giản hoá flow tạo lộ trình.
+// Khi cần bật lại, bỏ comment import bên dưới và khối Modal 2 ở cuối file.
+// import {
+//   LEARNING_METHOD_GROUPS,
+//   type Method,
+//   type MethodDetails,
+// } from "../../constants/learningMethods";
+import axiosClient from "../../services/axiosClient";
 
 /* LocalStorage keys (để gom plan khi xác nhận) */
 // const LS_KEY = "toeic_plan_draft";
 // const LS_PLACEMENT_KEY = "toeic_placement_result";
 
-/* ============== Card phương pháp ============== */
-function MethodCard({
-  method,
-  selected,
-  onToggle,
-  onInfo,
-}: {
-  method: Method;
-  selected: boolean;
-  onToggle: () => void;
-  onInfo: () => void;
-}) {
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 2.5,
-        borderRadius: 2,
-        border: "1px solid",
-        borderColor: selected ? "primary.main" : "rgba(0,0,0,0.12)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 1,
-        height: "100%",
-        cursor: "pointer",
-        transition: "all .15s ease",
-        "&:hover": {
-          boxShadow: "0 6px 18px rgba(0,0,0,.08)",
-          transform: "translateY(-1px)",
-        },
-      }}
-      onClick={onToggle}
-    >
-      <Box display="flex" alignItems="center" justifyContent="space-between">
-        <Typography variant="subtitle1" fontWeight={800}>
-          {method.title}
-        </Typography>
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation(); // tránh toggle khi mở info
-            onInfo();
-          }}
-        >
-          <InfoOutlinedIcon fontSize="small" />
-        </IconButton>
-      </Box>
-
-      <Typography variant="body2" color="text.secondary">
-        {method.shortDesc}
-      </Typography>
-    </Paper>
-  );
-}
-
-/* ============== View chi tiết trong modal ℹ️ ============== */
-function MethodDetailsView({ details }: { details: MethodDetails }) {
-  return (
-    <Box>
-      <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-        Giải thích
-      </Typography>
-      <Typography variant="body2" gutterBottom>
-        {details.explain}
-      </Typography>
-
-      <Typography
-        variant="subtitle2"
-        fontWeight={700}
-        gutterBottom
-        sx={{ mt: 2 }}
-      >
-        Áp dụng TOEIC
-      </Typography>
-      <ul style={{ margin: 0, paddingLeft: "1.5rem" }}>
-        {details.apply.map((item, i) => (
-          <li key={i}>
-            <Typography variant="body2">{item}</Typography>
-          </li>
-        ))}
-      </ul>
-    </Box>
-  );
-}
+/* ============== Card phương pháp + View chi tiết (TẠM ẨN) ==============
+   Toàn bộ block MethodCard và MethodDetailsView được comment để tạm thời ẩn
+   tính năng chọn phương pháp học. Khi muốn bật lại:
+   - Mở comment import learningMethods phía trên
+   - Mở comment block Modal 2 ở dưới cùng file
+   - Giữ nguyên 2 component này (copy lại từ git history hoặc bỏ comment)
+*/
 
 /* ============== Main ============== */
 export default function DashboardDemo() {
@@ -123,24 +39,19 @@ export default function DashboardDemo() {
 
   // Modal 1: báo chưa có lộ trình
   const [open, setOpen] = React.useState(false);
-  // Modal 2: chọn phương pháp
-  const [chooseMethod, setChooseMethod] = React.useState(false);
-  // Modal ℹ️ chi tiết
-  const [infoMethod, setInfoMethod] = React.useState<Method | null>(null);
-
-  // Cảnh báo khi người dùng bấm ra ngoài/Esc
-  const [blockedToast, setBlockedToast] = React.useState(false);
-  // Dialog xác nhận khi bấm "Hủy"
-  const [confirmExit, setConfirmExit] = React.useState(false);
-
-  // Phương pháp đã chọn
-  const [selected, setSelected] = React.useState<Set<string>>(new Set());
-  const toggleMethod = (key: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
+  // NOTE: Các state dưới đây thuộc tính năng chọn phương pháp – tạm thời ẩn.
+  // Khi cần bật lại, bỏ comment các state và UI block Modal 2 tương ứng.
+  // const [chooseMethod, setChooseMethod] = React.useState(false);
+  // const [infoMethod, setInfoMethod] = React.useState<Method | null>(null);
+  // const [blockedToast, setBlockedToast] = React.useState(false);
+  // const [confirmExit, setConfirmExit] = React.useState(false);
+  // const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  // const toggleMethod = (key: string) =>
+  //   setSelected((prev) => {
+  //     const next = new Set(prev);
+  //     next.has(key) ? next.delete(key) : next.add(key);
+  //     return next;
+  //   });
 
   React.useEffect(() => {
     const fetchPlan = async () => {
@@ -163,58 +74,118 @@ export default function DashboardDemo() {
   }, []);
 
   const handleConfirm = async () => {
-    // 1) Gom phương pháp đã chọn
-    const methods = Array.from(selected);
-
-    // 2) Lấy draft plan từ localStorage
-    let draft: any = {};
-
+    // TẠM THỜI: Bỏ qua bước chọn phương pháp và gọi trực tiếp Gemini để lấy khung lộ trình
+    // DỮ LIỆU ĐẦU VÀO: lấy "thực tế" từ localStorage (wizard) nếu có, và tính toán an toàn
     try {
-      const totalsRaw = localStorage.getItem("weekly_totals");
-      if (totalsRaw) draft.weeklyTotals = JSON.parse(totalsRaw);
+      // 1) Lấy dữ liệu từ localStorage (đã lưu ở các step wizard)
+      const planStart = JSON.parse(
+        localStorage.getItem("plan_start") || "null"
+      );
+      const planEnd = JSON.parse(localStorage.getItem("plan_end") || "null");
+      const targetScore = JSON.parse(
+        localStorage.getItem("score_target_plan") || "null"
+      );
+      const weeklyTotals: number[] = JSON.parse(
+        localStorage.getItem("weekly_totals") || "[]"
+      ); // minutes per week
+      const weeklyDays = JSON.parse(
+        localStorage.getItem("weekly_days") || "{}"
+      ); // per-day minutes map
 
-      const daysRaw = localStorage.getItem("weekly_days");
-      if (daysRaw) {
-        const allWeeks = JSON.parse(daysRaw);
-        draft.weeklyPlan = allWeeks["0"]; // tạm lấy tuần đầu tiên làm mẫu plan
+      // 2) Tính weekly_study_hours & study_days_per_week từ bản phân bổ tuần/ngày
+      const avgWeeklyMinutes = weeklyTotals.length
+        ? Math.round(
+            weeklyTotals.reduce((a, b) => a + b, 0) / weeklyTotals.length
+          )
+        : 21 * 60; // fallback 21h/tuần
+      const weekly_study_hours = Math.max(1, Math.round(avgWeeklyMinutes / 60));
+
+      const firstWeekPlan = weeklyDays?.["0"] || {};
+      const study_days_per_week =
+        Object.values(firstWeekPlan).filter(
+          (m: any) => (typeof m === "number" ? m : 0) > 0
+        ).length || 6;
+
+      // 3) Lấy điểm hiện tại và accuracy nếu có (ưu tiên local last_test_result/demo_test_result)
+      // Các key mới: 'last_test_result' (lưu bởi TestHeader) chứa { score, parts: [{ part_name, accuracy }], ... }
+      let current_score = 400;
+      let current_accuracy = {
+        part1: 72,
+        part2: 65,
+        part3: 58,
+        part4: 55,
+        part5: 68,
+        part6: 60,
+        part7: 56,
+      } as Record<string, number>;
+
+      try {
+        const lastRaw = localStorage.getItem("last_test_result");
+        const demoRaw = localStorage.getItem("demo_test_result");
+        const placementRaw =
+          lastRaw || demoRaw || localStorage.getItem("toeic_placement_result");
+
+        if (placementRaw) {
+          const placement = JSON.parse(placementRaw);
+          if (typeof placement?.score === "number")
+            current_score = placement.score;
+
+          if (Array.isArray(placement?.parts)) {
+            const acc: Record<string, number> = {};
+            placement.parts.forEach((p: any) => {
+              // support both { part_name: 'Part 1' } and { name: 'Part 1' }
+              const name = p?.part_name ?? p?.name ?? "";
+              const match = String(name).match(/(\d+)/);
+              const key = match ? `part${match[1]}` : undefined;
+              if (key && typeof p?.accuracy === "number") {
+                // If accuracy is in [0,1] (fraction), convert to percent; else assume percent already
+                const rawAcc = p.accuracy;
+                const percent = rawAcc <= 1 ? rawAcc * 100 : rawAcc;
+                acc[key] = Math.round(percent);
+              }
+            });
+            // Nếu có ít nhất 3 parts thì merge vào current_accuracy
+            if (Object.keys(acc).length >= 3)
+              current_accuracy = { ...current_accuracy, ...acc } as any;
+          }
+        }
+      } catch (e) {
+        console.warn(
+          "Không parse được placement từ localStorage, dùng mặc định demo.",
+          e
+        );
       }
 
-      const scoreRaw = localStorage.getItem("score_target_plan");
-      if (scoreRaw) draft.targetScore = JSON.parse(scoreRaw);
+      // 4) Xây payload gọi Gemini theo spec bạn cung cấp
+      const body = {
+        current_score,
+        current_accuracy,
+        target_score: typeof targetScore === "number" ? targetScore : 600,
+        start_date: typeof planStart === "string" ? planStart : "2025-01-01",
+        deadline: typeof planEnd === "string" ? planEnd : "2025-04-30",
+        weekly_study_hours,
+        study_days_per_week,
+        learning_methods: {
+          video: "Ngữ pháp, lý thuyết, chiến lược",
+          flashcard: "Từ vựng, collocation",
+          dictation: "Nghe - chép chính tả",
+          shadowing: "Bắt chước phát âm, ngữ điệu người bản xứ",
+          quiz: "Trắc nghiệm ngắn ôn từ và cấu trúc",
+          mini_test: "Làm đề TOEIC ngắn, đánh giá phản xạ",
+        },
+      };
 
-      const endRaw = localStorage.getItem("plan_end");
-      if (endRaw) draft.endDate = JSON.parse(endRaw);
+      console.log("GEMINI_INPUT_BODY", body);
+      const res = await axiosClient.post("/gemini/generate-toeic-plan", body);
+      console.log("GEMINI_PLAN_RESULT", res);
+
+      // Tuỳ ý: sau này có thể lưu plan vào server hoặc state để hiển thị ngay
+      // setPlan(res?.data ?? res);
+      // setHasPlan(true);
+      // setOpen(false);
     } catch (err) {
-      console.warn("Parse draft plan failed:", err);
+      console.error("Gọi Gemini tạo lộ trình thất bại:", err);
     }
-
-    // 3) Chuẩn payload gửi về BE
-    const payload = {
-      methods, // mảng key phương pháp
-      targetScore: draft.targetScore ?? null,
-      endDate: draft.endDate ?? null,
-      weeklyTotals: draft.weeklyTotals ?? [],
-      weeklyPlan: draft.weeklyPlan ?? {},
-      // placement: placement ?? null, // optional nếu cần
-    };
-
-    // Debug log
-    console.log("CREATE_LEARNING_PATH_PAYLOAD:", payload);
-
-    // 4) TODO: gọi API tạo lộ trình (giữ comment để test trước)
-    try {
-      const res = await learningPathService.createUserLearningPath(payload);
-      if (res) {
-        setHasPlan(true);
-        setChooseMethod(false);
-      }
-    } catch (err) {
-      console.error("Create learning path failed:", err);
-    }
-
-    // 5) Tạm set state để flow UI tiếp tục (sau này bỏ khi gọi API thật)
-    // setChooseMethod(false);
-    // setHasPlan(true);
   };
 
   if (loading) {
@@ -260,8 +231,9 @@ export default function DashboardDemo() {
           <Button
             variant="contained"
             onClick={() => {
-              setOpen(false);
-              setChooseMethod(true);
+              // TẠM THỜI: Gọi trực tiếp handleConfirm để tạo lộ trình qua Gemini.
+              // Khi bật lại chọn phương pháp, đổi thành setChooseMethod(true)
+              handleConfirm();
             }}
           >
             Tạo lộ trình ngay
@@ -269,11 +241,12 @@ export default function DashboardDemo() {
         </Box>
       </Modal>
 
-      {/* Modal 2: chọn phương pháp */}
+      {/* Modal 2: chọn phương pháp – TẠM THỜI ẨN
+          Để bật lại, bỏ comment toàn bộ block dưới cùng và khối import + state bên trên. */}
+      {/**
       <Modal
         open={chooseMethod}
         onClose={(_, reason) => {
-          // Chặn đóng bằng backdrop/Esc, hiển thị cảnh báo
           if (reason === "backdropClick" || reason === "escapeKeyDown") {
             setBlockedToast(true);
             return;
@@ -281,157 +254,24 @@ export default function DashboardDemo() {
           setChooseMethod(false);
         }}
       >
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            bgcolor: "background.paper",
-            p: 4,
-            borderRadius: 2,
-            boxShadow: 24,
-            minWidth: 760,
-            maxWidth: "85vw",
-            maxHeight: "85vh",
-            overflowY: "auto",
-          }}
-        >
-          <Typography variant="h6" gutterBottom>
-            Cá nhân hoá lộ trình học
-          </Typography>
-          <Typography color="text.secondary" sx={{ mb: 3 }}>
-            Chọn các phương pháp phù hợp. Bấm ℹ️ để xem chi tiết.
-          </Typography>
-
-          <Stack spacing={3.5}>
-            {LEARNING_METHOD_GROUPS.map((group) => (
-              <Box key={group.name}>
-                <Typography variant="subtitle1" fontWeight={900}>
-                  {group.name}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 2 }}
-                >
-                  Bao gồm: {group.includes}
-                </Typography>
-
-                {/* 2 cột bằng CSS Grid (tránh MUI Grid để không dính typings) */}
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-                    gap: 2,
-                  }}
-                >
-                  {group.methods.map((method) => (
-                    <MethodCard
-                      key={method.key}
-                      method={method}
-                      selected={selected.has(method.key)}
-                      onToggle={() => toggleMethod(method.key)}
-                      onInfo={() => setInfoMethod(method)}
-                    />
-                  ))}
-                </Box>
-              </Box>
-            ))}
-          </Stack>
-
-          <Box mt={3} textAlign="right">
-            <Button onClick={() => setConfirmExit(true)}>Hủy</Button>
-            <Button
-              variant="contained"
-              sx={{ ml: 1 }}
-              onClick={handleConfirm}
-              disabled={selected.size === 0}
-            >
-              Xác nhận ({selected.size})
-            </Button>
-          </Box>
-        </Box>
+        <Box ...> ... (UI chọn phương pháp học) ... </Box>
       </Modal>
+      */}
 
-      {/* Snackbar cảnh báo khi bấm ra ngoài / nhấn Esc */}
-      <Snackbar
-        open={blockedToast}
-        autoHideDuration={2600}
-        onClose={(_, reason) => {
-          if (reason === "clickaway") return;
-          setBlockedToast(false);
-        }}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          onClose={() => setBlockedToast(false)}
-          severity="info"
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          Bạn chưa xác nhận lựa chọn. Vui lòng dùng nút “Xác nhận” hoặc “Hủy”.
-        </Alert>
-      </Snackbar>
+      {/* Snackbar cảnh báo – thuộc flow chọn phương pháp (TẠM ẨN) */}
+      {/**
+      <Snackbar ...> ... </Snackbar>
+      */}
 
-      {/* Dialog xác nhận khi bấm Hủy */}
-      <Dialog open={confirmExit} onClose={() => setConfirmExit(false)}>
-        <DialogTitle>Xác nhận đóng</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary">
-            Bạn chưa xác nhận lựa chọn phương pháp. Bạn có chắc muốn đóng không?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmExit(false)}>Tiếp tục chọn</Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={() => {
-              setConfirmExit(false);
-              setChooseMethod(false);
-              // Nếu muốn xoá lựa chọn khi đóng, bật dòng dưới:
-              // setSelected(new Set());
-            }}
-          >
-            Đóng
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Dialog xác nhận – thuộc flow chọn phương pháp (TẠM ẨN) */}
+      {/**
+      <Dialog ...> ... </Dialog>
+      */}
 
-      {/* Modal ℹ️ chi tiết */}
-      <Modal open={!!infoMethod} onClose={() => setInfoMethod(null)}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            bgcolor: "background.paper",
-            p: 4,
-            borderRadius: 2,
-            boxShadow: 24,
-            minWidth: 520,
-            maxWidth: "70vw",
-            maxHeight: "80vh",
-            overflowY: "auto",
-          }}
-        >
-          {infoMethod && (
-            <>
-              <Typography variant="h6" gutterBottom>
-                {infoMethod.title}
-              </Typography>
-              <MethodDetailsView details={infoMethod.details} />
-              <Box mt={3} textAlign="right">
-                <Button onClick={() => setInfoMethod(null)} variant="contained">
-                  Đóng
-                </Button>
-              </Box>
-            </>
-          )}
-        </Box>
-      </Modal>
+      {/* Modal ℹ️ chi tiết – thuộc flow chọn phương pháp (TẠM ẨN) */}
+      {/**
+      <Modal ...> ... </Modal>
+      */}
     </MainLayout>
   );
 }

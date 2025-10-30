@@ -85,7 +85,8 @@ export default function PlanWizardDemo() {
           className="!rounded-xl shadow-lg"
           sx={{ border: "1px solid rgba(255,255,255,.15)", bgcolor: "rgba(255,255,255,.10)", backdropFilter: "blur(16px)" }}
         >
-          <CardContent className="p-4 sm:p-6">
+          {/* Make CardContent a column so inner steps area can grow and scroll locally */}
+          <CardContent className="p-4 sm:p-6" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {/* Stepper */}
             <Box sx={{ mb: 3 }}>
               <PlanStepper activeStep={activeStep} />
@@ -94,7 +95,8 @@ export default function PlanWizardDemo() {
             <Divider className="my-4" />
 
             {/* Steps */}
-            <Box sx={{ minHeight: 320 }}>
+            {/* Steps container: allow vertical scrolling locally when content is long */}
+            <Box sx={{ minHeight: 320, maxHeight: '60vh', overflowY: 'auto', pr: 1 }}>
               {activeStep === 0 && (
                 <Grow in mountOnEnter unmountOnExit>
                   <Box>

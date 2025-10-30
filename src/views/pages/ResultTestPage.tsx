@@ -230,7 +230,7 @@ const ResultTestPage = () => {
                                             size="small"
                                             color="primary"
                                             onClick={() =>
-                                                navigate(`${location.pathname}/answers`)
+                                                navigate(`${location.pathname}/retry`)
                                             }
                                         >
                                             Làm lại các câu sai

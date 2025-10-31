@@ -14,107 +14,36 @@ import { Close, Add } from "@mui/icons-material";
 import ChipScrollerMini from "./components/ChipScrollerMini";
 import { ChatMessage, ChatSession, ChatType } from "../../types/Chat";
 import { ChatContent } from "./components/ChatContent";
-
-/* ---------------- MOCK API ---------------- */
-async function fetchChatSessionsPaginated(
-    page: number,
-    limit: number
-): Promise<{ sessions: ChatSession[]; hasMore: boolean }> {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const allSessions: ChatSession[] = Array.from({ length: 35 }).map((_, i) => ({
-                _id: `${i + 1}`,
-                title: `Practice Session ${i + 1}`,
-                type: "question",
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                last_message_preview: "Continue your TOEIC practice...",
-                total_messages: 5 + i,
-                is_archived: false,
-            }));
-            const start = (page - 1) * limit;
-            const end = start + limit;
-            const paginated = allSessions.slice(start, end);
-            resolve({ sessions: paginated, hasMore: end < allSessions.length });
-        }, 800);
-    });
-}
-
-async function fetchMessagesBySession(sessionId: string): Promise<ChatMessage[]> {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve([
-                {
-                    _id: "1",
-                    session_id: sessionId,
-                    text: "Hello! Ready to practice?",
-                    sender: "bot",
-                    created_at: new Date().toISOString(),
-                },
-                {
-                    _id: "2",
-                    session_id: sessionId,
-                    text: "Yes, let's start.",
-                    sender: "user",
-                    created_at: new Date().toISOString(),
-                },
-            ]);
-        }, 400);
-    });
-}
-
-async function sendMessageAPI(
-    input: string,
-    selectedType: ChatType
-): Promise<{ reply: string }> {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve({ reply: `Let's continue practicing ${selectedType}!` });
-        }, 600);
-    });
-}
-
-// 1️⃣ Thêm hàm sinh tin nhắn mở đầu
-function getInitialBotMessage(type: ChatType): string {
-    switch (type) {
-        case "question":
-            return "👋 Hi there! What TOEIC question would you like to discuss today?";
-        case "reading":
-            return "📖 Let's dive into some reading strategies or passages. What would you like help with?";
-        case "shadowing":
-            return "🗣️ Ready to practice speaking and shadowing? You can send me a sentence or phrase to start.";
-        case "dictation":
-            return "✍️ Let's work on your dictation! I can help you with listening and writing practice.";
-        case "lesson":
-            return "🧠 Let's review grammar points or take a mini test. Which topic do you want to start with?";
-        default:
-            return "Hello! How can I help you with your TOEIC preparation today?";
-    }
-}
+import { chatService } from "../../services/chat.service";
+import { useChatSocket } from "../../hooks/useChatSocket";
+import { toast } from "sonner";
 
 /* ---------------- COMPONENT ---------------- */
 export function ChatbotDrawer({
     isOpen,
     onClose,
+    initialQuestion
 }: {
     isOpen: boolean;
     onClose: () => void;
+    initialQuestion?: { id: string; text: string };
 }) {
+    /* ---------- STATE ---------- */
+    const [contextQuestion, setContextQuestion] = useState<{ id: string; text: string } | null>(null);
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [loadingSessions, setLoadingSessions] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
-    const listRef = useRef<HTMLDivElement | null>(null);
-    const observerRef = useRef<HTMLDivElement | null>(null);
+    const [loadingMessages, setLoadingMessages] = useState(false);
 
     const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState("");
     const [selectedType, setSelectedType] = useState<ChatType>("question");
-    const [loadingMessages, setLoadingMessages] = useState(false);
-    const [isAutoFill, setIsAutoFill] = useState(false);
-    const [isBotTyping, setIsBotTyping] = useState(false);
+
+    const listRef = useRef<HTMLDivElement | null>(null);
+    const observerRef = useRef<HTMLDivElement | null>(null);
 
     const questionTypes = [
         { value: "question", label: "Ask about TOEIC Questions" },
@@ -124,7 +53,27 @@ export function ChatbotDrawer({
         { value: "lesson", label: "Review Grammar or Mini Tests" },
     ] satisfies { value: ChatType; label: string }[];
 
-    /* -------- Load initial sessions -------- */
+    /* ---------- SOCKET HOOK ---------- */
+    const { sendMessage, isBotTyping } = useChatSocket({
+        sessionId: selectedSession?._id || "",
+        onMessage: (msg) => setMessages((prev) => [...prev, msg]),
+        onBotTyping: () => { },
+        onError: (err) => {
+            console.error("⚠️ Chat Error:", err);
+            toast.error("Error communicating with chatbot. Please try again.");
+            handleBotErrorMessage();
+        },
+        onSessionUpdated: (data) =>
+            setSessions((prev) =>
+                prev.map((s) =>
+                    s._id === data.sessionId
+                        ? { ...s, last_message_preview: data.last_message_preview, updated_at: data.updated_at as string }
+                        : s
+                )
+            ),
+    });
+
+    /* ---------- LOAD INITIAL SESSIONS ---------- */
     useEffect(() => {
         if (isOpen) {
             setSessions([]);
@@ -132,21 +81,44 @@ export function ChatbotDrawer({
             setHasMore(true);
             loadInitialSessions();
         }
+        return () => {
+            setSelectedSession(null);
+            setMessages([]);
+            setInput("");
+            setContextQuestion(null);
+        }
     }, [isOpen]);
+
+    useEffect(() => {
+        if (initialQuestion) {
+            // Nếu chưa có session đang mở → tạo session mới luôn
+            (async () => {
+                const created = await chatService.createChatSession({
+                    title: `Question Discussion - ${initialQuestion.text.slice(0, 40)}...`,
+                    type: "question",
+                });
+                setSelectedSession(created);
+                setSessions((prev) => [created, ...prev]);
+                // Gắn context để FE hiển thị chip
+                setContextQuestion(initialQuestion);
+            })();
+        }
+    }, [initialQuestion]);
 
     const loadInitialSessions = async () => {
         if (loadingSessions) return;
         setLoadingSessions(true);
-        setIsAutoFill(true);
 
         let nextPage = 1;
         let combined: ChatSession[] = [];
 
         while (true) {
-            const res = await fetchChatSessionsPaginated(nextPage, 8);
-            combined = [...combined, ...res.sessions];
+            const res = await chatService.getChatSessions(nextPage, 8);
+            const newSessions = res.items;
+
+            combined = [...combined, ...newSessions];
             setSessions([...combined]);
-            setHasMore(res.hasMore);
+            setHasMore(res.hasMore ?? newSessions.length > 0);
             nextPage++;
 
             const container = listRef.current;
@@ -156,28 +128,28 @@ export function ChatbotDrawer({
 
         setPage(nextPage - 1);
         setLoadingSessions(false);
-        setTimeout(() => setIsAutoFill(false), 300);
     };
 
-    /* -------- Infinite scroll -------- */
+    /* ---------- INFINITE SCROLL ---------- */
     useEffect(() => {
         const container = listRef.current;
         const sentinel = observerRef.current;
-        if (!container || !sentinel || !hasMore || loadingMore || loadingSessions || isAutoFill)
-            return;
+        if (!container || !sentinel || !hasMore || loadingMore || loadingSessions) return;
 
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting && hasMore && !loadingMore) {
                     setLoadingMore(true);
-                    fetchChatSessionsPaginated(page + 1, 8)
+                    chatService
+                        .getChatSessions(page + 1, 8)
                         .then((res) => {
+                            const newSessions = res.items;
                             setSessions((prev) => {
-                                const newIds = new Set(prev.map((s) => s._id));
-                                const unique = res.sessions.filter((s) => !newIds.has(s._id));
+                                const existing = new Set(prev.map((s) => s._id));
+                                const unique = newSessions.filter((s: ChatSession) => !existing.has(s._id));
                                 return [...prev, ...unique];
                             });
-                            setHasMore(res.hasMore);
+                            setHasMore(res.hasMore ?? newSessions.length > 0);
                             setPage((prev) => prev + 1);
                         })
                         .finally(() => setLoadingMore(false));
@@ -188,70 +160,101 @@ export function ChatbotDrawer({
 
         observer.observe(sentinel);
         return () => observer.disconnect();
-    }, [page, hasMore, loadingMore, loadingSessions, isAutoFill]);
+    }, [page, hasMore, loadingMore, loadingSessions]);
 
-    /* -------- Chat logic -------- */
+    /* ---------- LOAD MESSAGES WHEN SESSION SELECTED ---------- */
     const handleSelectSession = async (session: ChatSession) => {
         setSelectedSession(session);
         setLoadingMessages(true);
-        const data = await fetchMessagesBySession(session._id);
-        setMessages(data);
-        setLoadingMessages(false);
+        try {
+            const res = await chatService.getAllChatMessageInSession(session._id);
+            setMessages(res);
+        } catch (err) {
+            console.error("❌ Lỗi tải tin nhắn:", err);
+        } finally {
+            setLoadingMessages(false);
+        }
     };
 
-    const handleSendMessage = async () => {
-        if (!input.trim()) return;
-        const userMsg: ChatMessage = {
-            _id: Date.now().toString(),
-            session_id: selectedSession?._id || "new",
-            text: input,
-            sender: "user",
-            created_at: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, userMsg]);
-        setInput("");
-        setIsBotTyping(true);
-        const response = await sendMessageAPI(input, selectedType);
+    // Xoá session
+    const handleDeleteSession = async (sessionId: string) => {
+        if (!window.confirm("Are you sure you want to delete this chat session?")) return;
 
-        setTimeout(() => {
-            setIsBotTyping(false);
-            const botMsg: ChatMessage = {
-                _id: (Date.now() + 1).toString(),
-                session_id: userMsg.session_id,
-                text: response.reply,
-                sender: "bot",
-                created_at: new Date().toISOString(),
-            };
-            setMessages((prev) => [...prev, botMsg]);
-        }, 1000);
+        try {
+            await toast.promise(chatService.deleteChatSession(sessionId), {
+                loading: "Deleting chat session...",
+                success: "Chat session deleted.",
+                error: "Failed to delete chat session.",
+            });
+            setSessions((prev) => prev.filter((s) => s._id !== sessionId));
+
+            // Nếu đang xem session bị xóa
+            if (selectedSession?._id === sessionId) {
+                setSelectedSession(null);
+                setMessages([]);
+            }
+
+            console.log("🗑️ Deleted chat session:", sessionId);
+        } catch (err) {
+            console.error("❌ Lỗi xoá session:", err);
+        }
     };
 
-    const handleNewChat = () => {
-        const newSession: ChatSession = {
-            _id: "new",
-            title: "New Chat",
-            type: selectedType,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        };
-        setSelectedSession(newSession);
-
-        const botIntro: ChatMessage = {
-            _id: `${Date.now()}_intro`,
-            session_id: "new",
+    // Xử lý tin nhắn lỗi từ bot
+    const handleBotErrorMessage = async (errorText?: string) => {
+        const botErrorMessage: ChatMessage = {
+            _id: `${Date.now()}_error`,
+            session_id: selectedSession?._id || "unknown",
             sender: "bot",
-            text: getInitialBotMessage(selectedType),
+            text:
+                errorText ||
+                "⚠️ Xin lỗi, hiện tại mình đang gặp sự cố khi xử lý yêu cầu. Vui lòng thử lại sau nhé!",
             created_at: new Date().toISOString(),
         };
-        setMessages([]);
-        setIsBotTyping(true);
-        setTimeout(() => {
-            setIsBotTyping(false);
-            setMessages([botIntro]);
-        }, 1200);
+        setMessages((prev) => [...prev, botErrorMessage]);
     };
 
-    if (!isOpen) return null;
+    /* ---------- GỬI TIN NHẮN ---------- */
+    const handleSendMessage = async () => {
+        if (!input.trim() || !selectedSession?._id) return;
+
+        const text = input.trim();
+        setInput("");
+
+        try {
+            if (!contextQuestion) {
+                sendMessage(text);
+            } else {
+                sendMessage(`${text}. Dữ liệu liên quan: ${contextQuestion.text}`);
+                setContextQuestion(null); // gửi xong xoá context
+            }
+        } catch (error) {
+            console.error("Lỗi gửi tin nhắn:", error);
+            toast.error("Không thể gửi tin nhắn đến chatbot.");
+            handleBotErrorMessage("Mình không thể gửi tin nhắn được lúc này. Hãy thử lại sau nhé!");
+        }
+    };
+
+    /* ---------- TẠO CHAT MỚI ---------- */
+    const handleNewChat = async (type?: ChatType) => {
+        const chatType = type || selectedType;
+
+        try {
+            const created = await chatService.createChatSession({
+                title: `New ${chatType} session`,
+                type: chatType,
+            });
+            setSessions((prev) => [created, ...prev]);
+
+            setSelectedSession(created);
+
+            const list = listRef.current;
+            if (list) list.scrollTop = 0;
+        } catch (err) {
+            console.error("❌ Lỗi tạo phiên chat:", err);
+        }
+    };
+
 
     return (
         <AnimatePresence>
@@ -272,8 +275,7 @@ export function ChatbotDrawer({
                             alignItems: "center",
                             justifyContent: "space-between",
                             borderBottom: "1px solid #bfdbfe",
-                            background:
-                                "linear-gradient(to right, rgba(59,130,246,0.1), rgba(139,92,246,0.1))",
+                            background: "linear-gradient(to right, rgba(59,130,246,0.1), rgba(139,92,246,0.1))",
                         }}
                     >
                         <Typography
@@ -292,33 +294,17 @@ export function ChatbotDrawer({
                         </IconButton>
                     </Box>
 
-                    {/* Main content */}
+                    {/* Main Content */}
                     {!selectedSession ? (
                         <Box ref={listRef} sx={{ flex: 1, overflowY: "auto", py: 2, px: 0.5 }}>
                             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                                 Quick Practice Modes
                             </Typography>
+
                             <ChipScrollerMini
                                 onChipClick={(type) => {
                                     setSelectedType(type);
-
-                                    const newSession: ChatSession = {
-                                        _id: "new",
-                                        title: `New ${type} session`,
-                                        type,
-                                        created_at: new Date().toISOString(),
-                                        updated_at: new Date().toISOString(),
-                                    };
-                                    setSelectedSession(newSession);
-
-                                    const botIntro: ChatMessage = {
-                                        _id: `${Date.now()}_intro`,
-                                        session_id: "new",
-                                        sender: "bot",
-                                        text: getInitialBotMessage(type),
-                                        created_at: new Date().toISOString(),
-                                    };
-                                    setMessages([botIntro]);
+                                    handleNewChat(type);
                                 }}
                             />
 
@@ -326,22 +312,16 @@ export function ChatbotDrawer({
                                 Recent Practice Sessions
                             </Typography>
 
-                            {/* Skeleton loader */}
+                            {/* Loading Skeleton */}
                             {loadingSessions && sessions.length === 0 ? (
                                 <Box>
                                     {Array.from({ length: 6 }).map((_, i) => (
-                                        <motion.div
+                                        <Skeleton
                                             key={i}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ duration: 0.3 }}
-                                        >
-                                            <Skeleton
-                                                variant="rectangular"
-                                                height={44}
-                                                sx={{ borderRadius: 2, bgcolor: "rgba(203,213,225,0.4)", mb: 1 }}
-                                            />
-                                        </motion.div>
+                                            variant="rectangular"
+                                            height={44}
+                                            sx={{ borderRadius: 2, bgcolor: "rgba(203,213,225,0.4)", mb: 1 }}
+                                        />
                                     ))}
                                 </Box>
                             ) : (
@@ -358,19 +338,38 @@ export function ChatbotDrawer({
                                                     onClick={() => handleSelectSession(s)}
                                                     sx={{
                                                         borderRadius: 2,
+                                                        position: "relative",
                                                         "&:hover": {
                                                             background: "linear-gradient(to right, #eff6ff, #ede9fe)",
+                                                            ".delete-btn": { opacity: 1, transform: "translateX(0)" },
                                                         },
                                                     }}
                                                 >
                                                     <ListItemText
                                                         primary={s.title}
                                                         secondary={s.last_message_preview}
-                                                        primaryTypographyProps={{
-                                                            fontWeight: 500,
-                                                            fontSize: "0.85rem",
-                                                        }}
+                                                        primaryTypographyProps={{ fontWeight: 500, fontSize: "0.85rem" }}
                                                     />
+
+                                                    <IconButton
+                                                        size="small"
+                                                        className="delete-btn"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteSession(s._id);
+                                                        }}
+                                                        sx={{
+                                                            position: "absolute",
+                                                            right: 8,
+                                                            opacity: 0,
+                                                            transform: "translateX(10px)",
+                                                            transition: "all 0.2s ease",
+                                                            color: "#9ca3af",
+                                                            "&:hover": { color: "#ef4444" },
+                                                        }}
+                                                    >
+                                                        <Close fontSize="small" />
+                                                    </IconButton>
                                                 </ListItemButton>
                                             </motion.div>
                                         ))}
@@ -393,7 +392,7 @@ export function ChatbotDrawer({
                                 </>
                             )}
 
-                            {/* Floating “New Chat” button */}
+                            {/* Floating New Chat Button */}
                             <Box
                                 sx={{
                                     position: "fixed",
@@ -405,21 +404,19 @@ export function ChatbotDrawer({
                             >
                                 <Button
                                     startIcon={<Add />}
-                                    onClick={handleNewChat}
+                                    onClick={() => handleNewChat(selectedType)}
                                     sx={{
                                         pointerEvents: "auto",
                                         textTransform: "none",
                                         fontWeight: 600,
                                         color: "#fff",
-                                        background:
-                                            "linear-gradient(to right, #2563eb, #7c3aed)",
+                                        background: "linear-gradient(to right, #2563eb, #7c3aed)",
                                         borderRadius: 50,
                                         px: 2.5,
                                         py: 1,
                                         boxShadow: "0 3px 10px rgba(37, 99, 235, 0.3)",
                                         "&:hover": {
-                                            background:
-                                                "linear-gradient(to right, #1e40af, #6d28d9)",
+                                            background: "linear-gradient(to right, #1e40af, #6d28d9)",
                                         },
                                     }}
                                 >
@@ -440,6 +437,8 @@ export function ChatbotDrawer({
                             loadingMessages={loadingMessages}
                             isBotTyping={isBotTyping}
                             onBack={() => setSelectedSession(null)}
+                            contextQuestion={contextQuestion}
+                            onClearContext={() => setContextQuestion(null)}
                         />
                     )}
                 </motion.div>

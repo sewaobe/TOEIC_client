@@ -31,6 +31,8 @@ interface ChatInputBarProps {
     onTypeSelect: (t: ChatType) => void;
     questionTypes: { value: ChatType; label: string }[];
     selectedType: ChatType;
+    contextQuestion?: { id: string; text: string } | null;
+    onClearContext?: () => void;
 }
 
 export function ChatInputBar({
@@ -40,6 +42,8 @@ export function ChatInputBar({
     onTypeSelect,
     questionTypes,
     selectedType,
+    contextQuestion,
+    onClearContext,
 }: ChatInputBarProps) {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [openTypeDialog, setOpenTypeDialog] = useState(false);
@@ -158,6 +162,43 @@ export function ChatInputBar({
                     Mode: {selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}
                 </motion.div>
 
+                {/* context question chip */}
+                <AnimatePresence>
+                    {contextQuestion && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -5 }}
+                            transition={{ duration: 0.25 }}
+                        >
+                            <Tooltip title={contextQuestion.text} arrow>
+                                <Chip
+                                    label={
+                                        contextQuestion.text.length > 70
+                                            ? `Context: ${contextQuestion.text.slice(0, 70)}...`
+                                            : `Context: ${contextQuestion.text}`
+                                    }
+                                    onDelete={onClearContext}
+                                    sx={{
+                                        alignSelf: "flex-start",
+                                        mb: 0.5,
+                                        background: "linear-gradient(to right, #2563eb, #7c3aed)",
+                                        color: "white",
+                                        fontWeight: 500,
+                                        fontSize: "0.8rem",
+                                        borderRadius: "8px",
+                                        boxShadow: "0 2px 6px rgba(37,99,235,0.2)",
+                                        "& .MuiChip-deleteIcon": {
+                                            color: "rgba(255,255,255,0.7)",
+                                            "&:hover": { color: "white" },
+                                        },
+                                    }}
+                                />
+                            </Tooltip>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 {/* file preview */}
                 {selectedFile && (
                     <motion.div
@@ -202,7 +243,7 @@ export function ChatInputBar({
                             }}
                             placeholder="Type your message or drop a file here..."
                             rows={1}
-                            className="w-full resize-none border-none bg-transparent focus:outline-none text-[0.95rem] text-slate-700 leading-relaxed max-h-[140px]"
+                            className="w-full resize-none border-none bg-transparent focus:outline-none text-[0.95rem] text-slate-700 leading-relaxed max-h-[140px] z-auto"
                             style={{
                                 overflowY: "auto",
                                 minHeight: "36px",

@@ -20,6 +20,7 @@ function MainLayout({ children }: MainLayoutProps) {
   const [showNotebook, setShowNotebook] = useState(false);
   const [showLearningProgress, setShowLearningProgress] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
+  const [chatDrawerQuestion, setChatDrawerQuestion] = useState<{ id: string; text: string } | null>(null);
 
   const { selectedText, rect, clearSelection } = useTextSelection();
   const dispatch = useDispatch<AppDispatch>();
@@ -35,6 +36,12 @@ function MainLayout({ children }: MainLayoutProps) {
     clearSelection();
   };
 
+  const handleAskAI = () => {
+    setShowChatbot(true);
+    setChatDrawerQuestion({ id: "", text: selectedText });
+    clearSelection();
+  }
+
   return (
     <div className='max-h-screen custom-scrollbar'>
       <Navbar />
@@ -46,6 +53,7 @@ function MainLayout({ children }: MainLayoutProps) {
             text={selectedText}
             onSaveNotebook={handleSaveNotebook}
             onSaveFlashcard={handleSaveFlashcard}
+            onAskAI={handleAskAI}
           />
         )}
       </div>
@@ -68,6 +76,7 @@ function MainLayout({ children }: MainLayoutProps) {
           <ChatbotDrawer
             isOpen={showChatbot}
             onClose={() => setShowChatbot(false)}
+            initialQuestion={chatDrawerQuestion || undefined}
           />
         </>
       )}

@@ -13,7 +13,7 @@ import DataGrid, {
     FillEvent,
     CellKeyDownArgs,
     CellKeyboardEvent,
-    RenderEditCellProps
+    RenderEditCellProps,
 } from "react-data-grid";
 import "react-data-grid/lib/styles.css"; // <- quan trọng
 
@@ -200,7 +200,7 @@ const BatchFlashcardModal: React.FC<BatchFlashcardModalProps> = ({
     }, []);
 
     return (
-        <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg" disableScrollLock>
+        <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg" disableEnforceFocus disableScrollLock>
             <DialogTitle>Tạo Flashcards Hàng Loạt</DialogTitle>
             <DialogContent>
                 <div style={{ height: 500 }}>

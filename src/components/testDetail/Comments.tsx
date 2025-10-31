@@ -4,6 +4,7 @@ import commentService from "../../services/comment.service";
 import { IComment } from "../../types/comment.type";
 import CommentForm from "./CommentForm";
 import CommentItem from "./CommentItem";
+import { toast } from "sonner";
 
 interface CommentsProps {
   testId: string;
@@ -37,6 +38,7 @@ const Comments = forwardRef<HTMLDivElement, CommentsProps>(
       try {
         const newComment = await commentService.createComment(testId, content);
         setComments((prev) => [newComment, ...prev]);
+        toast.success("Bình luận của bạn đã được gửi!");
       } catch (error) {
         console.error("Error creating comment:", error);
       }

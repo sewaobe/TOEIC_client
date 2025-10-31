@@ -1,6 +1,7 @@
 import React from "react";
 import BookIcon from "@mui/icons-material/Book";
 import StyleIcon from "@mui/icons-material/Style";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
 
 interface HighlightPopupProps {
   rect: {
@@ -14,6 +15,7 @@ interface HighlightPopupProps {
   text: string;
   onSaveNotebook: () => void;
   onSaveFlashcard: () => void;
+  onAskAI: () => void;
   gap?: number; // khoảng cách giữa popup và text, mặc định 10px
 }
 
@@ -22,6 +24,7 @@ const HighlightPopup: React.FC<HighlightPopupProps> = ({
   text,
   onSaveNotebook,
   onSaveFlashcard,
+  onAskAI,
   gap = 10,
 }) => {
   // Chặn popup vượt khỏi mép trái/phải viewport
@@ -66,6 +69,18 @@ const HighlightPopup: React.FC<HighlightPopupProps> = ({
         <StyleIcon fontSize="small" className="text-rose-600" />
         <span className="absolute bottom-full mb-1 hidden group-hover:block whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-white">
           Flashcard
+        </span>
+      </button>
+
+      {/* Ask AI */}
+      <button
+        onClick={onAskAI}
+        className="relative group flex items-center gap-1 px-3 py-2 hover:bg-gray-50"
+        aria-label="Ask AI"
+      >
+        <SmartToyIcon fontSize="small" className="text-blue-600" />
+        <span className="absolute bottom-full mb-1 hidden group-hover:block whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-white">
+          Ask AI
         </span>
       </button>
     </div>

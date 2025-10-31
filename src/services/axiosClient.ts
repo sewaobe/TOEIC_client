@@ -30,7 +30,7 @@ const axiosRefresh = axios.create({
 
 axiosClient.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log(">>>>>>>>>>>>AxiosClient: ", response.data)
+    console.log(`>>>>>>>>>>>>AxiosClient: ${response.config.baseURL?.concat(response.config.url || "")}`, response.data)
     return response.data
   },
   async (error: AxiosError) => {

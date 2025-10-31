@@ -90,6 +90,8 @@ const ExamDetailPage: React.FC = () => {
       }
     };
     fetchDetail();
+
+    localStorage.setItem("title_test", test?.title || ""); // Lưu tiêu đề đề thi vào localStorage
   }, [id, page]);
 
   // --------- Handlers ---------
@@ -144,7 +146,7 @@ const ExamDetailPage: React.FC = () => {
             <div className="w-full bg-gray-50 min-h-screen px-4 font-inter">
               {/* Card Nội dung chính */}
               <div className="max-w-4xl mx-auto bg-white shadow-md rounded-xl p-6">
-                <Header />
+                <Header testTitle={test.title} />
 
                 <h1 className="text-2xl font-bold mb-2 font-montserrat">
                   {test.title}

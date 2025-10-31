@@ -5,18 +5,22 @@ import RightMenuDrawer from '../../components/common/RightMenu';
 import StudyNotebookFlip3D from '../pages/NotebookPage';
 import useTextSelection from '../../hooks/useTextSelection';
 import HighlightPopup from '../../components/common/HighlightPopup';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../stores/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../../stores/store';
 import { showSnackbar } from '../../stores/snackbarSlice';
 import { LearningProgressModal } from '../../components/modals/LearningProgressModal';
+import { ChatbotDrawer } from '../../components/chatbot/ChatbotDrawer';
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 function MainLayout({ children }: MainLayoutProps) {
+  const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
   const [showNotebook, setShowNotebook] = useState(false);
   const [showLearningProgress, setShowLearningProgress] = useState(false);
+  const [showChatbot, setShowChatbot] = useState(false);
+  const [chatDrawerQuestion, setChatDrawerQuestion] = useState<{ id: string; text: string } | null>(null);
 
   const { selectedText, rect, clearSelection } = useTextSelection();
   const dispatch = useDispatch<AppDispatch>();
@@ -32,24 +36,50 @@ function MainLayout({ children }: MainLayoutProps) {
     clearSelection();
   };
 
+  const handleAskAI = () => {
+    setShowChatbot(true);
+    setChatDrawerQuestion({ id: "", text: selectedText });
+    clearSelection();
+  }
+
   return (
     <div className='max-h-screen custom-scrollbar'>
       <Navbar />
       <div className='pt-16'>
         {children}
-        {selectedText && rect && (
+        {selectedText && rect && isAuthenticated && (
           <HighlightPopup
             rect={rect}
             text={selectedText}
             onSaveNotebook={handleSaveNotebook}
             onSaveFlashcard={handleSaveFlashcard}
+            onAskAI={handleAskAI}
           />
         )}
       </div>
       <Footer />
-      <RightMenuDrawer onShowNotebook={setShowNotebook} onShowProgress={setShowLearningProgress} />
-      <StudyNotebookFlip3D isOpen={showNotebook} onClose={() => setShowNotebook(false)} />
-      <LearningProgressModal isFirstVisitToday={showLearningProgress} setIsFirstVisitToday={setShowLearningProgress} />
+      {isAuthenticated && (
+        <>
+          <RightMenuDrawer
+            onShowNotebook={setShowNotebook}
+            onShowProgress={setShowLearningProgress}
+            onShowChatbot={setShowChatbot}
+          />
+          <StudyNotebookFlip3D
+            isOpen={showNotebook}
+            onClose={() => setShowNotebook(false)}
+          />
+          <LearningProgressModal
+            isFirstVisitToday={showLearningProgress}
+            setIsFirstVisitToday={setShowLearningProgress}
+          />
+          <ChatbotDrawer
+            isOpen={showChatbot}
+            onClose={() => setShowChatbot(false)}
+            initialQuestion={chatDrawerQuestion || undefined}
+          />
+        </>
+      )}
     </div>
   );
 }

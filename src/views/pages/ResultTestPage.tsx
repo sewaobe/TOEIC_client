@@ -18,6 +18,7 @@ const ResultTestPage = () => {
     const testId = location.pathname.split("/")[2];
 
     const [selectedAnswer, setSelectedAnswer] = useState<RawAnswer | null>(null);
+    const [testTitle, setTestTitle] = useState<string>("");
 
     const [loading, setLoading] = useState(true); // 🧩 loading state
     const [testDetail, setTestDetail] = useState<{
@@ -77,6 +78,8 @@ const ResultTestPage = () => {
             }
         };
         fetchDetail();
+        const storedTitle = localStorage.getItem("title_test") || "TOEIC Test";
+        setTestTitle(storedTitle);
     }, []);
 
     return (
@@ -100,7 +103,7 @@ const ResultTestPage = () => {
                         alignItems="center"
                     >
                         <Typography variant="h6">
-                            Kết quả thi: New Economy TOEIC Test 1
+                            Kết quả thi: {testTitle}
                         </Typography>
                         <Button
                             variant="contained"

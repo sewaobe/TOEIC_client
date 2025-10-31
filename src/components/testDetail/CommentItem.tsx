@@ -4,6 +4,7 @@ import CommentForm from "./CommentForm";
 import { IComment } from "../../types/comment.type";
 import commentService from "../../services/comment.service";
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import { toast } from "sonner";
 
 // ==== types ====
 interface CommentItemProps {
@@ -107,6 +108,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, depth = 0 }) => {
       text,
       comment._id
     );
+    toast.success("Trả lời của bạn đã được gửi!");
     dispatch({ type: "ADD_REPLY", payload: newReply });
     dispatch({ type: "SET_REPLYING", payload: false });
   };

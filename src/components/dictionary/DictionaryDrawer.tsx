@@ -11,12 +11,14 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
+import TranslateIcon from "@mui/icons-material/Translate";
 import { motion, AnimatePresence } from "framer-motion";
 import DictionaryViewer from "./DictionaryViewer";
 import DictionaryIntro from "./DictionaryIntro";
 import { DictionaryData } from "../../types/Dictionary";
 import { useDebounce } from "../../hooks/useDebounce";
 import { dictionaryService } from "../../services/dictionary.service";
+import TranslationView from "../translation/TranslationView";
 
 interface DictionaryDrawerProps {
     open: boolean;
@@ -24,19 +26,22 @@ interface DictionaryDrawerProps {
 }
 
 export default function DictionaryDrawer({ open, onClose }: DictionaryDrawerProps) {
-    const [view, setView] = useState<"intro" | "lookup">("intro");
+    // 👇 giờ ta có 3 view
+    const [view, setView] = useState<"intro" | "lookup" | "translate">("intro");
+
+    // ---- lookup states ----
     const [searchTerm, setSearchTerm] = useState("");
-    const [isSearching, setIsSearching] = useState(false);   // 🔍 loading khi tra từ
-    const [isSuggesting, setIsSuggesting] = useState(false); // 💡 loading khi suggest
+    const [isSearching, setIsSearching] = useState(false);
+    const [isSuggesting, setIsSuggesting] = useState(false);
     const [result, setResult] = useState<DictionaryData | null>(null);
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [suppressSuggestions, setSuppressSuggestions] = useState(false);
-
     const debouncedSearch = useDebounce(searchTerm, 400);
 
     /* --- Suggestion API --- */
     useEffect(() => {
-        if (!debouncedSearch.trim() || suppressSuggestions) {
+        if (!debouncedSearch.trim() || suppressSuggestions || view !== "lookup") {
+            // chỉ suggest khi đang ở view lookup
             setSuggestions([]);
             setIsSuggesting(false);
             return;
@@ -51,11 +56,10 @@ export default function DictionaryDrawer({ open, onClose }: DictionaryDrawerProp
             .catch(console.error)
             .finally(() => {
                 const elapsed = Date.now() - start;
-                const delay = Math.max(0, 400 - elapsed); // đảm bảo spinner tồn tại tối thiểu 400ms
+                const delay = Math.max(0, 400 - elapsed);
                 setTimeout(() => setIsSuggesting(false), delay);
             });
-    }, [debouncedSearch, suppressSuggestions]);
-
+    }, [debouncedSearch, suppressSuggestions, view]);
 
     /* --- Search main word --- */
     const handleSearch = async (term?: string) => {
@@ -75,8 +79,11 @@ export default function DictionaryDrawer({ open, onClose }: DictionaryDrawerProp
         }
     };
 
+
     const handleEnter = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter") handleSearch();
+        if (e.key === "Enter") {
+            if (view === "lookup") handleSearch();
+        }
     };
 
     const resetToIntro = () => {
@@ -119,7 +126,7 @@ export default function DictionaryDrawer({ open, onClose }: DictionaryDrawerProp
                                 color: "transparent",
                             }}
                         >
-                            Dictionary Assistant
+                            Language Assistant
                         </Typography>
                         <IconButton onClick={onClose}>
                             <CloseIcon sx={{ color: "#2563eb" }} />
@@ -130,7 +137,10 @@ export default function DictionaryDrawer({ open, onClose }: DictionaryDrawerProp
                     <Box className="flex-1 overflow-y-auto px-4 py-5">
                         <AnimatePresence mode="wait">
                             {view === "intro" && (
-                                <DictionaryIntro onStartLookup={() => setView("lookup")} />
+                                <DictionaryIntro
+                                    onStartLookup={() => setView("lookup")}
+                                    onStartTranslate={() => setView("translate")}
+                                />
                             )}
 
                             {view === "lookup" && (
@@ -142,21 +152,27 @@ export default function DictionaryDrawer({ open, onClose }: DictionaryDrawerProp
                                     transition={{ duration: 0.3 }}
                                     className="flex flex-col gap-4"
                                 >
-                                    {/* Header nhỏ gọn */}
                                     <Box className="flex items-center justify-between mb-2">
-                                        <Typography
-                                            variant="subtitle1"
-                                            sx={{ fontWeight: 600, color: "#1e293b" }}
-                                        >
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#1e293b" }}>
                                             Tra cứu từ vựng
                                         </Typography>
-                                        <Button
-                                            size="small"
-                                            onClick={resetToIntro}
-                                            className="!text-slate-500 !text-xs hover:!text-slate-700"
-                                        >
-                                            ← Quay lại
-                                        </Button>
+                                        <Box className="flex gap-1">
+                                            <Button
+                                                size="small"
+                                                onClick={() => setView("translate")}
+                                                startIcon={<TranslateIcon fontSize="small" />}
+                                                className="!text-slate-500 !text-xs hover:!text-slate-700"
+                                            >
+                                                Dịch đoạn
+                                            </Button>
+                                            <Button
+                                                size="small"
+                                                onClick={resetToIntro}
+                                                className="!text-slate-500 !text-xs hover:!text-slate-700"
+                                            >
+                                                ← Quay lại
+                                            </Button>
+                                        </Box>
                                     </Box>
 
                                     {/* Search Box */}
@@ -223,15 +239,10 @@ export default function DictionaryDrawer({ open, onClose }: DictionaryDrawerProp
                                                                 fontSize: "0.9rem",
                                                                 textTransform: "none",
                                                                 borderBottom:
-                                                                    i !== suggestions.length - 1
-                                                                        ? "1px solid rgba(0,0,0,0.05)"
-                                                                        : "none",
+                                                                    i !== suggestions.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none",
                                                             }}
                                                         >
-                                                            <SearchIcon
-                                                                fontSize="small"
-                                                                className="mr-1 text-slate-400"
-                                                            />
+                                                            <SearchIcon fontSize="small" className="mr-1 text-slate-400" />
                                                             {word}
                                                         </Button>
                                                     ))}
@@ -240,7 +251,7 @@ export default function DictionaryDrawer({ open, onClose }: DictionaryDrawerProp
                                         )}
                                     </AnimatePresence>
 
-                                    {/* Result & Main loading */}
+                                    {/* Result */}
                                     {isSearching ? (
                                         <Box className="flex flex-col items-center justify-center mt-8 text-slate-500">
                                             <CircularProgress size={26} thickness={4} />
@@ -258,6 +269,13 @@ export default function DictionaryDrawer({ open, onClose }: DictionaryDrawerProp
                                         )
                                     )}
                                 </motion.div>
+                            )}
+
+                            {view === "translate" && (
+                                <TranslationView
+                                    onBack={resetToIntro}
+                                    onSwitchToLookup={() => setView("lookup")}
+                                />
                             )}
                         </AnimatePresence>
                     </Box>

@@ -13,9 +13,10 @@ const typingPhrases = [
 
 interface DictionaryIntroProps {
     onStartLookup: () => void;
+    onStartTranslate: () => void;
 }
 
-export default function DictionaryIntro({ onStartLookup }: DictionaryIntroProps) {
+export default function DictionaryIntro({ onStartLookup, onStartTranslate }: DictionaryIntroProps) {
     const [displayText, setDisplayText] = useState("");
     const [phraseIndex, setPhraseIndex] = useState(0);
     const [charIndex, setCharIndex] = useState(0);
@@ -121,10 +122,10 @@ export default function DictionaryIntro({ onStartLookup }: DictionaryIntroProps)
                 <Button
                     variant="outlined"
                     startIcon={<TranslateIcon />}
-                    disabled
+                    onClick={onStartTranslate}
                     className="!rounded-xl !py-2.5 normal-case !font-semibold"
                 >
-                    Dịch đoạn văn bản (sắp ra mắt)
+                    Dịch đoạn văn bản
                 </Button>
             </Box>
         </Box>

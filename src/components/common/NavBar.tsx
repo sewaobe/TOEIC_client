@@ -20,6 +20,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../stores/store';
 import { logout } from '../../stores/userSlice';
 import authService from '../../services/authService';
+import NotificationDropdown from './NotificationDropdown';
 
 interface NavLink {
   label: string;
@@ -134,6 +135,7 @@ export default function Navbar() {
               </Button>
             ))}
 
+            {user && <NotificationDropdown />}
             {user ? (
               <>
                 <IconButton onClick={handleAvatarClick}>
@@ -215,6 +217,7 @@ export default function Navbar() {
         >
           {user ? (
             <Box className='flex items-center gap-3 px-2'>
+
               <Avatar
                 src={user.profile.avatar}
                 alt={user.profile.fullname}
@@ -239,6 +242,15 @@ export default function Navbar() {
               Đăng nhập
             </Button>
           )}
+          {user && (
+            <Box sx={{ pl: 1 }}>
+              <Typography variant='subtitle2' color='text.secondary' sx={{ mb: 0.5 }}>
+                Thông báo
+              </Typography>
+              <NotificationDropdown />
+            </Box>
+          )}
+
           {navLinks.map((item) => (
             <Button
               key={item.label}

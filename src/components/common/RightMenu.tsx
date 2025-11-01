@@ -77,8 +77,8 @@ export default function RightMenuDrawer({
         boxShadow: 4,
         zIndex: 1200,
         transform: open
-          ? "translateX(0) translateY(-48%)"
-          : "translateX(110%) translateY(-48%)",
+          ? "translateX(0) translateY(-39%)"
+          : "translateX(110%) translateY(-39%)",
         transition: "transform 0.3s ease-in-out, width 0.3s ease-in-out",
         width: open ? 64 : 48,
         border: "1px solid #e0e0e0",

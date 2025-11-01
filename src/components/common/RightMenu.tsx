@@ -20,6 +20,7 @@ interface RightMenuDrawerProps {
   onShowProgress: (show: boolean) => void;
   onShowChatbot: (show: boolean) => void;
   onShowReport: (show: boolean) => void;
+  onShowDictionary: (show: boolean) => void;
 }
 
 export default function RightMenuDrawer({
@@ -27,6 +28,7 @@ export default function RightMenuDrawer({
   onShowProgress,
   onShowChatbot,
   onShowReport,
+  onShowDictionary
 }: RightMenuDrawerProps) {
   const [open, setOpen] = useState(false);
 
@@ -56,7 +58,7 @@ export default function RightMenuDrawer({
     {
       label: "Từ điển",
       icon: <SpellcheckIcon sx={{ color: "#4527a0" }} />,
-      onClick: () => alert("Đi tới Từ điển"),
+      onClick: () => onShowDictionary(true),
     },
     {
       label: "Trợ lý luyện tập",

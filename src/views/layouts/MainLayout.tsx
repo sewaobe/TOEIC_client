@@ -11,6 +11,7 @@ import { showSnackbar } from "../../stores/snackbarSlice";
 import { LearningProgressModal } from "../../components/modals/LearningProgressModal";
 import { ChatbotDrawer } from "../../components/chatbot/ChatbotDrawer";
 import ReportIssueModal from "../../components/modals/ReportIssueModal";
+import DictionaryDrawer from "../../components/dictionary/DictionaryDrawer";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -21,6 +22,7 @@ function MainLayout({ children }: MainLayoutProps) {
     (state: RootState) => state.user.isAuthenticated
   );
   const [showNotebook, setShowNotebook] = useState(false);
+  const [showDictionary, setShowDictionary] = useState(false);
   const [showLearningProgress, setShowLearningProgress] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
   const [chatDrawerQuestion, setChatDrawerQuestion] = useState<{
@@ -82,6 +84,7 @@ function MainLayout({ children }: MainLayoutProps) {
             onShowProgress={setShowLearningProgress}
             onShowChatbot={setShowChatbot}
             onShowReport={setShowReportModal}
+            onShowDictionary={setShowDictionary}
           />
           <StudyNotebookFlip3D
             isOpen={showNotebook}
@@ -99,6 +102,10 @@ function MainLayout({ children }: MainLayoutProps) {
           <ReportIssueModal
             open={showReportModal}
             onClose={() => setShowReportModal(false)}
+          />
+          <DictionaryDrawer
+            open={showDictionary}
+            onClose={() => setShowDictionary(false)}
           />
         </>
       )}

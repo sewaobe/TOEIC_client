@@ -32,7 +32,7 @@ const ResetPasswordPage = () => {
           textAlign='center'
           color='primary'
         >
-          TOEIC Master
+          TOEIC Smart
         </Typography>
         <Typography variant='body1' textAlign='center' color='text.secondary'>
           Đặt lại mật khẩu của bạn

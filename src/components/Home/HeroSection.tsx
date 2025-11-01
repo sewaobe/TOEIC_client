@@ -100,7 +100,7 @@ const HeroSection: React.FC = () => {
               textAlign: "justify",
             }}
           >
-            Chào mừng đến với <strong>TOEIC MASTER</strong>, trang web TOEIC
+            Chào mừng đến với <strong>TOEIC Smart</strong>, trang web TOEIC
             cung cấp cho người học các bài luyện tập theo từng part, đề thi thử
             cũng như các bài tập về từ vựng và ngữ pháp. Bắt đầu hành trình
             chinh phục chứng chỉ TOEIC với các bài luyện tập trên trang web của

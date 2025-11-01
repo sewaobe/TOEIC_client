@@ -80,7 +80,7 @@ const Hero: FC = () => {
             }}
             className='text-title'
           >
-            Chinh phục TOEIC với TOEIC Master
+            Chinh phục TOEIC với TOEIC Smart
           </Typography>
           {/* 2. Thêm "Thanh Lợi Ích Chính" ở đây */}
           <Stack

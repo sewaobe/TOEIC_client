@@ -111,7 +111,7 @@ export default function Navbar() {
                 letterSpacing: 0.3,
               }}
             >
-              TOEIC Master
+              TOEIC Smart
             </Typography>
           </div>
 

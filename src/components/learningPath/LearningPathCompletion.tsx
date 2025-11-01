@@ -211,13 +211,13 @@ Bạn đã chứng minh rằng chỉ cần đều đặn, mục tiêu nào cũng
         <Card className="shadow-md border-l-4 border-sky-500 bg-white">
           <CardContent>
             <Typography variant="h6" className="font-semibold text-sky-600 mb-2">
-              💬 Thư từ TOEIC Master
+              💬 Thư từ TOEIC Smart
             </Typography>
             <Typography className="whitespace-pre-line text-slate-700 leading-relaxed">
               {mentorQuote}
             </Typography>
             <Typography className="text-right italic text-slate-500 mt-2">
-              — Đội ngũ TOEIC Master
+              — Đội ngũ TOEIC Smart
             </Typography>
           </CardContent>
         </Card>
@@ -246,7 +246,7 @@ Bạn đã chứng minh rằng chỉ cần đều đặn, mục tiêu nào cũng
                 className="!rounded-xl"
                 onClick={() => {
                   navigator.clipboard.writeText(
-                    `Mình vừa hoàn thành TOEIC ${lp.target_score}+ trên TOEIC Master 🎉`
+                    `Mình vừa hoàn thành TOEIC ${lp.target_score}+ trên TOEIC Smart 🎉`
                   );
                   alert("Đã sao chép thông điệp chia sẻ 🎉");
                 }}
@@ -301,7 +301,7 @@ Bạn đã chứng minh rằng chỉ cần đều đặn, mục tiêu nào cũng
       {/* ================= FOOTER ================= */}
       <Divider className="!mt-12" />
       <Typography className="text-xs text-center text-slate-400 mt-3">
-        © {new Date().getFullYear()} TOEIC Master — Learning Completion v4.0
+        © {new Date().getFullYear()} TOEIC Smart — Learning Completion v4.0
       </Typography>
     </Box>
   );

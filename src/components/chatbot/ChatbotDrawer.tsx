@@ -287,7 +287,7 @@ export function ChatbotDrawer({
                                 color: "transparent",
                             }}
                         >
-                            TOEIC Master Assistant
+                            TOEIC Smart Assistant
                         </Typography>
                         <IconButton onClick={onClose} size="small">
                             <Close sx={{ color: "#2563eb" }} />

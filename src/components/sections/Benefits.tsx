@@ -19,7 +19,7 @@ const Benefits: FC<BenefitsProps> = ({ benefits }) => {
           fontWeight='bold'
           className='text-title'
         >
-          Tại Sao Chọn TOEIC Master?
+          Tại Sao Chọn TOEIC Smart?
         </Typography>
         <Card
           className='relative w-full p-12 !rounded-[15px] !shadow-customCard h-[180px] mt-8'

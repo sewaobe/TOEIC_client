@@ -257,7 +257,7 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
         }}
       >
         <Typography variant="caption" color="text.secondary" textAlign="center">
-          © {new Date().getFullYear()} TOEIC Master. All rights reserved.
+          © {new Date().getFullYear()} TOEIC Smart. All rights reserved.
         </Typography>
         <Typography
           variant="caption"

@@ -36,7 +36,7 @@ const Footer: FC = () => {
           spacing={{ xs: 3, md: 2 }} // Giảm spacing trên desktop
         >
           <Typography variant='h6' fontWeight='bold' color='text.primary'>
-            TOEIC Master
+            TOEIC Smart
           </Typography>
 
           <Stack direction='row' spacing={4} alignItems='center'>
@@ -64,7 +64,7 @@ const Footer: FC = () => {
         <Divider sx={{ my: 4 }} />
 
         <Typography variant='body2' color='text.secondary' textAlign='center'>
-          © {new Date().getFullYear()} TOEIC Master. All rights reserved.
+          © {new Date().getFullYear()} TOEIC Smart. All rights reserved.
         </Typography>
       </Container>
     </Box>

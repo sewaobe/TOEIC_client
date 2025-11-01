@@ -62,8 +62,8 @@ async def run_test():
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
 
-        # Assert that the page title is 'TOEIC Master' indicating navigation to the exam search page.
-        assert await frame.title() == 'TOEIC Master'
+        # Assert that the page title is 'TOEIC Smart' indicating navigation to the exam search page.
+        assert await frame.title() == 'TOEIC Smart'
         # Assert that the search result shows 'Không tìm thấy kết quả phù hợp.' for the non-existent exam search.
         search_result_locator = frame.locator('xpath=//div[contains(text(),"Không tìm thấy kết quả phù hợp.")]')
         assert await search_result_locator.is_visible()

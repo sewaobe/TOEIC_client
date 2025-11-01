@@ -66,7 +66,7 @@ async def run_test():
         await page.mouse.wheel(0, window.innerHeight)
         
 
-        # Click on the 'TOEIC Master' test (index 6) to open its detail page and proceed with the comment input test.
+        # Click on the 'TOEIC Smart' test (index 6) to open its detail page and proceed with the comment input test.
         frame = context.pages[-1]
         elem = frame.locator('xpath=html/body/div/div/div/div/div/div/div/div/div/div/div/div').nth(0)
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)

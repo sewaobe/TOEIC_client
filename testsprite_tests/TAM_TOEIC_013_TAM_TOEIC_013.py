@@ -51,7 +51,7 @@ async def run_test():
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
 
-        # Click the edit icon (biểu tượng Sửa) for the test 'TOEIC Master' to open the edit form (step 1).
+        # Click the edit icon (biểu tượng Sửa) for the test 'TOEIC Smart' to open the edit form (step 1).
         frame = context.pages[-1]
         elem = frame.locator('xpath=html/body/div/div/div[2]/button').nth(0)
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)

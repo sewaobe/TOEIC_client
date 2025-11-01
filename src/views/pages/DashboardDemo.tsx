@@ -98,7 +98,7 @@ export default function DashboardDemo() {
             weeklyTotals.reduce((a, b) => a + b, 0) / weeklyTotals.length
           )
         : 21 * 60; // fallback 21h/tuần
-      const weekly_study_hours = Math.max(1, Math.round(avgWeeklyMinutes / 60));
+      const weekly_study_hours = Math.max(1, (avgWeeklyMinutes / 60));
 
       const firstWeekPlan = weeklyDays?.["0"] || {};
       const study_days_per_week =
@@ -172,6 +172,7 @@ export default function DashboardDemo() {
           shadowing: "Bắt chước phát âm, ngữ điệu người bản xứ",
           quiz: "Trắc nghiệm ngắn ôn từ và cấu trúc",
           mini_test: "Làm đề TOEIC ngắn, đánh giá phản xạ",
+          full_test: "Làm đề TOEIC đầy đủ, mô phỏng thực tế",
         },
       };
 

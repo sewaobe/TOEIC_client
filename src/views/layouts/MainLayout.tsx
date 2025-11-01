@@ -1,38 +1,55 @@
-import { ReactNode, useState } from 'react';
-import Navbar from '../../components/common/NavBar';
-import Footer from '../../components/sections/Footer';
-import RightMenuDrawer from '../../components/common/RightMenu';
-import StudyNotebookFlip3D from '../pages/NotebookPage';
-import useTextSelection from '../../hooks/useTextSelection';
-import HighlightPopup from '../../components/common/HighlightPopup';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../stores/store';
-import { showSnackbar } from '../../stores/snackbarSlice';
-import { LearningProgressModal } from '../../components/modals/LearningProgressModal';
-import { ChatbotDrawer } from '../../components/chatbot/ChatbotDrawer';
+import { ReactNode, useState } from "react";
+import Navbar from "../../components/common/NavBar";
+import Footer from "../../components/sections/Footer";
+import RightMenuDrawer from "../../components/common/RightMenu";
+import StudyNotebookFlip3D from "../pages/NotebookPage";
+import useTextSelection from "../../hooks/useTextSelection";
+import HighlightPopup from "../../components/common/HighlightPopup";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../stores/store";
+import { showSnackbar } from "../../stores/snackbarSlice";
+import { LearningProgressModal } from "../../components/modals/LearningProgressModal";
+import { ChatbotDrawer } from "../../components/chatbot/ChatbotDrawer";
+import ReportIssueModal from "../../components/modals/ReportIssueModal";
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 function MainLayout({ children }: MainLayoutProps) {
-  const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
+  const isAuthenticated = useSelector(
+    (state: RootState) => state.user.isAuthenticated
+  );
   const [showNotebook, setShowNotebook] = useState(false);
   const [showLearningProgress, setShowLearningProgress] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
-  const [chatDrawerQuestion, setChatDrawerQuestion] = useState<{ id: string; text: string } | null>(null);
+  const [chatDrawerQuestion, setChatDrawerQuestion] = useState<{
+    id: string;
+    text: string;
+  } | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const { selectedText, rect, clearSelection } = useTextSelection();
   const dispatch = useDispatch<AppDispatch>();
   const handleSaveNotebook = () => {
     console.log("📘 Save to notebook:", selectedText);
-    dispatch(showSnackbar({ message: 'Save to notebook successfully!', severity: 'success' }))
+    dispatch(
+      showSnackbar({
+        message: "Save to notebook successfully!",
+        severity: "success",
+      })
+    );
     clearSelection();
   };
 
   const handleSaveFlashcard = () => {
     console.log("🃏 Save to flashcard:", selectedText);
-    dispatch(showSnackbar({ message: 'Save to flash card successfully!', severity: 'success' }))
+    dispatch(
+      showSnackbar({
+        message: "Save to flash card successfully!",
+        severity: "success",
+      })
+    );
     clearSelection();
   };
 
@@ -40,12 +57,12 @@ function MainLayout({ children }: MainLayoutProps) {
     setShowChatbot(true);
     setChatDrawerQuestion({ id: "", text: selectedText });
     clearSelection();
-  }
+  };
 
   return (
-    <div className='max-h-screen custom-scrollbar'>
+    <div className="max-h-screen custom-scrollbar">
       <Navbar />
-      <div className='pt-16'>
+      <div className="pt-16">
         {children}
         {selectedText && rect && isAuthenticated && (
           <HighlightPopup
@@ -64,6 +81,7 @@ function MainLayout({ children }: MainLayoutProps) {
             onShowNotebook={setShowNotebook}
             onShowProgress={setShowLearningProgress}
             onShowChatbot={setShowChatbot}
+            onShowReport={setShowReportModal}
           />
           <StudyNotebookFlip3D
             isOpen={showNotebook}
@@ -77,6 +95,10 @@ function MainLayout({ children }: MainLayoutProps) {
             isOpen={showChatbot}
             onClose={() => setShowChatbot(false)}
             initialQuestion={chatDrawerQuestion || undefined}
+          />
+          <ReportIssueModal
+            open={showReportModal}
+            onClose={() => setShowReportModal(false)}
           />
         </>
       )}

@@ -7,28 +7,31 @@ import {
   ListItemIcon,
   Tooltip,
 } from "@mui/material";
-import AutoStoriesIcon from '@mui/icons-material/AutoStories';
-import LeaderboardIcon from '@mui/icons-material/Leaderboard';
-import SpellcheckIcon from '@mui/icons-material/Spellcheck';
+import AutoStoriesIcon from "@mui/icons-material/AutoStories";
+import LeaderboardIcon from "@mui/icons-material/Leaderboard";
+import SpellcheckIcon from "@mui/icons-material/Spellcheck";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
+import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 
 interface RightMenuDrawerProps {
   onShowNotebook: (show: boolean) => void;
   onShowProgress: (show: boolean) => void;
   onShowChatbot: (show: boolean) => void;
+  onShowReport: (show: boolean) => void;
 }
 
 export default function RightMenuDrawer({
   onShowNotebook,
   onShowProgress,
   onShowChatbot,
+  onShowReport,
 }: RightMenuDrawerProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const storedOpen = localStorage.getItem('rightMenuOpen');
+    const storedOpen = localStorage.getItem("rightMenuOpen");
     if (storedOpen !== null) {
       setOpen(JSON.parse(storedOpen));
     }
@@ -46,6 +49,11 @@ export default function RightMenuDrawer({
       onClick: () => onShowProgress(true),
     },
     {
+      label: "Báo lỗi",
+      icon: <ReportProblemIcon sx={{ color: "#f59e0b" }} />,
+      onClick: () => onShowReport(true),
+    },
+    {
       label: "Từ điển",
       icon: <SpellcheckIcon sx={{ color: "#4527a0" }} />,
       onClick: () => alert("Đi tới Từ điển"),
@@ -54,8 +62,7 @@ export default function RightMenuDrawer({
       label: "Trợ lý luyện tập",
       icon: <SmartToyIcon sx={{ color: "#3b82f6" }} />,
       onClick: () => onShowChatbot(true),
-    }
-
+    },
   ];
 
   return (
@@ -81,7 +88,7 @@ export default function RightMenuDrawer({
       <IconButton
         onClick={() => {
           setOpen(!open);
-          localStorage.setItem('rightMenuOpen', JSON.stringify(!open));
+          localStorage.setItem("rightMenuOpen", JSON.stringify(!open));
         }}
         sx={{
           position: "absolute",
@@ -99,7 +106,7 @@ export default function RightMenuDrawer({
 
       {/* List menu */}
       {/* Luôn render List để giữ chiều cao, nhưng ẩn icon đi */}
-      <List sx={{ p: 1, transition: 'opacity 0.3s', opacity: open ? 1 : 0 }}>
+      <List sx={{ p: 1, transition: "opacity 0.3s", opacity: open ? 1 : 0 }}>
         {items.map((item) => (
           <Tooltip key={item.label} title={item.label} placement="left">
             <ListItemButton
@@ -114,9 +121,7 @@ export default function RightMenuDrawer({
                 },
               }}
             >
-              <ListItemIcon sx={{ minWidth: "auto" }}>
-                {item.icon}
-              </ListItemIcon>
+              <ListItemIcon sx={{ minWidth: "auto" }}>{item.icon}</ListItemIcon>
             </ListItemButton>
           </Tooltip>
         ))}

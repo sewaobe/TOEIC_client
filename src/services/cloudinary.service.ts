@@ -85,3 +85,28 @@ export const uploadDocumentToCloudinary = async (
 
   return { url: data.secure_url, type: fileType };
 };
+
+/**
+ * 📡 Upload file (audio, video, image, pdf...) tự động nhận dạng loại
+ * Dùng cho Shadowing, Dictation, Speaking...
+ */
+export const uploadAuto = async (file: File | Blob): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", UPLOAD_PRESET);
+
+  try {
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
+      { method: "POST", body: formData }
+    );
+
+    const data = await res.json();
+    if (!data.secure_url) throw new Error(data.error?.message || "Upload thất bại!");
+    console.log("☁️ Uploaded (auto):", data.secure_url);
+    return data.secure_url;
+  } catch (err) {
+    console.error("❌ Lỗi uploadAuto:", err);
+    throw err;
+  }
+};

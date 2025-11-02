@@ -33,23 +33,23 @@ import { useNavigate } from "react-router-dom";
 import LearningProgress from "../../components/learningProgress/LearningProgress";
 import CloseIcon from "@mui/icons-material/Close";
 // Import các icon bạn cần từ thư viện @mui/icons-material
-import HeadphonesIcon from '@mui/icons-material/Headphones';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
-import CreateIcon from '@mui/icons-material/Create';
-import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
-import SyncIcon from '@mui/icons-material/Sync';
-import FlagIcon from '@mui/icons-material/Flag';
-import BookIcon from '@mui/icons-material/Book';
+import HeadphonesIcon from "@mui/icons-material/Headphones";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import CreateIcon from "@mui/icons-material/Create";
+import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
+import SyncIcon from "@mui/icons-material/Sync";
+import FlagIcon from "@mui/icons-material/Flag";
+import BookIcon from "@mui/icons-material/Book";
 import useLocalStorage from "../../hooks/useLocalStorage";
 
 // Tạo một đối tượng chứa màu sắc để dễ dàng thay đổi và quản lý
 const studyDayColors = {
-  listening: '#1976d2', // Xanh dương
-  reading: '#d32f2f',   // Đỏ
-  review: '#ed6c02',    // Cam
-  test: '#2e7d32',      // Xanh lá
-  default: 'rgba(0, 0, 0, 0.54)', // Xám
+  listening: "#1976d2", // Xanh dương
+  reading: "#d32f2f", // Đỏ
+  review: "#ed6c02", // Cam
+  test: "#2e7d32", // Xanh lá
+  default: "rgba(0, 0, 0, 0.54)", // Xám
 };
 /**
  * Trả về một component icon MUI đã được style sẵn màu sắc.
@@ -223,9 +223,9 @@ function DayItem({ data, onOpen }: { data: Day; onOpen: (l: Day) => void }) {
         transition: "all .15s ease",
         "&:hover": !isLocked
           ? {
-            boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
-            transform: "translateY(-1px)",
-          }
+              boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
+              transform: "translateY(-1px)",
+            }
           : {},
       }}
       onClick={() => !isLocked && onOpen(data)}
@@ -305,12 +305,12 @@ export default function DashboardLearningPath({
   const TARGET = plan.target_score ?? 0;
   const DAILY = `${plan.time_per_day ?? 0} phút/ngày`;
   const PACE = `${plan.days_per_week ?? 0} buổi/tuần`;
-  const WEEKS = plan.learningPath_id.week_studies_id?.length ?? 0;
+  const WEEKS = plan.learningPath_id.week_study_ids?.length ?? 0;
 
   const WEEK_TOTAL =
-    plan.learningPath_id.week_studies_id?.[activeWeek]?.days?.length ?? 0;
+    plan.learningPath_id.week_study_ids?.[activeWeek]?.days?.length ?? 0;
   const WEEK_DONE =
-    plan.learningPath_id.week_studies_id?.[activeWeek]?.days?.filter(
+    plan.learningPath_id.week_study_ids?.[activeWeek]?.days?.filter(
       (d: any) => d.status === "done"
     ).length ?? 0;
   const weekPercent = WEEK_TOTAL
@@ -318,15 +318,18 @@ export default function DashboardLearningPath({
     : 0;
 
   const openDay = (d: Day) => {
-    localStorage.setItem("current_day", JSON.stringify(d));
+    localStorage.setItem("current_day", JSON.stringify(d)); 
     navigate(`/lesson?week=${activeWeek + 1}&day=${d.id}`);
   };
-  const [lastVisitDate, setLastVisitDate] = useLocalStorage<string>('lastVisitDate', '');
+  const [lastVisitDate, setLastVisitDate] = useLocalStorage<string>(
+    "lastVisitDate",
+    ""
+  );
   const [isFirstVisitToday, setIsFirstVisitToday] = React.useState(false);
 
   React.useEffect(() => {
     // Lấy ngày hôm nay theo định dạng 'YYYY-MM-DD'
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split("T")[0];
 
     // So sánh ngày truy cập cuối cùng đã lưu với ngày hôm nay
     if (lastVisitDate !== todayStr) {
@@ -505,7 +508,7 @@ export default function DashboardLearningPath({
                   <DayItem data={d} onOpen={openDay} />
                 </Grid>
               ))} */}
-              {mapDays(plan?.learningPath_id.week_studies_id[activeWeek]).map(
+              {mapDays(plan?.learningPath_id.week_study_ids[activeWeek]).map(
                 (d) => (
                   <Grid size={{ xs: 12, sm: 6 }} key={d.id}>
                     <DayItem data={d} onOpen={openDay} />
@@ -527,11 +530,16 @@ export default function DashboardLearningPath({
               borderRadius: 4,
               p: 2,
               maxHeight: "90vh",
-              maxWidth: "1000px"
+              maxWidth: "1000px",
             },
           }}
         >
-          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            mb={1}
+          >
             <Typography variant="h6" fontWeight={800}>
               Tiến trình học
             </Typography>
@@ -544,7 +552,6 @@ export default function DashboardLearningPath({
             <LearningProgress />
           </Box>
         </Dialog>
-
       </Box>
     </MainLayout>
   );

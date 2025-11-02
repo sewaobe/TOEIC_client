@@ -14,6 +14,30 @@ const geminiService = {
     })
     return res.data.json;
   },
+  async analyzeShadowing(
+    userAudioUrl: string,
+    nativeAudioUrl: string,
+    meta: {
+      level?: string;
+      segmentIndex?: number;
+      nativeStart?: number;
+      nativeEnd?: number;
+      shadowing?: any;
+    }
+  ) {
+    const res = await axiosClient.post("/gemini/shadowing-analysis", {
+      user_audio_url: userAudioUrl,
+      native_audio_url: nativeAudioUrl,
+      level: meta.level,
+      segmentIndex: meta.segmentIndex,
+      native_start: meta.nativeStart,
+      native_end: meta.nativeEnd,
+      shadowing: meta.shadowing,
+    });
+
+    return res.data.json;
+  }
+
 };
 
 export default geminiService;

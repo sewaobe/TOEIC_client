@@ -60,21 +60,19 @@ const PracticeDictationPage = () => {
             return {
                 id: `part${partNumber}`,
                 title: `Part ${partNumber}: ${partNumber === 1
-                        ? "Photographs"
-                        : partNumber === 2
-                            ? "Question - Response"
-                            : partNumber === 3
-                                ? "Short Conversations"
-                                : "Short Talks"
+                    ? "Photographs"
+                    : partNumber === 2
+                        ? "Question - Response"
+                        : partNumber === 3
+                            ? "Short Conversations"
+                            : "Short Talks"
                     }`,
                 icon: ICONS[partNumber],
                 lessons:
                     partDictations.length > 0
                         ? partDictations.map((d) => ({
                             id: d._id,
-                            title:
-                                d.transcript.slice(0, 40) +
-                                (d.transcript.length > 40 ? "..." : ""),
+                            title: d.title,
                             difficulty: mapLevelToDifficulty(d.level),
                         }))
                         : [], // <- vẫn tạo mảng rỗng nếu chưa có bài

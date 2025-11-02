@@ -39,7 +39,7 @@ const HomePage: FC = () => {
       <Box sx={{ px: { xs: 2, sm: 4, md: 6 } }}>
         <HeroSection />
         <FeatureSection />
-        <TestSection title="Bài làm gần đây" tests={userRecentTests} />
+        <TestSection title="Bài làm gần đây" tests={userRecentTests}/>
         {/* Sử dụng component tái sử dụng */}
         <TestSection
           title="Đề thi mới nhất"

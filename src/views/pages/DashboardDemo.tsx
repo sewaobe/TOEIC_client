@@ -36,6 +36,8 @@ export default function DashboardDemo() {
   const [loading, setLoading] = React.useState(true);
   const [hasPlan, setHasPlan] = React.useState(false);
   const [plan, setPlan] = React.useState<any | null>(null);
+  const [creating, setCreating] = React.useState(false);
+  const [creatingMsg, setCreatingMsg] = React.useState<string | null>(null);
 
   // Modal 1: báo chưa có lộ trình
   const [open, setOpen] = React.useState(false);
@@ -57,14 +59,16 @@ export default function DashboardDemo() {
     const fetchPlan = async () => {
       try {
         const res = await learningPathService.getUserLearningPath();
+        // learningPathService returns an ApiResponse wrapper { success, data, ... }
         console.log("res", res);
-        if (res) {
-          setPlan(res);
+        if (res && res.success && res.data) {
+          setPlan(res.data);
           setHasPlan(true);
         } else {
           setOpen(true);
         }
-      } catch {
+      } catch (e) {
+        console.error("Error fetching user learning path", e);
         setOpen(true);
       } finally {
         setLoading(false);
@@ -77,6 +81,12 @@ export default function DashboardDemo() {
     // TẠM THỜI: Bỏ qua bước chọn phương pháp và gọi trực tiếp Gemini để lấy khung lộ trình
     // DỮ LIỆU ĐẦU VÀO: lấy "thực tế" từ localStorage (wizard) nếu có, và tính toán an toàn
     try {
+      // show creating modal + message
+      setCreating(true);
+      setCreatingMsg(
+        "Đang tạo lộ trình tự động… Quá trình có thể tốn vài phút. Vui lòng chờ."
+      );
+      setOpen(true);
       // 1) Lấy dữ liệu từ localStorage (đã lưu ở các step wizard)
       const planStart = JSON.parse(
         localStorage.getItem("plan_start") || "null"
@@ -98,7 +108,7 @@ export default function DashboardDemo() {
             weeklyTotals.reduce((a, b) => a + b, 0) / weeklyTotals.length
           )
         : 21 * 60; // fallback 21h/tuần
-      const weekly_study_hours = Math.max(1, (avgWeeklyMinutes / 60));
+      const weekly_study_hours = Math.max(1, avgWeeklyMinutes / 60);
 
       const firstWeekPlan = weeklyDays?.["0"] || {};
       const study_days_per_week =
@@ -180,12 +190,36 @@ export default function DashboardDemo() {
       const res = await axiosClient.post("/gemini/generate-toeic-plan", body);
       console.log("GEMINI_PLAN_RESULT", res);
 
-      // Tuỳ ý: sau này có thể lưu plan vào server hoặc state để hiển thị ngay
-      // setPlan(res?.data ?? res);
-      // setHasPlan(true);
-      // setOpen(false);
+      // After generation, fetch the user's saved learning path to display it
+      try {
+        const userLpRes = await learningPathService.getUserLearningPath();
+        if (userLpRes && userLpRes.success && userLpRes.data) {
+          setPlan(userLpRes.data);
+          setHasPlan(true);
+        } else {
+          // fallback: if gemini returned a learningPath object directly in res.data.data.learningPath
+          const maybeData = res?.data?.data;
+          if (maybeData?.learningPath) {
+            setPlan(maybeData.learningPath);
+            setHasPlan(true);
+          }
+        }
+      } catch (e) {
+        console.error("Không lấy được learning path sau khi tạo:", e);
+      }
+
+      // close creating UI
+      setCreating(false);
+      setCreatingMsg(null);
+      setOpen(false);
     } catch (err) {
       console.error("Gọi Gemini tạo lộ trình thất bại:", err);
+      setCreating(false);
+      setCreatingMsg(null);
+      // keep modal open and show a brief alert
+      setOpen(true);
+      // optionally show a simple alert; you can replace with Snackbar later
+      alert("Tạo lộ trình thất bại. Vui lòng thử lại sau.");
     }
   };
 
@@ -209,7 +243,13 @@ export default function DashboardDemo() {
   return (
     <MainLayout>
       {/* Modal 1: chưa có lộ trình */}
-      <Modal open={open} onClose={() => setOpen(false)}>
+      <Modal
+        open={open}
+        onClose={() => {
+          // prevent closing while creating
+          if (!creating) setOpen(false);
+        }}
+      >
         <Box
           sx={{
             position: "absolute",
@@ -221,24 +261,37 @@ export default function DashboardDemo() {
             borderRadius: 2,
             boxShadow: 24,
             textAlign: "center",
+            minWidth: 320,
           }}
         >
-          <Typography variant="h6" gutterBottom>
-            Bạn chưa có lộ trình học
-          </Typography>
-          <Typography color="text.secondary" sx={{ mb: 2 }}>
-            Hãy tạo lộ trình trước khi bắt đầu học.
-          </Typography>
-          <Button
-            variant="contained"
-            onClick={() => {
-              // TẠM THỜI: Gọi trực tiếp handleConfirm để tạo lộ trình qua Gemini.
-              // Khi bật lại chọn phương pháp, đổi thành setChooseMethod(true)
-              handleConfirm();
-            }}
-          >
-            Tạo lộ trình ngay
-          </Button>
+          {creating ? (
+            <Box>
+              <CircularProgress sx={{ mb: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                Đang tạo lộ trình…
+              </Typography>
+              <Typography color="text.secondary">{creatingMsg}</Typography>
+            </Box>
+          ) : (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Bạn chưa có lộ trình học
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                Hãy tạo lộ trình trước khi bắt đầu học.
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  // TẠM THỜI: Gọi trực tiếp handleConfirm để tạo lộ trình qua Gemini.
+                  // Khi bật lại chọn phương pháp, đổi thành setChooseMethod(true)
+                  handleConfirm();
+                }}
+              >
+                Tạo lộ trình ngay
+              </Button>
+            </Box>
+          )}
         </Box>
       </Modal>
 

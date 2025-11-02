@@ -7,6 +7,13 @@ const geminiService = {
     const res = await axiosClient.post("/gemini/generate-toeic-plan", body);
     return res; // axiosClient đã trả response.data
   },
+  async analyzeDictation(logs: any[], dictation: any) {
+    const res = await axiosClient.post("/gemini/dictation-analysis", {
+      logs,
+      dictation,
+    })
+    return res.data.json;
+  },
 };
 
 export default geminiService;

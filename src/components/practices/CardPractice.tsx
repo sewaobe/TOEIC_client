@@ -1,5 +1,3 @@
-"use client"
-
 import { Card, CardContent, Typography, Box, Button } from "@mui/material"
 import { ReactNode } from "react"
 

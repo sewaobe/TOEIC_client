@@ -285,8 +285,10 @@ export default function DashboardLearningPath({
   plan,
 }: DashboardLearningPathProps) {
   const navigate = useNavigate();
+  // support both old shape { learningPath_id: LearningPath } and new shape LearningPath
+  const lp = (plan && (plan.learningPath_id ?? plan)) || {};
   const [activeWeek, setActiveWeek] = React.useState<number>(
-    (plan.current_week ?? 1) - 1
+    (lp.current_week ?? 1) - 1
   );
   console.log("plan:", plan);
   // map days từ backend
@@ -302,15 +304,14 @@ export default function DashboardLearningPath({
     }));
   }
 
-  const TARGET = plan.target_score ?? 0;
-  const DAILY = `${plan.time_per_day ?? 0} phút/ngày`;
-  const PACE = `${plan.days_per_week ?? 0} buổi/tuần`;
-  const WEEKS = plan.learningPath_id.week_study_ids?.length ?? 0;
+  const TARGET = lp.target_score ?? 0;
+  const DAILY = `${lp.time_per_day ?? 0} phút/ngày`;
+  const PACE = `${lp.days_per_week ?? 0} buổi/tuần`;
+  const WEEKS = lp.week_study_ids?.length ?? 0;
 
-  const WEEK_TOTAL =
-    plan.learningPath_id.week_study_ids?.[activeWeek]?.days?.length ?? 0;
+  const WEEK_TOTAL = lp.week_study_ids?.[activeWeek]?.days?.length ?? 0;
   const WEEK_DONE =
-    plan.learningPath_id.week_study_ids?.[activeWeek]?.days?.filter(
+    lp.week_study_ids?.[activeWeek]?.days?.filter(
       (d: any) => d.status === "done"
     ).length ?? 0;
   const weekPercent = WEEK_TOTAL
@@ -318,7 +319,7 @@ export default function DashboardLearningPath({
     : 0;
 
   const openDay = (d: Day) => {
-    localStorage.setItem("current_day", JSON.stringify(d)); 
+    localStorage.setItem("current_day", JSON.stringify(d));
     navigate(`/lesson?week=${activeWeek + 1}&day=${d.id}`);
   };
   const [lastVisitDate, setLastVisitDate] = useLocalStorage<string>(
@@ -340,6 +341,13 @@ export default function DashboardLearningPath({
       setLastVisitDate(todayStr);
     }
   }, []);
+
+  // Keep activeWeek in sync if plan/current_week changes
+  React.useEffect(() => {
+    const newWeek = (lp.current_week ?? 1) - 1;
+    if (newWeek !== activeWeek) setActiveWeek(newWeek);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan]);
 
   return (
     <MainLayout>
@@ -508,13 +516,14 @@ export default function DashboardLearningPath({
                   <DayItem data={d} onOpen={openDay} />
                 </Grid>
               ))} */}
-              {mapDays(plan?.learningPath_id.week_study_ids[activeWeek]).map(
-                (d) => (
-                  <Grid size={{ xs: 12, sm: 6 }} key={d.id}>
-                    <DayItem data={d} onOpen={openDay} />
-                  </Grid>
-                )
-              )}
+              {(lp.week_study_ids?.[activeWeek]
+                ? mapDays(lp.week_study_ids[activeWeek])
+                : []
+              ).map((d) => (
+                <Grid size={{ xs: 12, sm: 6 }} key={d.id}>
+                  <DayItem data={d} onOpen={openDay} />
+                </Grid>
+              ))}
             </Grid>
           </Section>
         </Container>

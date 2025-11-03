@@ -12,6 +12,7 @@ import { LearningProgressModal } from "../../components/modals/LearningProgressM
 import { ChatbotDrawer } from "../../components/chatbot/ChatbotDrawer";
 import ReportIssueModal from "../../components/modals/ReportIssueModal";
 import DictionaryDrawer from "../../components/dictionary/DictionaryDrawer";
+import CreateVocabularyModal from "../../components/modals/CreateVocabularyModal";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -30,15 +31,24 @@ function MainLayout({ children }: MainLayoutProps) {
     text: string;
   } | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showCreateVocabulary, setShowCreateVocabulary] = useState(false);
+  const [highlightedWord, setHighlightedWord] = useState("");
+  const [notebookClipboard, setNotebookClipboard] = useState<string>("");
 
   const { selectedText, rect, clearSelection } = useTextSelection();
   const dispatch = useDispatch<AppDispatch>();
+  
   const handleSaveNotebook = () => {
     console.log("📘 Save to notebook:", selectedText);
+    // Lưu vào clipboard tạm
+    setNotebookClipboard(selectedText);
+    // Mở notebook trực tiếp
+    setShowNotebook(true);
+    // Hiển thị thông báo
     dispatch(
       showSnackbar({
-        message: "Save to notebook successfully!",
-        severity: "success",
+        message: "Đã sao chép! Hãy chọn mục và paste nội dung vào notebook",
+        severity: "info",
       })
     );
     clearSelection();
@@ -46,12 +56,8 @@ function MainLayout({ children }: MainLayoutProps) {
 
   const handleSaveFlashcard = () => {
     console.log("🃏 Save to flashcard:", selectedText);
-    dispatch(
-      showSnackbar({
-        message: "Save to flash card successfully!",
-        severity: "success",
-      })
-    );
+    setHighlightedWord(selectedText);
+    setShowCreateVocabulary(true);
     clearSelection();
   };
 
@@ -88,7 +94,12 @@ function MainLayout({ children }: MainLayoutProps) {
           />
           <StudyNotebookFlip3D
             isOpen={showNotebook}
-            onClose={() => setShowNotebook(false)}
+            onClose={() => {
+              setShowNotebook(false);
+              // Clear clipboard khi đóng
+              setNotebookClipboard("");
+            }}
+            clipboardText={notebookClipboard}
           />
           <LearningProgressModal
             isFirstVisitToday={showLearningProgress}
@@ -106,6 +117,14 @@ function MainLayout({ children }: MainLayoutProps) {
           <DictionaryDrawer
             open={showDictionary}
             onClose={() => setShowDictionary(false)}
+          />
+          <CreateVocabularyModal
+            open={showCreateVocabulary}
+            onClose={() => {
+              setShowCreateVocabulary(false);
+              setHighlightedWord("");
+            }}
+            initialWord={highlightedWord}
           />
         </>
       )}

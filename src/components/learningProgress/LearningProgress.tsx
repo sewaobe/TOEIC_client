@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Box, Tabs, Tab, Divider, Stack, Button, Typography, Paper } from "@mui/material";
+import { useState, useEffect } from "react";
+import { Box, Tabs, Tab, Divider, Stack, Button, Typography, Paper, CircularProgress, Alert } from "@mui/material";
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Icons
@@ -14,6 +14,7 @@ import { ProgramTab } from "./ProgramTab";
 import { InteractiveKpiDashboard } from "./KpiStrip";
 import { sum, durationMin, generateColors, computePercent, computeDailyEfficiency } from "../../utils/learningProgress";
 import { Session, Topic, Badge, DayTask } from "../../types/LearningProgress";
+import learningPathService, { LearningProgressResponse } from "../../services/learningPath.service";
 
 // Mock Data
 export const TOTAL_WEEKS = 8;
@@ -52,18 +53,162 @@ export default function LearningProgress() {
   const [tab, setTab] = useState(0);
   const [week, setWeek] = useState(4);
   const [day, setDay] = useState(3);
+  
+  // API state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [progressData, setProgressData] = useState<LearningProgressResponse | null>(null);
+  
+  // Additional data states
+  const [dayData, setDayData] = useState<any>(null);
+  const [weekStatsData, setWeekStatsData] = useState<any>(null);
+  const [cumulativeData, setCumulativeData] = useState<any>(null);
+  
+  // Track current IDs for fetching detailed data
+  const [currentDayId, setCurrentDayId] = useState<string | null>(null);
+  const [selectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  
+  // Loading states for individual tabs
+  const [loadingDay, setLoadingDay] = useState(false);
+  const [loadingWeek, setLoadingWeek] = useState(false);
+
+  // Fetch learning progress data
+  useEffect(() => {
+    const fetchProgress = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await learningPathService.getLearningProgress();
+        
+        if (response.success && response.data) {
+          setProgressData(response.data);
+          // Set current week from API
+          setWeek(response.data.current_week);
+          
+          // Fetch additional data
+          await Promise.all([
+            fetchCumulativeStats(),
+          ]);
+        } else {
+          setError(response.message || "Không thể lấy dữ liệu tiến độ");
+        }
+      } catch (err: any) {
+        setError(err.message || "Đã xảy ra lỗi khi tải dữ liệu");
+        console.error("Error fetching learning progress:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProgress();
+  }, []);
+
+  // Fetch cumulative stats
+  const fetchCumulativeStats = async () => {
+    try {
+      const response = await learningPathService.getCumulativeStats();
+      if (response.success && response.data) {
+        setCumulativeData(response.data);
+      }
+    } catch (err) {
+      console.error("Error fetching cumulative stats:", err);
+    }
+  };
+
+  // Fetch week stats when week changes
+  useEffect(() => {
+    if (progressData && progressData.weeks.length > 0) {
+      const currentWeekData = progressData.weeks.find((w) => w.week_no === week);
+      if (currentWeekData && currentWeekData._id) {
+        fetchWeekStats(currentWeekData._id);
+        
+        // Set current day ID (default to first day of the week)
+        if (currentWeekData.days && currentWeekData.days.length > 0) {
+          const dayIndex = Math.min(day, currentWeekData.days.length - 1);
+          const currentDay = currentWeekData.days[dayIndex];
+          if (currentDay && currentDay._id) {
+            setCurrentDayId(currentDay._id);
+          }
+        }
+      }
+    }
+  }, [week, day, progressData]);
+
+  // Fetch day detail when day or dayId changes
+  useEffect(() => {
+    if (currentDayId) {
+      fetchDayDetail(currentDayId, selectedDate);
+    }
+  }, [currentDayId, selectedDate]);
+
+  // Fetch week stats
+  const fetchWeekStats = async (weekId: string) => {
+    try {
+      setLoadingWeek(true);
+      const response = await learningPathService.getWeekStats(weekId);
+      if (response.success && response.data) {
+        setWeekStatsData(response.data);
+      }
+    } catch (err) {
+      console.error("Error fetching week stats:", err);
+    } finally {
+      setLoadingWeek(false);
+    }
+  };
+
+  // Fetch day detail
+  const fetchDayDetail = async (dayId: string, date: string) => {
+    try {
+      setLoadingDay(true);
+      const response = await learningPathService.getDayDetail(dayId, date);
+      if (response.success && response.data) {
+        setDayData(response.data);
+      }
+    } catch (err) {
+      console.error("Error fetching day detail:", err);
+    } finally {
+      setLoadingDay(false);
+    }
+  };
+
+  // Handler for day selection
+  const handleDayChange = (newDay: number) => {
+    setDay(newDay);
+    if (progressData && progressData.weeks.length > 0) {
+      const currentWeekData = progressData.weeks.find((w) => w.week_no === week);
+      if (currentWeekData && currentWeekData.days) {
+        const dayIndex = Math.min(newDay, currentWeekData.days.length - 1);
+        const selectedDay = currentWeekData.days[dayIndex];
+        if (selectedDay && selectedDay._id) {
+          setCurrentDayId(selectedDay._id);
+        }
+      }
+    }
+  };
+
+  // Handler for week selection
+  const handleWeekChange = (newWeek: number) => {
+    setWeek(newWeek);
+  };
+
   const percentProgram = computePercent(TOTAL_WEEKS, DAYS_PER_WEEK, week, day);
 
-  // Derived mock metrics
-  const sessions = mockSessions;
-  const dayMinutesActual = sum(sessions.map(durationMin));
-  const dayMinutesPlanned = 90;
-  const dailyEfficiency = computeDailyEfficiency(sessions);
+  // Use API data if available, otherwise fallback to mock
+  const sessions = dayData?.sessions || mockSessions;
+  const dayMinutesActual = dayData?.metrics?.dayMinutesActual || sum(sessions.map(durationMin));
+  const dayMinutesPlanned = dayData?.metrics?.dayMinutesPlanned || 90;
+  const dailyEfficiency = dayData?.metrics?.dailyEfficiency || computeDailyEfficiency(sessions);
   const dayColors = generateColors(sessions.length);
 
-  const weekPlanned = sum(weeklyPlannedPerDay);
-  const weekActual = sum(weeklyActualPerDay);
+  const weekPlanned = weekStatsData?.weekPlanned || sum(weeklyPlannedPerDay);
+  const weekActual = weekStatsData?.weekActual || sum(weeklyActualPerDay);
+  const weeklyActualPerDayData = weekStatsData?.weeklyActualPerDay || weeklyActualPerDay;
+  const weeklyPlannedPerDayData = weekStatsData?.weeklyPlannedPerDay || weeklyPlannedPerDay;
   const weeklyColors = generateColors(7);
+
+  // Use cumulative data from API
+  const cumulativePlannedData = cumulativeData?.cumulativePlanned || cumulativePlanned;
+  const cumulativeActualData = cumulativeData?.cumulativeActual || cumulativeActual;
 
   // Animation Variants for Tab Content
   const tabContentVariants = {
@@ -72,9 +217,120 @@ export default function LearningProgress() {
     exit: { opacity: 0, y: -10 },
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
+
+  // No data state
+  if (!progressData) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="info">Chưa có dữ liệu tiến độ học tập</Alert>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: 3, width: "100%", mx: "auto" }}>
-      <InteractiveKpiDashboard />
+      <InteractiveKpiDashboard progressData={progressData} />
+
+      {/* Week & Day Selector */}
+      <Paper
+        elevation={0}
+        variant="outlined"
+        sx={{
+          p: 2,
+          borderRadius: 3,
+          borderColor: 'grey.300',
+          mt: 3,
+          mb: 2,
+        }}
+      >
+        <Stack 
+          direction={{ xs: "column", sm: "row" }} 
+          spacing={3} 
+          justifyContent="center"
+          alignItems="center"
+        >
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Typography variant="body2" fontWeight={700} color="primary" sx={{ minWidth: 50 }}>
+              Tuần:
+            </Typography>
+            <Stack direction="row" spacing={0.5} flexWrap="wrap">
+              {progressData.weeks.map((w) => (
+                <Button
+                  key={w.week_no}
+                  size="small"
+                  variant={week === w.week_no ? "contained" : "outlined"}
+                  onClick={() => handleWeekChange(w.week_no)}
+                  disabled={w.status === 'lock'}
+                  sx={{ 
+                    minWidth: 45,
+                    height: 40,
+                    fontWeight: week === w.week_no ? 700 : 400,
+                  }}
+                  color={
+                    w.status === 'completed' ? 'success' :
+                    w.status === 'in_progress' ? 'primary' :
+                    'inherit'
+                  }
+                >
+                  {w.week_no}
+                </Button>
+              ))}
+            </Stack>
+          </Stack>
+
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Typography variant="body2" fontWeight={700} color="primary" sx={{ minWidth: 50 }}>
+              Ngày:
+            </Typography>
+            <Stack direction="row" spacing={0.5} flexWrap="wrap">
+              {[0, 1, 2, 3, 4, 5, 6].map((d) => {
+                const currentWeekData = progressData.weeks.find((w) => w.week_no === week);
+                const dayData = currentWeekData?.days?.[d];
+                const isDayLocked = dayData?.status === 'lock';
+
+                return (
+                  <Button
+                    key={d}
+                    size="small"
+                    variant={day === d ? "contained" : "outlined"}
+                    onClick={() => handleDayChange(d)}
+                    disabled={isDayLocked}
+                    sx={{ 
+                      minWidth: 45,
+                      height: 40,
+                      fontWeight: day === d ? 700 : 400,
+                    }}
+                    color={
+                      dayData?.status === 'completed' ? 'success' :
+                      dayData?.status === 'in_progress' ? 'warning' :
+                      'inherit'
+                    }
+                  >
+                    {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d]}
+                  </Button>
+                );
+              })}
+            </Stack>
+          </Stack>
+        </Stack>
+      </Paper>
 
       {/* === UPGRADED TABS UI === */}
       <Paper
@@ -151,37 +407,50 @@ export default function LearningProgress() {
             transition={{ duration: 0.25 }}
           >
             {tab === 0 && (
-              <DayTab
-                sessions={sessions}
-                day={day}
-                week={week}
-                dayMinutesActual={dayMinutesActual}
-                dayMinutesPlanned={dayMinutesPlanned}
-                dailyEfficiency={dailyEfficiency}
-                dayColors={dayColors}
-                dayTasks={dayTasks}
-              />
+              loadingDay ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <DayTab
+                  sessions={sessions}
+                  day={day}
+                  week={week}
+                  dayMinutesActual={dayMinutesActual}
+                  dayMinutesPlanned={dayMinutesPlanned}
+                  dailyEfficiency={dailyEfficiency}
+                  dayColors={dayColors}
+                  dayTasks={dayTasks}
+                />
+              )
             )}
 
             {tab === 1 && (
-              <WeekTab
-                weekActual={weekActual}
-                weekPlanned={weekPlanned}
-                weeklyActualPerDay={weeklyActualPerDay}
-                weeklyPlannedPerDay={weeklyPlannedPerDay}
-                weeklyColors={weeklyColors}
-              />
+              loadingWeek ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <WeekTab
+                  weekActual={weekActual}
+                  weekPlanned={weekPlanned}
+                  weeklyActualPerDay={weeklyActualPerDayData}
+                  weeklyPlannedPerDay={weeklyPlannedPerDayData}
+                  weeklyColors={weeklyColors}
+                />
+              )
             )}
 
             {tab === 2 && (
               <ProgramTab
                 week={week}
                 percentProgram={percentProgram}
-                TOTAL_WEEKS={TOTAL_WEEKS}
-                cumulativePlanned={cumulativePlanned}
-                cumulativeActual={cumulativeActual}
+                TOTAL_WEEKS={progressData.weeks.length}
+                cumulativePlanned={cumulativePlannedData}
+                cumulativeActual={cumulativeActualData}
                 topics={topics}
                 badges={badges}
+                weeks={progressData.weeks}
               />
             )}
           </motion.div>

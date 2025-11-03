@@ -13,9 +13,21 @@ interface Props {
   dailyEfficiency: number;
   dayColors: string[];
   dayTasks: DayTask[];
+  onDayChange?: (day: number) => void;
+  onWeekChange?: (week: number) => void;
+  totalWeeks?: number;
 }
 
-export const DayTab: React.FC<Props> = ({ sessions, day, week, dayMinutesActual, dayMinutesPlanned, dailyEfficiency, dayColors, dayTasks }) => (
+export const DayTab: React.FC<Props> = ({ 
+  sessions, 
+  day, 
+  week, 
+  dayMinutesActual, 
+  dayMinutesPlanned, 
+  dailyEfficiency, 
+  dayColors, 
+  dayTasks
+}) => (
   <Grid container spacing={2}>
     <Grid size={{ xs:12, md:6}}>
       <Card sx={{ borderRadius: 3, height: "100%" }}>

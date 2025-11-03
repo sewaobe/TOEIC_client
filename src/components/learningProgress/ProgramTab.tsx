@@ -1,7 +1,7 @@
-import React from "react";
 import { Card, CardContent, Typography, Grid, Box, Stack, Chip, CircularProgress, LinearProgress, Stepper, Step, StepLabel } from "@mui/material";
 import { LineChart } from "@mui/x-charts/LineChart";
 import { Badge, Topic } from "../../types/LearningProgress";
+import { WeekProgress } from "../../services/learningPath.service";
 
 interface ProgramTabProps {
   week: number;
@@ -11,9 +11,15 @@ interface ProgramTabProps {
   cumulativeActual: number[];
   topics: Topic[];
   badges: Badge[];
+  weeks: WeekProgress[];
 }
 
-export const ProgramTab: React.FC<ProgramTabProps> = ({ week, percentProgram, TOTAL_WEEKS, cumulativePlanned, cumulativeActual, topics, badges }) => {
+export const ProgramTab: React.FC<ProgramTabProps> = ({ week, percentProgram, TOTAL_WEEKS, cumulativePlanned, cumulativeActual, topics, badges, weeks }) => {
+  // Calculate average progress from weeks
+  const avgProgress = weeks.length > 0 
+    ? weeks.reduce((sum, w) => sum + w.progress, 0) / weeks.length 
+    : percentProgram;
+
   return (
     <Grid container spacing={2}>
       {/* Big progress ring */}
@@ -23,13 +29,20 @@ export const ProgramTab: React.FC<ProgramTabProps> = ({ week, percentProgram, TO
             <Typography variant="h6">Tiến trình tổng</Typography>
             <Stack alignItems="center" mt={1}>
               <Box position="relative" display="inline-flex">
-                <CircularProgress variant="determinate" value={percentProgram} size={140} thickness={5} />
+                <CircularProgress variant="determinate" value={avgProgress} size={140} thickness={5} />
                 <Box position="absolute" top={0} left={0} right={0} bottom={0} display="flex" alignItems="center" justifyContent="center">
-                  <Typography variant="h5" fontWeight={800}>{percentProgram}%</Typography>
+                  <Typography variant="h5" fontWeight={800}>{avgProgress.toFixed(0)}%</Typography>
                 </Box>
               </Box>
-              <Typography variant="body2" mt={1}>Dự kiến hoàn thành: <b>18/12</b></Typography>
-              <Chip size="small" color="success" label="+2.5h so với kế hoạch" sx={{ mt: 1 }} />
+              <Typography variant="body2" mt={1}>
+                Tuần hiện tại: <b>Tuần {week}</b>
+              </Typography>
+              <Chip 
+                size="small" 
+                color={weeks.find(w => w.is_current)?.status === 'completed' ? 'success' : 'warning'}
+                label={`${weeks.filter(w => w.status === 'completed').length}/${weeks.length} tuần hoàn thành`}
+                sx={{ mt: 1 }} 
+              />
             </Stack>
           </CardContent>
         </Card>
@@ -41,10 +54,31 @@ export const ProgramTab: React.FC<ProgramTabProps> = ({ week, percentProgram, TO
           <CardContent>
             <Typography variant="h6">Lộ trình mốc</Typography>
             <Stepper activeStep={week - 1} alternativeLabel>
-              {Array.from({ length: TOTAL_WEEKS }, (_, i) => (
-                <Step key={i}><StepLabel>{`W${i + 1}`}</StepLabel></Step>
+              {weeks.map((w, i) => (
+                <Step key={i} completed={w.status === 'completed'}>
+                  <StepLabel 
+                    error={w.status === 'lock'}
+                  >
+                    {`W${w.week_no}`}
+                  </StepLabel>
+                </Step>
               ))}
             </Stepper>
+            <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {weeks.map((w) => (
+                <Chip 
+                  key={w.week_no}
+                  label={`Tuần ${w.week_no}: ${w.progress.toFixed(0)}%`}
+                  size="small"
+                  color={
+                    w.status === 'completed' ? 'success' :
+                    w.status === 'in_progress' ? 'primary' :
+                    'default'
+                  }
+                  variant={w.is_current ? 'filled' : 'outlined'}
+                />
+              ))}
+            </Box>
           </CardContent>
         </Card>
       </Grid>

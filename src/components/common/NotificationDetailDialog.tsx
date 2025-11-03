@@ -140,24 +140,6 @@ export default function NotificationDetailDialog({
             )}
           </Box>
         );
-      case "test":
-        return (
-          <Box mt={2}>
-            <Typography variant="body2" color="text.disabled">
-              Thông báo liên quan đến bài thi.
-              Vui lòng kiểm tra trang quản lý bài thi để biết thêm chi tiết.
-            </Typography>
-            {notification.description && (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.5, whiteSpace: "pre-line" }}
-              >
-                Chi tiết: {notification.description}
-              </Typography>
-            )}
-          </Box>
-        );
       case "lesson":
         return (
           <Box mt={2}>

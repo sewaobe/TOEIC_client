@@ -26,7 +26,7 @@ export const TargetScoreStep: FC<ITargetScoreStep> = ({ score }) => {
             <Box flex={1}>
                 <Typography variant="h6" sx={{ mb: 1 }}>Mục tiêu điểm TOEIC</Typography>
                 <Alert severity="info" sx={{ mb: 2 }}>
-                    Điểm đầu vào hiện tại: <b>{score}</b> (mock). Điều chỉnh mục tiêu để hệ thống lên kế hoạch phù hợp.
+                    Điểm đầu vào hiện tại: <b>{score}</b>. Điều chỉnh mục tiêu để hệ thống lên kế hoạch phù hợp.
                 </Alert>
                 <Slider
                     aria-label="Chọn mục tiêu điểm TOEIC"

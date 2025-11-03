@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Stack,
@@ -14,6 +14,8 @@ import BaseModal from './BaseModal';
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 import TrendingUpRounded from '@mui/icons-material/TrendingUpRounded';
 import { RawAnswer } from '../../utils/mapAnswersToParts';
+import learningPathService from '../../services/learningPath.service';
+import userTestService from '../../services/user_test.service';
 
 
 export type ResultPayload = {
@@ -25,8 +27,9 @@ interface ToeicQuickResultModalProps {
   open: boolean;
   data: ResultPayload;
   onClose: () => void;
-  onReviewDetails?: () => void;   // xem lại bài làm (optional)
+  onReviewDetails?: (id: string) => void;   // xem lại bài làm (optional)
   onSuggestPlan?: () => void;     // gợi ý lộ trình học (optional)
+  testId?: string;
 }
 
 /* ---------- constants & helpers ---------- */
@@ -140,8 +143,10 @@ export default function ToeicQuickResultModal({
   onClose,
   onReviewDetails,
   onSuggestPlan,
+  testId
 }: ToeicQuickResultModalProps) {
   const { answers = [], score } = data || {};
+  const [showSuggest, setShowSuggest] = useState(false);
   const stats = useMemo(() => {
     const total = answers.length;
     const correct = answers.filter((a) => a.isCorrect).length;
@@ -169,6 +174,20 @@ export default function ToeicQuickResultModal({
     return { total, correct, accuracy, toeic, cefr, byPart };
   }, [answers]);
 
+  useEffect(() => {
+    const fetchLearningPath = async () => {
+      try {
+        const res = await learningPathService.getUserLearningPath();
+        if (!res.data) {
+          setShowSuggest(true);
+        }
+      } catch (error) {
+        console.error('Error fetching learning path suggestion:', error);
+      }
+    };
+    fetchLearningPath();
+  }, [stats]);
+
   const renderFooter = () => (
     <Stack
       direction={{ xs: 'column', sm: 'row' }}
@@ -184,7 +203,18 @@ export default function ToeicQuickResultModal({
             variant="text"
             color="primary"
             startIcon={<VisibilityOutlined />}
-            onClick={onReviewDetails}
+            onClick={async () => {
+              try {
+                if (testId) {
+                  const res = await userTestService.getUserTestHistories(1, 1, testId);
+                  const resultId = res.data[0]._id;
+                  onReviewDetails(resultId);
+                }
+              } catch (error) {
+                console.error('Error fetching user test histories:', error);
+                onReviewDetails('');
+              }
+            }}
             sx={{
               textTransform: 'none',
               fontWeight: 600,
@@ -199,23 +229,45 @@ export default function ToeicQuickResultModal({
       </Stack>
 
       {/* RIGHT: Primary CTA duy nhất */}
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={onSuggestPlan}
-        startIcon={<TrendingUpRounded />}
-        sx={{
-          textTransform: 'none',
-          fontWeight: 700,
-          borderRadius: '999px',
-          px: 2.5,
-          minHeight: 44,
-          width: { xs: '100%', sm: 'auto' },
-          boxShadow: '0 10px 24px rgba(37,99,235,0.28)',
-        }}
-      >
-        Gợi ý lộ trình học
-      </Button>
+      {showSuggest && onSuggestPlan && (
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={onSuggestPlan}
+          startIcon={<TrendingUpRounded />}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 700,
+            borderRadius: '999px',
+            px: 2.5,
+            minHeight: 44,
+            width: { xs: '100%', sm: 'auto' },
+            boxShadow: '0 10px 24px rgba(37,99,235,0.28)',
+          }}
+        >
+          Gợi ý lộ trình học
+        </Button>
+      )}
+
+      {!showSuggest && (
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={onClose}
+          startIcon={<TrendingUpRounded />}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 700,
+            borderRadius: '999px',
+            px: 2.5,
+            minHeight: 44,
+            width: { xs: '100%', sm: 'auto' },
+            boxShadow: '0 10px 24px rgba(37,99,235,0.28)',
+          }}
+        >
+          Luyện tập tiếp
+        </Button>
+      )}
     </Stack>
   );
 

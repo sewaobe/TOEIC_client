@@ -79,8 +79,8 @@ const TestHeader: FC<TestHeaderProps> = ({
   const duration = timeLimitParam
     ? parseInt(timeLimitParam, 10) * 60 // practice có giới hạn
     : parts
-    ? Infinity // practice không giới hạn
-    : 120 * 60; // full test mặc định 120 phút
+      ? Infinity // practice không giới hạn
+      : 120 * 60; // full test mặc định 120 phút
 
   const { timeLeft, formatTime } = useCountdown(duration, isTourRunning);
 
@@ -396,9 +396,10 @@ const TestHeader: FC<TestHeaderProps> = ({
       <ToeicQuickResultModal
         open={state.scoreOpen}
         data={answerTest}
-        onReviewDetails={() => navigate(`/tests/${testId}/result/1`)}
+        onReviewDetails={(id) => navigate(`/tests/${testId}/result/${id}`)}
         onSuggestPlan={() => navigate(`/plan?score=${answerTest.score}`)}
         onClose={handleCloseScoreModal}
+        testId={testId}
       />
     </header>
   );

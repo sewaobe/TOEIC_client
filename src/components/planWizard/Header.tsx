@@ -6,8 +6,10 @@ import {
 } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import SchoolIcon from "@mui/icons-material/School";
+import { useNavigate } from "react-router-dom";
 
 export const HeaderPlanWizard = () => {
+    const navigate = useNavigate();
     return (
         <Stack
             direction="row"
@@ -21,7 +23,7 @@ export const HeaderPlanWizard = () => {
             }}
         >
             <Button
-                onClick={() => console.log("Back")} // hoặc logic của bạn
+                onClick={() => navigate('/home')} // hoặc logic của bạn
                 startIcon={<ArrowBackIosNewIcon fontSize="small" />}
                 color="inherit"
                 size="small"

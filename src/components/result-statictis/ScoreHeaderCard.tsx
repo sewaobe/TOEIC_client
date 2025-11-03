@@ -10,19 +10,60 @@ import { motion, animate } from "framer-motion";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import HeadphonesIcon from "@mui/icons-material/Headphones";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
+import { OverviewStatistic } from "../../services/progress.service";
 
-export default function ScoreHeaderCard({ overview }: { overview: any }) {
+export default function ScoreHeaderCard({ overview, filterYear, filterMonth }: { overview: OverviewStatistic[], filterYear: number, filterMonth: number | "all" }) {
     const [progressValue, setProgressValue] = useState(0);
+    const [listening, setListening] = useState(0);
+    const [reading, setReading] = useState(0);
+    const [overall, setOverall] = useState(0);
+    const [delta, setDelta] = useState(0);
+    useEffect(() => {
+        if (overview.length === 0) return;
+
+        // Lọc theo năm
+        const yearData = overview.filter((o) => o.year === filterYear);
+
+        if (filterMonth === "all") {
+            // Tính trung bình của năm
+            const avgListening = yearData.reduce((s, o) => s + o.avgListening, 0) / yearData.length || 0;
+            const avgReading = yearData.reduce((s, o) => s + o.avgReading, 0) / yearData.length || 0;
+            const avgScore = yearData.reduce((s, o) => s + o.avgScore, 0) / yearData.length || 0;
+
+            setListening(Number(avgListening.toFixed(1)));
+            setReading(Number(avgReading.toFixed(1)));
+            setOverall(Number(avgScore.toFixed(1)));
+
+            // ❌ Không cần delta khi là cả năm
+            setDelta(0);
+        } else {
+            // Nếu lọc theo tháng cụ thể
+            const current = yearData.find((o) => o.month === filterMonth);
+            const previous = yearData.find((o) => o.month === filterMonth - 1);
+
+            if (current) {
+                setListening(current.avgListening);
+                setReading(current.avgReading);
+                setOverall(current.avgScore);
+                setDelta(previous ? current.avgScore - previous.avgScore : 0);
+            } else {
+                setListening(0);
+                setReading(0);
+                setOverall(0);
+                setDelta(0);
+            }
+        }
+    }, [overview, filterYear, filterMonth]);
 
     // Hiệu ứng tăng dần % khi load
     useEffect(() => {
-        const controls = animate(0, overview.progress, {
+        const controls = animate(0, overall, {
             duration: 1.8,
             ease: "easeOut",
             onUpdate: (v) => setProgressValue(parseFloat(v.toFixed(1))),
         });
         return () => controls.stop();
-    }, [overview.progress]);
+    }, [overall]);
 
     return (
         <Card
@@ -77,7 +118,7 @@ export default function ScoreHeaderCard({ overview }: { overview: any }) {
                             textShadow: "0 0 14px rgba(255,255,255,0.5)",
                         }}
                     >
-                        {overview.overall}
+                        {overall}
                     </Typography>
                     <Typography variant="h6" sx={{ opacity: 0.9, mb: 0.6 }}>
                         / 990
@@ -92,13 +133,19 @@ export default function ScoreHeaderCard({ overview }: { overview: any }) {
                         color: "#EAE9FF",
                     }}
                 >
-                    Tăng{" "}
+                    {filterMonth !== "all" && (
+                        <>
+                            Tăng{" "}
+                            <Box component="span" sx={{ fontWeight: 700, color: "#C4B5FD" }}>
+                                {delta > 0 ? `+${delta}` : delta}
+                            </Box>{" "}
+                            điểm so với{" "}
+                            {filterMonth > 1 ? `tháng ${filterMonth - 1}` : "ban đầu"} •{" "}
+                        </>
+                    )}
+                    Tiến độ{" "}
                     <Box component="span" sx={{ fontWeight: 700, color: "#C4B5FD" }}>
-                        {overview.delta}
-                    </Box>{" "}
-                    điểm so với tháng 1 • Tiến độ{" "}
-                    <Box component="span" sx={{ fontWeight: 700, color: "#C4B5FD" }}>
-                        {overview.progress}%
+                        {progressValue}%
                     </Box>
                 </Typography>
 
@@ -106,7 +153,7 @@ export default function ScoreHeaderCard({ overview }: { overview: any }) {
                 <Box sx={{ display: "flex", gap: 1.2, mt: 1 }}>
                     <Chip
                         icon={<HeadphonesIcon sx={{ color: "#E8F0FF" }} />}
-                        label={`Listening: ${overview.listening}`}
+                        label={`Listening: ${listening}`}
                         sx={{
                             background: "linear-gradient(90deg, #60A5FA, #818CF8)",
                             color: "#FDFDFF",
@@ -118,7 +165,7 @@ export default function ScoreHeaderCard({ overview }: { overview: any }) {
                     />
                     <Chip
                         icon={<MenuBookIcon sx={{ color: "#FAE8FF" }} />}
-                        label={`Reading: ${overview.reading}`}
+                        label={`Reading: ${reading}`}
                         sx={{
                             background: "linear-gradient(90deg, #C084FC, #E879F9)",
                             color: "#FFF8FF",

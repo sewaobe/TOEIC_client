@@ -52,11 +52,16 @@ module.exports = {
           '0%': { transform: 'translateX(-50%)' },
           '100%': { transform: 'translateX(0)' },
         },
+        'slide-up': {
+          '0%': { transform: 'translateY(100%)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
       },
       animation: {
         'gradient-move': 'gradientMove 6s ease infinite',
         'scroll-forward': 'scroll-forward 25s linear infinite',
         'scroll-reverse': 'scroll-reverse 25s linear infinite',
+        'slide-up': 'slide-up 0.3s ease-out',
       },
       // 🎨 Màu gradient tái sử dụng
       backgroundImage: {

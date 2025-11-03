@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   LinearProgress,
@@ -14,6 +14,7 @@ import {
   TableBody,
   TablePagination,
   TableSortLabel,
+  CircularProgress,
 } from "@mui/material";
 import {
   Headphones,
@@ -24,67 +25,53 @@ import {
   ArrowForward,
 } from "@mui/icons-material";
 import { AnimatePresence, motion } from "framer-motion";
+import { progressService } from "../../services/progress.service";
+import { useNavigate } from "react-router-dom";
 
-// ---------------- DỮ LIỆU MẪU ----------------
-
-// Định nghĩa kiểu dữ liệu hoạt động
+// ---------------- TYPES ----------------
 type Activity = { title: string; date: string; score: number; progress: string };
 
-const skills = [
-  {
-    id: "listening",
-    name: "Listening",
-    progress: 82,
-    icon: <Headphones sx={{ color: "#7C3AED" }} />,
-    color: "#EDE9FE",
-  },
-  {
-    id: "reading",
-    name: "Reading",
-    progress: 68,
-    icon: <MenuBook sx={{ color: "#3B82F6" }} />,
-    color: "#DBEAFE",
-  },
-  {
-    id: "vocabulary",
-    name: "Vocabulary",
-    progress: 75,
-    icon: <Spellcheck sx={{ color: "#F59E0B" }} />,
-    color: "#FEF3C7",
-  },
-  {
-    id: "speaking",
-    name: "Speaking",
-    progress: 40,
-    icon: <Chat sx={{ color: "#F43F5E" }} />,
-    color: "#FEE2E2",
-  },
-];
-
-// Giới hạn key cụ thể để TypeScript hiểu đúng
-const activities: Record<"listening" | "reading" | "vocabulary" | "speaking", Activity[]> = {
-  listening: [
-    { title: "Luyện Part 3 - Conversation 2", date: "2025-10-25", score: 86, progress: "+3%" },
-    { title: "Luyện Part 2 - Short Q&A", date: "2025-10-24", score: 82, progress: "+1%" },
-    { title: "Luyện Part 1 - Photos", date: "2025-10-22", score: 90, progress: "+4%" },
-    { title: "Luyện Mini Test 1", date: "2025-10-21", score: 79, progress: "+2%" },
-    { title: "Luyện Part 4 - Talks", date: "2025-10-20", score: 76, progress: "-1%" },
-  ],
-  reading: [
-    { title: "Part 7 - Reading Passage 5", date: "2025-10-26", score: 74, progress: "+2%" },
-    { title: "Part 5 - Incomplete Sentences", date: "2025-10-24", score: 70, progress: "+1%" },
-  ],
-  vocabulary: [
-    { title: "Flashcards Unit 8", date: "2025-10-23", score: 95, progress: "+5%" },
-    { title: "Flashcards Unit 7", date: "2025-10-22", score: 90, progress: "+2%" },
-  ],
-  speaking: [
-    { title: "Recording Practice 1", date: "2025-10-20", score: 67, progress: "+4%" },
-  ],
-};
+interface PracticeSkillPanelProps {
+  filterYear: number;
+  filterMonth: number | "all";
+}
 
 // ---------------- COMPONENT ----------------
-export default function PracticeSkillPanel() {
+export default function PracticeSkillPanel({ filterYear, filterMonth }: PracticeSkillPanelProps) {
+  // --- State ---
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [skills, setSkills] = useState([
+    {
+      id: "listening",
+      name: "Listening",
+      progress: 0,
+      icon: <Headphones sx={{ color: "#7C3AED" }} />,
+      color: "#EDE9FE",
+    },
+    {
+      id: "reading",
+      name: "Reading",
+      progress: 0,
+      icon: <MenuBook sx={{ color: "#3B82F6" }} />,
+      color: "#DBEAFE",
+    },
+    {
+      id: "vocabulary",
+      name: "Vocabulary",
+      progress: 0,
+      icon: <Spellcheck sx={{ color: "#F59E0B" }} />,
+      color: "#FEF3C7",
+    },
+    {
+      id: "speaking",
+      name: "Speaking",
+      progress: 0,
+      icon: <Chat sx={{ color: "#F43F5E" }} />,
+      color: "#FEE2E2",
+    },
+  ]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [selectedSkill, setSelectedSkill] = useState<
     "listening" | "reading" | "vocabulary" | "speaking" | null
   >(null);
@@ -94,6 +81,49 @@ export default function PracticeSkillPanel() {
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  // --- Fetch Skills Overview ---
+  useEffect(() => {
+    const fetchSkillsOverview = async () => {
+      setIsLoading(true);
+      try {
+        const data = await progressService.getSkillsOverview();
+        setSkills((prev) =>
+          prev.map((skill) => ({
+            ...skill,
+            progress: data[skill.id as keyof typeof data] || 0,
+          }))
+        );
+      } catch (error) {
+        console.error("Error fetching skills overview:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSkillsOverview();
+  }, [filterYear, filterMonth]);
+
+  // --- Fetch Activities khi chọn skill ---
+  useEffect(() => {
+    if (!selectedSkill) return;
+
+    const fetchActivities = async () => {
+      setIsLoading(true);
+      try {
+        const data = await progressService.getSkillActivities(selectedSkill);
+        setActivities(data);
+        setPage(0); // Reset về trang đầu
+      } catch (error) {
+        console.error("Error fetching skill activities:", error);
+        setActivities([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchActivities();
+  }, [selectedSkill]);
 
   const handleSort = (property: "date" | "score") => {
     const isAsc = orderBy === property && order === "asc";
@@ -108,18 +138,15 @@ export default function PracticeSkillPanel() {
   };
 
   // --- Lọc & sắp xếp dữ liệu an toàn ---
-  const sortedActivities: Activity[] =
-    selectedSkill && activities[selectedSkill]
-      ? [...activities[selectedSkill]].sort((a, b) => {
-          if (orderBy === "date") {
-            return order === "asc"
-              ? new Date(a.date).getTime() - new Date(b.date).getTime()
-              : new Date(b.date).getTime() - new Date(a.date).getTime();
-          } else {
-            return order === "asc" ? a.score - b.score : b.score - a.score;
-          }
-        })
-      : [];
+  const sortedActivities: Activity[] = [...activities].sort((a, b) => {
+    if (orderBy === "date") {
+      return order === "asc"
+        ? new Date(a.date).getTime() - new Date(b.date).getTime()
+        : new Date(b.date).getTime() - new Date(a.date).getTime();
+    } else {
+      return order === "asc" ? a.score - b.score : b.score - a.score;
+    }
+  });
 
   const paginatedData = sortedActivities.slice(
     page * rowsPerPage,
@@ -127,6 +154,14 @@ export default function PracticeSkillPanel() {
   );
 
   // ---------------- RENDER ----------------
+  if (isLoading && !selectedSkill) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <AnimatePresence mode="wait">
       {!selectedSkill ? (
@@ -179,7 +214,7 @@ export default function PracticeSkillPanel() {
                   {/* Right */}
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Chip
-                      label={`Tiến độ ${s.progress}%`}
+                      label={`Độ chính xác ${s.progress}%`}
                       size="small"
                       sx={{ bgcolor: "white", color: "black", fontWeight: 600 }}
                     />
@@ -251,16 +286,30 @@ export default function PracticeSkillPanel() {
               </TableHead>
 
               <TableBody>
-                {paginatedData.map((a, i) => (
-                  <TableRow key={i} hover>
-                    <TableCell>{a.title}</TableCell>
-                    <TableCell>{a.date}</TableCell>
-                    <TableCell>{a.score}</TableCell>
-                    <TableCell sx={{ color: a.progress.includes("-") ? "red" : "green" }}>
-                      {a.progress}
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} align="center">
+                      <CircularProgress size={24} />
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : paginatedData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} align="center">
+                      <Typography color="text.secondary">Chưa có dữ liệu luyện tập</Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedData.map((a, i) => (
+                    <TableRow key={i} hover>
+                      <TableCell>{a.title}</TableCell>
+                      <TableCell>{a.date}</TableCell>
+                      <TableCell>{a.score}</TableCell>
+                      <TableCell sx={{ color: a.progress.includes("-") ? "red" : "green" }}>
+                        {a.progress}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
 
@@ -278,7 +327,17 @@ export default function PracticeSkillPanel() {
 
             {/* Nút hành động */}
             <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
-              <Button variant="contained" endIcon={<ArrowForward />} color="primary">
+              <Button variant="contained" endIcon={<ArrowForward />} color="primary" onClick={() => {
+                if (selectedSkill === "listening") {
+                  navigate("/practice-skill/dictation");
+                } else if (selectedSkill === "reading") {
+                  navigate("/practice-skill/mini-test");
+                } else if (selectedSkill === "vocabulary") {
+                  navigate("/flash-cards");
+                } else {
+                  navigate("/practice-skill/shadowing");
+                }
+              }}>
                 Luyện tập ngay
               </Button>
             </Box>

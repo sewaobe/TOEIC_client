@@ -86,7 +86,7 @@ export const EndDateStep: FC<IEndDateStep> = ({ score }) => {
                             ))}
                         </Stack>
 
-                        {weeklyHours > 16 && (
+                        {weeklyHours > maxWeekly && (
                             <Shake>
                                 <Pulse>
                                     <Alert severity="warning" sx={{ borderRadius: 2 }}>
@@ -97,7 +97,7 @@ export const EndDateStep: FC<IEndDateStep> = ({ score }) => {
                             </Shake>
                         )}
 
-                        {weeklyHours < 3 && (
+                        {weeklyHours < minWeekly && (
                             <Shake>
                                 <Pulse>
                                     <Alert severity="warning" sx={{ borderRadius: 2 }}>

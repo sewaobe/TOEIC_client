@@ -7,96 +7,103 @@ import {
   Container,
   Divider,
   Fade,
-  FormHelperText,
   Stack,
   Step,
   StepLabel,
   Stepper,
-  Typography,
   Grow,
 } from "@mui/material";
-
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { TargetScoreStep } from "../../components/planWizard/Step1";
 import { EndDateStep } from "../../components/planWizard/Step2";
 import { DetailedPlanStep } from "../../components/planWizard/Step3";
 import { HeaderPlanWizard } from "../../components/planWizard/Header";
 
-
-// ==========================================================
-// PlanStepper
-// ==========================================================
+/* ==========================================================
+   🧭 PlanStepper
+========================================================== */
 function PlanStepper({ activeStep }: { activeStep: number }) {
   const steps = ["Điểm", "Thời gian kết thúc", "Kế hoạch chi tiết"];
   return (
     <Stepper activeStep={activeStep} alternativeLabel>
       {steps.map((label) => (
-        <Step key={label}><StepLabel>{label}</StepLabel></Step>
+        <Step key={label}>
+          <StepLabel>{label}</StepLabel>
+        </Step>
       ))}
     </Stepper>
   );
 }
 
-// ==========================================================
-// Main component
-// ==========================================================
+/* ==========================================================
+   🎯 Main Component
+========================================================== */
 export default function PlanWizardDemo() {
   const [searchParams] = useSearchParams();
-  const scoreString = searchParams.get('score');
+  const scoreString = searchParams.get("score");
   const scoreNumber: number = scoreString ? parseFloat(scoreString) : 0;
 
   const [activeStep, setActiveStep] = React.useState<number>(0);
   const navigate = useNavigate();
 
   React.useEffect(() => {
-    if (activeStep > 2) {
-      navigate("/programs")
-    }
-  }, [activeStep])
-  // UI
+    if (activeStep > 2) navigate("/programs");
+  }, [activeStep]);
+
   return (
+    // ✅ Fake body scroll wrapper
     <Box
       sx={{
-        minHeight: "100vh",
-        width: "100%",
-        // nền đẹp mắt hơn
-        background: "linear-gradient(135deg, #f5f7fa 0%, #e4ecf5 100%)", // pastel neutral gradient
-        // có thể thử theme.palette.grey[100] hoặc ảnh pattern subtle
-        display: "flex",
-        flexDirection: "column",
-        paddingY: "3%"
+        position: "fixed",
+        inset: 0, // top, right, bottom, left = 0
+        zIndex: 0,
+        overflowY: "auto", // chỉ vùng này cuộn được
+        background: "linear-gradient(135deg, #f5f7fa 0%, #e4ecf5 100%)",
       }}
     >
       <Container
-        className="max-w-[1000px] mx-auto p-4 sm:p-6 min-h-screen"
+        className="max-w-[1000px] mx-auto p-4 sm:p-6"
         sx={{
           borderRadius: "24px",
           border: "1px solid rgba(255,255,255,0.25)",
-          bgcolor: "rgba(255,255,255,0.4)", // translucent khác với card trắng
-          backdropFilter: "blur(20px)",     // morphin/glassy effect
+          bgcolor: "rgba(255,255,255,0.4)",
+          backdropFilter: "blur(20px)",
           boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
+          py: 6,
+          my: 4
         }}
       >
-        {/* Header sticky */}
+        {/* Header */}
         <HeaderPlanWizard />
 
         {/* Card */}
         <Card
-          className="!rounded-xl shadow-lg"
-          sx={{ border: "1px solid rgba(255,255,255,.15)", bgcolor: "rgba(255,255,255,.10)", backdropFilter: "blur(16px)" }}
+          className="!rounded-xl shadow-lg flex-grow"
+          sx={{
+            border: "1px solid rgba(255,255,255,.15)",
+            bgcolor: "rgba(255,255,255,.10)",
+            backdropFilter: "blur(16px)",
+            display: "flex",
+            flexDirection: "column",
+            mt: 2,
+          }}
         >
-          {/* Make CardContent a column so inner steps area can grow and scroll locally */}
-          <CardContent className="p-4 sm:p-6" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <CardContent
+            className="p-4 sm:p-6"
+            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+          >
             {/* Stepper */}
             <Box sx={{ mb: 3 }}>
               <PlanStepper activeStep={activeStep} />
             </Box>
 
-            <Divider className="my-4" />
+            <Divider sx={{ my: 2 }} />
 
-            {/* Steps */}
-            {/* Steps container: allow vertical scrolling locally when content is long */}
-            <Box sx={{ minHeight: 320, maxHeight: '60vh', overflowY: 'auto', pr: 1 }}>
+            {/* Nội dung các step (không cuộn riêng nữa) */}
+            <Box>
               {activeStep === 0 && (
                 <Grow in mountOnEnter unmountOnExit>
                   <Box>
@@ -104,16 +111,13 @@ export default function PlanWizardDemo() {
                   </Box>
                 </Grow>
               )}
-
               {activeStep === 1 && (
                 <Fade in mountOnEnter unmountOnExit>
                   <Box>
                     <EndDateStep score={scoreNumber} />
-                    {/* {!!errors.endDate && <FormHelperText error sx={{ mt: 1 }}>{errors.endDate}</FormHelperText>} */}
                   </Box>
                 </Fade>
               )}
-
               {activeStep === 2 && (
                 <Fade in mountOnEnter unmountOnExit>
                   <Box>
@@ -123,14 +127,29 @@ export default function PlanWizardDemo() {
               )}
             </Box>
 
-            <Divider className="my-4" />
+            <Divider sx={{ my: 2 }} />
 
-            {/* Footer actions */}
-            <Stack direction={{ xs: "column-reverse", sm: "row" }} spacing={2} justifyContent="space-between">
-              <Button variant="outlined" size="large" onClick={() => setActiveStep(prev => prev - 1)} disabled={activeStep === 0} fullWidth>
+            {/* Footer */}
+            <Stack
+              direction={{ xs: "column-reverse", sm: "row" }}
+              spacing={2}
+              justifyContent="space-between"
+            >
+              <Button
+                variant="outlined"
+                size="large"
+                onClick={() => setActiveStep((prev) => prev - 1)}
+                disabled={activeStep === 0}
+                fullWidth
+              >
                 Quay lại
               </Button>
-              <Button variant="contained" size="large" onClick={() => setActiveStep(prev => prev + 1)} disabled={false} fullWidth>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() => setActiveStep((prev) => prev + 1)}
+                fullWidth
+              >
                 {activeStep < 2 ? "Tiếp tục" : "Bắt đầu"}
               </Button>
             </Stack>

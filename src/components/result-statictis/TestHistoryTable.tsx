@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Box,
   Table,
@@ -11,7 +12,7 @@ import {
 } from "@mui/material";
 import { ArrowUpward, ArrowDownward } from "@mui/icons-material";
 
-interface TestHistory {
+export interface TestHistory {
   date: string;
   total: number;
   listening: number;
@@ -99,38 +100,45 @@ const TestHistoryTable: React.FC<{ data: TestHistory[] }> = ({ data }) => {
         </TableHead>
 
         <TableBody>
-          {paginatedData.map((t, i) => {
-            const isPositive = t.delta.startsWith("+");
-            return (
-              <TableRow
-                key={i}
-                sx={{
-                  "&:hover": { bgcolor: "#f9fafb" },
-                  borderBottom: "1px solid #eee",
-                }}
-              >
-                <TableCell>{t.date}</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>{t.total}</TableCell>
-                <TableCell>{t.listening}</TableCell>
-                <TableCell>{t.reading}</TableCell>
-                <TableCell
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    color: isPositive ? "green" : "red",
-                    fontWeight: 500,
+          <AnimatePresence mode="popLayout">
+            {paginatedData.map((t, i) => {
+              const isPositive = t.delta.startsWith("+");
+              return (
+                <motion.tr
+                  key={t.date + i}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                  style={{
+                    borderBottom: "1px solid #eee",
+                    backgroundColor: "white",
                   }}
                 >
-                  {isPositive ? (
-                    <ArrowUpward fontSize="small" sx={{ mr: 0.5 }} />
-                  ) : (
-                    <ArrowDownward fontSize="small" sx={{ mr: 0.5 }} />
-                  )}
-                  {t.delta}
-                </TableCell>
-              </TableRow>
-            );
-          })}
+                  <TableCell>{t.date}</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>{t.total}</TableCell>
+                  <TableCell>{t.listening}</TableCell>
+                  <TableCell>{t.reading}</TableCell>
+                  <TableCell
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      color: isPositive ? "green" : "red",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {isPositive ? (
+                      <ArrowUpward fontSize="small" sx={{ mr: 0.5 }} />
+                    ) : (
+                      <ArrowDownward fontSize="small" sx={{ mr: 0.5 }} />
+                    )}
+                    {t.delta}
+                  </TableCell>
+                </motion.tr>
+              );
+            })}
+          </AnimatePresence>
         </TableBody>
       </Table>
 

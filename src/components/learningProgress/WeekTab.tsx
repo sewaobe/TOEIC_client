@@ -8,9 +8,18 @@ interface WeekTabProps {
   weeklyActualPerDay: number[];
   weeklyPlannedPerDay: number[];
   weeklyColors: string[];
+  week?: number;
+  onWeekChange?: (week: number) => void;
+  totalWeeks?: number;
 }
 
-export const WeekTab: React.FC<WeekTabProps> = ({ weekActual, weekPlanned, weeklyActualPerDay, weeklyPlannedPerDay, weeklyColors }) => {
+export const WeekTab: React.FC<WeekTabProps> = ({ 
+  weekActual, 
+  weekPlanned, 
+  weeklyActualPerDay, 
+  weeklyPlannedPerDay, 
+  weeklyColors
+}) => {
   return (
     <Grid container spacing={2}>
       {/* Donut Plan vs Actual */}

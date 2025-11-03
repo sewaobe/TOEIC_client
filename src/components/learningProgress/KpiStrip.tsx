@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Grid, Card, CardContent, Typography, IconButton, Stack, Box, Button, Paper } from '@mui/material';
+import { useState } from 'react';
+import { Grid, Card, CardContent, Typography, IconButton, Stack, Box, Paper, Chip } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { motion, AnimatePresence } from 'framer-motion';
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
+import { LearningProgressResponse } from '../../services/learningPath.service';
 
 // --- 1. Định nghĩa cấu trúc dữ liệu mới ---
 interface KpiDetail {
@@ -87,9 +88,15 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, sub, onClick }) => (
 
 
 // --- Component chính ---
-export const InteractiveKpiDashboard: React.FC = () => {
+interface InteractiveKpiDashboardProps {
+  progressData: LearningProgressResponse;
+}
+
+export const InteractiveKpiDashboard: React.FC<InteractiveKpiDashboardProps> = ({ progressData }) => {
   // 3. State để theo dõi danh mục đang được chọn (listening, reading, hoặc null)
   const [selectedCategory, setSelectedCategory] = useState<'listening' | 'reading' | null>(null);
+  
+  const { overview, weeks } = progressData;
 
   const variants = {
     initial: { opacity: 0, x: -20 },
@@ -114,25 +121,114 @@ export const InteractiveKpiDashboard: React.FC = () => {
             transition={{ duration: 0.3 }}
           >
             <Box>
-              <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+              <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 3 }}>
                 <AssessmentOutlinedIcon color="primary" />
                 <Typography variant="h6" fontWeight={700}>
-                  Tổng quan tiến độ kỹ năng
+                  Tổng quan tiến độ học tập
                 </Typography>
               </Stack>
+              
+              {/* Overview Stats */}
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid size={{ xs: 6, md: 3 }}>
+                  <Card sx={{ borderRadius: 3, height: '100%' }}>
+                    <CardContent>
+                      <Typography variant="overline" color="text.secondary">Hoàn thành</Typography>
+                      <Typography variant="h4" fontWeight={800} color="success.main">
+                        {overview.completion_rate.toFixed(0)}%
+                      </Typography>
+                      <Typography variant="body2">
+                        {overview.completed_lessons}/{overview.total_lessons} bài
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid size={{ xs: 6, md: 3 }}>
+                  <Card sx={{ borderRadius: 3, height: '100%' }}>
+                    <CardContent>
+                      <Typography variant="overline" color="text.secondary">Thời gian học</Typography>
+                      <Typography variant="h4" fontWeight={800} color="primary">
+                        {Math.floor(overview.total_study_time / 60)}h
+                      </Typography>
+                      <Typography variant="body2">
+                        {overview.total_study_time % 60}p
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid size={{ xs: 6, md: 3 }}>
+                  <Card sx={{ borderRadius: 3, height: '100%' }}>
+                    <CardContent>
+                      <Typography variant="overline" color="text.secondary">Chuỗi ngày</Typography>
+                      <Typography variant="h4" fontWeight={800} color="warning.main">
+                        🔥 {overview.streak_days}
+                      </Typography>
+                      <Typography variant="body2">ngày liên tiếp</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid size={{ xs: 6, md: 3 }}>
+                  <Card sx={{ borderRadius: 3, height: '100%' }}>
+                    <CardContent>
+                      <Typography variant="overline" color="text.secondary">Điểm số</Typography>
+                      <Typography variant="h4" fontWeight={800} color="info.main">
+                        {overview.current_score}
+                      </Typography>
+                      <Typography variant="body2">
+                        Mục tiêu: {overview.target_score}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
+              {/* Weeks Progress */}
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
+                Tiến độ các tuần
+              </Typography>
               <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <KpiCard
-                    {...mockData.listening.main}
-                    onClick={() => setSelectedCategory('listening')}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <KpiCard
-                    {...mockData.reading.main}
-                    onClick={() => setSelectedCategory('reading')}
-                  />
-                </Grid>
+                {weeks.map((week) => (
+                  <Grid key={week.week_no} size={{ xs: 6, sm: 4, md: 3 }}>
+                    <Card 
+                      sx={{ 
+                        borderRadius: 3, 
+                        height: '100%',
+                        border: week.is_current ? 2 : 0,
+                        borderColor: 'primary.main'
+                      }}
+                    >
+                      <CardContent>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+                          <Typography variant="overline" color="text.secondary">
+                            Tuần {week.week_no}
+                          </Typography>
+                          {week.is_current && (
+                            <Chip label="Hiện tại" size="small" color="primary" />
+                          )}
+                        </Stack>
+                        <Typography variant="h5" fontWeight={800} color="primary">
+                          {week.progress.toFixed(0)}%
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Độ chính xác: {week.accuracy.toFixed(0)}%
+                        </Typography>
+                        <Chip 
+                          label={week.status} 
+                          size="small" 
+                          color={
+                            week.status === 'completed' ? 'success' : 
+                            week.status === 'in_progress' ? 'warning' : 
+                            'default'
+                          }
+                          sx={{ mt: 1 }}
+                        />
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
               </Grid>
             </Box>
           </motion.div>

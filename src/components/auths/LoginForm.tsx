@@ -1,4 +1,4 @@
-import { FC, useState } from 'react';
+import { FC, useState } from "react";
 import {
   Box,
   TextField,
@@ -11,16 +11,17 @@ import {
   Divider,
   Link as MuiLink,
   CircularProgress,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Google,
   Facebook,
   Visibility,
   VisibilityOff,
-} from '@mui/icons-material';
-import { Controller } from 'react-hook-form';
-import { useAuthViewModel } from '../../viewmodels/useAuthViewModel.ts';
-import { signInWithGoogle } from '../../hooks/useFirebaseAuth.ts';
+} from "@mui/icons-material";
+import { Controller } from "react-hook-form";
+import { useAuthViewModel } from "../../viewmodels/useAuthViewModel.ts";
+import { signInWithGoogle } from "../../hooks/useFirebaseAuth.ts";
+import BannedAccountModal from "../BannedAccountModal";
 
 interface LoginFormProps {
   onSwitch: () => void; // chuyển sang Register
@@ -28,7 +29,8 @@ interface LoginFormProps {
 
 const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
   const authViewModel = useAuthViewModel();
-  const { loginWithGoogle } = authViewModel;
+  const { loginWithGoogle, bannedInfo, showBannedModal, closeBannedModal } =
+    authViewModel;
 
   // 🌀 State cho Google login loading
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -40,13 +42,13 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
       if (cred) {
         const { user } = cred;
         const idToken = await user.getIdToken();
-        console.log('Google ID Token:', user);
+        console.log("Google ID Token:", user);
         await loginWithGoogle(idToken);
       }
     } catch (err: any) {
-      console.error('Google login failed:', err);
-      if (err.code === 'auth/popup-closed-by-user') {
-        console.warn('User closed the popup.');
+      console.error("Google login failed:", err);
+      if (err.code === "auth/popup-closed-by-user") {
+        console.warn("User closed the popup.");
       }
     } finally {
       setGoogleLoading(false);
@@ -71,15 +73,19 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
       component="form"
       onSubmit={onSubmit}
       sx={{
-        width: '100%',
+        width: "100%",
         maxWidth: 400,
-        display: 'flex',
-        flexDirection: 'column',
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {/* Title */}
-      <Box sx={{ mb: 4, textAlign: 'center' }}>
-        <Typography component="h1" variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
+      <Box sx={{ mb: 4, textAlign: "center" }}>
+        <Typography
+          component="h1"
+          variant="h4"
+          sx={{ fontWeight: "bold", mb: 1 }}
+        >
           Welcome Back
         </Typography>
         <Typography variant="body1" color="text.secondary">
@@ -88,7 +94,7 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
       </Box>
 
       {/* Inputs */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <Controller
           name="username"
           control={control}
@@ -112,7 +118,7 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
             <TextField
               {...field}
               label="Password"
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               variant="outlined"
               error={!!errors.password}
               helperText={errors.password?.message}
@@ -120,7 +126,10 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword((p) => !p)} edge="end">
+                    <IconButton
+                      onClick={() => setShowPassword((p) => !p)}
+                      edge="end"
+                    >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>
@@ -134,9 +143,9 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
       {/* Options */}
       <Box
         sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
           my: 2,
         }}
       >
@@ -161,7 +170,7 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
         variant="contained"
         size="small"
         fullWidth
-        sx={{ py: 1, textTransform: 'uppercase', fontWeight: 'bold' }}
+        sx={{ py: 1, textTransform: "uppercase", fontWeight: "bold" }}
       >
         Login
       </Button>
@@ -176,8 +185,8 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
       {/* Social Buttons */}
       <Box
         sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
           gap: 2,
         }}
       >
@@ -186,7 +195,7 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
           fullWidth
           startIcon={
             googleLoading ? (
-              <CircularProgress size={20} sx={{ color: '#DB4437' }} />
+              <CircularProgress size={20} sx={{ color: "#DB4437" }} />
             ) : (
               <Google />
             )
@@ -194,15 +203,15 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
           onClick={handleGoogleLogin}
           disabled={googleLoading}
           sx={{
-            color: '#DB4437',
-            borderColor: '#DB4437',
-            '&:hover': {
-              backgroundColor: 'rgba(219, 68, 55, 0.04)',
-              borderColor: '#DB4437',
+            color: "#DB4437",
+            borderColor: "#DB4437",
+            "&:hover": {
+              backgroundColor: "rgba(219, 68, 55, 0.04)",
+              borderColor: "#DB4437",
             },
           }}
         >
-          {googleLoading ? 'Signing in...' : 'Google'}
+          {googleLoading ? "Signing in..." : "Google"}
         </Button>
 
         <Button
@@ -210,11 +219,11 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
           fullWidth
           startIcon={<Facebook />}
           sx={{
-            color: '#1877F2',
-            borderColor: '#1877F2',
-            '&:hover': {
-              backgroundColor: 'rgba(24, 119, 242, 0.04)',
-              borderColor: '#1877F2',
+            color: "#1877F2",
+            borderColor: "#1877F2",
+            "&:hover": {
+              backgroundColor: "rgba(24, 119, 242, 0.04)",
+              borderColor: "#1877F2",
             },
           }}
         >
@@ -225,10 +234,10 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
       {/* Register Link */}
       <Box
         sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '5px',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "5px",
           mt: 3,
         }}
       >
@@ -249,11 +258,11 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
       {/* Footer */}
       <Box
         sx={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginTop: '30px',
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginTop: "30px",
         }}
       >
         <Typography variant="caption" color="text.secondary" textAlign="center">
@@ -263,11 +272,18 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
           variant="caption"
           color="text.secondary"
           textAlign="center"
-          sx={{ cursor: 'pointer' }}
+          sx={{ cursor: "pointer" }}
         >
           Private Policy
         </Typography>
       </Box>
+
+      {/* Banned Account Modal */}
+      <BannedAccountModal
+        open={showBannedModal}
+        onClose={closeBannedModal}
+        banInfo={bannedInfo}
+      />
     </Box>
   );
 };

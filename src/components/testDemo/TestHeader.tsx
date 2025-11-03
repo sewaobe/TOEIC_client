@@ -79,12 +79,16 @@ const TestHeader: FC<TestHeaderProps> = ({
   const duration = timeLimitParam
     ? parseInt(timeLimitParam, 10) * 60 // practice có giới hạn
     : parts
-      ? Infinity // practice không giới hạn
-      : 120 * 60; // full test mặc định 120 phút
+    ? Infinity // practice không giới hạn
+    : 120 * 60; // full test mặc định 120 phút
 
   const { timeLeft, formatTime } = useCountdown(duration, isTourRunning);
 
+  // Format time hiển thị, nếu vô hạn thì hiển thị ∞
+  const displayTime = duration === Infinity ? "Vô hạn" : formatTime();
+
   const answeredCount = answers.filter((a) => a.answer !== "").length;
+  const totalQuestions = answers.length; // Tổng số câu hỏi (có thể là 200 cho full test hoặc ít hơn cho practice)
   const userId = useSelector((state: RootState) => state.user.user!._id);
   const testId = useSelector((state: RootState) => state.exam.currentTestId);
 
@@ -345,7 +349,7 @@ const TestHeader: FC<TestHeaderProps> = ({
         className="font-medium"
         style={{ color: theme.palette.text.primary }}
       >
-        Thời gian: {formatTime()}
+        Thời gian: {displayTime}
       </span>
 
       {/* Thông tin cơ bản */}
@@ -360,20 +364,23 @@ const TestHeader: FC<TestHeaderProps> = ({
           Nộp bài
         </Button>
 
-        <Button
-          variant="outlined"
-          color="primary"
-          className="rounded-lg px-4 py-2 font-semibold"
-          onClick={handleQuickSubmit}
-        >
-          Nộp nhanh (mock)
-        </Button>
+        {/* Chỉ hiển thị nút Nộp nhanh khi làm full test (không có parts param) */}
+        {!parts && (
+          <Button
+            variant="outlined"
+            color="primary"
+            className="rounded-lg px-4 py-2 font-semibold"
+            onClick={handleQuickSubmit}
+          >
+            Nộp nhanh (mock)
+          </Button>
+        )}
 
         <span
           className="font-medium"
           style={{ color: theme.palette.text.secondary }}
         >
-          Câu đã làm: {answeredCount}/200
+          Câu đã làm: {answeredCount}/{totalQuestions}
         </span>
 
         <div
@@ -400,6 +407,7 @@ const TestHeader: FC<TestHeaderProps> = ({
         onSuggestPlan={() => navigate(`/plan?score=${answerTest.score}`)}
         onClose={handleCloseScoreModal}
         testId={testId}
+        practicedParts={parts ? parts.split(",").map(Number) : undefined}
       />
     </header>
   );

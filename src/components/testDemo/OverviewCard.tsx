@@ -15,12 +15,15 @@ interface OverviewCardProps {
   totalTimeMinutes: number;
   skills: SkillInfo[];
   description: string;
+  isFullTest?: boolean;
 }
 
 export const OverviewCard: FC<OverviewCardProps> = ({
   totalScore,
+  totalTimeMinutes,
   skills,
   description,
+  isFullTest = true,
 }) => {
   const [searchParams] = useSearchParams();
 
@@ -36,7 +39,7 @@ export const OverviewCard: FC<OverviewCardProps> = ({
     <div className="flex justify-center items-center min-h-screen px-4 bg-gray-50 dark:bg-gray-900">
       <Card
         sx={{
-          maxWidth: 600,
+          maxWidth: isFullTest ? 600 : 800,
           width: "100%",
           borderRadius: 3,
           boxShadow: theme.shadows[4],
@@ -48,36 +51,63 @@ export const OverviewCard: FC<OverviewCardProps> = ({
           <div className="flex items-center gap-3">
             <SchoolIcon fontSize="large" color="primary" />
             <Typography variant="h4" component="div">
-              TOEIC 2 Skills Overview
+              {isFullTest
+                ? "TOEIC 2 Skills Overview"
+                : "TOEIC Practice Overview"}
             </Typography>
           </div>
 
-          <Typography variant="h6" color="text.secondary">
-            Tổng điểm: {totalScore}
-          </Typography>
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            <Typography variant="h6" color="text.secondary">
+              Tổng số câu: {totalScore}
+            </Typography>
+            <Typography variant="h6" color="primary">
+              Thời gian: {totalTimeMinutes} phút
+            </Typography>
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {skills.map((skill) => (
+          <div
+            className={`grid ${
+              isFullTest ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"
+            } gap-4`}
+          >
+            {skills.map((skill, index) => (
               <div
-                key={skill.name}
-                className="p-4 border rounded-md dark:border-gray-700"
+                key={index}
+                className="p-4 border rounded-md dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700"
               >
-                <Typography variant="subtitle1" fontWeight="bold">
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="bold"
+                  color="primary"
+                >
                   {skill.name}
                 </Typography>
-                <Typography variant="body2">
-                  Số câu: {skill.questions}
-                </Typography>
-                <Typography variant="body2">
-                  Thời gian: {skill.timeMinutes} phút
-                </Typography>
+                <div className="mt-2 space-y-1">
+                  <Typography
+                    variant="body2"
+                    className="flex items-center gap-2"
+                  >
+                    <span className="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
+                    Số câu: <strong>{skill.questions}</strong>
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    className="flex items-center gap-2"
+                  >
+                    <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                    Thời gian: <strong>{skill.timeMinutes} phút</strong>
+                  </Typography>
+                </div>
               </div>
             ))}
           </div>
 
-          <Typography variant="body1" color="text.secondary">
-            {description}
-          </Typography>
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 rounded">
+            <Typography variant="body1" color="text.secondary">
+              {description}
+            </Typography>
+          </div>
 
           <Button
             variant="contained"
@@ -85,8 +115,15 @@ export const OverviewCard: FC<OverviewCardProps> = ({
             size="large"
             onClick={handleStart}
             className="self-center w-full sm:w-auto"
+            sx={{
+              py: 1.5,
+              px: 6,
+              fontSize: "1.1rem",
+              fontWeight: "bold",
+              textTransform: "none",
+            }}
           >
-            Bắt đầu
+            Bắt đầu {isFullTest ? "Full Test" : "Luyện tập"}
           </Button>
         </CardContent>
       </Card>

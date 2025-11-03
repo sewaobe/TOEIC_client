@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Stack,
@@ -9,27 +9,27 @@ import {
   CardContent,
   CircularProgress,
   Grid,
-} from '@mui/material';
-import BaseModal from './BaseModal';
-import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
-import TrendingUpRounded from '@mui/icons-material/TrendingUpRounded';
-import { RawAnswer } from '../../utils/mapAnswersToParts';
-import learningPathService from '../../services/learningPath.service';
-import userTestService from '../../services/user_test.service';
-
+} from "@mui/material";
+import BaseModal from "./BaseModal";
+import VisibilityOutlined from "@mui/icons-material/VisibilityOutlined";
+import TrendingUpRounded from "@mui/icons-material/TrendingUpRounded";
+import { RawAnswer } from "../../utils/mapAnswersToParts";
+import learningPathService from "../../services/learningPath.service";
+import userTestService from "../../services/user_test.service";
 
 export type ResultPayload = {
-  score?: number;          // điểm nội bộ hệ thống (nếu có)
-  answers: RawAnswer[];   // chỉ cần đúng shape này
+  score?: number; // điểm nội bộ hệ thống (nếu có)
+  answers: RawAnswer[]; // chỉ cần đúng shape này
 };
 
 interface ToeicQuickResultModalProps {
   open: boolean;
   data: ResultPayload;
   onClose: () => void;
-  onReviewDetails?: (id: string) => void;   // xem lại bài làm (optional)
-  onSuggestPlan?: () => void;     // gợi ý lộ trình học (optional)
+  onReviewDetails?: (id: string) => void; // xem lại bài làm (optional)
+  onSuggestPlan?: () => void; // gợi ý lộ trình học (optional)
   testId?: string;
+  practicedParts?: number[]; // Các part đã luyện tập (nếu có)
 }
 
 /* ---------- constants & helpers ---------- */
@@ -45,13 +45,13 @@ const TOEIC_PART_RANGES = [
 ] as const;
 
 const PART_LABELS: Record<number, string> = {
-  1: 'Part 1 - Photos',
-  2: 'Part 2 - Q&A',
-  3: 'Part 3 - Conversations',
-  4: 'Part 4 - Talks',
-  5: 'Part 5 - Incomplete',
-  6: 'Part 6 - Text Completion',
-  7: 'Part 7 - Reading',
+  1: "Part 1 - Photos",
+  2: "Part 2 - Q&A",
+  3: "Part 3 - Conversations",
+  4: "Part 4 - Talks",
+  5: "Part 5 - Incomplete",
+  6: "Part 6 - Text Completion",
+  7: "Part 7 - Reading",
 };
 
 const pctText = (n: number) => `${Math.round(n * 100)}%`;
@@ -61,11 +61,11 @@ const estimateToeic990 = (accuracy: number) =>
   Math.max(0, Math.min(990, Math.round(accuracy * 990)));
 
 const estimateCEFR = (toeic: number) => {
-  if (toeic >= 945) return 'C1+';
-  if (toeic >= 785) return 'B2';
-  if (toeic >= 550) return 'B1';
-  if (toeic >= 225) return 'A2';
-  return 'A1-';
+  if (toeic >= 945) return "C1+";
+  if (toeic >= 785) return "B2";
+  if (toeic >= 550) return "B1";
+  if (toeic >= 225) return "A2";
+  return "A1-";
 };
 
 /** Map index câu (0-based) -> Part theo dải TOEIC */
@@ -83,16 +83,16 @@ function mapIndexToPart(idx: number): 1 | 2 | 3 | 4 | 5 | 6 | 7 {
 /* ---------- small UI atoms ---------- */
 const StatChip = ({
   label,
-  tone = 'default',
+  tone = "default",
 }: {
   label: string;
-  tone?: 'default' | 'primary' | 'success' | 'secondary';
+  tone?: "default" | "primary" | "success" | "secondary";
 }) => (
   <Chip
     size="small"
     label={label}
-    color={tone === 'default' ? undefined : (tone as any)}
-    variant={tone === 'default' ? 'outlined' : 'filled'}
+    color={tone === "default" ? undefined : (tone as any)}
+    variant={tone === "default" ? "outlined" : "filled"}
     className="rounded-full"
   />
 );
@@ -113,7 +113,11 @@ const PartMiniCard = ({
       className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/70 backdrop-blur-md shadow-[0_8px_30px_rgba(0,0,0,0.06)]"
     >
       <CardContent className="p-3">
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+        >
           <Typography variant="body2" className="font-semibold">
             {title}
           </Typography>
@@ -127,7 +131,7 @@ const PartMiniCard = ({
             style={{
               width: `${acc * 100}%`,
               background:
-                'linear-gradient(90deg, var(--mui-palette-primary-main), var(--mui-palette-success-main))',
+                "linear-gradient(90deg, var(--mui-palette-primary-main), var(--mui-palette-success-main))",
             }}
           />
         </Box>
@@ -143,7 +147,8 @@ export default function ToeicQuickResultModal({
   onClose,
   onReviewDetails,
   onSuggestPlan,
-  testId
+  testId,
+  practicedParts,
 }: ToeicQuickResultModalProps) {
   const { answers = [], score } = data || {};
   const [showSuggest, setShowSuggest] = useState(false);
@@ -155,7 +160,10 @@ export default function ToeicQuickResultModal({
     const cefr = estimateCEFR(toeic);
 
     // Group theo Part dựa trên vị trí câu trong mảng answers
-    const byPart: Record<1 | 2 | 3 | 4 | 5 | 6 | 7, { total: number; correct: number }> = {
+    const byPart: Record<
+      1 | 2 | 3 | 4 | 5 | 6 | 7,
+      { total: number; correct: number }
+    > = {
       1: { total: 0, correct: 0 },
       2: { total: 0, correct: 0 },
       3: { total: 0, correct: 0 },
@@ -171,8 +179,14 @@ export default function ToeicQuickResultModal({
       if (a.isCorrect) byPart[part].correct += 1;
     });
 
-    return { total, correct, accuracy, toeic, cefr, byPart };
-  }, [answers]);
+    // Nếu có practicedParts, chỉ lấy các part đã luyện
+    const displayParts =
+      practicedParts && practicedParts.length > 0
+        ? practicedParts
+        : [1, 2, 3, 4, 5, 6, 7]; // Mặc định hiển thị tất cả
+
+    return { total, correct, accuracy, toeic, cefr, byPart, displayParts };
+  }, [answers, practicedParts]);
 
   useEffect(() => {
     const fetchLearningPath = async () => {
@@ -182,7 +196,7 @@ export default function ToeicQuickResultModal({
           setShowSuggest(true);
         }
       } catch (error) {
-        console.error('Error fetching learning path suggestion:', error);
+        console.error("Error fetching learning path suggestion:", error);
       }
     };
     fetchLearningPath();
@@ -190,9 +204,9 @@ export default function ToeicQuickResultModal({
 
   const renderFooter = () => (
     <Stack
-      direction={{ xs: 'column', sm: 'row' }}
+      direction={{ xs: "column", sm: "row" }}
       justifyContent="space-between"
-      alignItems={{ xs: 'stretch', sm: 'center' }}
+      alignItems={{ xs: "stretch", sm: "center" }}
       gap={1.25}
       sx={{ px: 0.5, pt: 1 }}
     >
@@ -206,17 +220,21 @@ export default function ToeicQuickResultModal({
             onClick={async () => {
               try {
                 if (testId) {
-                  const res = await userTestService.getUserTestHistories(1, 1, testId);
+                  const res = await userTestService.getUserTestHistories(
+                    1,
+                    1,
+                    testId
+                  );
                   const resultId = res.data[0]._id;
                   onReviewDetails(resultId);
                 }
               } catch (error) {
-                console.error('Error fetching user test histories:', error);
-                onReviewDetails('');
+                console.error("Error fetching user test histories:", error);
+                onReviewDetails("");
               }
             }}
             sx={{
-              textTransform: 'none',
+              textTransform: "none",
               fontWeight: 600,
               borderRadius: 2,
               px: 1,
@@ -236,13 +254,13 @@ export default function ToeicQuickResultModal({
           onClick={onSuggestPlan}
           startIcon={<TrendingUpRounded />}
           sx={{
-            textTransform: 'none',
+            textTransform: "none",
             fontWeight: 700,
-            borderRadius: '999px',
+            borderRadius: "999px",
             px: 2.5,
             minHeight: 44,
-            width: { xs: '100%', sm: 'auto' },
-            boxShadow: '0 10px 24px rgba(37,99,235,0.28)',
+            width: { xs: "100%", sm: "auto" },
+            boxShadow: "0 10px 24px rgba(37,99,235,0.28)",
           }}
         >
           Gợi ý lộ trình học
@@ -256,13 +274,13 @@ export default function ToeicQuickResultModal({
           onClick={onClose}
           startIcon={<TrendingUpRounded />}
           sx={{
-            textTransform: 'none',
+            textTransform: "none",
             fontWeight: 700,
-            borderRadius: '999px',
+            borderRadius: "999px",
             px: 2.5,
             minHeight: 44,
-            width: { xs: '100%', sm: 'auto' },
-            boxShadow: '0 10px 24px rgba(37,99,235,0.28)',
+            width: { xs: "100%", sm: "auto" },
+            boxShadow: "0 10px 24px rgba(37,99,235,0.28)",
           }}
         >
           Luyện tập tiếp
@@ -278,7 +296,6 @@ export default function ToeicQuickResultModal({
       title="Kết quả bài thi TOEIC"
       buttonOther={renderFooter()}
     >
-
       <Stack gap={2} className="w-full">
         {/* ===== TOP SUMMARY (morphism) ===== */}
         <Card
@@ -321,9 +338,12 @@ export default function ToeicQuickResultModal({
 
                 <Stack direction="row" gap={1} flexWrap="wrap">
                   <StatChip label={`Đúng ${stats.correct}/${stats.total}`} />
-                  <StatChip label={`Ước tính TOEIC: ${stats.toeic}/990`} tone="primary" />
+                  <StatChip
+                    label={`Ước tính TOEIC: ${score}/990`}
+                    tone="primary"
+                  />
                   <StatChip label={`CEFR ~ ${stats.cefr}`} tone="secondary" />
-                  {typeof score === 'number' && (
+                  {typeof score === "number" && (
                     <StatChip label={`Điểm hệ thống: ${round(score, 2)}`} />
                   )}
                 </Stack>
@@ -343,8 +363,10 @@ export default function ToeicQuickResultModal({
             </Typography>
 
             <Grid container spacing={1.5}>
-              {[1, 2, 3, 4, 5, 6, 7].map((p) => {
+              {stats.displayParts.map((p) => {
                 const item = stats.byPart[p as 1 | 2 | 3 | 4 | 5 | 6 | 7];
+                // Chỉ hiển thị part có câu hỏi
+                if (item.total === 0) return null;
                 return (
                   <Grid size={{ xs: 12, sm: 6, md: 4 }} key={p}>
                     <PartMiniCard

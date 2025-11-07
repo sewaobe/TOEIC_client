@@ -12,7 +12,9 @@ import {
   Menu,
   MenuItem,
   useTheme,
+  Stack,
 } from '@mui/material';
+import DiamondIcon from '@mui/icons-material/Diamond';
 import MenuIcon from '@mui/icons-material/Menu';
 import SchoolIcon from '@mui/icons-material/School';
 import { useNavigate } from 'react-router-dom';
@@ -38,6 +40,7 @@ const navLinks: NavLink[] = [
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [openWallet, setOpenWallet] = useState(false);
 
   const user = useSelector((state: RootState) => state.user.user);
   const dispatch = useDispatch();
@@ -137,7 +140,20 @@ export default function Navbar() {
 
             {user && <NotificationDropdown />}
             {user ? (
-              <>
+              <Stack direction="row" alignItems="center">
+                <Button
+                  onClick={() => {navigate("/credit")}}
+                  endIcon={<DiamondIcon />}
+                  sx={{
+                    borderRadius: 3,
+                    textTransform: "none",
+                    fontWeight: 600,
+                    color: "linear-gradient(90deg, #7F00FF, #00D4FF)",
+                    "&:hover": { opacity: 0.9 },
+                  }}
+                >
+                  {0}
+                </Button>
                 <IconButton onClick={handleAvatarClick}>
                   <Avatar
                     src={user.profile.avatar}
@@ -175,7 +191,7 @@ export default function Navbar() {
                   }}>Thống kê kết quả</MenuItem>
                   <MenuItem onClick={handleLogout}>Đăng xuất</MenuItem>
                 </Menu>
-              </>
+              </Stack>
             ) : (
               <Button
                 variant='contained'

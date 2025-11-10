@@ -7,21 +7,31 @@ import {
     Button,
     Chip,
     Stack,
+    CircularProgress,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import SchoolIcon from "@mui/icons-material/School";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { FlashcardExplore } from "../../flashCard/ExploreCard";
+import { PracticeSession } from "../../../types/PracticeSession";
 
 interface LessonCardsPanelProps {
     lesson: FlashcardExplore;
+    session?: PracticeSession;
     onStartLesson?: (lessonId: string) => void;
 }
 
 export default function LessonCardsPanel({
     lesson,
+    session,
     onStartLesson,
 }: LessonCardsPanelProps) {
+    const isCompleted = session?.status === "completed";
+    const isInProgress = session?.status === "in_progress";
+    const progress = session ? (session.completed_items / session.total_items) * 100 : 0;
+
     return (
         <motion.div
             key={lesson._id}
@@ -33,7 +43,7 @@ export default function LessonCardsPanel({
             <Card
                 sx={{
                     width: "100%",
-                    minHeight: 220,
+                    minHeight: 220, // Quay lại chiều cao ban đầu
                     borderRadius: 3,
                     display: "flex",
                     flexDirection: "column",
@@ -102,6 +112,29 @@ export default function LessonCardsPanel({
                                 }}
                             />
                         )}
+                        {isCompleted && (
+                            <Chip
+                                icon={<CheckCircleIcon sx={{ fontSize: 16 }} />}
+                                label="Hoàn thành"
+                                size="small"
+                                sx={{
+                                    bgcolor: "#dcfce7",
+                                    color: "#16a34a",
+                                    fontWeight: 500,
+                                }}
+                            />
+                        )}
+                        {isInProgress && (
+                            <Chip
+                                label="Đang làm"
+                                size="small"
+                                sx={{
+                                    bgcolor: "#fef3c7",
+                                    color: "#d97706",
+                                    fontWeight: 500,
+                                }}
+                            />
+                        )}
                         <Chip
                             label={`${lesson.wordCount} câu hỏi`}
                             size="small"
@@ -114,24 +147,64 @@ export default function LessonCardsPanel({
                     </Stack>
                 </CardContent>
 
-                <CardActions sx={{ justifyContent: "flex-end", px: 2, pb: 2, pt: 0 }}>
+                <CardActions sx={{ justifyContent: "space-between", alignItems: "center", px: 2, pb: 2, pt: 0 }}>
+                    {/* CircularProgress bên trái */}
+                    {session && session.status !== "cancelled" ? (
+                        <Box sx={{ position: "relative", display: "inline-flex" }}>
+                            <CircularProgress
+                                variant="determinate"
+                                value={progress}
+                                size={40}
+                                thickness={4}
+                                sx={{
+                                    color: isCompleted ? "#16a34a" : "#2563eb",
+                                }}
+                            />
+                            <Box
+                                sx={{
+                                    top: 0,
+                                    left: 0,
+                                    bottom: 0,
+                                    right: 0,
+                                    position: "absolute",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                <Typography
+                                    variant="caption"
+                                    component="div"
+                                    color="text.secondary"
+                                    fontWeight={600}
+                                    fontSize={10}
+                                >
+                                    {Math.round(progress)}%
+                                </Typography>
+                            </Box>
+                        </Box>
+                    ) : (
+                        <Box width={40} /> // Placeholder để giữ layout
+                    )}
+
+                    {/* Button bên phải */}
                     <Button
                         variant="contained"
                         size="small"
-                        startIcon={<AutoAwesomeIcon />}
+                        startIcon={isInProgress ? <PlayArrowIcon /> : <AutoAwesomeIcon />}
                         onClick={() => onStartLesson?.(lesson._id)}
                         sx={{
                             borderRadius: 2,
                             textTransform: "none",
                             fontWeight: 600,
-                            backgroundColor: "#2563eb",
+                            backgroundColor: isCompleted ? "#16a34a" : "#2563eb",
                             boxShadow: "none",
                             "&:hover": {
-                                backgroundColor: "#1e40af",
+                                backgroundColor: isCompleted ? "#15803d" : "#1e40af",
                             },
                         }}
                     >
-                        Bắt đầu học
+                        {isCompleted ? "Làm lại" : isInProgress ? "Tiếp tục" : "Bắt đầu học"}
                     </Button>
                 </CardActions>
             </Card>

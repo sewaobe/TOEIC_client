@@ -28,4 +28,20 @@ export abstract class BaseViewModel {
     protected emitWarning(message: string) {
         uiFeedbackEmitter.emit({ type: "warning", message });
     }
+
+    protected loading: Record<string, boolean> = {};
+
+    protected setLoading(key: string, value: boolean) {
+        this.loading[key] = value;
+        this.notify();
+    }
+
+    isLoading(key: string): boolean {
+        return !!this.loading[key];
+    }
+
+    clearLoading(key: string) {
+        this.loading = {};
+        this.notify();
+    }
 }

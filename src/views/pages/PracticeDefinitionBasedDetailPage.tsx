@@ -8,6 +8,8 @@ import {
     List,
     ListItem,
     ListItemText,
+    IconButton,
+    CircularProgress,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
@@ -17,13 +19,34 @@ import { EmptyState } from "../../components/common/EmptyState";
 import { usePracticeDefinitionBasedDetailVM } from "../../viewmodels/PracticeDefinitionBasedDetail/usePracticeDefinitionBasedDetailVM";
 import PracticeLayout from "../layouts/PracticeLayout";
 import { HeaderBanner } from "../../components/practices/HeaderBanner";
+import { VolumeUp } from "@mui/icons-material";
+import { useSpeech } from "../../hooks/useSpeech";
+import F5Modal from "../../components/modals/F5Modal";
+import ResumeSessionModal from "../../components/modals/ResumeSessionModal";
 
 const PracticeDefinitionBasedDetailPage = () => {
-    const { vm } = usePracticeDefinitionBasedDetailVM();
+    const { vm, vocab, hasAttemptedCurrent, isCorrect, accuracyScore, handleCompleted } = usePracticeDefinitionBasedDetailVM();
+    const { speak } = useSpeech();
 
-    if (vm.loading) return <EmptyState mode="loading" />;
+    if (vm.isLoading("fetchVocabularies") || vm.showResumeModal) {
+        return (
+            <>
+                {vm.isLoading("fetchVocabularies") && <EmptyState mode="loading" />}
 
-    const vocab = vm.getCurrentVocabulary();
+                {vm.showResumeModal && vm.currentSession && (
+                    <ResumeSessionModal
+                        open={vm.showResumeModal}
+                        progress={(vm.currentSession.completed_items / vm.currentSession.total_items) * 100}
+                        completedItems={vm.currentSession.completed_items}
+                        totalItems={vm.currentSession.total_items}
+                        onResume={() => vm.resumeSession()}
+                        onCancel={() => vm.cancelAndStartNew()}
+                    />
+                )}
+            </>
+        );
+    }
+
     if (!vocab)
         return (
             <EmptyState
@@ -35,6 +58,15 @@ const PracticeDefinitionBasedDetailPage = () => {
 
     return (
         <PracticeLayout>
+            {/* F5 Modal - Cảnh báo khi nhấn F5 hoặc Ctrl+R */}
+            <F5Modal
+                title="Cảnh báo rời trang luyện tập"
+                content="Bạn có chắc chắn muốn tải lại trang không? Tiến độ của bạn đã được lưu và bạn có thể tiếp tục sau."
+                onConfirm={() => {
+                    window.location.reload();
+                }}
+            />
+
             <Box
                 sx={{
                     px: { xs: 2, md: 4 },
@@ -46,10 +78,10 @@ const PracticeDefinitionBasedDetailPage = () => {
                     fontFamily: "'Inter', sans-serif",
                 }}
             >
-                {/* ===== Header Banner (Pro) ===== */}
+                {/* ===== Header Banner ===== */}
                 <HeaderBanner
                     title="Luyện tập định nghĩa từ vựng"
-                    subtitle="Hãy đọc từ và thử định nghĩa lại theo cách hiểu của bạn."
+                    subtitle="Hãy đọc từ và thử định nghĩa lại theo cách hiểu của bạn, đừng nhìn gợi ý trước nhé."
                     progress={vm.getProgress()}
                     progressLabel={`Từ ${vm.current_index + 1}/${vm.vocabularies.length}`}
                     onGuideClick={() => console.log("🎯 Bắt đầu tour hướng dẫn!")}
@@ -81,28 +113,60 @@ const PracticeDefinitionBasedDetailPage = () => {
                                     backgroundColor: "#ffffff",
                                     transition: "0.3s",
                                     "&:hover": {
-                                        boxShadow:
-                                            "0 12px 24px rgba(37,99,235,0.1)",
+                                        boxShadow: "0 12px 24px rgba(37,99,235,0.1)",
                                     },
                                 }}
                             >
                                 <Stack spacing={3}>
-                                    {/* Word + Kiểm tra */}
+                                    {/* WORD + PHONETIC + CHECK BUTTON */}
                                     <Box
                                         display="flex"
                                         justifyContent="space-between"
                                         alignItems="center"
                                     >
-                                        <Typography
-                                            variant="h5"
-                                            fontWeight={700}
-                                            sx={{
-                                                color: "#2563eb",
-                                                letterSpacing: "0.5px",
-                                            }}
-                                        >
-                                            {vocab.word.toUpperCase()}
-                                        </Typography>
+                                        <Box>
+                                            <Stack direction="row" alignItems="center" spacing={1}>
+                                                <Typography
+                                                    variant="h5"
+                                                    fontWeight={700}
+                                                    sx={{
+                                                        color: "#2563eb",
+                                                        letterSpacing: "0.5px",
+                                                    }}
+                                                >
+                                                    {vocab.word.toUpperCase()}
+                                                </Typography>
+                                                <IconButton
+                                                    onClick={() => speak(vocab.word)}
+                                                    sx={{
+                                                        color: "#2563eb",
+                                                        "&:hover": { background: "rgba(37,99,235,0.1)" },
+                                                    }}
+                                                >
+                                                    <VolumeUp />
+                                                </IconButton>
+                                            </Stack>
+
+
+                                            {vocab.phonetic && (
+                                                <Typography
+                                                    variant="body2"
+                                                    color="text.secondary"
+                                                    sx={{ mt: 0.5, fontStyle: "italic" }}
+                                                >
+                                                    /{vocab.phonetic}/
+                                                </Typography>
+                                            )}
+
+                                            {vocab.type && (
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{ mt: 0.25, color: "#6b7280" }}
+                                                >
+                                                    Loại từ: {vocab.type}
+                                                </Typography>
+                                            )}
+                                        </Box>
 
                                         <motion.div whileTap={{ scale: 0.95 }}>
                                             <Button
@@ -116,27 +180,31 @@ const PracticeDefinitionBasedDetailPage = () => {
                                                     py: 1,
                                                     fontWeight: 600,
                                                     textTransform: "none",
-
                                                 }}
                                             >
-                                                Kiểm tra
+                                                {vm.isLoading("submitAnswer") ? <CircularProgress size={20} color="inherit" /> : "Kiểm tra"}
                                             </Button>
                                         </motion.div>
                                     </Box>
 
-                                    {/* Gợi ý định nghĩa */}
-                                    <Typography
-                                        variant="body2"
-                                        color="text.secondary"
-                                        sx={{ lineHeight: 1.6 }}
-                                    >
-                                        <strong>Gợi ý định nghĩa:</strong>{" "}
-                                        <span style={{ color: "#111827" }}>
-                                            {vocab.definition}
-                                        </span>
-                                    </Typography>
+                                    {/* IMAGE (nếu có) */}
+                                    {vocab.image && (
+                                        <Box
+                                            component="img"
+                                            src={vocab.image}
+                                            alt={vocab.word}
+                                            sx={{
+                                                mt: 1,
+                                                maxHeight: 140,
+                                                width: "100%",
+                                                objectFit: "contain",
+                                                borderRadius: 2,
+                                                backgroundColor: "#f9fafb",
+                                            }}
+                                        />
+                                    )}
 
-                                    {/* Input định nghĩa */}
+                                    {/* Input định nghĩa (user tự định nghĩa) */}
                                     <TextField
                                         fullWidth
                                         multiline
@@ -145,9 +213,7 @@ const PracticeDefinitionBasedDetailPage = () => {
                                         variant="outlined"
                                         value={vm.current_answer}
                                         onChange={(e) =>
-                                            vm.onChangeCurrentAnswer(
-                                                e.target.value
-                                            )
+                                            vm.onChangeCurrentAnswer(e.target.value)
                                         }
                                         sx={{
                                             "& .MuiOutlinedInput-root": {
@@ -167,7 +233,75 @@ const PracticeDefinitionBasedDetailPage = () => {
                                         }}
                                     />
 
-                                    {/* Navigation Buttons */}
+                                    {/* FEEDBACK: ✅ / ❌ + Định nghĩa chuẩn + Ví dụ + Ghi chú */}
+                                    {hasAttemptedCurrent && (
+                                        <Box
+                                            sx={{
+                                                mt: 1,
+                                                p: 2.5,
+                                                borderRadius: 3,
+                                                background: isCorrect
+                                                    ? "rgba(34,197,94,0.08)"
+                                                    : "rgba(239,68,68,0.08)",
+                                                border: `1px solid ${isCorrect
+                                                    ? "rgba(34,197,94,0.4)"
+                                                    : "rgba(239,68,68,0.4)"
+                                                    }`,
+                                            }}
+                                        >
+                                            <Typography
+                                                variant="subtitle1"
+                                                fontWeight={700}
+                                                sx={{
+                                                    color: isCorrect ? "#16a34a" : "#dc2626",
+                                                }}
+                                            >
+                                                {vm.current_feedback || "Không có phản hồi."}
+                                            </Typography>
+
+                                            <Typography sx={{ mt: 1.5 }}>
+                                                <strong>Định nghĩa chuẩn:</strong>{" "}
+                                                {vocab.definition || "Chưa có dữ liệu định nghĩa."}
+                                            </Typography>
+
+                                            {vocab.examples?.length ? (
+                                                <Box sx={{ mt: 1.5 }}>
+                                                    <Typography
+                                                        variant="body2"
+                                                        fontWeight={600}
+                                                        sx={{ mb: 0.5 }}
+                                                    >
+                                                        Ví dụ:
+                                                    </Typography>
+                                                    {vocab.examples.map((ex, i) => (
+                                                        <Typography
+                                                            key={i}
+                                                            variant="body2"
+                                                            color="text.secondary"
+                                                            sx={{ mb: 0.5 }}
+                                                        >
+                                                            • {ex.en} <br /> → {ex.vi}
+                                                        </Typography>
+                                                    ))}
+                                                </Box>
+                                            ) : null}
+
+                                            {vocab.notes && (
+                                                <Typography
+                                                    variant="body2"
+                                                    sx={{
+                                                        mt: 1.5,
+                                                        fontStyle: "italic",
+                                                        color: "#374151",
+                                                    }}
+                                                >
+                                                    💡 Ghi chú: {vocab.notes}
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    )}
+
+                                    {/* Navigation Buttons + lời động viên */}
                                     <Box
                                         display="flex"
                                         justifyContent="space-between"
@@ -205,16 +339,23 @@ const PracticeDefinitionBasedDetailPage = () => {
                                             color="primary"
                                             endIcon={<ArrowForwardIcon />}
                                             disabled={
-                                                vm.current_accuracy_score == null ||
-                                                vm.current_accuracy_score < 0.5
+                                                !hasAttemptedCurrent ||
+                                                accuracyScore < 0.5
                                             }
-                                            onClick={() => vm.goToNextVocabulary()}
+                                            onClick={() => {
+                                                if (vm.current_index + 1 < vm.vocabularies.length) {
+                                                    vm.goToNextVocabulary();
+                                                } else {
+                                                    handleCompleted();
+                                                }
+                                            }}
                                             sx={{
                                                 borderRadius: 3,
                                                 px: 3,
                                                 fontWeight: 600,
                                                 textTransform: "none",
-                                                boxShadow: "0 4px 10px rgba(37,99,235,0.25)",
+                                                boxShadow:
+                                                    "0 4px 10px rgba(37,99,235,0.25)",
                                                 "&.Mui-disabled": {
                                                     backgroundColor: "#e5e7eb",
                                                     color: "#9ca3af",
@@ -222,11 +363,25 @@ const PracticeDefinitionBasedDetailPage = () => {
                                                 },
                                             }}
                                         >
-                                            {vm.current_index + 1 < vm.vocabularies.length
+                                            {vm.current_index + 1 <
+                                                vm.vocabularies.length
                                                 ? "Tiếp theo"
                                                 : "Hoàn thành"}
                                         </Button>
                                     </Box>
+
+                                    {hasAttemptedCurrent && (
+                                        <Typography
+                                            variant="body2"
+                                            color="text.secondary"
+                                            textAlign="center"
+                                            sx={{ mt: 1 }}
+                                        >
+                                            {isCorrect
+                                                ? `Tuyệt! Bạn đã hoàn thành ${vm.current_index + 1}/${vm.vocabularies.length} từ.`
+                                                : "Không sao, hãy đọc lại định nghĩa và ghi nhớ ý chính nhé."}
+                                        </Typography>
+                                    )}
                                 </Stack>
                             </Paper>
                         </motion.div>
@@ -308,7 +463,7 @@ const PracticeDefinitionBasedDetailPage = () => {
                                                                     : "error.main"
                                                             }
                                                         >
-                                                            {a.vocabulary_id}
+                                                            {vm.vocabularies.find(v => v._id === a.vocabulary_id)?.word || "---"}: {a.answer}
                                                         </Typography>
                                                     }
                                                     secondary={

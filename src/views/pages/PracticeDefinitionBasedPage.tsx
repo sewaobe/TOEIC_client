@@ -3,6 +3,8 @@ import PracticeLayout from "../layouts/PracticeLayout";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { topicService } from "../../services/topic.service";
+import { practiceSessionService } from "../../services/practice_session.service";
+import { PracticeSession } from "../../types/PracticeSession";
 import { EmptyState } from "../../components/common/EmptyState";
 import LessonCardsPanel from "../../components/practices/definition/LessonCardsPanel";
 import PaginationContainer from "../../components/common/PaginationContainer";
@@ -12,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 
 const PracticeDefinitionBasedPage = () => {
     const [lessons, setLessons] = useState<FlashcardExplore[]>([]);
+    const [sessions, setSessions] = useState<Record<string, PracticeSession>>({});
     const [page, setPage] = useState(1);
     const [pageCount, setPageCount] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -20,9 +23,21 @@ const PracticeDefinitionBasedPage = () => {
     const fetchDataLessons = async () => {
         try {
             setLoading(true);
-            const res = await topicService.getTopicVocabularyExplore(page, 9); // mỗi trang 9 bài cho hợp 3 cột
+            
+            // Fetch lessons
+            const res = await topicService.getTopicVocabularyExplore(page, 9);
             setLessons(res.items);
             setPageCount(res.pageCount);
+
+            // Fetch sessions để hiển thị progress
+            const sessionsRes = await practiceSessionService.getUserSessions("definition_based");
+            
+            // Map sessions theo topic_id
+            const sessionsMap: Record<string, PracticeSession> = {};
+            sessionsRes.items.forEach(session => {
+                sessionsMap[session.topic_id] = session;
+            });
+            setSessions(sessionsMap);
         } catch {
             toast.error("Lấy danh sách bài học thất bại. Vui lòng thử lại.");
         } finally {
@@ -92,6 +107,7 @@ const PracticeDefinitionBasedPage = () => {
                             >
                                 <LessonCardsPanel
                                     lesson={lesson}
+                                    session={sessions[lesson._id]}
                                     onStartLesson={handleStartLesson}
                                 />
                             </Box>

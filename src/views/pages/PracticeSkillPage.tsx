@@ -45,6 +45,15 @@ export default function PracticeSkillPage() {
             description:
                 "Chế độ dành cho người muốn thử giới hạn tốc độ và phản xạ nghe nói.",
         },
+        {
+            key: "definition_based",
+            title: "Definition Based",
+            subtitle: "Học từ vựng qua định nghĩa",
+            icon: <QuizIcon sx={{ fontSize: 40, color: "#8b5cf6" }} />,
+            gradient: "linear-gradient(to right, #8b5cf6, #a78bfa)",
+            description:
+                "Luyện kỹ năng từ vựng bằng cách đoán từ dựa trên định nghĩa tiếng Anh.",
+        }
     ]
 
     const navigate = useNavigate();

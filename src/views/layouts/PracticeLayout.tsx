@@ -17,18 +17,11 @@ export default function PracticeLayout({
             flexDirection="column"
             height="100vh"
             sx={{
-                background: `linear-gradient(
-            135deg,
-            rgba(240, 249, 255, 1) 0%,
-            rgba(255, 255, 255, 1) 50%,
-            rgba(240, 253, 250, 1) 100%
-            )`,
+                backgroundColor: "#f5f9ff",
                 backgroundAttachment: "fixed",
-                bgcolor: "background.default",
                 ...sx,
             }}
         >
-
             {/* Header gọi API nội bộ */}
             < PracticeHeader />
 

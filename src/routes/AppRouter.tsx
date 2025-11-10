@@ -4,6 +4,7 @@ import publicRoutes from './routeConfig/publicRoutes';
 import { RouteWrapper } from './guards/RouteWrapper';
 import { Suspense } from 'react';
 import { Toaster } from 'sonner';
+import { GlobalToastListener } from '../components/common/GlobalToastListener';
 
 
 export const AppRouter = () => {
@@ -23,6 +24,7 @@ export const AppRouter = () => {
             `,
           },
         }} />
+      <GlobalToastListener />
       <Suspense fallback={<div>Loading....</div>}>
         <Routes>
           {publicRoutes.map(({ path, element: Element, guard: Guard }) => (

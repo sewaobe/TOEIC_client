@@ -51,35 +51,6 @@ const PracticeDictationPage = () => {
         fetchDictations()
     }, [])
 
-    /** Tạo 4 Part cố định, map dictations tương ứng */
-    const sections: Section[] = useMemo(() => {
-        const parts = [1, 2, 3, 4]
-        return parts.map((partNumber) => {
-            const partDictations = dictations.filter((d) => d.part_type === partNumber)
-
-            return {
-                id: `part${partNumber}`,
-                title: `Part ${partNumber}: ${partNumber === 1
-                    ? "Photographs"
-                    : partNumber === 2
-                        ? "Question - Response"
-                        : partNumber === 3
-                            ? "Short Conversations"
-                            : "Short Talks"
-                    }`,
-                icon: ICONS[partNumber],
-                lessons:
-                    partDictations.length > 0
-                        ? partDictations.map((d) => ({
-                            id: d._id,
-                            title: d.title,
-                            difficulty: mapLevelToDifficulty(d.level),
-                        }))
-                        : [], // <- vẫn tạo mảng rỗng nếu chưa có bài
-            }
-        })
-    }, [dictations])
-
     const handleSelectLesson = async (lessonId: string) => {
         try {
             setLoading(true)
@@ -94,14 +65,13 @@ const PracticeDictationPage = () => {
 
     return (
         <PracticeLayout>
-            <Box display="flex" flex={1} overflow="hidden">
+            <Box display="flex" flex={1} className="overflow-y-auto">
                 <SidebarPractice
-                    sections={sections}
                     skillType="dictation"
                     onSelectLesson={handleSelectLesson}
                 />
 
-                <Box flex={1} overflow="hidden">
+                <Box flex={1} className="!overflow-y-auto">
                     {loading ? (
                         <Box
                             display="flex"

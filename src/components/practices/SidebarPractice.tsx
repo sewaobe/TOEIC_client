@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import {
     Accordion,
     AccordionSummary,
@@ -8,78 +8,69 @@ import {
     Box,
     Tooltip,
     Button,
-} from "@mui/material"
+    Divider,
+} from "@mui/material";
 import {
     ExpandMore as ExpandMoreIcon,
     ArrowBack as ArrowBackIcon,
     MenuOpen as MenuOpenIcon,
     Menu as MenuIcon,
-} from "@mui/icons-material"
-import { useNavigate } from "react-router-dom"
-import { motion, AnimatePresence } from "framer-motion"
-
-export interface Lesson {
-    id: string
-    title: string
-    difficulty?: "easy" | "medium" | "hard"
-}
-
-export interface Section {
-    id: string
-    title: string
-    icon?: JSX.Element
-    lessons: Lesson[]
-}
+    Headphones as HeadphonesIcon,
+    Chat as ChatIcon,
+    RecordVoiceOver as RecordVoiceOverIcon,
+    MenuBook as MenuBookIcon,
+    Description as DescriptionIcon,
+    LibraryBooks as LibraryBooksIcon,
+} from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { toeicPartsArray } from "../../constants/toeicPart";
 
 interface SidebarProps {
-    sections: Section[]
-    onSelectLesson: (lessonId: string) => void
-    skillType?: "dictation" | "shadowing" | "flashcard" | "listening" // optional
+    onSelectTag?: (tagName: string) => void;
+    skillType?: "dictation" | "shadowing" | "flashcard" | "listening" | "reading";
 }
 
-/**
- * SidebarPractice - component tái sử dụng được cho nhiều loại bài học
- */
-export default function SidebarPractice({ sections, onSelectLesson, skillType }: SidebarProps) {
-    const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null)
-    const [isCollapsed, setIsCollapsed] = useState(false)
-    const navigate = useNavigate()
+export default function SidebarPractice({ onSelectTag, skillType = "listening" }: SidebarProps) {
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [selectedTag, setSelectedTag] = useState<string | null>(null);
+    const navigate = useNavigate();
+
+    // Lưu trạng thái collapse
+    useEffect(() => {
+        const saved = localStorage.getItem("sidebarCollapsed");
+        if (saved) setIsCollapsed(JSON.parse(saved));
+    }, []);
 
     useEffect(() => {
-        const saved = localStorage.getItem("sidebarCollapsed")
-        if (saved) setIsCollapsed(JSON.parse(saved))
-    }, [])
+        localStorage.setItem("sidebarCollapsed", JSON.stringify(isCollapsed));
+    }, [isCollapsed]);
 
-    useEffect(() => {
-        localStorage.setItem("sidebarCollapsed", JSON.stringify(isCollapsed))
-    }, [isCollapsed])
+    // Lọc Part theo kỹ năng
+    const filteredParts =
+        skillType === "dictation" || skillType === "shadowing"
+            ? toeicPartsArray.slice(0, 4) // Listening: Part 1–4
+            : toeicPartsArray; // Tất cả Part 1–7
 
-    const getChipColor = (difficulty?: string) => {
-        switch (difficulty) {
-            case "easy":
-                return "success"
-            case "medium":
-                return "warning"
-            case "hard":
-                return "error"
-            default:
-                return "default"
-        }
-    }
+    // Icon minh họa từng Part
+    const partIcons = [
+        <HeadphonesIcon fontSize="small" sx={{ color: "#2563eb" }} />,
+        <ChatIcon fontSize="small" sx={{ color: "#22c55e" }} />,
+        <RecordVoiceOverIcon fontSize="small" sx={{ color: "#f59e0b" }} />,
+        <MenuBookIcon fontSize="small" sx={{ color: "#8b5cf6" }} />,
+        <DescriptionIcon fontSize="small" sx={{ color: "#06b6d4" }} />,
+        <LibraryBooksIcon fontSize="small" sx={{ color: "#e11d48" }} />,
+        <LibraryBooksIcon fontSize="small" sx={{ color: "#0ea5e9" }} />,
+    ];
 
     return (
         <motion.aside
-            className="h-[calc(100vh-70px)] bg-sidebar border-r border-sidebar-border flex flex-col overflow-x-hidden"
+            className="h-[calc(100vh-70px)] bg-white border-r border-gray-200 flex flex-col overflow-x-hidden"
             animate={{ width: isCollapsed ? 72 : 260 }}
             transition={{ type: "spring", stiffness: 120, damping: 20 }}
         >
-            {/* ====== Header collapse button ====== */}
-            <Box
-                display="flex"
-                alignItems="center"
-                justifyContent={isCollapsed ? "center" : "flex-end"}
-                p={1}
-            >
+            {/* ===== Header collapse button ===== */}
+            <Box display="flex" alignItems="center" justifyContent={isCollapsed ? "center" : "flex-end"} p={1}>
                 <Tooltip title={isCollapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}>
                     <Button
                         onClick={() => setIsCollapsed(!isCollapsed)}
@@ -96,22 +87,16 @@ export default function SidebarPractice({ sections, onSelectLesson, skillType }:
                 </Tooltip>
             </Box>
 
-            {/* ====== Accordion Sections ====== */}
+            {/* ===== Accordion Parts ===== */}
             <Box className="flex-1 overflow-y-auto px-2 overflow-x-hidden">
-                {sections.map((section) => (
+                {filteredParts.slice(0, 4).map((part, index) => (
                     <Accordion
-                        key={section.id}
+                        key={part.label}
                         disableGutters
-                        sx={{
-                            background: "transparent",
-                            boxShadow: "none",
-                            "&:before": { display: "none" },
-                        }}
+                        sx={{ background: "transparent", boxShadow: "none", "&:before": { display: "none" } }}
                     >
                         <AccordionSummary
-                            expandIcon={
-                                !isCollapsed && <ExpandMoreIcon sx={{ color: "#777", fontSize: 18 }} />
-                            }
+                            expandIcon={!isCollapsed && <ExpandMoreIcon sx={{ color: "#777", fontSize: 18 }} />}
                             sx={{
                                 borderRadius: "8px",
                                 px: 1.2,
@@ -121,7 +106,7 @@ export default function SidebarPractice({ sections, onSelectLesson, skillType }:
                             }}
                         >
                             <Box display="flex" alignItems="center" gap={1}>
-                                {section.icon}
+                                {partIcons[index]}
                                 <AnimatePresence>
                                     {!isCollapsed && (
                                         <motion.span
@@ -131,11 +116,8 @@ export default function SidebarPractice({ sections, onSelectLesson, skillType }:
                                             exit={{ opacity: 0, x: -10 }}
                                             transition={{ duration: 0.25 }}
                                         >
-                                            <Typography
-                                                variant="subtitle1"
-                                                sx={{ fontWeight: 600, fontSize: 14 }}
-                                            >
-                                                {section.title}
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: 14 }}>
+                                                {part.label}
                                             </Typography>
                                         </motion.span>
                                     )}
@@ -152,45 +134,108 @@ export default function SidebarPractice({ sections, onSelectLesson, skillType }:
                                     transition={{ duration: 0.25 }}
                                 >
                                     <AccordionDetails sx={{ pb: 0 }}>
-                                        <div className="space-y-0.5">
-                                            {section.lessons.length > 0 ? (
-                                                section.lessons.map((lesson) => (
-                                                    <button
-                                                        key={lesson.id}
+                                        <div className="flex flex-wrap gap-1.5 pb-2">
+                                            {part.tags.length > 0 ? (
+                                                part.tags.map((tag, i) => (
+                                                    <Chip
+                                                        key={i}
+                                                        label={tag}
+                                                        className={`!text-xs !rounded-md cursor-pointer transition-all ${
+                                                            selectedTag === tag
+                                                                ? "bg-blue-100 text-blue-700 border border-blue-300"
+                                                                : "bg-gray-100 text-gray-800"
+                                                        }`}
                                                         onClick={() => {
-                                                            setSelectedLessonId(lesson.id)
-                                                            onSelectLesson(lesson.id)
+                                                            setSelectedTag(tag);
+                                                            onSelectTag?.(tag);
                                                         }}
-                                                        className={`w-full text-left py-2 px-2 rounded-md flex items-center justify-between transition-all duration-200 text-sm ${selectedLessonId === lesson.id
-                                                            ? "bg-blue-50 border-l-4 border-blue-500 font-semibold text-blue-700"
-                                                            : "hover:bg-gray-50 text-gray-700"
-                                                            }`}
-                                                    >
-                                                        <span className="truncate">{lesson.title}</span>
-                                                        {lesson.difficulty && (
-                                                            <Chip
-                                                                label={
-                                                                    lesson.difficulty === "easy"
-                                                                        ? "Dễ"
-                                                                        : lesson.difficulty === "medium"
-                                                                            ? "TB"
-                                                                            : "Khó"
-                                                                }
-                                                                size="small"
-                                                                color={getChipColor(lesson.difficulty)}
-                                                                variant="outlined"
-                                                                sx={{ height: 20, fontSize: 11 }}
-                                                            />
-                                                        )}
-                                                    </button>
+                                                    />
                                                 ))
                                             ) : (
                                                 <Typography
                                                     variant="body2"
                                                     color="text.secondary"
-                                                    sx={{ fontStyle: "italic", px: 2, py: 1.5 }}
+                                                    sx={{ fontStyle: "italic", px: 1, py: 1 }}
                                                 >
-                                                    Chưa có bài luyện tập nào
+                                                    Chưa có tag nào
+                                                </Typography>
+                                            )}
+                                        </div>
+                                    </AccordionDetails>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </Accordion>
+                ))}
+                {filteredParts.slice(4).map((part, index) => (
+                    <Accordion
+                        key={part.label}
+                        disableGutters
+                        sx={{ background: "transparent", boxShadow: "none", "&:before": { display: "none" } }}
+                    >
+                        <AccordionSummary
+                            expandIcon={!isCollapsed && <ExpandMoreIcon sx={{ color: "#777", fontSize: 18 }} />}
+                            sx={{
+                                borderRadius: "8px",
+                                px: 1.2,
+                                py: 1,
+                                "&:hover": { backgroundColor: "rgba(0,0,0,0.04)" },
+                                justifyContent: isCollapsed ? "center" : "flex-start",
+                            }}
+                        >
+                            <Box display="flex" alignItems="center" gap={1}>
+                                {partIcons[index + 4]}
+                                <AnimatePresence>
+                                    {!isCollapsed && (
+                                        <motion.span
+                                            key="title"
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -10 }}
+                                            transition={{ duration: 0.25 }}
+                                        >
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: 14 }}>
+                                                {part.label}
+                                            </Typography>
+                                        </motion.span>
+                                    )}
+                                </AnimatePresence>
+                            </Box>
+                        </AccordionSummary>
+
+                        <AnimatePresence>
+                            {!isCollapsed && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.25 }}
+                                >
+                                    <AccordionDetails sx={{ pb: 0 }}>
+                                        <div className="flex flex-wrap gap-1.5 pb-2">
+                                            {part.tags.length > 0 ? (
+                                                part.tags.map((tag, i) => (
+                                                    <Chip
+                                                        key={i}
+                                                        label={tag}
+                                                        className={`!text-xs !rounded-md cursor-pointer transition-all ${
+                                                            selectedTag === tag
+                                                                ? "bg-blue-100 text-blue-700 border border-blue-300"
+                                                                : "bg-gray-100 text-gray-800"
+                                                        }`}
+                                                        onClick={() => {
+                                                            setSelectedTag(tag);
+                                                            onSelectTag?.(tag);
+                                                        }}
+                                                    />
+                                                ))
+                                            ) : (
+                                                <Typography
+                                                    variant="body2"
+                                                    color="text.secondary"
+                                                    sx={{ fontStyle: "italic", px: 1, py: 1 }}
+                                                >
+                                                    Chưa có tag nào
                                                 </Typography>
                                             )}
                                         </div>
@@ -202,7 +247,7 @@ export default function SidebarPractice({ sections, onSelectLesson, skillType }:
                 ))}
             </Box>
 
-            {/* ====== Footer ====== */}
+            {/* ===== Footer ===== */}
             <Box
                 p={1.5}
                 borderTop="1px solid rgba(0,0,0,0.1)"
@@ -246,5 +291,5 @@ export default function SidebarPractice({ sections, onSelectLesson, skillType }:
                 </Tooltip>
             </Box>
         </motion.aside>
-    )
+    );
 }

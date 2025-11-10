@@ -16,6 +16,8 @@ const ResultStatisticPage = lazy(() => import('../../views/pages/ResultStatistic
 const AnswerDetailPage = lazy(() => import('../../views/pages/AnswerDetailPage'));
 const RetryWrongAnswersPage = lazy(() => import('../../views/pages/RetryWrongAnswersPage'));
 const LearningCompletion = lazy(() => import('../../components/learningPath/LearningPathCompletion'));
+const PracticeDefinitionBasedPage = lazy(() => import('../../views/pages/PracticeDefinitionBasedPage'));
+const PracticeDefinitionBasedDetailPage = lazy(() => import('../../views/pages/PracticeDefinitionBasedDetailPage'));
 
 export interface AppRoute {
   path: string;
@@ -38,6 +40,8 @@ const privateRoutes: AppRoute[] = [
   { path: '/practice-skill/dictation', element: PracticeDictationPage, guard: ProtectedRoute },
   { path: '/practice-skill/challenge', element: PracticeChallengePage, guard: ProtectedRoute },
   { path: '/practice-skill/shadowing', element: PracticeShadowingPage, guard: ProtectedRoute },
+  { path: '/practice-skill/definition_based', element: PracticeDefinitionBasedPage, guard: ProtectedRoute },
+  { path: '/practice-skill/definition_based/:id', element: PracticeDefinitionBasedDetailPage, guard: ProtectedRoute },
   { path: '/result-statistic', element: ResultStatisticPage, guard: ProtectedRoute },
   { path: '/learning-completion', element: LearningCompletion, guard: ProtectedRoute }
 ];

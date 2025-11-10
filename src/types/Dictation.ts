@@ -34,6 +34,7 @@ export interface DictationAttemptLog {
     index: number
     accuracy: number
     answers: Record<number, string>
+    difficulty?: "easy" | "medium" | "hard"
     mistakes: string[]
     duration: number
     started_at: string  // ISO date

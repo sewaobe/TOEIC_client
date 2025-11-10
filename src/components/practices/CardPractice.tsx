@@ -43,10 +43,6 @@ export default function PracticeCard({
               width: 56,
               height: 56,
               borderRadius: "50%",
-              background: gradient.replace("to right", "to right").replace(
-                /(\d*\.\d+|\d+)\)/,
-                "0.15)"
-              ), // nhạt hơn một chút
               display: "flex",
               alignItems: "center",
               justifyContent: "center",

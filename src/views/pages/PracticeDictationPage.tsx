@@ -1,104 +1,90 @@
-import { useEffect, useState, useMemo } from "react"
-import PracticeLayout from "../layouts/PracticeLayout"
-import { Box, CircularProgress, Typography } from "@mui/material"
-import SidebarPractice, { Section } from "../../components/practices/SidebarPractice"
-import DictationContent from "../../components/practices/DictationContent"
-import { Dictation } from "../../types/Dictation"
-import { dictationService } from "../../services/dictation.service"
-
-import {
-    Headphones as HeadphonesIcon,
-    Chat as ChatIcon,
-    RecordVoiceOver as RecordVoiceOverIcon,
-    MenuBook as MenuBookIcon,
-} from "@mui/icons-material"
-
-// Icon mapping cho từng Part
-const ICONS: Record<number, JSX.Element> = {
-    1: <HeadphonesIcon fontSize="small" sx={{ color: "#2563eb" }} />,
-    2: <ChatIcon fontSize="small" sx={{ color: "#10b981" }} />,
-    3: <RecordVoiceOverIcon fontSize="small" sx={{ color: "#f59e0b" }} />,
-    4: <MenuBookIcon fontSize="small" sx={{ color: "#ef4444" }} />,
-}
-
-// Map level sang độ khó
-const mapLevelToDifficulty = (level?: string) => {
-    if (!level) return "medium"
-    const lvl = level.toUpperCase()
-    if (lvl === "A1" || lvl === "A2") return "easy"
-    if (lvl === "B1") return "medium"
-    return "hard"
-}
+import { useState } from "react";
+import PracticeLayout from "../layouts/PracticeLayout";
+import { Box, CircularProgress, Typography } from "@mui/material";
+import SidebarPractice from "../../components/practices/SidebarPractice";
+import DictationContent from "../../components/practices/DictationContent";
+import DictationList from "../../components/practices/DictationList";
+import { Dictation } from "../../types/Dictation";
+import { dictationService } from "../../services/dictation.service";
 
 const PracticeDictationPage = () => {
-    const [selectedLesson, setSelectedLesson] = useState<Dictation | null>(null)
-    const [dictations, setDictations] = useState<Dictation[]>([])
-    const [loading, setLoading] = useState<boolean>(false)
+  const [selectedLesson, setSelectedLesson] = useState<Dictation | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [filters, setFilters] = useState<{
+    part_type?: number;
+    tags?: string;
+  } | null>(null);
 
-    const fetchDictations = async () => {
-        setLoading(true)
-        try {
-            const data = await dictationService.getAllDictationData()
-            setDictations(data)
-        } catch (error) {
-            console.error("Failed to fetch dictations:", error)
-        } finally {
-            setLoading(false)
-        }
+  const handleSelectPart = (partNumber: number) => {
+    // Click vào Part → hiện danh sách tất cả bài của Part đó
+    setFilters({ part_type: partNumber });
+    setSelectedLesson(null); // Reset bài đang học
+  };
+
+  const handleSelectTagFilter = (partNumber: number, tag: string) => {
+    // Click vào Tag → hiện danh sách bài theo Part + Tag
+    setFilters({ part_type: partNumber, tags: tag });
+    setSelectedLesson(null); // Reset bài đang học
+  };
+
+  const handleSelectLesson = async (lessonId: string) => {
+    try {
+      setLoading(true);
+      const lesson = await dictationService.getDictationById(lessonId);
+      setSelectedLesson(lesson);
+      setFilters(null); // Ẩn list, hiện content
+    } catch (error) {
+      console.error("Failed to select lesson:", error);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    useEffect(() => {
-        fetchDictations()
-    }, [])
+  return (
+    <PracticeLayout>
+      <Box display="flex" flex={1} className="overflow-y-auto">
+        <SidebarPractice
+          skillType="dictation"
+          onSelectPart={handleSelectPart}
+          onSelectTagFilter={handleSelectTagFilter}
+        />
 
-    const handleSelectLesson = async (lessonId: string) => {
-        try {
-            setLoading(true)
-            const lesson = await dictationService.getDictationById(lessonId)
-            setSelectedLesson(lesson)
-        } catch (error) {
-            console.error("Failed to select lesson:", error)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    return (
-        <PracticeLayout>
-            <Box display="flex" flex={1} className="overflow-y-auto">
-                <SidebarPractice
-                    skillType="dictation"
-                    onSelectLesson={handleSelectLesson}
-                />
-
-                <Box flex={1} className="!overflow-y-auto">
-                    {loading ? (
-                        <Box
-                            display="flex"
-                            justifyContent="center"
-                            alignItems="center"
-                            height="100%"
-                        >
-                            <CircularProgress />
-                        </Box>
-                    ) : selectedLesson ? (
-                        <DictationContent dictation={selectedLesson} />
-                    ) : (
-                        <Box
-                            display="flex"
-                            justifyContent="center"
-                            alignItems="center"
-                            height="100%"
-                        >
-                            <Typography color="text.secondary">
-                                Chọn một bài luyện nghe chép chính tả từ sidebar để bắt đầu.
-                            </Typography>
-                        </Box>
-                    )}
-                </Box>
+        <Box flex={1} className="!overflow-y-auto">
+          {loading ? (
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              height="100%"
+            >
+              <CircularProgress />
             </Box>
-        </PracticeLayout>
-    )
-}
+          ) : selectedLesson ? (
+            // Đang học 1 bài cụ thể
+            <DictationContent dictation={selectedLesson} />
+          ) : filters ? (
+            // Đang xem danh sách bài (theo Part hoặc Tag)
+            <DictationList
+              filters={filters}
+              onSelectLesson={handleSelectLesson}
+            />
+          ) : (
+            // Chưa chọn gì
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              height="100%"
+            >
+              <Typography color="text.secondary">
+                Chọn một Part hoặc Tag từ sidebar để xem danh sách bài luyện tập
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </Box>
+    </PracticeLayout>
+  );
+};
 
-export default PracticeDictationPage
+export default PracticeDictationPage;

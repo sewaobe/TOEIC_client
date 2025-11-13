@@ -23,9 +23,10 @@ import { VolumeUp } from "@mui/icons-material";
 import { useSpeech } from "../../hooks/useSpeech";
 import F5Modal from "../../components/modals/F5Modal";
 import ResumeSessionModal from "../../components/modals/ResumeSessionModal";
+import { DefinitionBasedTourGuide } from "../../components/tour-guide/DefinitionBasedTourGuide";
 
 const PracticeDefinitionBasedDetailPage = () => {
-    const { vm, vocab, hasAttemptedCurrent, isCorrect, accuracyScore, handleCompleted } = usePracticeDefinitionBasedDetailVM();
+    const { vm, vocab, hasAttemptedCurrent, isCorrect, accuracyScore, handleCompleted, showGuider, setShowGuider } = usePracticeDefinitionBasedDetailVM();
     const { speak } = useSpeech();
 
     if (vm.isLoading("fetchVocabularies") || vm.showResumeModal) {
@@ -84,7 +85,8 @@ const PracticeDefinitionBasedDetailPage = () => {
                     subtitle="Hãy đọc từ và thử định nghĩa lại theo cách hiểu của bạn, đừng nhìn gợi ý trước nhé."
                     progress={vm.getProgress()}
                     progressLabel={`Từ ${vm.current_index + 1}/${vm.vocabularies.length}`}
-                    onGuideClick={() => console.log("🎯 Bắt đầu tour hướng dẫn!")}
+                    onGuideClick={() => setShowGuider(true)}
+                    data_tour="header-banner"
                 />
 
                 {/* ===== Main Content (7/3 layout) ===== */}
@@ -123,6 +125,7 @@ const PracticeDefinitionBasedDetailPage = () => {
                                         display="flex"
                                         justifyContent="space-between"
                                         alignItems="center"
+                                        data-tour="word-section"
                                     >
                                         <Box>
                                             <Stack direction="row" alignItems="center" spacing={1}>
@@ -181,6 +184,7 @@ const PracticeDefinitionBasedDetailPage = () => {
                                                     fontWeight: 600,
                                                     textTransform: "none",
                                                 }}
+                                                data-tour="check-button"
                                             >
                                                 {vm.isLoading("submitAnswer") ? <CircularProgress size={20} color="inherit" /> : "Kiểm tra"}
                                             </Button>
@@ -231,6 +235,7 @@ const PracticeDefinitionBasedDetailPage = () => {
                                                 },
                                             },
                                         }}
+                                        data-tour="definition-input"
                                     />
 
                                     {/* FEEDBACK: ✅ / ❌ + Định nghĩa chuẩn + Ví dụ + Ghi chú */}
@@ -327,6 +332,7 @@ const PracticeDefinitionBasedDetailPage = () => {
                                                         color: "#2563eb",
                                                     },
                                                 }}
+                                                data-tour="prev-button"
                                             >
                                                 Câu trước
                                             </Button>
@@ -362,6 +368,7 @@ const PracticeDefinitionBasedDetailPage = () => {
                                                     boxShadow: "none",
                                                 },
                                             }}
+                                            data-tour="next-button"
                                         >
                                             {vm.current_index + 1 <
                                                 vm.vocabularies.length
@@ -388,7 +395,7 @@ const PracticeDefinitionBasedDetailPage = () => {
                     </Box>
 
                     {/* RIGHT: Attempt Section */}
-                    <Box flex={3} width="100%">
+                    <Box flex={3} width="100%" data-tour="attempt-list">
                         <Paper
                             sx={{
                                 p: 0,
@@ -487,6 +494,9 @@ const PracticeDefinitionBasedDetailPage = () => {
                     </Box>
                 </Box>
             </Box>
+
+            {/* Tour Guide */}
+            <DefinitionBasedTourGuide isRun={showGuider} />
         </PracticeLayout>
     );
 };

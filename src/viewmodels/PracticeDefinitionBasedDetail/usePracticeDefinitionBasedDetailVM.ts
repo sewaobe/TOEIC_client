@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { PracticeDefinitionBasedDetailVM } from "./PracticeDefinitionBasedDetailVM";
 import { useViewModel } from "../useViewModel";
@@ -7,6 +7,10 @@ export const usePracticeDefinitionBasedDetailVM = () => {
     const location = useLocation();
     const practice_id = location.pathname.split("/").pop();
     const vm = useViewModel(PracticeDefinitionBasedDetailVM);
+
+    const [showGuider, setShowGuider] = useState(() => {
+        return localStorage.getItem("definition_based_tour_seen") !== "true";
+    });
 
     useEffect(() => {
         if (practice_id) {
@@ -38,6 +42,9 @@ export const usePracticeDefinitionBasedDetailVM = () => {
         isCorrect,
         accuracyScore,
         vocab,
-        handleCompleted
+        handleCompleted,
+
+        showGuider,
+        setShowGuider
     };
 }

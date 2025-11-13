@@ -17,6 +17,7 @@ interface HeaderBannerProps {
     showBackButton?: boolean;
     onBack?: () => void;
     onGuideClick?: () => void;
+    data_tour?: string;
 }
 
 export const HeaderBanner = ({
@@ -27,6 +28,7 @@ export const HeaderBanner = ({
     showBackButton = true,
     onBack,
     onGuideClick,
+    data_tour
 }: HeaderBannerProps) => {
     const navigate = useNavigate();
 
@@ -53,6 +55,7 @@ export const HeaderBanner = ({
                 flexWrap: "wrap",
                 gap: 2,
             }}
+            data-tour={data_tour}
         >
             {/* Hiệu ứng nền */}
             <Box

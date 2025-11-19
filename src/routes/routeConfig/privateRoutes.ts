@@ -12,6 +12,7 @@ const PracticeMiniTestPage = lazy(() => import('../../views/pages/PracticeMiniTe
 const PracticeDictationPage = lazy(() => import('../../views/pages/PracticeDictationPage'));
 const PracticeChallengePage = lazy(() => import('../../views/pages/PracticeChallengePage'));
 const PracticeShadowingPage = lazy(() => import('../../views/pages/PracticeShadowingPage'));
+const PracticeQuizPage = lazy(() => import('../../views/pages/PracticeQuizPage'));
 const ResultStatisticPage = lazy(() => import('../../views/pages/ResultStatisticPage'));
 const AnswerDetailPage = lazy(() => import('../../views/pages/AnswerDetailPage'));
 const RetryWrongAnswersPage = lazy(() => import('../../views/pages/RetryWrongAnswersPage'));
@@ -42,6 +43,7 @@ const privateRoutes: AppRoute[] = [
   { path: '/practice-skill/shadowing', element: PracticeShadowingPage, guard: ProtectedRoute },
   { path: '/practice-skill/definition_based', element: PracticeDefinitionBasedPage, guard: ProtectedRoute },
   { path: '/practice-skill/definition_based/:id', element: PracticeDefinitionBasedDetailPage, guard: ProtectedRoute },
+  { path: '/practice-skill/quiz', element: PracticeQuizPage, guard: ProtectedRoute },
   { path: '/result-statistic', element: ResultStatisticPage, guard: ProtectedRoute },
   { path: '/learning-completion', element: LearningCompletion, guard: ProtectedRoute }
 ];

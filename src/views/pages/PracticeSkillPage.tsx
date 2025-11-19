@@ -28,9 +28,9 @@ export default function PracticeSkillPage() {
                 "Cải thiện phát âm, ngữ điệu và phản xạ tiếng Anh bằng cách lặp lại theo audio.",
         },
         {
-            key: "mini-test",
-            title: "Mini Test",
-            subtitle: "Kiểm tra nhanh 10 câu",
+            key: "quiz",
+            title: "Quiz Test",
+            subtitle: "Kiểm tra nhanh các câu",
             icon: <QuizIcon sx={{ fontSize: 40, color: "#f59e0b" }} />,
             gradient: "linear-gradient(to right, #f59e0b, #fbbf24)",
             description:

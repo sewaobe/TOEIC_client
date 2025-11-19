@@ -20,7 +20,6 @@ import {
 import EditIcon from "@mui/icons-material/EditNote";
 import ChatIcon from "@mui/icons-material/ChatBubbleOutline";
 import SummaryIcon from "@mui/icons-material/Summarize";
-import Editor from "../common/Editor";
 import LessonSummary from "./LessonSummary";
 
 /* ----------------------- Mock data ----------------------- */

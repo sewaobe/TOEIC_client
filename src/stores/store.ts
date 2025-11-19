@@ -3,13 +3,15 @@ import answerReducer from './answerSlice';
 import examReducer from './examSlice';
 import userReducer from './userSlice';
 import snackbarReducer from './snackbarSlice';
+import highlightPopupReducer from './highlightPopupSlice';
 
 export const store = configureStore({
   reducer: {
     answer: answerReducer,
     exam: examReducer,
     user: userReducer,
-    snackbar: snackbarReducer
+    snackbar: snackbarReducer,
+    highlightPopup: highlightPopupReducer,
   },
 });
 

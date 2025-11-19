@@ -22,6 +22,9 @@ function MainLayout({ children }: MainLayoutProps) {
   const isAuthenticated = useSelector(
     (state: RootState) => state.user.isAuthenticated
   );
+  const highlightPopupEnabled = useSelector(
+    (state: RootState) => state.highlightPopup.enabled
+  );
   const [showNotebook, setShowNotebook] = useState(false);
   const [showDictionary, setShowDictionary] = useState(false);
   const [showLearningProgress, setShowLearningProgress] = useState(false);
@@ -72,7 +75,7 @@ function MainLayout({ children }: MainLayoutProps) {
       <Navbar />
       <div className="pt-16">
         {children}
-        {selectedText && rect && isAuthenticated && (
+        {selectedText && rect && isAuthenticated && highlightPopupEnabled && (
           <HighlightPopup
             rect={rect}
             text={selectedText}

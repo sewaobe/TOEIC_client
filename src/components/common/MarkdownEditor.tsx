@@ -1,123 +1,301 @@
-import { FC, useState, useEffect } from "react";
+import { FC, useState, useEffect, useRef, useCallback } from "react";
 import { Crepe } from "@milkdown/crepe";
 import { Milkdown, MilkdownProvider, useEditor, useInstance } from "@milkdown/react";
-import { getMarkdown, replaceAll } from "@milkdown/utils";
+import { getMarkdown } from "@milkdown/utils";
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/frame.css";
-import useLocalStorage from "../../hooks/useLocalStorage";
 import { toast } from "sonner";
+import { CircularProgress } from "@mui/material";
 
 interface MarkdownEditorProps {
   initialValue?: string;
   onSave?: (markdown: string, target: string) => void;
 }
 
-const STORAGE_KEY = "markdown_notes";
-
 const MarkdownEditorImpl: FC<MarkdownEditorProps> = ({ initialValue, onSave }) => {
-  const [isModalOpen, setModalOpen] = useState(false);
-  const [selectedTarget, setSelectedTarget] = useState<string>("lesson1");
+  // ========= State =========
+  const [isSaving, setIsSaving] = useState(false);
+  const [toolbarVisible, setToolbarVisible] = useState(false);
+  const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0 });
+  const [selectedText, setSelectedText] = useState("");
 
-  // ✅ dùng hook để lưu notes theo target
-  const [notes, setNotes] = useLocalStorage<Record<string, string>>(STORAGE_KEY, {});
+  // ========= Refs =========
+  const lastSavedContentRef = useRef(initialValue || "");
+  const currentMarkdownRef = useRef(initialValue || "");
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isSavingRef = useRef(false);
+  const pendingMarkdownRef = useRef<string | null>(null);
+  const editorRef = useRef<any>(null);
 
-  // ✅ nội dung hiện tại
-  const savedContent = notes[selectedTarget] || initialValue || "# Gõ thử đi 🚀";
-
+  // ========= Milkdown Editor =========
   useEditor(
     (root) =>
       new Crepe({
         root,
-        defaultValue: savedContent,
+        defaultValue: initialValue || "",
       }),
-    [selectedTarget] // reload khi đổi target
+    []
   );
 
   const [loading, getEditor] = useInstance();
 
-  // Nếu có dữ liệu trong localStorage thì thay thế nội dung khi đổi target
+  // ========= Setup editor ref =========
   useEffect(() => {
     if (loading) return;
     const editor = getEditor();
     if (!editor) return;
 
-    const markdown = notes[selectedTarget];
-    if (markdown) {
-      editor.action(replaceAll(markdown));
+    editorRef.current = editor;
+  }, [loading, getEditor]);
+
+  // ========= Text Selection & Floating Toolbar =========
+  const handleTextSelection = useCallback(() => {
+    const selection = window.getSelection();
+
+    if (selection && selection.toString().length > 0) {
+      setSelectedText(selection.toString());
+
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const editorElement = document.querySelector(".markdown-editor");
+
+      if (editorElement) {
+        const editorRect = editorElement.getBoundingClientRect();
+        setToolbarPos({
+          top: rect.top - editorRect.top - 50,
+          left: rect.left - editorRect.left + rect.width / 2 - 100,
+        });
+        setToolbarVisible(true);
+      }
+    } else {
+      setToolbarVisible(false);
     }
-  }, [selectedTarget, notes, getEditor, loading]);
+  }, []);
 
-  const handleSaveClick = () => {
-    setModalOpen(true);
-  };
+  useEffect(() => {
+    const editorElement = document.querySelector(".markdown-editor");
+    if (!editorElement) return;
 
-  const handleConfirmSave = () => {
+    editorElement.addEventListener("mouseup", handleTextSelection);
+    editorElement.addEventListener("keyup", handleTextSelection);
+
+    return () => {
+      editorElement.removeEventListener("mouseup", handleTextSelection);
+      editorElement.removeEventListener("keyup", handleTextSelection);
+    };
+  }, [handleTextSelection]);
+
+  // ========= Core Save Logic =========
+  const performSave = useCallback(
+    async (markdown: string, showToast: boolean = true) => {
+      if (markdown === lastSavedContentRef.current) {
+        pendingMarkdownRef.current = null;
+        return;
+      }
+
+      if (isSavingRef.current) {
+        pendingMarkdownRef.current = markdown;
+        return;
+      }
+
+      isSavingRef.current = true;
+      setIsSaving(true);
+      pendingMarkdownRef.current = null;
+
+      try {
+        await onSave?.(markdown, "");
+        lastSavedContentRef.current = markdown;
+      } catch (err) {
+        console.error("Save error:", err);
+        toast.error("Lỗi khi lưu");
+      } finally {
+        setIsSaving(false);
+        isSavingRef.current = false;
+
+        if (pendingMarkdownRef.current && pendingMarkdownRef.current !== lastSavedContentRef.current) {
+          setTimeout(() => {
+            if (pendingMarkdownRef.current) {
+              performSave(pendingMarkdownRef.current, false);
+            }
+          }, 100);
+        }
+      }
+    },
+    [onSave]
+  );
+
+  // ========= Auto-save với Debounce 2s =========
+  useEffect(() => {
     if (loading) return;
     const editor = getEditor();
     if (!editor) return;
 
-    const markdown = editor.action(getMarkdown());
+    editorRef.current = editor;
 
-    console.log("Markdown content:", markdown);
-    console.log("Lưu vào mục:", selectedTarget);
+    const handleChange = () => {
+      try {
+        const markdown = editor.action(getMarkdown());
+        currentMarkdownRef.current = markdown;
+        pendingMarkdownRef.current = markdown;
+      } catch (err) {
+        console.error("Error getting markdown on change:", err);
+      }
 
-    // ✅ lưu vào localStorage
-    setNotes({
-      ...notes,
-      [selectedTarget]: markdown,
-    });
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
 
-    onSave?.(markdown, selectedTarget);
-    setModalOpen(false);
-    toast.success("Lưu notebook thành công");
-  };
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        try {
+          const markdown = currentMarkdownRef.current;
+          performSave(markdown, true);
+        } catch (err) {
+          console.error("Error in auto-save timeout:", err);
+        }
+      }, 2000);
+    };
 
+    const observer = new MutationObserver(handleChange);
+    const editorElement = document.querySelector(".markdown-editor");
+    if (editorElement) {
+      observer.observe(editorElement, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+    }
+
+    return () => {
+      observer.disconnect();
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [loading, getEditor, performSave]);
+
+  // ========= Force-save trước khi unmount =========
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+
+      const pendingMarkdown = pendingMarkdownRef.current;
+      const lastSaved = lastSavedContentRef.current;
+
+      if (pendingMarkdown !== null && pendingMarkdown !== lastSaved) {
+        try {
+          const result = onSave?.(pendingMarkdown, "") as any;
+          if (result && typeof result.then === "function") {
+            result
+              .then(() => {
+                lastSavedContentRef.current = pendingMarkdown;
+              })
+              .catch((err: any) => {
+                console.error("Force save on unmount error:", err);
+              });
+          } else {
+            lastSavedContentRef.current = pendingMarkdown;
+          }
+        } catch (err) {
+          console.error("Force save on unmount error:", err);
+        }
+      }
+    };
+  }, [onSave]);
+
+  // ========= Ctrl+S Handler =========
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        if (loading) return;
+
+        const editor = getEditor();
+        if (!editor) return;
+
+        try {
+          const markdown = editor.action(getMarkdown());
+          if (autoSaveTimeoutRef.current) {
+            clearTimeout(autoSaveTimeoutRef.current);
+          }
+          performSave(markdown, true);
+        } catch (err) {
+          console.error("Error handling Ctrl+S:", err);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [loading, getEditor, performSave]);
+
+
+
+  // ========= Render =========
   return (
-    <div className="flex flex-col h-full max-h-[400px] overflow-y-auto">
+    <div className="flex flex-col h-full w-full relative">
+      {/* Floating Toolbar */}
+      {toolbarVisible && (
+        <div
+          className="fixed z-50 flex items-center gap-2 p-2 bg-white rounded-lg shadow-lg border border-gray-200"
+          style={{
+            top: `${toolbarPos.top}px`,
+            left: `${toolbarPos.left}px`,
+          }}
+        >
+          <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">Highlight:</span>
+          {[
+            { color: "#FFFF00", name: "Yellow" },
+            { color: "#FF6B6B", name: "Red" },
+            { color: "#4ECDC4", name: "Cyan" },
+            { color: "#95E1D3", name: "Green" },
+            { color: "#FFE66D", name: "Orange" },
+          ].map(({ color, name }) => (
+            <button
+              key={color}
+              onClick={() => {
+                if (!editorRef.current || !selectedText) return;
+
+                try {
+                  const selection = window.getSelection();
+                  if (!selection) return;
+
+                  const currentMarkdown = editorRef.current.action(getMarkdown());
+                  const highlightMarkdown = `==${selectedText}==`;
+                  const newMarkdown = currentMarkdown.replace(selectedText, highlightMarkdown);
+
+                  currentMarkdownRef.current = newMarkdown;
+                  pendingMarkdownRef.current = newMarkdown;
+
+                  if (autoSaveTimeoutRef.current) {
+                    clearTimeout(autoSaveTimeoutRef.current);
+                  }
+                  autoSaveTimeoutRef.current = setTimeout(() => {
+                    performSave(newMarkdown, true);
+                  }, 2000);
+
+                  toast.success(`Highlighted with ${name}`);
+                  setToolbarVisible(false);
+                  selection.removeAllRanges();
+                } catch (err) {
+                  console.error("Error highlighting:", err);
+                  toast.error("Lỗi khi highlight");
+                }
+              }}
+              title={name}
+              className="w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-600 transition"
+              style={{ backgroundColor: color }}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="flex-1 overflow-auto markdown-editor">
         <Milkdown />
       </div>
-      <div className="flex justify-end mt-3">
-        <button
-          onClick={handleSaveClick}
-          className="px-3 py-1.5 bg-blue-600 text-white rounded cursor-pointer"
-        >
-          💾 Lưu
-        </button>
-      </div>
-
-      {/* Modal chọn nơi lưu */}
-      {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-            <h2 className="text-lg font-semibold mb-4">Chọn nơi lưu</h2>
-            <select
-              value={selectedTarget}
-              onChange={(e) => setSelectedTarget(e.target.value)}
-              className="w-full border rounded px-2 py-1 mb-4"
-            >
-              <option value="lesson1">📘 Bài học 1</option>
-              <option value="lesson2">📘 Bài học 2</option>
-              <option value="lesson3">📘 Bài học 3</option>
-              <option value="other">📂 Thư mục khác</option>
-            </select>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setModalOpen(false)}
-                className="px-3 py-1 rounded bg-gray-200"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleConfirmSave}
-                className="px-3 py-1 rounded bg-blue-600 text-white"
-              >
-                Xác nhận lưu
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

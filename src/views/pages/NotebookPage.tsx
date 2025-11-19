@@ -7,15 +7,28 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
+import MenuOpenIcon from "@mui/icons-material/MenuOpen";
+import MenuIcon from "@mui/icons-material/Menu";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import SummarizeIcon from "@mui/icons-material/Summarize";
+import FlashlightOnIcon from "@mui/icons-material/FlashlightOn";
+import QuizIcon from "@mui/icons-material/Quiz";
 import { createPortal } from "react-dom";
-import useLocalStorage from "../../hooks/useLocalStorage";
 import { MarkdownEditor } from "../../components/common/MarkdownEditor";
+import { user_note_service } from "../../services/user_note.service";
+import { User_Note } from "../../types/User_Note";
+import { useDebounce } from "../../hooks/useDebounce";
+import { useDispatch } from "react-redux";
+import { disableHighlightPopup } from "../../stores/highlightPopupSlice";
 
 // ========= Types =========
 interface LessonEntry {
+  _id?: string;
   id: string;
   title: string;
   dateISO: string;
+  content?: string;
 }
 
 // ========= Helpers =========
@@ -111,13 +124,30 @@ const Sidebar: React.FC<{
   onAdd: () => void;
   notes: Record<string, string>;
   onJumpToHeading: (id: string) => void;
-}> = ({ lessons, activeId, setActiveId, onAdd, notes, onJumpToHeading }) => {
+  onDelete: (lessonId: string) => Promise<void>;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+}> = ({ lessons, activeId, setActiveId, onAdd, notes, onJumpToHeading, onDelete, isCollapsed, onToggleCollapse }) => {
   const [query, setQuery] = useState("");
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
     null
   );
+
+  // Close sidebar menu when clicking outside
+  useEffect(() => {
+    if (!menuOpenId) return;
+
+    const handleClickOutside = () => {
+      setMenuOpenId(null);
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [menuOpenId]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
@@ -134,99 +164,160 @@ const Sidebar: React.FC<{
     setMenuPos({ top: rect.bottom + 4, left: rect.left });
   };
 
+  if (isCollapsed) {
+    return (
+      <div className="h-full w-16 border-r bg-gradient-to-b from-indigo-50 to-white backdrop-blur-sm flex flex-col">
+        {/* Header */}
+        <div className="flex-shrink-0 flex items-center justify-center p-3">
+          <button
+            onClick={onToggleCollapse}
+            className="p-2 rounded-lg hover:bg-indigo-100 text-indigo-600"
+            title="Expand sidebar"
+          >
+            <MenuOpenIcon />
+          </button>
+        </div>
+
+        {/* Content - Collapsed lesson list */}
+        <div className="flex-1 !overflow-y-auto w-full flex flex-col items-center gap-1 py-2 px-2">
+          {filtered.map((l) => (
+            <button
+              key={l.id}
+              onClick={() => setActiveId(l.id)}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${activeId === l.id
+                ? "bg-indigo-600 text-white shadow-md"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              title={l.title}
+            >
+              {l.title.charAt(0).toUpperCase()}
+            </button>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 flex items-center justify-center p-3 !mt-auto">
+          <button
+            onClick={onAdd}
+            className="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+            title="New lesson"
+          >
+            <AddIcon fontSize="small" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <aside className="h-full w-full max-w-xs border-r bg-white/90 backdrop-blur-sm">
-      {/* header */}
-      <div className="flex items-center justify-between gap-2 p-3">
+    <aside className="h-full w-full max-w-xs border-r bg-white backdrop-blur-sm flex flex-col min-h-0">
+
+      {/* Header */}
+      <div className="flex-shrink-0 flex items-center justify-between gap-2 p-4 border-b border-indigo-200/50">
         <div className="flex items-center gap-2 text-sm text-gray-700">
-          <LibraryBooksIcon className="h-4 w-4" />
-          <span className="font-semibold">Lessons</span>
+          <LibraryBooksIcon className="h-5 w-5 text-indigo-600" />
+          <span className="font-bold text-indigo-900">My Lessons</span>
         </div>
         <button
-          onClick={onAdd}
-          className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
+          onClick={onToggleCollapse}
+          className="p-1 rounded-lg hover:bg-indigo-100 text-gray-600"
+          title="Collapse sidebar"
         >
-          <AddIcon className="h-4 w-4" /> New
+          <MenuIcon fontSize="small" />
         </button>
       </div>
 
-      {/* search */}
-      <div className="px-3 pb-2">
-        <div className="flex items-center gap-2 rounded-xl border px-3 py-1.5">
-          <SearchIcon className="h-4 w-4 text-gray-500" />
+      {/* Search - part of header section */}
+      <div className="flex-shrink-0 px-4 py-3 border-b border-indigo-200/50">
+        <div className="flex items-center gap-2 rounded-lg border border-indigo-300 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500">
+          <SearchIcon className="h-4 w-4 text-gray-400" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search lesson title..."
-            className="w-full text-sm outline-none"
+            placeholder="Search..."
+            className="w-full text-sm outline-none bg-transparent"
           />
         </div>
       </div>
 
-      {/* list */}
-      <div className="flex max-h-[calc(100vh-140px)] flex-col gap-2 overflow-auto px-2 pb-3">
-        {filtered.map((l) => {
-          const isActive = activeId === l.id;
-          const isExpanded = expandedLessonId === l.id;
+      {/* Content - Scrollable lesson list */}
+      <div className="flex-1 min-h-0 !overflow-y-auto px-3 py-3">
+        <div className="space-y-2">
+          {filtered.length === 0 ? (
+            <div className="text-center py-8 text-gray-400 text-sm">
+              No lessons found
+            </div>
+          ) : (
+            filtered.map((l) => {
+              const isActive = activeId === l.id;
+              const isExpanded = expandedLessonId === l.id;
 
-          const markdown = notes[l.id] || "";
-          const headingsTree = extractHeadingsTree(markdown);
+              const markdown = notes[l.id] || "";
+              const headingsTree = extractHeadingsTree(markdown);
 
-          return (
-            <div
-              key={l.id}
-              className="rounded-xl border bg-white shadow-sm overflow-visible"
-            >
-              {/* Row chính */}
-              <div
-                className={`flex items-center justify-between px-2 py-2 cursor-pointer hover:bg-gray-50 ${isActive ? "bg-gray-100" : ""
-                  }`}
-                onClick={() => setActiveId(l.id)}
-              >
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExpandedLessonId(isExpanded ? null : l.id);
-                    }}
-                    className="p-1"
+              return (
+                <div key={l.id}>
+                  {/* Row chính */}
+                  <div
+                    className={`flex items-center justify-between px-3 py-2.5 cursor-pointer rounded-lg transition-all ${isActive
+                      ? "bg-indigo-600 text-white shadow-md"
+                      : "hover:bg-indigo-100 text-gray-700"
+                      }`}
+                    onClick={() => setActiveId(l.id)}
                   >
-                    {isExpanded ? (
-                      <ExpandLessIcon fontSize="small" />
-                    ) : (
-                      <ExpandMoreIcon fontSize="small" />
-                    )}
-                  </button>
-                  <div>
-                    <div className="truncate text-sm font-medium">{l.title}</div>
-                    <div className="truncate text-xs text-gray-500">
-                      {fmtDate(l.dateISO)}
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedLessonId(isExpanded ? null : l.id);
+                        }}
+                        className="p-0.5 flex-shrink-0"
+                      >
+                        {isExpanded ? (
+                          <ExpandLessIcon fontSize="small" />
+                        ) : (
+                          <ExpandMoreIcon fontSize="small" />
+                        )}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">{l.title}</div>
+                        <div className={`truncate text-xs ${isActive ? "text-indigo-100" : "text-gray-500"}`}>
+                          {fmtDate(l.dateISO)}
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Nút 3 chấm */}
+                    <button
+                      onClick={(e) => handleOpenMenu(e, l.id)}
+                      className={`p-1 rounded flex-shrink-0 ${isActive ? "hover:bg-indigo-500" : "hover:bg-gray-200"}`}
+                    >
+                      <MoreVertIcon fontSize="small" />
+                    </button>
                   </div>
-                </div>
 
-                {/* Nút 3 chấm */}
-                <button
-                  onClick={(e) => handleOpenMenu(e, l.id)}
-                  className="p-1 rounded hover:bg-gray-200"
-                >
-                  <MoreVertIcon fontSize="small" />
-                </button>
-              </div>
-
-              {/* mục lục khi expand */}
-              {isExpanded && (
-                <div className="pl-8 pb-2 space-y-1 text-xs text-gray-600">
-                  {headingsTree.length === 0 ? (
-                    <div className="text-gray-400 italic">No headings</div>
-                  ) : (
-                    <HeadingTree nodes={headingsTree} onJump={onJumpToHeading} />
+                  {/* mục lục khi expand */}
+                  {isExpanded && headingsTree.length > 0 && (
+                    <div className="ml-8 mt-1 mb-2 pl-2 border-l-2 border-indigo-300 space-y-1">
+                      <HeadingTree nodes={headingsTree} onJump={onJumpToHeading} />
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          );
-        })}
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Footer - New Lesson button */}
+      <div className="mt-auto flex-shrink-0 p-3 border-t border-indigo-200/50">
+        <button
+          onClick={onAdd}
+          className="w-full flex items-center justify-center gap-2 rounded-lg bg-indigo-600 text-white px-3 py-2.5 font-medium hover:bg-indigo-700 transition-colors"
+        >
+          <AddIcon fontSize="small" />
+          <span>New Lesson</span>
+        </button>
       </div>
 
       {/* Portal menu */}
@@ -234,11 +325,12 @@ const Sidebar: React.FC<{
         menuPos &&
         createPortal(
           <div
-            className="absolute z-[9999] w-32 rounded-lg border bg-white shadow-lg"
+            className="absolute z-[9999] w-40 rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden"
             style={{ top: menuPos.top, left: menuPos.left }}
+            onClick={(e) => e.stopPropagation()}
           >
             <button
-              className="block w-full px-3 py-1 text-left text-sm hover:bg-gray-100"
+              className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
               onClick={() => {
                 setMenuOpenId(null);
                 alert(`Export lesson ${menuOpenId}`);
@@ -247,7 +339,7 @@ const Sidebar: React.FC<{
               Export
             </button>
             <button
-              className="block w-full px-3 py-1 text-left text-sm hover:bg-gray-100"
+              className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
               onClick={() => {
                 setMenuOpenId(null);
                 alert(`Import to lesson ${menuOpenId}`);
@@ -256,10 +348,12 @@ const Sidebar: React.FC<{
               Import
             </button>
             <button
-              className="block w-full px-3 py-1 text-left text-sm text-red-600 hover:bg-gray-100"
-              onClick={() => {
+              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 font-medium flex items-center gap-2"
+              onClick={async () => {
                 setMenuOpenId(null);
-                alert(`Delete lesson ${menuOpenId}`);
+                if (window.confirm("Bạn có chắc chắn muốn xóa ghi chú này?")) {
+                  await onDelete(menuOpenId);
+                }
               }}
             >
               Delete
@@ -277,24 +371,95 @@ const NotebookPage: React.FC<{
   lesson: LessonEntry;
   onEditTitle: (title: string) => void;
   content: string;
-}> = ({ lesson, onEditTitle, content }) => {
+  onSaveContent: (content: string) => Promise<void>;
+}> = ({ lesson, onEditTitle, content, onSaveContent }) => {
+  const [localTitle, setLocalTitle] = useState(lesson.title);
+  const [titleUpdateStatus, setTitleUpdateStatus] = useState<"idle" | "updating" | "updated">("idle");
+  const [contentUpdateStatus, setContentUpdateStatus] = useState<"idle" | "updating" | "updated">("idle");
+  const [prevLessonId, setPrevLessonId] = useState(lesson.id);
+  const debouncedTitle = useDebounce(localTitle, 1000);
+
+  // Update local title when lesson changes (MUST come first)
+  useEffect(() => {
+    setLocalTitle(lesson.title);
+    setTitleUpdateStatus("idle");
+    setContentUpdateStatus("idle");
+    setPrevLessonId(lesson.id);
+  }, [lesson.id]); // Use lesson.id to detect when lesson changes
+
+  // Call API when debounced title changes
+  useEffect(() => {
+    if (
+      debouncedTitle !== lesson.title &&
+      debouncedTitle === localTitle &&
+      prevLessonId === lesson.id
+    ) {
+      setTitleUpdateStatus("updating");
+      onEditTitle(debouncedTitle);
+      setTimeout(() => {
+        setTitleUpdateStatus("updated");
+        setTimeout(() => {
+          setTitleUpdateStatus("idle");
+        }, 2000);
+      }, 500);
+    }
+  }, [debouncedTitle, lesson.title, localTitle, prevLessonId, lesson.id, onEditTitle]);
+
+  // Get the most recent status to display
+  const displayStatus = contentUpdateStatus !== "idle" ? contentUpdateStatus : titleUpdateStatus;
+
+  const handleSaveContent = async (markdown: string) => {
+    setContentUpdateStatus("updating");
+    try {
+      await onSaveContent(markdown);
+      setTimeout(() => {
+        setContentUpdateStatus("updated");
+        setTimeout(() => {
+          setContentUpdateStatus("idle");
+        }, 2000);
+      }, 500);
+    } catch (err) {
+      setContentUpdateStatus("idle");
+    }
+  };
+
   return (
-    <div
-      className="relative mx-auto w-full max-w-4xl rounded-[28px] border bg-white shadow-xl p-6 overflow-y-auto h-full"
-    >
-      {/* cho phép đổi tên bài học */}
-      <input
-        className="mb-4 w-full rounded-xl border-0 bg-transparent text-lg font-bold outline-none"
-        value={lesson.title}
-        onChange={(e) => onEditTitle(e.target.value)}
-      />
+    <div className="flex h-full flex-col bg-white overflow-hidden">
+      {/* Header with title and metadata */}
+      <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white px-6 py-4 flex-shrink-0">
+        <input
+          className="w-full text-2xl font-bold text-gray-900 outline-none bg-transparent placeholder-gray-300 mb-2"
+          value={localTitle}
+          onChange={(e) => {
+            setLocalTitle(e.target.value);
+            setTitleUpdateStatus("idle");
+          }}
+          placeholder="Lesson title"
+        />
+        <div className="flex items-center gap-3 text-sm">
+          <span className="text-gray-500">{fmtDate(lesson.dateISO)}</span>
+          <span className="text-gray-300">•</span>
+          <span className="text-gray-500">ID: {lesson.id.slice(0, 8)}</span>
+          {displayStatus === "updating" && (
+            <div className="flex items-center gap-1.5 ml-auto text-amber-600">
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-amber-400 border-r-amber-600" />
+              <span>Updating...</span>
+            </div>
+          )}
+          {displayStatus === "updated" && (
+            <div className="flex items-center gap-1.5 ml-auto text-green-600 font-medium">
+              <CheckCircleIcon className="!h-4 !w-4" />
+              Updated
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Editor thay thế phần hiển thị markdown thuần */}
       <MarkdownEditor
-        initialValue={content || "# Gõ thử đi 🚀"}
-        onSave={(markdown, target) => {
-          console.log("Lưu note:", markdown, "vào", target);
-        }}
+        key={lesson.id}
+        initialValue={content || ""}
+        onSave={handleSaveContent}
       />
     </div>
   );
@@ -310,26 +475,68 @@ export default function StudyNotebookFlip3D({
   onClose?: () => void;
   clipboardText?: string;
 }) {
-  const [notes, setNotes] = useLocalStorage<Record<string, string>>(
-    "markdown_notes",
-    {
-      lesson1:
-        "# Ghi chú ban đầu\n\nBạn có thể chỉnh sửa nội dung này bằng Markdown.\n\n* Ghi chú quan trọng 1\n\n* Ghi chú quan trọng 2\n\n* Ghi chu\n\n",
-    }
-  );
-
-  // lessons sẽ sinh từ notes keys
+  // lessons sẽ sinh từ API
   const [lessons, setLessons] = useState<LessonEntry[]>([]);
+  const [notes, setNotes] = useState<Record<string, string>>({});
   const [showClipboardToast, setShowClipboardToast] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [aiMenuOpen, setAiMenuOpen] = useState(false);
+  const [aiMenuPos, setAiMenuPos] = useState<{ top: number; left: number } | null>(null);
 
+  // disable highlight popup
+  const dispatch = useDispatch();
+
+  // Close AI menu when clicking outside
   useEffect(() => {
-    const arr = Object.keys(notes).map((key) => ({
-      id: key,
-      title: key, // 👈 hiển thị key làm title (lesson1, lesson2, …)
-      dateISO: new Date().toISOString(),
-    }));
-    setLessons(arr);
-  }, [notes]);
+    if (!aiMenuOpen) return;
+
+    const handleClickOutside = () => {
+      setAiMenuOpen(false);
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [aiMenuOpen]);
+
+  // Fetch notes from server on component mount or when modal opens
+  useEffect(() => {
+    const fetchNotes = async () => {
+      if (!isOpen) return;
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const serverNotes = await user_note_service.getNotesByUserId();
+
+        // Convert server notes to lesson format
+        const lessonMap: Record<string, string> = {};
+        const lessonList: LessonEntry[] = serverNotes.map((note: User_Note) => {
+          lessonMap[note._id] = note.content;
+          return {
+            _id: note._id,
+            id: note._id,
+            title: note.title,
+            dateISO: note.created_at,
+            content: note.content,
+          };
+        });
+
+        setLessons(lessonList);
+        setNotes(lessonMap);
+      } catch (err) {
+        console.error("Error fetching notes:", err);
+        setError("Không thể tải ghi chú. Vui lòng thử lại.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    dispatch(disableHighlightPopup());
+    fetchNotes();
+  }, [isOpen]);
 
   // Hiển thị toast khi có clipboard text
   useEffect(() => {
@@ -357,7 +564,7 @@ export default function StudyNotebookFlip3D({
     };
 
   }, [isOpen]); // useEffect sẽ chạy lại mỗi khi isOpen thay đổi
-  
+
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
 
@@ -366,17 +573,89 @@ export default function StudyNotebookFlip3D({
     [lessons, activeId]
   );
 
-  const addLesson = () => {
-    const id = `lesson${Object.keys(notes).length + 1}`;
-    setNotes({ ...notes, [id]: "# New Lesson" });
-    setActiveId(id);
+  const addLesson = async () => {
+    try {
+      const newNote = await user_note_service.createNote({
+        title: "New Lesson",
+        content: "# New Lesson",
+      });
+
+      // Add to local lessons
+      const newLesson: LessonEntry = {
+        _id: newNote._id,
+        id: newNote._id,
+        title: newNote.title,
+        dateISO: newNote.created_at,
+        content: newNote.content,
+      };
+
+      setLessons((prev) => [...prev, newLesson]);
+      setNotes((prev) => ({ ...prev, [newNote._id]: newNote.content }));
+      setActiveId(newNote._id);
+    } catch (err) {
+      console.error("Error creating note:", err);
+      setError("Không thể tạo ghi chú mới.");
+    }
   };
 
-  const editTitle = (title: string) => {
+  const editTitle = async (title: string) => {
     if (!active) return;
-    setLessons((prev) =>
-      prev.map((l) => (l.id === active.id ? { ...l, title } : l))
-    );
+
+    try {
+      // Update on server
+      await user_note_service.updateNote(
+        { title },
+        active._id || active.id
+      );
+
+      // Update local state
+      setLessons((prev) =>
+        prev.map((l) => (l.id === active.id ? { ...l, title } : l))
+      );
+    } catch (err) {
+      console.error("Error updating title:", err);
+      setError("Không thể cập nhật tiêu đề.");
+    }
+  };
+
+  const deleteLesson = async (lessonId: string) => {
+    try {
+      await user_note_service.deleteNote(lessonId);
+
+      // Remove from local state
+      setLessons((prev) => prev.filter((l) => l.id !== lessonId));
+      const newNotes = { ...notes };
+      delete newNotes[lessonId];
+      setNotes(newNotes);
+
+      // Clear active if deleted lesson was active
+      if (activeId === lessonId) {
+        setActiveId(null);
+      }
+    } catch (err) {
+      console.error("Error deleting note:", err);
+      setError("Không thể xóa ghi chú.");
+    }
+  };
+
+  const saveContent = async (content: string) => {
+    if (!active) return;
+
+    try {
+      await user_note_service.updateNote(
+        { content },
+        active._id || active.id
+      );
+
+      // Update local cache
+      setNotes((prev) => ({
+        ...prev,
+        [active.id]: content,
+      }));
+    } catch (err) {
+      console.error("Error saving content:", err);
+      setError("Không thể lưu nội dung.");
+    }
   };
 
   const handleJumpToHeading = (id: string) => {
@@ -386,19 +665,33 @@ export default function StudyNotebookFlip3D({
     }
   };
 
-  const handlePasteClipboard = () => {
+  const handlePasteClipboard = async () => {
     if (!clipboardText || !active) return;
-    
-    const timestamp = new Date().toLocaleString();
-    const formattedContent = `\n\n---\n\n> **Highlighted on ${timestamp}**\n> \n> ${clipboardText.split("\n").join("\n> ")}\n\n`;
-    
-    const currentContent = notes[active.id] || "";
-    setNotes({
-      ...notes,
-      [active.id]: currentContent + formattedContent,
-    });
-    
-    setShowClipboardToast(false);
+
+    try {
+      const timestamp = new Date().toLocaleString();
+      const formattedContent = `\n\n---\n\n> **Highlighted on ${timestamp}**\n> \n> ${clipboardText.split("\n").join("\n> ")}\n\n`;
+
+      const currentContent = notes[active.id] || "";
+      const newContent = currentContent + formattedContent;
+
+      // Update on server
+      await user_note_service.updateNote(
+        { content: newContent },
+        active._id || active.id
+      );
+
+      // Update local state
+      setNotes({
+        ...notes,
+        [active.id]: newContent,
+      });
+
+      setShowClipboardToast(false);
+    } catch (err) {
+      console.error("Error pasting clipboard:", err);
+      setError("Không thể dán nội dung.");
+    }
   };
 
   if (!isOpen) return null;
@@ -411,14 +704,87 @@ export default function StudyNotebookFlip3D({
       />
 
       <div
-        className={`relative z-[2001] bg-white shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${isMaximized
-            ? "w-screen h-screen max-w-none max-h-none rounded-none"
-            : "w-[90%] h-[85%] max-w-6xl max-h-[750px] rounded-3xl"
-          }`}
+        className="relative z-[2001] bg-white shadow-2xl flex flex-col"
+        style={{
+          transition: "all 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+          width: isMaximized ? "100vw" : "90%",
+          height: isMaximized ? "100vh" : "85%",
+          maxWidth: isMaximized ? "none" : "1280px",
+          maxHeight: isMaximized ? "none" : "750px",
+          borderRadius: isMaximized ? "0px" : "24px",
+          overflow: isMaximized ? "auto" : "hidden",
+          willChange: "width, height, border-radius",
+        }}
       >
-        <header className="flex items-center justify-between p-3 border-b bg-white/90 backdrop-blur shrink-0">
+        {error && (
+          <div className="bg-red-100 border-b border-red-300 text-red-700 px-4 py-3 rounded-t-lg">
+            {error}
+            <button
+              onClick={() => setError(null)}
+              className="float-right text-red-600 hover:text-red-900"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        <header className="flex items-center justify-between p-3 border-b bg-gradient-to-b from-indigo-50 to-white backdrop-blur shrink-0">
           <h1 className="text-lg font-bold">TOEIC Study Notebook</h1>
-          <div className="flex gap-2">
+          <div className="flex gap-2 relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const rect = e.currentTarget.getBoundingClientRect();
+                setAiMenuOpen(!aiMenuOpen);
+                setAiMenuPos({ top: rect.bottom + 4, left: rect.left });
+              }}
+              disabled={!active}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 transition-all font-medium text-sm disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed"
+            >
+              <AutoAwesomeIcon fontSize="small" />
+              AI Tools
+            </button>
+
+            {/* AI Tools Dropdown Menu */}
+            {aiMenuOpen && active && aiMenuPos && createPortal(
+              <div
+                className="absolute z-[9999] w-56 rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden"
+                style={{ top: aiMenuPos.top, left: aiMenuPos.left }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
+                  onClick={() => {
+                    console.log("Create Summary - Note ID:", active._id || active.id);
+                    setAiMenuOpen(false);
+                  }}
+                >
+                  <SummarizeIcon className="!w-5 !h-5 text-blue-500" />
+                  Create Summary
+                </button>
+                <button
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
+                  onClick={() => {
+                    console.log("Create Flashcard - Note ID:", active._id || active.id);
+                    setAiMenuOpen(false);
+                  }}
+                >
+                  <FlashlightOnIcon className="!w-5 !h-5 text-yellow-500" />
+                  Create Flashcard
+                </button>
+                <button
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 font-medium text-gray-700 flex items-center gap-2"
+                  onClick={() => {
+                    console.log("Create Quiz - Note ID:", active._id || active.id);
+                    setAiMenuOpen(false);
+                  }}
+                >
+                  <QuizIcon className="!w-5 !h-5 text-purple-500" />
+                  Create Quiz
+                </button>
+              </div>,
+              document.body
+            )}
+
             <button
               onClick={() => setIsMaximized((v) => !v)}
               className="rounded-2xl border px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 flex items-center gap-1"
@@ -453,7 +819,7 @@ export default function StudyNotebookFlip3D({
           </div>
         </header>
 
-        <div className="grid flex-1 grid-cols-1 md:grid-cols-[1fr_2fr] overflow-hidden">
+        <div className={`grid h-full overflow-hidden transition-all duration-300 ${sidebarCollapsed ? "grid-cols-[64px_1fr]" : "grid-cols-[280px_1fr]"}`}>
           <Sidebar
             lessons={lessons}
             activeId={activeId}
@@ -461,9 +827,16 @@ export default function StudyNotebookFlip3D({
             onAdd={addLesson}
             notes={notes}
             onJumpToHeading={handleJumpToHeading}
+            onDelete={deleteLesson}
+            isCollapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           />
-          <main className="p-2 overflow-y-auto relative">
-            {!active ? (
+          <main className="overflow-y-auto relative">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-gray-500">Đang tải ghi chú...</div>
+              </div>
+            ) : !active ? (
               <div className="mx-auto max-w-3xl rounded-3xl border bg-white/70 p-8 text-center text-gray-600">
                 Chọn hoặc tạo một mục để bắt đầu viết.
               </div>
@@ -472,6 +845,7 @@ export default function StudyNotebookFlip3D({
                 lesson={active}
                 onEditTitle={editTitle}
                 content={notes[active.id] || ""}
+                onSaveContent={saveContent}
               />
             )}
 

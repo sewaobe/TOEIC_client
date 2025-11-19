@@ -8,6 +8,21 @@ export interface Session {
   total: number;
 }
 
+// Backend structure from API
+export interface SessionItem {
+  kind: string;
+  activity_id?: string;
+  status: string;
+  completed: boolean;
+}
+
+export interface SessionDetail {
+  session_no: number;
+  status: string;
+  part_type?: number | null;
+  items: SessionItem[];
+}
+
 export interface Topic {
   key: string;
   label: string;

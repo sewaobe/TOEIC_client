@@ -151,7 +151,6 @@ const learningPathService = {
       "/learning-path/",
       payload
     );
-    console.log(res);
     return res.data;
   },
 

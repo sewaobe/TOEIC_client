@@ -43,8 +43,13 @@ export const DayTab: React.FC<Props> = ({
               outerRadius: 120,
               paddingAngle: 1.5,
               cornerRadius: 3,
-              data: sessions.map((s, i) => ({ id: i + 1, label: s.activity, value: durationMin(s), color: dayColors[i] })),
-              arcLabel: (item) => `${item.value}’`,
+              data: sessions.map((s, i) => ({ 
+                id: i + 1, 
+                label: s.activity || `Session ${i + 1}`, 
+                value: durationMin(s), 
+                color: dayColors[i] 
+              })),
+              arcLabel: (item) => `${item.value}'`,
               arcLabelMinAngle: 10,
             }]}
           />
@@ -72,12 +77,17 @@ export const DayTab: React.FC<Props> = ({
               <Stack key={i} direction="row" alignItems="center" spacing={1.5} sx={{ p: 1, border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
                 <Avatar>{i + 1}</Avatar>
                 <Box flex={1}>
-                  <Typography fontWeight={700}>{s.activity}</Typography>
-                  <Typography variant="caption">{s.start}–{s.end} · {durationMin(s)}’ · Đúng {s.correct}/{s.total}</Typography>
-                  <Stack direction="row" spacing={1}>
-                    <Tooltip title="Focus"><Chip size="small" label={`🎯 ${s.focus}/10`} /></Tooltip>
-                    <Tooltip title="Hiểu bài"><Chip size="small" label={`🧠 ${s.understanding}/5`} /></Tooltip>
-                  </Stack>
+                  <Typography fontWeight={700}>{s.activity || `Session ${i + 1}`}</Typography>
+                  <Typography variant="caption">
+                    {s.start && s.end ? `${s.start}–${s.end}` : 'N/A'} · {durationMin(s)}'
+                    {s.correct !== undefined && s.total !== undefined ? ` · Đúng ${s.correct}/${s.total}` : ''}
+                  </Typography>
+                  {s.focus !== undefined && s.understanding !== undefined && (
+                    <Stack direction="row" spacing={1}>
+                      <Tooltip title="Focus"><Chip size="small" label={`🎯 ${s.focus}/10`} /></Tooltip>
+                      <Tooltip title="Hiểu bài"><Chip size="small" label={`🧠 ${s.understanding}/5`} /></Tooltip>
+                    </Stack>
+                  )}
                 </Box>
                 <Button size="small" variant="outlined">Ghi chú</Button>
               </Stack>

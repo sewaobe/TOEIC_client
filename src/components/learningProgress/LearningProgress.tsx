@@ -12,7 +12,7 @@ import { DayTab } from "./DayTab";
 import { WeekTab } from "./WeekTab";
 import { ProgramTab } from "./ProgramTab";
 import { InteractiveKpiDashboard } from "./KpiStrip";
-import { sum, durationMin, generateColors, computePercent, computeDailyEfficiency } from "../../utils/learningProgress";
+import { sum, durationMin, generateColors, computePercent, computeDailyEfficiency, transformBackendSessions } from "../../utils/learningProgress";
 import { Session, Topic, Badge, DayTask } from "../../types/LearningProgress";
 import learningPathService, { LearningProgressResponse } from "../../services/learningPath.service";
 
@@ -53,21 +53,21 @@ export default function LearningProgress() {
   const [tab, setTab] = useState(0);
   const [week, setWeek] = useState(4);
   const [day, setDay] = useState(3);
-  
+
   // API state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [progressData, setProgressData] = useState<LearningProgressResponse | null>(null);
-  
+
   // Additional data states
   const [dayData, setDayData] = useState<any>(null);
   const [weekStatsData, setWeekStatsData] = useState<any>(null);
   const [cumulativeData, setCumulativeData] = useState<any>(null);
-  
+
   // Track current IDs for fetching detailed data
   const [currentDayId, setCurrentDayId] = useState<string | null>(null);
   const [selectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  
+
   // Loading states for individual tabs
   const [loadingDay, setLoadingDay] = useState(false);
   const [loadingWeek, setLoadingWeek] = useState(false);
@@ -79,12 +79,12 @@ export default function LearningProgress() {
         setLoading(true);
         setError(null);
         const response = await learningPathService.getLearningProgress();
-        
+
         if (response.success && response.data) {
           setProgressData(response.data);
           // Set current week from API
           setWeek(response.data.current_week);
-          
+
           // Fetch additional data
           await Promise.all([
             fetchCumulativeStats(),
@@ -121,7 +121,7 @@ export default function LearningProgress() {
       const currentWeekData = progressData.weeks.find((w) => w.week_no === week);
       if (currentWeekData && currentWeekData._id) {
         fetchWeekStats(currentWeekData._id);
-        
+
         // Set current day ID (default to first day of the week)
         if (currentWeekData.days && currentWeekData.days.length > 0) {
           const dayIndex = Math.min(day, currentWeekData.days.length - 1);
@@ -193,8 +193,10 @@ export default function LearningProgress() {
 
   const percentProgram = computePercent(TOTAL_WEEKS, DAYS_PER_WEEK, week, day);
 
-  // Use API data if available, otherwise fallback to mock
-  const sessions = dayData?.sessions || mockSessions;
+  // Transform backend sessions to frontend format, fallback to mock if unavailable
+  const transformedSessions = transformBackendSessions(dayData?.sessions);
+  const sessions = transformedSessions.length > 0 ? transformedSessions : mockSessions;
+  
   const dayMinutesActual = dayData?.metrics?.dayMinutesActual || sum(sessions.map(durationMin));
   const dayMinutesPlanned = dayData?.metrics?.dayMinutesPlanned || 90;
   const dailyEfficiency = dayData?.metrics?.dailyEfficiency || computeDailyEfficiency(sessions);
@@ -260,9 +262,9 @@ export default function LearningProgress() {
           mb: 2,
         }}
       >
-        <Stack 
-          direction={{ xs: "column", sm: "row" }} 
-          spacing={3} 
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={3}
           justifyContent="center"
           alignItems="center"
         >
@@ -278,15 +280,15 @@ export default function LearningProgress() {
                   variant={week === w.week_no ? "contained" : "outlined"}
                   onClick={() => handleWeekChange(w.week_no)}
                   disabled={w.status === 'lock'}
-                  sx={{ 
+                  sx={{
                     minWidth: 45,
                     height: 40,
                     fontWeight: week === w.week_no ? 700 : 400,
                   }}
                   color={
                     w.status === 'completed' ? 'success' :
-                    w.status === 'in_progress' ? 'primary' :
-                    'inherit'
+                      w.status === 'in_progress' ? 'primary' :
+                        'inherit'
                   }
                 >
                   {w.week_no}
@@ -312,15 +314,15 @@ export default function LearningProgress() {
                     variant={day === d ? "contained" : "outlined"}
                     onClick={() => handleDayChange(d)}
                     disabled={isDayLocked}
-                    sx={{ 
+                    sx={{
                       minWidth: 45,
                       height: 40,
                       fontWeight: day === d ? 700 : 400,
                     }}
                     color={
                       dayData?.status === 'completed' ? 'success' :
-                      dayData?.status === 'in_progress' ? 'warning' :
-                      'inherit'
+                        dayData?.status === 'in_progress' ? 'warning' :
+                          'inherit'
                     }
                   >
                     {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d]}

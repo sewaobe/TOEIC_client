@@ -164,6 +164,18 @@ const Sidebar: React.FC<{
     setMenuPos({ top: rect.bottom + 4, left: rect.left });
   };
 
+  const downloadMarkdownFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
+
   if (isCollapsed) {
     return (
       <div className="h-full w-16 border-r bg-gradient-to-b from-indigo-50 to-white backdrop-blur-sm flex flex-col">
@@ -333,10 +345,14 @@ const Sidebar: React.FC<{
               className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
               onClick={() => {
                 setMenuOpenId(null);
-                alert(`Export lesson ${menuOpenId}`);
+
+                const markdown = notes[menuOpenId] || "";
+                const title = lessons.find((l) => l.id === menuOpenId)?.title || "note";
+
+                downloadMarkdownFile(markdown, `${title}.md`);
               }}
             >
-              Export
+              Export (.md)
             </button>
             <button
               className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"

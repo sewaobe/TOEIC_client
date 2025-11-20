@@ -31,13 +31,13 @@ export default function PracticeQuizPage() {
   return (
     <PracticeLayout>
       {viewState === 'list' ? (
-        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#f0f7ff' }}>
+        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           {/* Content */}
           <Box
             sx={{
               flex: 1,
               overflow: 'auto',
-              '&::-webkit-scrollbar': { width: '8px' },
+              '&::-webkit-scrollbar': { width: '4px' },
               '&::-webkit-scrollbar-track': { background: 'transparent' },
               '&::-webkit-scrollbar-thumb': { background: '#bdbdbd', borderRadius: '4px', '&:hover': { background: '#9e9e9e' } }
             }}

@@ -111,7 +111,6 @@ const QuizQuestion: React.FC<QuizQuestionProps> = ({
                       : '#1976d2'
                     : '#e2e8f0',
                   borderRadius: 2,
-                  p: 2,
                   cursor: readOnly ? 'default' : 'pointer',
                   transition: 'all 0.2s ease',
                   bgcolor: selectedAnswer === key

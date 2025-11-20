@@ -117,10 +117,9 @@ export const WelcomeModal = ({ open, onClose }: WelcomeModalProps) => {
                                             fontWeight: 800,
                                             fontSize: { xs: "1.9rem", md: "2.4rem" },
                                             background:
-                                                "linear-gradient(90deg, #7F00FF 0%, #00D4FF 100%)",
+                                                "linear-gradient(90deg, #4C8BF5 0%, #78D8FF 100%)",
                                             WebkitBackgroundClip: "text",
                                             WebkitTextFillColor: "transparent",
-                                            textShadow: "0px 0px 10px rgba(127, 0, 255, 0.3)",
                                         }}
                                     >
                                         TOEIC Smart
@@ -246,7 +245,7 @@ export const WelcomeModal = ({ open, onClose }: WelcomeModalProps) => {
                                     }}
                                     sx={{
                                         mt: 3,
-                                        background: "linear-gradient(90deg, #7F00FF 0%, #00D4FF 100%)",
+                                        background: "linear-gradient(90deg, #4C8BF5 0%, #78D8FF 100%)",
                                         color: "#fff",
                                         px: 5,
                                         py: 1.5,

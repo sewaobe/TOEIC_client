@@ -293,9 +293,19 @@ const MarkdownEditorImpl: FC<MarkdownEditorProps> = ({ initialValue, onSave }) =
         </div>
       )}
 
-      <div className="flex-1 overflow-auto markdown-editor">
+      <div
+        className="flex-1 overflow-auto markdown-editor mb-16"
+        style={{
+          scrollbarWidth: "none",      // Firefox
+          msOverflowStyle: "none",     // IE/Edge
+        }}
+      >
+        <style>{`
+    .markdown-editor::-webkit-scrollbar { display: none; }
+  `}</style>
         <Milkdown />
       </div>
+
     </div>
   );
 };

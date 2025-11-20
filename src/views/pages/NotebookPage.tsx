@@ -355,15 +355,6 @@ const Sidebar: React.FC<{
               Export (.md)
             </button>
             <button
-              className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
-              onClick={() => {
-                setMenuOpenId(null);
-                alert(`Import to lesson ${menuOpenId}`);
-              }}
-            >
-              Import
-            </button>
-            <button
               className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 font-medium flex items-center gap-2"
               onClick={async () => {
                 setMenuOpenId(null);
@@ -442,7 +433,8 @@ const NotebookPage: React.FC<{
   return (
     <div className="flex h-full flex-col bg-white overflow-hidden">
       {/* Header with title and metadata */}
-      <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white px-6 py-4 flex-shrink-0">
+      <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white px-6 py-4 
+     flex-shrink-0 sticky top-0 z-20 backdrop-blur-md bg-white/80">
         <input
           className="w-full text-2xl font-bold text-gray-900 outline-none bg-transparent placeholder-gray-300 mb-2"
           value={localTitle}
@@ -816,13 +808,6 @@ export default function StudyNotebookFlip3D({
                   Maximize
                 </>
               )}
-            </button>
-
-            <button
-              onClick={addLesson}
-              className="rounded-2xl bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
-            >
-              New Lesson
             </button>
             {onClose && (
               <button

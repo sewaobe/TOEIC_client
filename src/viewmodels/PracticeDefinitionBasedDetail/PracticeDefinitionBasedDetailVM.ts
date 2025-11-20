@@ -1,13 +1,13 @@
-import { FlashcardItem } from "../../components/modals/CreateFlashcardItemModal";
+import { VocabularyWord } from "../../types/PracticeDefinition";
 import { AI_API_SERVICE } from "../../services/ai_api.service";
-import { topicService } from "../../services/topic.service";
+import { practiceDefinitionService } from "../../services/practice_definition.service";
 import { practiceSessionService } from "../../services/practice_session.service";
 import { VocabularyDefinitionAttempt } from "../../types/Vocabulary_Definition_Attempt";
 import { PracticeSession } from "../../types/PracticeSession";
 import { BaseViewModel } from "../BaseVM";
 
 export class PracticeDefinitionBasedDetailVM extends BaseViewModel {
-    vocabularies: FlashcardItem[] = [];
+    vocabularies: VocabularyWord[] = [];
     current_index: number = 0;
     current_answer: string = "";
     current_accuracy_score: number = 0;
@@ -22,9 +22,9 @@ export class PracticeDefinitionBasedDetailVM extends BaseViewModel {
             this.setLoading("fetchVocabularies", true);
             this.pendingPracticeId = practice_id;
 
-            // 1. Fetch vocabularies
-            const res = await topicService.getTopicVocabularyDetail(practice_id, 1, 100);
-            this.vocabularies = res.items;
+            // 1. Fetch vocabularies từ API mới
+            const words = await practiceDefinitionService.getRandomVocabularyWords(practice_id, 20);
+            this.vocabularies = words;
 
             // 2. Check có session in_progress không
             const existingSession = await practiceSessionService.getByTopic(practice_id, "definition_based");
@@ -39,7 +39,7 @@ export class PracticeDefinitionBasedDetailVM extends BaseViewModel {
             }
 
             // 3. Không có session hoặc user chọn bắt đầu lại → Tạo mới
-            await this.startNewSession(practice_id, res.items.length);
+            await this.startNewSession(practice_id, words.length);
         } catch (err) {
             this.emitError("Failed to fetch vocabularies.");
         } finally {
@@ -117,17 +117,19 @@ export class PracticeDefinitionBasedDetailVM extends BaseViewModel {
         }
     }
 
-    getCurrentVocabulary = (): FlashcardItem | null => {
+    getCurrentVocabulary = (): VocabularyWord | null => {
         return this.vocabularies[this.current_index] || null;
     }
 
     submitAnswer = async () => {
         const currentVocab = this.getCurrentVocabulary();
-        if (!currentVocab || !currentVocab._id || !currentVocab.definition) return;
+        if (!currentVocab || !currentVocab._id || !currentVocab.definitions || currentVocab.definitions.length === 0) return;
 
         try {
             this.setLoading("submitAnswer", true);
-            const result = await AI_API_SERVICE.submit_sentence_eval(this.current_answer, currentVocab.definition);
+            // Dùng definition đầu tiên để so sánh
+            const targetDefinition = currentVocab.definitions[0];
+            const result = await AI_API_SERVICE.submit_sentence_eval(this.current_answer, targetDefinition);
             const is_correct = result.similarity >= 0.65;
             this.current_accuracy_score = result.similarity;
             this.current_feedback = result.feedback;

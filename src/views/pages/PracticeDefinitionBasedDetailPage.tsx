@@ -266,10 +266,10 @@ const PracticeDefinitionBasedDetailPage = () => {
 
                                             <Typography sx={{ mt: 1.5 }}>
                                                 <strong>Định nghĩa chuẩn:</strong>{" "}
-                                                {vocab.definition || "Chưa có dữ liệu định nghĩa."}
+                                                {vocab.definitions?.[0] || "Chưa có dữ liệu định nghĩa."}
                                             </Typography>
 
-                                            {vocab.examples?.length ? (
+                                            {vocab.examples && vocab.examples.length > 0 ? (
                                                 <Box sx={{ mt: 1.5 }}>
                                                     <Typography
                                                         variant="body2"
@@ -285,7 +285,7 @@ const PracticeDefinitionBasedDetailPage = () => {
                                                             color="text.secondary"
                                                             sx={{ mb: 0.5 }}
                                                         >
-                                                            • {ex.en} <br /> → {ex.vi}
+                                                            • {ex}
                                                         </Typography>
                                                     ))}
                                                 </Box>

@@ -2,18 +2,18 @@ import { Box, Button, Stack, Typography } from "@mui/material";
 import PracticeLayout from "../layouts/PracticeLayout";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { topicService } from "../../services/topic.service";
+import { practiceDefinitionService } from "../../services/practice_definition.service";
 import { practiceSessionService } from "../../services/practice_session.service";
 import { PracticeSession } from "../../types/PracticeSession";
 import { EmptyState } from "../../components/common/EmptyState";
 import LessonCardsPanel from "../../components/practices/definition/LessonCardsPanel";
 import PaginationContainer from "../../components/common/PaginationContainer";
-import { FlashcardExplore } from "../../components/flashCard/ExploreCard";
+import { PracticeTopicVocabulary } from "../../types/PracticeDefinition";
 import { ArrowBack } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
 const PracticeDefinitionBasedPage = () => {
-    const [lessons, setLessons] = useState<FlashcardExplore[]>([]);
+    const [lessons, setLessons] = useState<PracticeTopicVocabulary[]>([]);
     const [sessions, setSessions] = useState<Record<string, PracticeSession>>({});
     const [page, setPage] = useState(1);
     const [pageCount, setPageCount] = useState(1);
@@ -24,8 +24,8 @@ const PracticeDefinitionBasedPage = () => {
         try {
             setLoading(true);
             
-            // Fetch lessons
-            const res = await topicService.getTopicVocabularyExplore(page, 9);
+            // Fetch lessons từ API mới
+            const res = await practiceDefinitionService.getTopics({ page, limit: 9, isPublic: true });
             setLessons(res.items);
             setPageCount(res.pageCount);
 

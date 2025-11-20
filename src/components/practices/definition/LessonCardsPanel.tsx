@@ -14,11 +14,11 @@ import SchoolIcon from "@mui/icons-material/School";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import { FlashcardExplore } from "../../flashCard/ExploreCard";
+import { PracticeTopicVocabulary } from "../../../types/PracticeDefinition";
 import { PracticeSession } from "../../../types/PracticeSession";
 
 interface LessonCardsPanelProps {
-    lesson: FlashcardExplore;
+    lesson: PracticeTopicVocabulary;
     session?: PracticeSession;
     onStartLesson?: (lessonId: string) => void;
 }
@@ -101,17 +101,6 @@ export default function LessonCardsPanel({
                     </Typography>
 
                     <Stack direction="row" spacing={1} mt={2} flexWrap="wrap">
-                        {lesson.isNew && (
-                            <Chip
-                                label="Mới"
-                                size="small"
-                                sx={{
-                                    bgcolor: "#eff6ff",
-                                    color: "#2563eb",
-                                    fontWeight: 500,
-                                }}
-                            />
-                        )}
                         {isCompleted && (
                             <Chip
                                 icon={<CheckCircleIcon sx={{ fontSize: 16 }} />}
@@ -136,7 +125,7 @@ export default function LessonCardsPanel({
                             />
                         )}
                         <Chip
-                            label={`${lesson.wordCount} câu hỏi`}
+                            label={`${lesson.vocabulary_count || 0} câu hỏi`}
                             size="small"
                             sx={{
                                 bgcolor: "#f5f6f8",

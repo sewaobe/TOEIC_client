@@ -16,6 +16,7 @@ import {
   Box,
   Alert,
   Collapse,
+  TextField,
 } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
@@ -51,6 +52,72 @@ const MIN_DAY = 30;
 const MAX_DAY = 600;
 const MIN_WEEK = 7 * MIN_DAY;
 const MAX_WEEK = 7 * 1440;
+
+const TimeInput = ({
+  value,
+  min,
+  max,
+  onChange,
+  step = 5,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
+  step?: number;
+}) => {
+  const clamp = (v: number) => Math.max(min, Math.min(max, v));
+
+  return (
+    <Stack direction="row" spacing={1} alignItems="center">
+      {/* Nút giảm */}
+      <Button
+        variant="outlined"
+        size="small"
+        onClick={() => onChange(clamp(value - step))}
+        sx={{ minWidth: 38, px: 1 }}
+      >
+        -
+      </Button>
+
+      {/* TextField nhập phút */}
+      <TextField
+        value={value}
+        size="small"
+        type="number"
+        onChange={(e) => {
+          const raw = Number(e.target.value);
+          if (!isNaN(raw)) onChange(clamp(raw));
+        }}
+        onBlur={(e) => {
+          // auto fix value
+          const raw = Number(e.target.value);
+          onChange(clamp(raw));
+        }}
+        inputProps={{
+          min,
+          max,
+          style: { textAlign: "center", width: 70, fontWeight: 600 },
+        }}
+      />
+
+      <Typography variant="body2" sx={{ minWidth: 40 }}>
+        phút
+      </Typography>
+
+      {/* Nút tăng */}
+      <Button
+        variant="outlined"
+        size="small"
+        onClick={() => onChange(clamp(value + step))}
+        sx={{ minWidth: 38, px: 1 }}
+      >
+        +
+      </Button>
+    </Stack>
+  );
+};
+
 
 export const DetailedPlanStep = () => {
   const [planEnd] = useLocalStorage<string>("plan_end", "");
@@ -370,22 +437,35 @@ export const DetailedPlanStep = () => {
                     const m = weeklyTotals[week - 1] ?? Math.ceil(weeklyHours * 60);
                     return (
                       <Stack key={week} spacing={0.5} onClick={() => setSelectedWeek(week)}>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center">
-                          <Typography variant="body2" color="text.secondary">
+
+                        {/* Tuần + TimeInput cùng hàng */}
+                        <Stack
+                          direction="row"
+                          alignItems="center"
+                          justifyContent="space-between"
+                          spacing={2}
+                        >
+                          {/* Label Tuần */}
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ minWidth: 70 }}
+                          >
                             Tuần {week}
                           </Typography>
-                          <Typography variant="body2" fontWeight={600}>
-                            {m} phút • ~{Math.round(m / 60)} giờ
-                          </Typography>
+
+                          {/* TimeInput */}
+                          <TimeInput
+                            value={m}
+                            min={MIN_WEEK}
+                            max={MAX_WEEK}
+                            step={15}
+                            onChange={(v) => {
+                              React.startTransition(() => handleWeekChange(week - 1, v))
+                            }}
+                          />
                         </Stack>
-                        <Slider
-                          aria-label={`Phút của tuần ${week}`}
-                          min={MIN_WEEK}
-                          max={MAX_WEEK}
-                          step={15}
-                          value={m}
-                          onChange={(_, v) => handleWeekChange(week - 1, v as number)}
-                        />
+
                         <Divider sx={{ opacity: 0.2 }} />
                       </Stack>
                     );
@@ -406,22 +486,27 @@ export const DetailedPlanStep = () => {
                     const plan = weekDays[String(selectedWeek)] || makeEvenWeekPlan(Math.ceil(weeklyHours * 60));
                     const val = plan[d];
                     return (
-                      <Stack key={d} spacing={0.5}>
-                        <Stack direction="row" justifyContent="space-between">
-                          <Typography variant="body2" color="text.secondary">
-                            {WEEK_LABELS[d]}
-                          </Typography>
-                          <Typography variant="body2" fontWeight={600}>
-                            {val} phút
-                          </Typography>
-                        </Stack>
-                        <Slider
-                          aria-label={`Phút ngày ${WEEK_LABELS[d]}`}
+                      <Stack
+                        key={d}
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        spacing={2}
+                      >
+                        {/* Tên ngày */}
+                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 70 }}>
+                          {WEEK_LABELS[d]}
+                        </Typography>
+
+                        {/* TimeInput nằm cùng hàng */}
+                        <TimeInput
+                          value={val}
                           min={MIN_DAY}
                           max={MAX_DAY}
                           step={5}
-                          value={val}
-                          onChange={(_, v) => handleDayChange(d, v as number)}
+                          onChange={(v) => {
+                            React.startTransition(() => handleDayChange(d, v))
+                          }}
                         />
                       </Stack>
                     );

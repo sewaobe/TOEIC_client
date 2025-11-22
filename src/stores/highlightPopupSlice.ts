@@ -13,12 +13,15 @@ const highlightPopupSlice = createSlice({
   initialState,
   reducers: {
     enableHighlightPopup: (state) => {
+      console.log("[Redux] enableHighlightPopup");
       state.enabled = true;
     },
     disableHighlightPopup: (state) => {
+      console.log("[Redux] disableHighlightPopup");
       state.enabled = false;
     },
     setHighlightPopupEnabled: (state, action: PayloadAction<boolean>) => {
+      console.log("[Redux] setHighlightPopupEnabled:", action.payload);
       state.enabled = action.payload;
     },
   },

@@ -20,7 +20,7 @@ import { user_note_service } from "../../services/user_note.service";
 import { User_Note } from "../../types/User_Note";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useDispatch } from "react-redux";
-import { disableHighlightPopup } from "../../stores/highlightPopupSlice";
+import { disableHighlightPopup, enableHighlightPopup } from "../../stores/highlightPopupSlice";
 
 // ========= Types =========
 interface LessonEntry {
@@ -542,8 +542,14 @@ export default function StudyNotebookFlip3D({
         setIsLoading(false);
       }
     };
-    dispatch(disableHighlightPopup());
     fetchNotes();
+
+    if (isOpen) {
+      dispatch(disableHighlightPopup());
+    }
+    return () => {
+      dispatch(enableHighlightPopup());
+    }
   }, [isOpen]);
 
   // Hiển thị toast khi có clipboard text

@@ -10,7 +10,7 @@ import {
   RestartAlt as RestartIcon,
   AutoAwesome as AutoAwesomeIcon,
 } from "@mui/icons-material";
-import HelpIcon from '@mui/icons-material/Help';
+import HelpIcon from "@mui/icons-material/Help";
 import {
   Box,
   Button,
@@ -18,8 +18,6 @@ import {
   CardContent,
   Checkbox,
   Typography,
-  ToggleButton,
-  ToggleButtonGroup,
   Slider,
   IconButton,
   Menu,
@@ -53,7 +51,6 @@ export interface DictationWord {
   index: number;
 }
 
-
 /* ===== Helpers ===== */
 const normalize = (text: string): string =>
   text
@@ -65,7 +62,10 @@ const normalize = (text: string): string =>
 const getBlankRatio = (level: Difficulty): number =>
   level === "easy" ? 0.2 : level === "hard" ? 0.55 : 0.35;
 
-const buildWords = async (text: string, ratio: number): Promise<DictationWord[]> => {
+const buildWords = async (
+  text: string,
+  ratio: number
+): Promise<DictationWord[]> => {
   const stopWords = await loadStopWords();
   const parts = text.split(/\s+/);
   const total = parts.length;
@@ -96,7 +96,8 @@ const buildWords = async (text: string, ratio: number): Promise<DictationWord[]>
 
 /* ===== Component ===== */
 export default function DictationContent({ dictation }: DictationContentProps) {
-  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+  // Dictation UI: force single mode (full-sentence input)
+  const [difficulty] = useState<Difficulty>("hard");
   const [sentences, setSentences] = useState<
     { id: number; text: string; words: DictationWord[] }[]
   >([]);
@@ -204,7 +205,6 @@ export default function DictationContent({ dictation }: DictationContentProps) {
     handlePlay();
     setStartedAt(Date.now());
   }, [currentIndex, isRunGuide]); // nhớ thêm isRunGuide vào deps
-
 
   /* ===== Logic ===== */
   const handleWordChange = (index: number, value: string) =>
@@ -403,24 +403,36 @@ export default function DictationContent({ dictation }: DictationContentProps) {
         width: "min(980px, 95%)",
         mx: "auto",
         minHeight: "calc(100vh - 100px)",
-        overflowY: "auto"
+        overflowY: "auto",
       }}
     >
       {/* Tour Guide */}
       <DictationTourGuide isRun={isRunGuide} />
 
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} className="dictation-header">
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+        className="dictation-header"
+      >
         <Box>
           <Typography variant="h4" fontWeight={700} color="#2563eb">
             {dictation.title}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Luyện nghe chép chính tả · {dictation.level || "—"} · {totalItems} câu
+            Luyện nghe chép chính tả · {dictation.level || "—"} · {totalItems}{" "}
+            câu
           </Typography>
         </Box>
 
-        <Box display="flex" alignItems="center" gap={2} className="dictation-progress">
+        <Box
+          display="flex"
+          alignItems="center"
+          gap={2}
+          className="dictation-progress"
+        >
           <Box sx={{ minWidth: 160 }}>
             <Typography variant="caption" color="text.secondary">
               Tiến độ {completed}/{totalItems}
@@ -447,7 +459,9 @@ export default function DictationContent({ dictation }: DictationContentProps) {
               background: "linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899)",
               backgroundSize: "300% 300%",
               animation:
-                completed >= totalItems ? "gradientShift 4s ease infinite" : "none",
+                completed >= totalItems
+                  ? "gradientShift 4s ease infinite"
+                  : "none",
               opacity: completed >= totalItems ? 1 : 0.5,
               cursor: completed >= totalItems ? "pointer" : "not-allowed",
               "&:hover": {
@@ -526,18 +540,19 @@ export default function DictationContent({ dictation }: DictationContentProps) {
         </Menu>
       </Box>
 
-      {/* Difficulty */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} className="dictation-difficulty">
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          value={difficulty}
-          onChange={(_, val) => val && setDifficulty(val)}
-        >
-          <ToggleButton value="easy">Dễ</ToggleButton>
-          <ToggleButton value="medium">TB</ToggleButton>
-          <ToggleButton value="hard">Khó</ToggleButton>
-        </ToggleButtonGroup>
+      {/* Mode: fixed to full-sentence (người dùng nhập nguyên câu) */}
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+        className="dictation-difficulty"
+      >
+        <Box>
+          <Typography variant="body2" color="text.secondary">
+            Chế độ: Điền nguyên câu
+          </Typography>
+        </Box>
 
         <Box display="flex" alignItems="center" gap={1}>
           <Checkbox
@@ -591,13 +606,15 @@ export default function DictationContent({ dictation }: DictationContentProps) {
                 }}
                 className="dictation-sentence"
               >
-                <SentenceRenderer
-                  mode={difficulty}
-                  sentence={currentItem}
-                  userAnswers={userAnswers}
-                  onChange={handleWordChange}
-                  showAnswer={showAnswer}
-                />
+                <Box sx={{ width: "100%" }}>
+                  <SentenceRenderer
+                    mode={difficulty}
+                    sentence={currentItem}
+                    userAnswers={userAnswers}
+                    onChange={handleWordChange}
+                    showAnswer={showAnswer}
+                  />
+                </Box>
               </Box>
             </CardContent>
           </Card>
@@ -616,7 +633,12 @@ export default function DictationContent({ dictation }: DictationContentProps) {
         </Button>
 
         {!showAnswer ? (
-          <Button variant="contained" onClick={handleCheck} disabled={!allFilled} className="dictation-check">
+          <Button
+            variant="contained"
+            onClick={handleCheck}
+            disabled={!allFilled}
+            className="dictation-check"
+          >
             Kiểm tra
           </Button>
         ) : accuracy === 100 ? (
@@ -665,8 +687,8 @@ export default function DictationContent({ dictation }: DictationContentProps) {
                 severity="warning"
                 sx={{ mt: 1, borderRadius: 2 }}
               >
-                Bạn đúng khoảng {accuracy}% từ cần điền. Nghe lại đoạn này và sửa
-                những ô đỏ nhé.
+                Bạn đúng khoảng {accuracy}% từ cần điền. Nghe lại đoạn này và
+                sửa những ô đỏ nhé.
               </Alert>
             )}
             {/* Hiển thị kết quả chi tiết người dùng nhập & transcript */}
@@ -679,7 +701,11 @@ export default function DictationContent({ dictation }: DictationContentProps) {
                 backgroundColor: "#f9fafb",
               }}
             >
-              <Typography variant="subtitle2" fontWeight={600} color="text.secondary">
+              <Typography
+                variant="subtitle2"
+                fontWeight={600}
+                color="text.secondary"
+              >
                 Đáp án của người dùng:
               </Typography>
               <Typography
@@ -696,14 +722,14 @@ export default function DictationContent({ dictation }: DictationContentProps) {
               >
                 {difficulty === "medium"
                   ? currentItem.words
-                    .map((w) =>
-                      w.isBlank
-                        ? userAnswers[w.index]
+                      .map((w) =>
+                        w.isBlank
                           ? userAnswers[w.index]
-                          : "____"
-                        : w.word
-                    )
-                    .join(" ")
+                            ? userAnswers[w.index]
+                            : "____"
+                          : w.word
+                      )
+                      .join(" ")
                   : userAnswers[0] || "(Chưa nhập nội dung)"}
               </Typography>
 

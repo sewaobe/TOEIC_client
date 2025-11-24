@@ -10,10 +10,11 @@ import {
   IconButton,
   Tooltip,
 } from "@mui/material";
-import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
+import KeyboardDoubleArrowLeftIcon from "@mui/icons-material/KeyboardDoubleArrowLeft";
 import MainLayout from "../layouts/MainLayout";
 import LessonHeader from "../../components/lesson/LessonHeader";
 import LessonMedia from "../../components/lesson/LessonMedia";
+import { InteractiveVideo } from "../../components/common/InteractiveVideo";
 import LessonNotes from "../../components/lesson/LessonNotes";
 import { lessonService } from "../../services/lesson.service";
 import LessonExam from "../../components/lesson/LessTypeStudy/LessonExam";
@@ -75,12 +76,13 @@ export default function LessonPage() {
   }, [currentLesson]);
 
   // Calculate progress
-  const completedCount = lessons.filter(l => l.status === 'completed').length;
+  const completedCount = lessons.filter((l) => l.status === "completed").length;
   const totalCount = lessons.length;
   const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   // Determine timer display
-  const showTimer = (currentLesson?.type === 'quiz' && examStarted) ? mmss : undefined;
+  const showTimer =
+    currentLesson?.type === "quiz" && examStarted ? mmss : undefined;
 
   // Load lesson detail when currentLesson is a lesson (for media + insight tab)
   const [lessonDetail, setLessonDetail] = React.useState<any>(null);
@@ -164,26 +166,47 @@ export default function LessonPage() {
         );
       case "lesson":
         // If we have lessonDetail from API, prefer its first media for LessonMedia and pass detail to LessonNotes
-        const firstMedia = lessonDetail?.sections_id?.find(
+        const mediaSection = lessonDetail?.sections_id?.find(
           (s: any) => s.type === "media" && s.medias_id?.length
-        )
-          ? lessonDetail.sections_id.find((s: any) => s.type === "media")
-            .medias_id[0]
-          : null;
+        );
+        const firstMedia = mediaSection ? mediaSection.medias_id[0] : null;
+        const mediaMarkers = mediaSection?.markers || [];
 
         return (
           <>
-            <Grid size={{ xs: 12 }} sx={{ display: "flex", justifyContent: "center" }}>
-              <Box sx={{ width: "100%", display: "flex", justifyContent: "center", maxWidth: "1000px" }}>
-                <LessonMedia
-                  src={firstMedia?.url || "https://youtu.be/4QnqpWLT5m4"}
-                  type={firstMedia?.type === "audio" ? "audio" : "video"}
-                />
+            <Grid
+              size={{ xs: 12 }}
+              sx={{ display: "flex", justifyContent: "center" }}
+            >
+              <Box
+                sx={{
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "center",
+                  maxWidth: "1000px",
+                }}
+              >
+                {mediaMarkers && mediaMarkers.length > 0 ? (
+                  <InteractiveVideo
+                    videoUrl={firstMedia?.url || "https://youtu.be/4QnqpWLT5m4"}
+                    markers={mediaMarkers}
+                    title={lessonDetail?.title || "Bài học video"}
+                  />
+                ) : (
+                  <LessonMedia
+                    src={firstMedia?.url || "https://youtu.be/4QnqpWLT5m4"}
+                    type={firstMedia?.type === "audio" ? "audio" : "video"}
+                  />
+                )}
               </Box>
             </Grid>
             <Grid size={{ xs: 12 }}>
               <Box>
-                <LessonNotes lessonData={lessonDetail} week={week} day_id={dayId} />
+                <LessonNotes
+                  lessonData={lessonDetail}
+                  week={week}
+                  day_id={dayId}
+                />
               </Box>
             </Grid>
           </>
@@ -322,7 +345,7 @@ export default function LessonPage() {
             maxWidth: "1600px",
             mx: "auto",
             p: { xs: 2, md: 4 },
-            position: 'relative'
+            position: "relative",
           }}
         >
           {!isSidebarOpen && (
@@ -334,15 +357,20 @@ export default function LessonPage() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.96 }}
                   transition={{ duration: 0.18 }}
-                  style={{ position: 'absolute', right: 24, top: 24, zIndex: 10 }}
+                  style={{
+                    position: "absolute",
+                    right: 24,
+                    top: 24,
+                    zIndex: 10,
+                  }}
                 >
                   <Tooltip title="Hiện danh sách bài học">
                     <IconButton
                       onClick={() => setIsSidebarOpen(true)}
                       sx={{
-                        bgcolor: 'background.paper',
+                        bgcolor: "background.paper",
                         boxShadow: 1,
-                        '&:hover': { bgcolor: 'background.paper' },
+                        "&:hover": { bgcolor: "background.paper" },
                       }}
                     >
                       <KeyboardDoubleArrowLeftIcon />
@@ -361,32 +389,51 @@ export default function LessonPage() {
               // avoid initial layout animation on first mount
               initial={false}
               layout
-              transition={{ layout: { duration: 0.32, ease: [0.4, 0, 0.2, 1] } }}
+              transition={{
+                layout: { duration: 0.32, ease: [0.4, 0, 0.2, 1] },
+              }}
             >
-              <Box sx={{
-                bgcolor: (t) => t.palette.mode === "light" ? "#FFFFFFCC" : "rgba(255,255,255,0.08)",
-                backdropFilter: "blur(18px)",
-                borderRadius: "24px",
-                border: "1px solid rgba(0,0,0,0.06)",
-                boxShadow: "0 10px 28px rgba(0,0,0,0.06)",
-                p: { xs: 2, md: 4 },
-                minHeight: '80vh'
-              }}>
+              <Box
+                sx={{
+                  bgcolor: (t) =>
+                    t.palette.mode === "light"
+                      ? "#FFFFFFCC"
+                      : "rgba(255,255,255,0.08)",
+                  backdropFilter: "blur(18px)",
+                  borderRadius: "24px",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  boxShadow: "0 10px 28px rgba(0,0,0,0.06)",
+                  p: { xs: 2, md: 4 },
+                  minHeight: "80vh",
+                }}
+              >
                 <LessonHeader
                   lesson={currentLesson}
                   progress={progress}
                   timer={showTimer}
                 />
 
-                <Grid container spacing={2} sx={{ mt: 2, justifyContent: "center", minHeight: "340px" }}>
+                <Grid
+                  container
+                  spacing={2}
+                  sx={{ mt: 2, justifyContent: "center", minHeight: "340px" }}
+                >
                   {loading ? (
                     <LessonContentSkeleton
-                      lessonType={currentLesson ? currentLesson.type : "flash_card"}
+                      lessonType={
+                        currentLesson ? currentLesson.type : "flash_card"
+                      }
                     />
                   ) : error ? (
                     <Alert severity="error">{error}</Alert>
                   ) : (
-                    <Box sx={{ width: "100%", position: "relative", overflow: 'hidden' }}>
+                    <Box
+                      sx={{
+                        width: "100%",
+                        position: "relative",
+                        overflow: "hidden",
+                      }}
+                    >
                       <AnimatePresence mode="wait">
                         <motion.div
                           key={activityKey || currentLesson?.id}
@@ -420,9 +467,11 @@ export default function LessonPage() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 18 }}
                   transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                  sx={{ width: '100%' }}
+                  sx={{ width: "100%" }}
                 >
-                  <Box sx={{ position: 'sticky', top: 24, height: 'fit-content' }}>
+                  <Box
+                    sx={{ position: "sticky", top: 24, height: "fit-content" }}
+                  >
                     <LessonQueue
                       lessons={lessons}
                       currentLesson={currentLesson}

@@ -1,5 +1,4 @@
 import { VocabularyWord } from "../../types/PracticeDefinition";
-import { AI_API_SERVICE } from "../../services/ai_api.service";
 import { practiceDefinitionService } from "../../services/practice_definition.service";
 import { practiceSessionService } from "../../services/practice_session.service";
 import { VocabularyDefinitionAttempt } from "../../types/Vocabulary_Definition_Attempt";
@@ -12,10 +11,17 @@ export class PracticeDefinitionBasedDetailVM extends BaseViewModel {
   current_answer: string = "";
   current_accuracy_score: number = 0;
   current_feedback: string = "";
+  current_standard_definition: string = ""; // Định nghĩa chuẩn từ Gemini
   user_attempts: VocabularyDefinitionAttempt[] = [];
   currentSession: PracticeSession | null = null;
   showResumeModal: boolean = false;
   pendingPracticeId: string = "";
+  mode: "definition" | "guess" = "definition"; // Chế độ luyện tập
+
+  setMode = (mode: "definition" | "guess") => {
+    this.mode = mode;
+    this.notify();
+  };
 
   fetchVocabularies = async (practice_id: string, skipResumeCheck = false) => {
     try {
@@ -138,32 +144,57 @@ export class PracticeDefinitionBasedDetailVM extends BaseViewModel {
 
   submitAnswer = async () => {
     const currentVocab = this.getCurrentVocabulary();
-    if (
-      !currentVocab ||
-      !currentVocab._id ||
-      !currentVocab.definitions ||
-      currentVocab.definitions.length === 0
-    )
-      return;
+    if (!currentVocab || !currentVocab._id) return;
 
     try {
       this.setLoading("submitAnswer", true);
-      // Dùng definition đầu tiên để so sánh
-      const targetDefinition = currentVocab.definitions[0];
-      const result = await AI_API_SERVICE.submit_sentence_eval(
-        this.current_answer,
-        targetDefinition
-      );
-      const is_correct = result.similarity >= 0.65;
-      this.current_accuracy_score = result.similarity;
-      this.current_feedback = result.feedback;
+
+      let is_correct = false;
+      let accuracy_score = 0;
+      let feedback = "";
+
+      if (this.mode === "definition") {
+        // Mode 1: AI chấm định nghĩa - Gọi BE endpoint mới
+        if (
+          !currentVocab.definitions ||
+          currentVocab.definitions.length === 0
+        ) {
+          this.emitError("Từ vựng không có định nghĩa chuẩn.");
+          return;
+        }
+
+        const targetDefinition = currentVocab.definitions[0];
+        const result = await practiceDefinitionService.evaluateDefinition(
+          currentVocab.word,
+          targetDefinition,
+          this.current_answer
+        );
+        is_correct = result.is_correct;
+        accuracy_score = result.similarity;
+        feedback = result.feedback;
+        this.current_standard_definition =
+          result.standard_definition || targetDefinition;
+      } else {
+        // Mode 2: Đoán từ - so khớp trực tiếp
+        const normalizedAnswer = this.current_answer.trim().toLowerCase();
+        const normalizedWord = currentVocab.word.trim().toLowerCase();
+        is_correct = normalizedAnswer === normalizedWord;
+        accuracy_score = is_correct ? 1 : 0;
+        feedback = is_correct
+          ? "✅ Chính xác! Bạn đã đoán đúng từ vựng."
+          : `❌ Chưa đúng. Từ đúng là: ${currentVocab.word}`;
+      }
+
+      this.current_accuracy_score = accuracy_score;
+      this.current_feedback = feedback;
 
       const attempt: VocabularyDefinitionAttempt = {
         vocabulary_id: currentVocab._id,
         session_id: this.currentSession?._id,
         answer: this.current_answer,
         is_correct,
-        accuracy_score: result.similarity,
+        accuracy_score,
+        mode: this.mode, // Thêm mode
         attempt_at: new Date(),
       };
 
@@ -217,6 +248,7 @@ export class PracticeDefinitionBasedDetailVM extends BaseViewModel {
         // Nếu vocab mới chưa có attempt thì xóa nội dung textbox
         this.current_answer = "";
         this.current_accuracy_score = 0;
+        this.current_standard_definition = "";
       }
 
       this.notify();
@@ -230,6 +262,7 @@ export class PracticeDefinitionBasedDetailVM extends BaseViewModel {
         this.user_attempts[this.current_index]?.answer ?? "";
       this.current_accuracy_score =
         this.user_attempts[this.current_index]?.accuracy_score ?? 0;
+      this.current_standard_definition = "";
       this.notify();
     }
   };

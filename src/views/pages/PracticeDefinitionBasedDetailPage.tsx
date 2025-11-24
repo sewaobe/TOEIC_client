@@ -33,6 +33,7 @@ const PracticeDefinitionBasedDetailPage = () => {
     isCorrect,
     accuracyScore,
     handleCompleted,
+    mode,
     showGuider,
     setShowGuider,
   } = usePracticeDefinitionBasedDetailVM();
@@ -94,8 +95,16 @@ const PracticeDefinitionBasedDetailPage = () => {
       >
         {/* ===== Header Banner ===== */}
         <HeaderBanner
-          title="Luyện tập định nghĩa từ vựng"
-          subtitle="Hãy đọc từ và thử định nghĩa lại theo cách hiểu của bạn, đừng nhìn gợi ý trước nhé."
+          title={
+            mode === "definition"
+              ? "Luyện tập định nghĩa từ vựng"
+              : "Đoán từ từ định nghĩa"
+          }
+          subtitle={
+            mode === "definition"
+              ? "Hãy đọc từ và thử định nghĩa lại theo cách hiểu của bạn, đừng nhìn gợi ý trước nhé."
+              : "Đọc định nghĩa và gợi ý bên dưới, hãy đoán từ vựng đang được nhắc đến."
+          }
           progress={vm.getProgress()}
           progressLabel={`Từ ${vm.current_index + 1}/${vm.vocabularies.length}`}
           onGuideClick={() => setShowGuider(true)}
@@ -141,45 +150,113 @@ const PracticeDefinitionBasedDetailPage = () => {
                     data-tour="word-section"
                   >
                     <Box>
-                      <Stack direction="row" alignItems="center" spacing={1}>
-                        <Typography
-                          variant="h5"
-                          fontWeight={700}
-                          sx={{
-                            color: "#2563eb",
-                            letterSpacing: "0.5px",
-                          }}
-                        >
-                          {vocab.word.toUpperCase()}
-                        </Typography>
-                        <IconButton
-                          onClick={() => speak(vocab.word)}
-                          sx={{
-                            color: "#2563eb",
-                            "&:hover": { background: "rgba(37,99,235,0.1)" },
-                          }}
-                        >
-                          <VolumeUp />
-                        </IconButton>
-                      </Stack>
+                      {mode === "definition" ? (
+                        // Mode 1: Hiển thị từ vựng
+                        <>
+                          <Stack
+                            direction="row"
+                            alignItems="center"
+                            spacing={1}
+                          >
+                            <Typography
+                              variant="h5"
+                              fontWeight={700}
+                              sx={{
+                                color: "#2563eb",
+                                letterSpacing: "0.5px",
+                              }}
+                            >
+                              {vocab.word.toUpperCase()}
+                            </Typography>
+                            <IconButton
+                              onClick={() => speak(vocab.word)}
+                              sx={{
+                                color: "#2563eb",
+                                "&:hover": {
+                                  background: "rgba(37,99,235,0.1)",
+                                },
+                              }}
+                            >
+                              <VolumeUp />
+                            </IconButton>
+                          </Stack>
 
-                      {vocab.phonetic && (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ mt: 0.5, fontStyle: "italic" }}
-                        >
-                          /{vocab.phonetic}/
-                        </Typography>
-                      )}
+                          {vocab.phonetic && (
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ mt: 0.5, fontStyle: "italic" }}
+                            >
+                              /{vocab.phonetic}/
+                            </Typography>
+                          )}
 
-                      {vocab.type && (
-                        <Typography
-                          variant="caption"
-                          sx={{ mt: 0.25, color: "#6b7280" }}
-                        >
-                          Loại từ: {vocab.type}
-                        </Typography>
+                          {vocab.type && (
+                            <Typography
+                              variant="caption"
+                              sx={{ mt: 0.25, color: "#6b7280" }}
+                            >
+                              Loại từ: {vocab.type}
+                            </Typography>
+                          )}
+                        </>
+                      ) : (
+                        // Mode 2: Hiển thị gợi ý và hint
+                        <>
+                          <Typography
+                            variant="h6"
+                            fontWeight={600}
+                            sx={{ color: "#2563eb", mb: 1 }}
+                          >
+                            Đoán từ vựng từ định nghĩa sau:
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{
+                              color: "#374151",
+                              mb: 1,
+                              p: 2,
+                              backgroundColor: "#f9fafb",
+                              borderRadius: 2,
+                              border: "1px solid #e5e7eb",
+                            }}
+                          >
+                            {vocab.definitions?.[0] || "Không có định nghĩa"}
+                          </Typography>
+
+                          {vocab.hints && vocab.hints.length > 0 && (
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ fontStyle: "italic" }}
+                            >
+                              💡 Gợi ý: {vocab.hints[0]}
+                            </Typography>
+                          )}
+
+                          {vocab.phonetic && (
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ mt: 1, fontStyle: "italic" }}
+                            >
+                              Phát âm: /{vocab.phonetic}/
+                            </Typography>
+                          )}
+
+                          {vocab.type && (
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                mt: 0.5,
+                                color: "#6b7280",
+                                display: "block",
+                              }}
+                            >
+                              Loại từ: {vocab.type}
+                            </Typography>
+                          )}
+                        </>
                       )}
                     </Box>
 
@@ -224,12 +301,16 @@ const PracticeDefinitionBasedDetailPage = () => {
                     />
                   )}
 
-                  {/* Input định nghĩa (user tự định nghĩa) */}
+                  {/* Input định nghĩa (user tự định nghĩa hoặc đoán từ) */}
                   <TextField
                     fullWidth
-                    multiline
-                    minRows={3}
-                    placeholder="Nhập định nghĩa theo cách hiểu của bạn..."
+                    multiline={mode === "definition"}
+                    minRows={mode === "definition" ? 3 : 1}
+                    placeholder={
+                      mode === "definition"
+                        ? "Nhập định nghĩa theo cách hiểu của bạn..."
+                        : "Nhập từ vựng bạn đoán..."
+                    }
                     variant="outlined"
                     value={vm.current_answer}
                     onChange={(e) => vm.onChangeCurrentAnswer(e.target.value)}
@@ -278,11 +359,20 @@ const PracticeDefinitionBasedDetailPage = () => {
                         {vm.current_feedback || "Không có phản hồi."}
                       </Typography>
 
-                      <Typography sx={{ mt: 1.5 }}>
-                        <strong>Định nghĩa chuẩn:</strong>{" "}
-                        {vocab.definitions?.[0] ||
-                          "Chưa có dữ liệu định nghĩa."}
-                      </Typography>
+                      {mode === "definition" && (
+                        <Typography sx={{ mt: 1.5 }}>
+                          <strong>Định nghĩa chuẩn (TOEIC):</strong>{" "}
+                          {vm.current_standard_definition ||
+                            vocab.definitions?.[0] ||
+                            "Chưa có dữ liệu định nghĩa."}
+                        </Typography>
+                      )}
+
+                      {mode === "guess" && !isCorrect && (
+                        <Typography sx={{ mt: 1.5 }}>
+                          <strong>Từ đúng:</strong> {vocab.word}
+                        </Typography>
+                      )}
 
                       {vocab.examples && vocab.examples.length > 0 ? (
                         <Box sx={{ mt: 1.5 }}>

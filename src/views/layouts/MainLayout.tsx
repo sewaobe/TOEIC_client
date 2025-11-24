@@ -5,9 +5,8 @@ import RightMenuDrawer from "../../components/common/RightMenu";
 import StudyNotebookFlip3D from "../pages/NotebookPage";
 import useTextSelection from "../../hooks/useTextSelection";
 import HighlightPopup from "../../components/common/HighlightPopup";
-import { useDispatch, useSelector } from "react-redux";
-import { AppDispatch, RootState } from "../../stores/store";
-import { showSnackbar } from "../../stores/snackbarSlice";
+import { useSelector } from "react-redux";
+import { RootState } from "../../stores/store";
 import { LearningProgressModal } from "../../components/modals/LearningProgressModal";
 import { ChatbotDrawer } from "../../components/chatbot/ChatbotDrawer";
 import ReportIssueModal from "../../components/modals/ReportIssueModal";
@@ -25,6 +24,7 @@ function MainLayout({ children }: MainLayoutProps) {
   const highlightPopupEnabled = useSelector(
     (state: RootState) => state.highlightPopup.enabled
   );
+  console.log("Highlight Popup Enabled:", highlightPopupEnabled);
   const [showNotebook, setShowNotebook] = useState(false);
   const [showDictionary, setShowDictionary] = useState(false);
   const [showLearningProgress, setShowLearningProgress] = useState(false);
@@ -39,21 +39,13 @@ function MainLayout({ children }: MainLayoutProps) {
   const [notebookClipboard, setNotebookClipboard] = useState<string>("");
 
   const { selectedText, rect, clearSelection } = useTextSelection();
-  const dispatch = useDispatch<AppDispatch>();
-  
+
   const handleSaveNotebook = () => {
     console.log("📘 Save to notebook:", selectedText);
     // Lưu vào clipboard tạm
     setNotebookClipboard(selectedText);
     // Mở notebook trực tiếp
     setShowNotebook(true);
-    // Hiển thị thông báo
-    dispatch(
-      showSnackbar({
-        message: "Đã sao chép! Hãy chọn mục và paste nội dung vào notebook",
-        severity: "info",
-      })
-    );
     clearSelection();
   };
 

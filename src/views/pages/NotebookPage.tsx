@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
@@ -8,6 +8,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
+import LaunchIcon from '@mui/icons-material/Launch';
 import MenuIcon from "@mui/icons-material/Menu";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
@@ -20,16 +21,11 @@ import { user_note_service } from "../../services/user_note.service";
 import { User_Note } from "../../types/User_Note";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useDispatch } from "react-redux";
-import { disableHighlightPopup } from "../../stores/highlightPopupSlice";
+import { disableHighlightPopup, enableHighlightPopup } from "../../stores/highlightPopupSlice";
+import { useNavigate } from "react-router-dom";
 
 // ========= Types =========
-interface LessonEntry {
-  _id?: string;
-  id: string;
-  title: string;
-  dateISO: string;
-  content?: string;
-}
+type LessonEntry = User_Note;
 
 // ========= Helpers =========
 function fmtDate(iso: string) {
@@ -56,7 +52,7 @@ function extractHeadingsTree(markdown: string): HeadingNode[] {
   while ((match = regex.exec(markdown)) !== null) {
     const level = match[1].length; // số lượng dấu #
     const text = match[2].trim();
-    const id = "heading-" + text.toLowerCase().replace(/\s+/g, "-");
+    const id = text.toLowerCase().replace(/\s+/g, "-");
 
     const node: HeadingNode = { id, text, level, children: [] };
 
@@ -194,9 +190,9 @@ const Sidebar: React.FC<{
         <div className="flex-1 !overflow-y-auto w-full flex flex-col items-center gap-1 py-2 px-2">
           {filtered.map((l) => (
             <button
-              key={l.id}
-              onClick={() => setActiveId(l.id)}
-              className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${activeId === l.id
+              key={l._id}
+              onClick={() => setActiveId(l._id)}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${activeId === l._id
                 ? "bg-indigo-600 text-white shadow-md"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
@@ -261,27 +257,27 @@ const Sidebar: React.FC<{
             </div>
           ) : (
             filtered.map((l) => {
-              const isActive = activeId === l.id;
-              const isExpanded = expandedLessonId === l.id;
+              const isActive = activeId === l._id;
+              const isExpanded = expandedLessonId === l._id;
 
-              const markdown = notes[l.id] || "";
+              const markdown = notes[l._id] || "";
               const headingsTree = extractHeadingsTree(markdown);
 
               return (
-                <div key={l.id}>
+                <div key={l._id}>
                   {/* Row chính */}
                   <div
                     className={`flex items-center justify-between px-3 py-2.5 cursor-pointer rounded-lg transition-all ${isActive
                       ? "bg-indigo-600 text-white shadow-md"
                       : "hover:bg-indigo-100 text-gray-700"
                       }`}
-                    onClick={() => setActiveId(l.id)}
+                    onClick={() => setActiveId(l._id)}
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setExpandedLessonId(isExpanded ? null : l.id);
+                          setExpandedLessonId(isExpanded ? null : l._id);
                         }}
                         className="p-0.5 flex-shrink-0"
                       >
@@ -294,14 +290,14 @@ const Sidebar: React.FC<{
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium">{l.title}</div>
                         <div className={`truncate text-xs ${isActive ? "text-indigo-100" : "text-gray-500"}`}>
-                          {fmtDate(l.dateISO)}
+                          {fmtDate(l.updated_at)}
                         </div>
                       </div>
                     </div>
 
                     {/* Nút 3 chấm */}
                     <button
-                      onClick={(e) => handleOpenMenu(e, l.id)}
+                      onClick={(e) => handleOpenMenu(e, l._id)}
                       className={`p-1 rounded flex-shrink-0 ${isActive ? "hover:bg-indigo-500" : "hover:bg-gray-200"}`}
                     >
                       <MoreVertIcon fontSize="small" />
@@ -311,7 +307,10 @@ const Sidebar: React.FC<{
                   {/* mục lục khi expand */}
                   {isExpanded && headingsTree.length > 0 && (
                     <div className="ml-8 mt-1 mb-2 pl-2 border-l-2 border-indigo-300 space-y-1">
-                      <HeadingTree nodes={headingsTree} onJump={onJumpToHeading} />
+                      <HeadingTree nodes={headingsTree} onJump={(id: string) => {
+                        setActiveId(l._id);
+                        return onJumpToHeading(id);
+                      }} />
                     </div>
                   )}
                 </div>
@@ -347,7 +346,7 @@ const Sidebar: React.FC<{
                 setMenuOpenId(null);
 
                 const markdown = notes[menuOpenId] || "";
-                const title = lessons.find((l) => l.id === menuOpenId)?.title || "note";
+                const title = lessons.find((l) => l._id === menuOpenId)?.title || "note";
 
                 downloadMarkdownFile(markdown, `${title}.md`);
               }}
@@ -383,7 +382,7 @@ const NotebookPage: React.FC<{
   const [localTitle, setLocalTitle] = useState(lesson.title);
   const [titleUpdateStatus, setTitleUpdateStatus] = useState<"idle" | "updating" | "updated">("idle");
   const [contentUpdateStatus, setContentUpdateStatus] = useState<"idle" | "updating" | "updated">("idle");
-  const [prevLessonId, setPrevLessonId] = useState(lesson.id);
+  const [prevLessonId, setPrevLessonId] = useState(lesson._id);
   const debouncedTitle = useDebounce(localTitle, 1000);
 
   // Update local title when lesson changes (MUST come first)
@@ -391,15 +390,15 @@ const NotebookPage: React.FC<{
     setLocalTitle(lesson.title);
     setTitleUpdateStatus("idle");
     setContentUpdateStatus("idle");
-    setPrevLessonId(lesson.id);
-  }, [lesson.id]); // Use lesson.id to detect when lesson changes
+    setPrevLessonId(lesson._id);
+  }, [lesson._id]); // Use lesson._id to detect when lesson changes
 
   // Call API when debounced title changes
   useEffect(() => {
     if (
       debouncedTitle !== lesson.title &&
       debouncedTitle === localTitle &&
-      prevLessonId === lesson.id
+      prevLessonId === lesson._id
     ) {
       setTitleUpdateStatus("updating");
       onEditTitle(debouncedTitle);
@@ -410,7 +409,7 @@ const NotebookPage: React.FC<{
         }, 2000);
       }, 500);
     }
-  }, [debouncedTitle, lesson.title, localTitle, prevLessonId, lesson.id, onEditTitle]);
+  }, [debouncedTitle, lesson.title, localTitle, prevLessonId, lesson._id, onEditTitle]);
 
   // Get the most recent status to display
   const displayStatus = contentUpdateStatus !== "idle" ? contentUpdateStatus : titleUpdateStatus;
@@ -430,6 +429,30 @@ const NotebookPage: React.FC<{
     }
   };
 
+  const navigate = useNavigate();
+
+  const handleNavigateToLesson = () => {
+    const noteId = lesson._id;
+
+    // If either title or content is being saved, prevent navigation.
+    if (displayStatus === 'updating') {
+      // eslint-disable-next-line no-restricted-globals
+      window.alert('Nội dung đang được lưu — vui lòng chờ lưu xong trước khi điều hướng.');
+      return;
+    }
+
+    localStorage.setItem("current_lesson", JSON.stringify({
+      id: lesson.related_object?.related_id,
+      week: parseInt(lesson.related_object?.week_no || "0"),
+      title: lesson.title,
+      type: "lesson",
+      status: "in_progress"
+    }));
+
+    navigate(`/lesson?week=${lesson.related_object?.week_no}&day=${lesson.related_object?.day_id}`);
+
+  };
+
   return (
     <div className="flex h-full flex-col bg-white overflow-hidden">
       {/* Header with title and metadata */}
@@ -445,9 +468,18 @@ const NotebookPage: React.FC<{
           placeholder="Lesson title"
         />
         <div className="flex items-center gap-3 text-sm">
-          <span className="text-gray-500">{fmtDate(lesson.dateISO)}</span>
+          <span className="text-gray-500">{fmtDate(lesson.updated_at)}</span>
           <span className="text-gray-300">•</span>
-          <span className="text-gray-500">ID: {lesson.id.slice(0, 8)}</span>
+          <span className="text-gray-500">ID: {lesson._id.slice(0, 8)}</span>
+          {lesson.related_object?.related_id && (
+            <button
+              onClick={handleNavigateToLesson}
+              title="Go to lesson"
+              className="ml-2 p-1 rounded hover:bg-gray-100 text-gray-600"
+            >
+              <LaunchIcon fontSize="small" />
+            </button>
+          )}
           {displayStatus === "updating" && (
             <div className="flex items-center gap-1.5 ml-auto text-amber-600">
               <div className="h-3 w-3 animate-spin rounded-full border-2 border-amber-400 border-r-amber-600" />
@@ -465,7 +497,7 @@ const NotebookPage: React.FC<{
 
       {/* Editor thay thế phần hiển thị markdown thuần */}
       <MarkdownEditor
-        key={lesson.id}
+        key={lesson._id}
         initialValue={content || ""}
         onSave={handleSaveContent}
       />
@@ -526,11 +558,19 @@ export default function StudyNotebookFlip3D({
           lessonMap[note._id] = note.content;
           return {
             _id: note._id,
-            id: note._id,
+            user_id: note.user_id,
             title: note.title,
-            dateISO: note.created_at,
+            updated_at: note.updated_at,
             content: note.content,
-          };
+            created_at: note.created_at,
+            related_object: note.related_object
+              ? {
+                related_id: note.related_object.related_id,
+                week_no: note.related_object.week_no,
+                day_id: note.related_object.day_id,
+              }
+              : null,
+          } as LessonEntry;
         });
 
         setLessons(lessonList);
@@ -542,8 +582,14 @@ export default function StudyNotebookFlip3D({
         setIsLoading(false);
       }
     };
-    dispatch(disableHighlightPopup());
     fetchNotes();
+
+    if (isOpen) {
+      dispatch(disableHighlightPopup());
+    }
+    return () => {
+      dispatch(enableHighlightPopup());
+    }
   }, [isOpen]);
 
   // Hiển thị toast khi có clipboard text
@@ -575,9 +621,11 @@ export default function StudyNotebookFlip3D({
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
+  // ref to keep track of scheduled requestAnimationFrame for jumping
+  const jumpRafRef = useRef<number | null>(null);
 
   const active = useMemo(
-    () => lessons.find((l) => l.id === activeId) || null,
+    () => lessons.find((l) => l._id === activeId) || null,
     [lessons, activeId]
   );
 
@@ -588,16 +636,8 @@ export default function StudyNotebookFlip3D({
         content: "# New Lesson",
       });
 
-      // Add to local lessons
-      const newLesson: LessonEntry = {
-        _id: newNote._id,
-        id: newNote._id,
-        title: newNote.title,
-        dateISO: newNote.created_at,
-        content: newNote.content,
-      };
-
-      setLessons((prev) => [...prev, newLesson]);
+      // Add the server-returned note (User_Note) directly to state
+      setLessons((prev) => [...prev, newNote]);
       setNotes((prev) => ({ ...prev, [newNote._id]: newNote.content }));
       setActiveId(newNote._id);
     } catch (err) {
@@ -611,15 +651,17 @@ export default function StudyNotebookFlip3D({
 
     try {
       // Update on server
-      await user_note_service.updateNote(
+      const updated = await user_note_service.updateNote(
         { title },
-        active._id || active.id
+        active._id
       );
 
       // Update local state
       setLessons((prev) =>
-        prev.map((l) => (l.id === active.id ? { ...l, title } : l))
+        prev.map((l) => (l._id === active._id ? { ...l, title, updated_at: updated.updated_at } : l))
       );
+      setError("");
+
     } catch (err) {
       console.error("Error updating title:", err);
       setError("Không thể cập nhật tiêu đề.");
@@ -631,7 +673,7 @@ export default function StudyNotebookFlip3D({
       await user_note_service.deleteNote(lessonId);
 
       // Remove from local state
-      setLessons((prev) => prev.filter((l) => l.id !== lessonId));
+      setLessons((prev) => prev.filter((l) => l._id !== lessonId));
       const newNotes = { ...notes };
       delete newNotes[lessonId];
       setNotes(newNotes);
@@ -640,6 +682,7 @@ export default function StudyNotebookFlip3D({
       if (activeId === lessonId) {
         setActiveId(null);
       }
+      setError("");
     } catch (err) {
       console.error("Error deleting note:", err);
       setError("Không thể xóa ghi chú.");
@@ -650,16 +693,26 @@ export default function StudyNotebookFlip3D({
     if (!active) return;
 
     try {
-      await user_note_service.updateNote(
+      const saved = await user_note_service.updateNote(
         { content },
-        active._id || active.id
+        active._id
       );
 
       // Update local cache
       setNotes((prev) => ({
         ...prev,
-        [active.id]: content,
+        [active._id]: content,
       }));
+      setLessons((prev) =>
+        prev.map((l) => (l._id === active._id ? { ...l, updated_at: saved.updated_at } : l))
+      );
+      setError("");
+      // Dispatch an event so other components in the same tab can react
+      try {
+        window.dispatchEvent(new CustomEvent('note:updated', { detail: { id: active._id, content } }));
+      } catch (e) {
+        console.error('Failed to dispatch note:updated', e);
+      }
     } catch (err) {
       console.error("Error saving content:", err);
       setError("Không thể lưu nội dung.");
@@ -667,11 +720,47 @@ export default function StudyNotebookFlip3D({
   };
 
   const handleJumpToHeading = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Cancel any previously scheduled jump
+    if (jumpRafRef.current) {
+      cancelAnimationFrame(jumpRafRef.current);
+      jumpRafRef.current = null;
     }
+
+    // Schedule the scroll on the next animation frame(s) so that
+    // React has time to commit the DOM after setActiveId.
+    jumpRafRef.current = requestAnimationFrame(() => {
+      // One extra frame can help when the editor is remounted
+      jumpRafRef.current = requestAnimationFrame(() => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          // Fallback: try to find headings inside the editor container
+          const container = document.querySelector('.markdown-editor');
+          if (container) {
+            const headings = container.querySelectorAll('h1,h2,h3,h4,h5,h6');
+            for (const h of Array.from(headings)) {
+              if ((h.textContent || '').trim().toLowerCase().includes(id.replace(/^heading-/, '').replace(/-/g, ' '))) {
+                (h as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                break;
+              }
+            }
+          }
+        }
+        jumpRafRef.current = null;
+      });
+    });
   };
+
+  // Cleanup any pending RAF when component unmounts
+  useEffect(() => {
+    return () => {
+      if (jumpRafRef.current) {
+        cancelAnimationFrame(jumpRafRef.current);
+        jumpRafRef.current = null;
+      }
+    };
+  }, []);
 
   const handlePasteClipboard = async () => {
     if (!clipboardText || !active) return;
@@ -680,19 +769,19 @@ export default function StudyNotebookFlip3D({
       const timestamp = new Date().toLocaleString();
       const formattedContent = `\n\n---\n\n> **Highlighted on ${timestamp}**\n> \n> ${clipboardText.split("\n").join("\n> ")}\n\n`;
 
-      const currentContent = notes[active.id] || "";
+      const currentContent = notes[active._id] || "";
       const newContent = currentContent + formattedContent;
 
       // Update on server
       await user_note_service.updateNote(
         { content: newContent },
-        active._id || active.id
+        active._id
       );
 
       // Update local state
       setNotes({
         ...notes,
-        [active.id]: newContent,
+        [active._id]: newContent,
       });
 
       setShowClipboardToast(false);
@@ -762,7 +851,7 @@ export default function StudyNotebookFlip3D({
                 <button
                   className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
                   onClick={() => {
-                    console.log("Create Summary - Note ID:", active._id || active.id);
+                    console.log("Create Summary - Note ID:", active._id);
                     setAiMenuOpen(false);
                   }}
                 >
@@ -772,7 +861,7 @@ export default function StudyNotebookFlip3D({
                 <button
                   className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
                   onClick={() => {
-                    console.log("Create Flashcard - Note ID:", active._id || active.id);
+                    console.log("Create Flashcard - Note ID:", active._id);
                     setAiMenuOpen(false);
                   }}
                 >
@@ -782,7 +871,7 @@ export default function StudyNotebookFlip3D({
                 <button
                   className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 font-medium text-gray-700 flex items-center gap-2"
                   onClick={() => {
-                    console.log("Create Quiz - Note ID:", active._id || active.id);
+                    console.log("Create Quiz - Note ID:", active._id);
                     setAiMenuOpen(false);
                   }}
                 >
@@ -845,7 +934,7 @@ export default function StudyNotebookFlip3D({
               <NotebookPage
                 lesson={active}
                 onEditTitle={editTitle}
-                content={notes[active.id] || ""}
+                content={notes[active._id] || ""}
                 onSaveContent={saveContent}
               />
             )}

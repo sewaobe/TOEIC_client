@@ -1,11 +1,8 @@
 import * as React from "react";
 import {
-  Card,
-  CardContent,
-  Stack,
+  Box,
   Tabs,
   Tab,
-  Box,
   Typography,
   Divider,
   Avatar,
@@ -16,12 +13,15 @@ import {
   ListItemAvatar,
   ListItemText,
   Grid,
+  Paper,
+  Card,
+  CardContent,
+  Stack,
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableRow,
-  Paper,
+  TextField,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/EditNote";
 import ChatIcon from "@mui/icons-material/ChatBubbleOutline";
@@ -89,8 +89,9 @@ function TabPanel({
       hidden={value !== index}
       id={`lesson-notes-tabpanel-${index}`}
       aria-labelledby={`lesson-notes-tab-${index}`}
+      style={{ height: '100%' }}
     >
-      {value === index && <Box sx={{ pt: 1.5 }}>{children}</Box>}
+      {value === index && <Box sx={{ p: 2, height: '100%', overflowY: 'auto' }}>{children}</Box>}
     </div>
   );
 }
@@ -102,19 +103,21 @@ function a11yProps(index: number) {
   };
 }
 
-/* ========================== Component ========================== */
+/* ---------------------- Main Component ---------------------- */
 export default function LessonNotes({ lessonData }: { lessonData?: any }) {
-  const [tab, setTab] = React.useState(0);
+  const [tabIndex, setTabIndex] = React.useState(0);
+
+  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabIndex(newValue);
+  };
+
   const avg =
     comments.reduce((s, c) => s + c.rating, 0) / Math.max(1, comments.length);
 
   const filteredSections = React.useMemo(() => {
     if (!lessonData) return [];
     return (lessonData.sections_id || []).filter((s: any) => {
-      // Skip media sections entirely from Insight tab
       if (s.type === "media") return false;
-
-      // For error sections, only show if has meaningful data
       if (s.type === "error") {
         const err = s.error || {};
         const meaningful = Object.keys(err).filter(
@@ -131,84 +134,426 @@ export default function LessonNotes({ lessonData }: { lessonData?: any }) {
   }, [lessonData]);
 
   return (
-    <Card variant="outlined" className="rounded-3xl">
-      <CardContent className="py-4 sm:py-6">
-        <Stack spacing={2}>
-          {/* Tabs */}
-          <Tabs
-            value={tab}
-            onChange={(_, v) => setTab(v)}
-            variant="scrollable"
-            scrollButtons={false} // ⛔ ẩn 2 icon trái/phải
-            allowScrollButtonsMobile={false} // ⛔ không bật trên mobile
-            aria-label="Tabs ghi chú / nhận xét / tổng quát"
-            className="
-                                border border-black/5 bg-white/70
-                                px-2 py-1 overflow-x-auto
-                                backdrop-blur
-                            "
+    <Paper
+      elevation={0}
+      sx={{
+        minHeight: "400px",
+        display: "flex",
+        flexDirection: "column",
+        borderRadius: "16px",
+        border: "1px solid",
+        borderColor: "divider",
+        overflow: "hidden",
+        // reduce base font size so notes are smaller and less dominant
+        fontSize: '0.88rem',
+        '& .MuiTypography-root': {
+          fontSize: '0.88rem',
+        },
+        bgcolor: "background.paper",
+      }}
+    >
+      <Box sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "grey.50" }}>
+        <Tabs
+          value={tabIndex}
+          onChange={handleChange}
+          aria-label="lesson tabs"
+          variant="fullWidth"
+          textColor="primary"
+          indicatorColor="primary"
+          sx={{
+            "& .MuiTab-root": {
+              textTransform: "none",
+              fontWeight: 600,
+              // smaller tab labels per UX request
+              fontSize: "0.8rem",
+              minHeight: 40,
+            },
+          }}
+        >
+          <Tab
+            icon={<SummaryIcon fontSize="small" />}
+            iconPosition="start"
+            label="Insight"
+            {...a11yProps(0)}
+          />
+          <Tab
+            icon={<EditIcon fontSize="small" />}
+            iconPosition="start"
+            label="Notes"
+            {...a11yProps(1)}
+          />
+          <Tab
+            icon={<ChatIcon fontSize="small" />}
+            iconPosition="start"
+            label={`Feedback (${comments.length})`}
+            {...a11yProps(2)}
+          />
+        </Tabs>
+      </Box>
+
+      <Box sx={{ flex: 1, overflow: "hidden" }}>
+        {/* TAB 0: INSIGHT (TỔNG QUAN) */}
+        <TabPanel value={tabIndex} index={0}>
+          <Stack spacing={2}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              Khái quát nội dung bài học
+            </Typography>
+
+            {lessonData ? (
+              <Stack spacing={1}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Thông tin phiên học
+                </Typography>
+                {filteredSections.map((s: any, i: number) => (
+                  <Card
+                    key={i}
+                    variant="outlined"
+                    sx={{ borderRadius: 2, boxShadow: 1 }}
+                  >
+                    <CardContent>
+                      <Stack spacing={2}>
+                        <Stack
+                          direction="row"
+                          justifyContent="space-between"
+                          alignItems="center"
+                        >
+                          <Typography variant="subtitle1" fontWeight={600}>
+                            {s.title || s.type}
+                          </Typography>
+                          <Chip
+                            label={s.type}
+                            size="small"
+                            color={
+                              s.type === "text"
+                                ? "default"
+                                : s.type === "example"
+                                ? "primary"
+                                : s.type === "error"
+                                ? "error"
+                                : "secondary"
+                            }
+                            variant="outlined"
+                          />
+                        </Stack>
+
+                        {/* TEXT */}
+                        {s.type === "text" && s.content && (
+                          <Typography
+                            variant="body1"
+                            sx={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}
+                          >
+                            {s.content}
+                          </Typography>
+                        )}
+
+                        {/* EXAMPLE */}
+                        {s.type === "example" && s.example && (
+                          <Box
+                            sx={{
+                              bgcolor: "grey.50",
+                              p: 2,
+                              borderRadius: 1,
+                              borderLeft: 3,
+                              borderColor: "primary.main",
+                            }}
+                          >
+                            <Stack spacing={1.5}>
+                              {s.example.en && (
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{
+                                      textTransform: "uppercase",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    English
+                                  </Typography>
+                                  <Typography
+                                    variant="body1"
+                                    sx={{ mt: 0.5 }}
+                                  >
+                                    {s.example.en}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {s.example.vi && (
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{
+                                      textTransform: "uppercase",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    Tiếng Việt
+                                  </Typography>
+                                  <Typography
+                                    variant="body1"
+                                    sx={{ mt: 0.5 }}
+                                  >
+                                    {s.example.vi}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {s.example.note && (
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{
+                                      textTransform: "uppercase",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    Ghi chú
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ mt: 0.5, fontStyle: "italic" }}
+                                  >
+                                    {s.example.note}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Stack>
+                          </Box>
+                        )}
+
+                        {/* ERROR */}
+                        {s.type === "error" && s.error && (
+                          <Box
+                            sx={{
+                              bgcolor: "error.50",
+                              p: 2,
+                              borderRadius: 1,
+                              borderLeft: 3,
+                              borderColor: "error.main",
+                            }}
+                          >
+                            <Stack spacing={1.5}>
+                              {s.error.wrong && (
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="error.main"
+                                    sx={{
+                                      textTransform: "uppercase",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    ❌ Sai
+                                  </Typography>
+                                  <Typography
+                                    variant="body1"
+                                    sx={{ mt: 0.5 }}
+                                  >
+                                    {s.error.wrong}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {s.error.correct && (
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="success.main"
+                                    sx={{
+                                      textTransform: "uppercase",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    ✅ Đúng
+                                  </Typography>
+                                  <Typography
+                                    variant="body1"
+                                    sx={{ mt: 0.5 }}
+                                  >
+                                    {s.error.correct}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {s.error.explanation && (
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{
+                                      textTransform: "uppercase",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    💡 Giải thích
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{ mt: 0.5 }}
+                                  >
+                                    {s.error.explanation}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Stack>
+                          </Box>
+                        )}
+
+                        {/* TABLE */}
+                        {s.type === "table" &&
+                          s.tableData &&
+                          Array.isArray(s.tableData) &&
+                          s.tableData.length > 0 && (
+                            <Paper
+                              variant="outlined"
+                              sx={{ overflow: "hidden" }}
+                            >
+                              <Table size="small">
+                                <TableBody>
+                                  {s.tableData.map(
+                                    (row: any[], rowIdx: number) => (
+                                      <TableRow key={rowIdx} hover>
+                                        {Array.isArray(row) &&
+                                          row.map(
+                                            (cell: any, cellIdx: number) => (
+                                              <TableCell key={cellIdx}>
+                                                {cell?.toString() || ""}
+                                              </TableCell>
+                                            )
+                                          )}
+                                      </TableRow>
+                                    )
+                                  )}
+                                </TableBody>
+                              </Table>
+                            </Paper>
+                          )}
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            ) : (
+              <>
+                {/* Tóm tắt */}
+                <Stack spacing={0.5}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Tóm tắt
+                  </Typography>
+                  <Typography variant="body1">{overview.summary}</Typography>
+                </Stack>
+
+                {/* Trọng tâm */}
+                <Stack spacing={0.75}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Trọng tâm
+                  </Typography>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    flexWrap="wrap"
+                    useFlexGap
+                  >
+                    {overview.focus.map((f) => (
+                      <Chip
+                        key={f}
+                        label={f}
+                        color="primary"
+                        variant="outlined"
+                      />
+                    ))}
+                  </Stack>
+                </Stack>
+
+                <Grid container spacing={2}>
+                  {/* Mục chính */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      sx={{ mb: 0.5 }}
+                    >
+                      Các mục chính
+                    </Typography>
+                    <List dense disablePadding>
+                      {overview.mainSections.map((s, i) => (
+                        <ListItem key={i} sx={{ py: 0.5 }}>
+                          <ListItemText
+                            primary={
+                              <Typography variant="body2">• {s}</Typography>
+                            }
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Grid>
+
+                  {/* Mẹo/Chiến lược */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      sx={{ mb: 0.5 }}
+                    >
+                      Mẹo & Chiến lược
+                    </Typography>
+                    <List dense disablePadding>
+                      {overview.tips.map((t, i) => (
+                        <ListItem key={i} sx={{ py: 0.5 }}>
+                          <ListItemText
+                            primary={
+                              <Typography
+                                variant="body2"
+                                dangerouslySetInnerHTML={{ __html: t }}
+                              />
+                            }
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Grid>
+                </Grid>
+
+                {/* Tags minh họa */}
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  <Chip size="small" label="vocabulary" variant="outlined" />
+                  <Chip size="small" label="paraphrase" variant="outlined" />
+                  <Chip size="small" label="distractor" variant="outlined" />
+                </Stack>
+              </>
+            )}
+          </Stack>
+        </TabPanel>
+
+        {/* TAB 1: GHI CHÚ (NOTES) */}
+        <TabPanel value={tabIndex} index={1}>
+          <Box
             sx={{
-              minHeight: 36, // thấp tổng thể
-              "& .MuiTabs-indicator": { height: 2 },
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              p: 2,
             }}
           >
-            <Tab
-              icon={<EditIcon fontSize="small" />}
-              iconPosition="start"
-              label="Notes"
-              disableRipple
-              {...a11yProps(0)}
-              className="
-                                normal-case !text-[13px] 
-                                px-3 py-1.5 rounded-lg
-                                transition-colors
-                                hover:text-blue-600 hover:bg-blue-50
-                                [&.Mui-selected]:text-blue-600
-                                [&.Mui-selected]:bg-blue-50
-                                "
-              sx={{ minHeight: 36 }}
+            <TextField
+              multiline
+              minRows={8}
+              placeholder="Viết ghi chú của bạn tại đây..."
+              variant="outlined"
+              fullWidth
+              sx={{
+                bgcolor: "background.paper",
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                },
+              }}
             />
-            <Tab
-              icon={<ChatIcon fontSize="small" />}
-              iconPosition="start"
-              label={`Feedback (${comments.length})`}
-              disableRipple
-              {...a11yProps(1)}
-              className="
-                                normal-case !text-[13px] 
-                                px-3 py-1.5 rounded-lg
-                                transition-colors
-                                hover:text-blue-600 hover:bg-blue-50
-                                [&.Mui-selected]:text-blue-600
-                                [&.Mui-selected]:bg-blue-50
-                                "
-              sx={{ minHeight: 36 }}
-            />
-            <Tab
-              icon={<SummaryIcon fontSize="small" />}
-              iconPosition="start"
-              label="Insight"
-              disableRipple
-              {...a11yProps(2)}
-              className="
-                                normal-case !text-[13px] 
-                                px-3 py-1.5 rounded-lg
-                                transition-colors
-                                hover:text-blue-600 hover:bg-blue-50
-                                [&.Mui-selected]:text-blue-600
-                                [&.Mui-selected]:bg-blue-50
-                                "
-              sx={{ minHeight: 36 }}
-            />
-          </Tabs>
+          </Box>
+        </TabPanel>
 
-          {/* --- Tab 1: Ghi chú --- */}
-          <TabPanel value={tab} index={0}>
-            <LessonSummary />
-          </TabPanel>
-
-          {/* --- Tab 2: Nhận xét --- */}
-          <TabPanel value={tab} index={1}>
+        {/* TAB 2: THẢO LUẬN (FEEDBACK) */}
+        <TabPanel value={tabIndex} index={2}>
+          <Box sx={{ mb: 3 }}>
             <Stack
               direction="row"
               spacing={1}
@@ -227,42 +572,51 @@ export default function LessonNotes({ lessonData }: { lessonData?: any }) {
             <Divider sx={{ mb: 1.5 }} />
 
             <List disablePadding>
-              {comments.map((c, idx) => (
-                <React.Fragment key={c.id}>
-                  <ListItem alignItems="flex-start" disableGutters>
+              {comments.map((cmt, idx) => (
+                <React.Fragment key={cmt.id}>
+                  <ListItem alignItems="flex-start" sx={{ px: 0 }}>
                     <ListItemAvatar>
-                      <Avatar src={c.user.avatar} alt={c.user.name} />
+                      <Avatar alt={cmt.user.name} src={cmt.user.avatar} />
                     </ListItemAvatar>
                     <ListItemText
                       primary={
-                        <Stack
-                          direction="row"
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
                           alignItems="center"
-                          spacing={1}
-                          flexWrap="wrap"
                         >
-                          <Typography variant="subtitle2">
-                            {c.user.name}
-                          </Typography>
-                          <Rating
-                            value={c.rating}
-                            precision={0.5}
-                            size="small"
-                            readOnly
-                          />
                           <Typography
+                            component="span"
+                            variant="subtitle2"
+                            fontWeight="bold"
+                          >
+                            {cmt.user.name}
+                          </Typography>
+                          <Typography
+                            component="span"
                             variant="caption"
                             color="text.secondary"
-                            sx={{ ml: 0.5 }}
                           >
-                            {c.time}
+                            {cmt.time}
                           </Typography>
-                        </Stack>
+                        </Box>
                       }
                       secondary={
-                        <Typography variant="body2" sx={{ mt: 0.5 }}>
-                          {c.content}
-                        </Typography>
+                        <>
+                          <Rating
+                            value={cmt.rating}
+                            readOnly
+                            size="small"
+                            sx={{ my: 0.5 }}
+                          />
+                          <Typography
+                            variant="body2"
+                            color="text.primary"
+                            sx={{ display: "block", mb: 0.5 }}
+                          >
+                            {cmt.content}
+                          </Typography>
+                        </>
                       }
                     />
                   </ListItem>
@@ -272,342 +626,9 @@ export default function LessonNotes({ lessonData }: { lessonData?: any }) {
                 </React.Fragment>
               ))}
             </List>
-          </TabPanel>
-
-          {/* --- Tab 3: Tổng quát --- */}
-          <TabPanel value={tab} index={2}>
-            <Stack spacing={2}>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Khái quát nội dung bài học
-              </Typography>
-
-              {lessonData ? (
-                <Stack spacing={1}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Thông tin phiên học
-                  </Typography>
-                  {filteredSections.map((s: any, i: number) => (
-                    <Card
-                      key={i}
-                      variant="outlined"
-                      sx={{ borderRadius: 2, boxShadow: 1 }}
-                    >
-                      <CardContent>
-                        <Stack spacing={2}>
-                          <Stack
-                            direction="row"
-                            justifyContent="space-between"
-                            alignItems="center"
-                          >
-                            <Typography variant="subtitle1" fontWeight={600}>
-                              {s.title || s.type}
-                            </Typography>
-                            <Chip
-                              label={s.type}
-                              size="small"
-                              color={
-                                s.type === "text"
-                                  ? "default"
-                                  : s.type === "example"
-                                  ? "primary"
-                                  : s.type === "error"
-                                  ? "error"
-                                  : "secondary"
-                              }
-                              variant="outlined"
-                            />
-                          </Stack>
-
-                          {/* TEXT: nội dung bài học */}
-                          {s.type === "text" && s.content && (
-                            <Typography
-                              variant="body1"
-                              sx={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}
-                            >
-                              {s.content}
-                            </Typography>
-                          )}
-
-                          {/* EXAMPLE: ví dụ song ngữ */}
-                          {s.type === "example" && s.example && (
-                            <Box
-                              sx={{
-                                bgcolor: "grey.50",
-                                p: 2,
-                                borderRadius: 1,
-                                borderLeft: 3,
-                                borderColor: "primary.main",
-                              }}
-                            >
-                              <Stack spacing={1.5}>
-                                {s.example.en && (
-                                  <Box>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                      sx={{
-                                        textTransform: "uppercase",
-                                        fontWeight: 600,
-                                      }}
-                                    >
-                                      English
-                                    </Typography>
-                                    <Typography
-                                      variant="body1"
-                                      sx={{ mt: 0.5 }}
-                                    >
-                                      {s.example.en}
-                                    </Typography>
-                                  </Box>
-                                )}
-                                {s.example.vi && (
-                                  <Box>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                      sx={{
-                                        textTransform: "uppercase",
-                                        fontWeight: 600,
-                                      }}
-                                    >
-                                      Tiếng Việt
-                                    </Typography>
-                                    <Typography
-                                      variant="body1"
-                                      sx={{ mt: 0.5 }}
-                                    >
-                                      {s.example.vi}
-                                    </Typography>
-                                  </Box>
-                                )}
-                                {s.example.note && (
-                                  <Box>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                      sx={{
-                                        textTransform: "uppercase",
-                                        fontWeight: 600,
-                                      }}
-                                    >
-                                      Ghi chú
-                                    </Typography>
-                                    <Typography
-                                      variant="body2"
-                                      color="text.secondary"
-                                      sx={{ mt: 0.5, fontStyle: "italic" }}
-                                    >
-                                      {s.example.note}
-                                    </Typography>
-                                  </Box>
-                                )}
-                              </Stack>
-                            </Box>
-                          )}
-
-                          {/* ERROR: lỗi thường gặp */}
-                          {s.type === "error" && s.error && (
-                            <Box
-                              sx={{
-                                bgcolor: "error.50",
-                                p: 2,
-                                borderRadius: 1,
-                                borderLeft: 3,
-                                borderColor: "error.main",
-                              }}
-                            >
-                              <Stack spacing={1.5}>
-                                {s.error.wrong && (
-                                  <Box>
-                                    <Typography
-                                      variant="caption"
-                                      color="error.main"
-                                      sx={{
-                                        textTransform: "uppercase",
-                                        fontWeight: 600,
-                                      }}
-                                    >
-                                      ❌ Sai
-                                    </Typography>
-                                    <Typography
-                                      variant="body1"
-                                      sx={{ mt: 0.5 }}
-                                    >
-                                      {s.error.wrong}
-                                    </Typography>
-                                  </Box>
-                                )}
-                                {s.error.correct && (
-                                  <Box>
-                                    <Typography
-                                      variant="caption"
-                                      color="success.main"
-                                      sx={{
-                                        textTransform: "uppercase",
-                                        fontWeight: 600,
-                                      }}
-                                    >
-                                      ✅ Đúng
-                                    </Typography>
-                                    <Typography
-                                      variant="body1"
-                                      sx={{ mt: 0.5 }}
-                                    >
-                                      {s.error.correct}
-                                    </Typography>
-                                  </Box>
-                                )}
-                                {s.error.explanation && (
-                                  <Box>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                      sx={{
-                                        textTransform: "uppercase",
-                                        fontWeight: 600,
-                                      }}
-                                    >
-                                      💡 Giải thích
-                                    </Typography>
-                                    <Typography
-                                      variant="body2"
-                                      sx={{ mt: 0.5 }}
-                                    >
-                                      {s.error.explanation}
-                                    </Typography>
-                                  </Box>
-                                )}
-                              </Stack>
-                            </Box>
-                          )}
-
-                          {/* TABLE: bảng dữ liệu */}
-                          {s.type === "table" &&
-                            s.tableData &&
-                            Array.isArray(s.tableData) &&
-                            s.tableData.length > 0 && (
-                              <Paper
-                                variant="outlined"
-                                sx={{ overflow: "hidden" }}
-                              >
-                                <Table size="small">
-                                  <TableBody>
-                                    {s.tableData.map(
-                                      (row: any[], rowIdx: number) => (
-                                        <TableRow key={rowIdx} hover>
-                                          {Array.isArray(row) &&
-                                            row.map(
-                                              (cell: any, cellIdx: number) => (
-                                                <TableCell key={cellIdx}>
-                                                  {cell?.toString() || ""}
-                                                </TableCell>
-                                              )
-                                            )}
-                                        </TableRow>
-                                      )
-                                    )}
-                                  </TableBody>
-                                </Table>
-                              </Paper>
-                            )}
-                        </Stack>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </Stack>
-              ) : (
-                <>
-                  {/* Tóm tắt */}
-                  <Stack spacing={0.5}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Tóm tắt
-                    </Typography>
-                    <Typography variant="body1">{overview.summary}</Typography>
-                  </Stack>
-
-                  {/* Trọng tâm */}
-                  <Stack spacing={0.75}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Trọng tâm
-                    </Typography>
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      flexWrap="wrap"
-                      useFlexGap
-                    >
-                      {overview.focus.map((f) => (
-                        <Chip
-                          key={f}
-                          label={f}
-                          color="primary"
-                          variant="outlined"
-                        />
-                      ))}
-                    </Stack>
-                  </Stack>
-
-                  <Grid container spacing={2}>
-                    {/* Mục chính */}
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ mb: 0.5 }}
-                      >
-                        Các mục chính
-                      </Typography>
-                      <List dense disablePadding>
-                        {overview.mainSections.map((s, i) => (
-                          <ListItem key={i} sx={{ py: 0.5 }}>
-                            <ListItemText
-                              primary={
-                                <Typography variant="body2">• {s}</Typography>
-                              }
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                    </Grid>
-
-                    {/* Mẹo/Chiến lược */}
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ mb: 0.5 }}
-                      >
-                        Mẹo & Chiến lược
-                      </Typography>
-                      <List dense disablePadding>
-                        {overview.tips.map((t, i) => (
-                          <ListItem key={i} sx={{ py: 0.5 }}>
-                            <ListItemText
-                              primary={
-                                <Typography
-                                  variant="body2"
-                                  dangerouslySetInnerHTML={{ __html: t }}
-                                />
-                              }
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                    </Grid>
-                  </Grid>
-
-                  {/* Tags minh họa / có thể lấy từ lesson */}
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    <Chip size="small" label="vocabulary" variant="outlined" />
-                    <Chip size="small" label="paraphrase" variant="outlined" />
-                    <Chip size="small" label="distractor" variant="outlined" />
-                  </Stack>
-                </>
-              )}
-            </Stack>
-          </TabPanel>
-        </Stack>
-      </CardContent>
-    </Card>
+          </Box>
+        </TabPanel>
+      </Box>
+    </Paper>
   );
 }

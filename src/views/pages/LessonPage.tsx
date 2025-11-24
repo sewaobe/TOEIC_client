@@ -6,7 +6,11 @@ import {
   Container,
   Grid,
   CircularProgress,
+  Collapse,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
+import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
 import MainLayout from "../layouts/MainLayout";
 import LessonHeader from "../../components/lesson/LessonHeader";
 import LessonMedia from "../../components/lesson/LessonMedia";
@@ -14,7 +18,6 @@ import LessonNotes from "../../components/lesson/LessonNotes";
 import { lessonService } from "../../services/lesson.service";
 import LessonExam from "../../components/lesson/LessTypeStudy/LessonExam";
 import LessonSidebarExam from "../../components/lesson/LessonSidebarExam";
-import { LessonItem } from "../../types/Lesson";
 import LessonIntroExam from "../../components/lesson/LessonIntroExam";
 import LessonQueue from "../../components/lesson/LessonSidebar";
 import { useSearchParams } from "react-router-dom";
@@ -29,53 +32,9 @@ import { motion, AnimatePresence } from "framer-motion"; // <-- 1. IMPORT
 import { LessonContentSkeleton } from "../../components/lesson/LessonSketelon";
 import { FlashcardHistoryModal } from "../../components/flashCardItem/FlashCardHistory";
 
-// Transcript giả định
-const LessonTranscript = ({ lesson }: { lesson: LessonItem | null }) => {
-  const [open, setOpen] = React.useState(false);
-  if (!lesson) return null;
-
-  return (
-    <div
-      style={{
-        padding: "12px",
-        border: "1px solid #eee",
-        borderRadius: "12px",
-        height: "100%",
-        background: "#fafafa",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Button
-        variant="outlined"
-        size="small"
-        onClick={() => setOpen((o) => !o)}
-        sx={{ alignSelf: "flex-start", mb: 1 }}
-      >
-        {open ? "Ẩn transcript" : "📜 Xem transcript"}
-      </Button>
-
-      {open && (
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            maxHeight: "300px",
-            paddingRight: "6px",
-          }}
-        >
-          <h3 className="font-semibold mb-2">Transcript</h3>
-          <p className="text-sm text-gray-700">
-            Đây là transcript cho video/audio của bài học <b>{lesson.title}</b>.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-};
-
 export default function LessonPage() {
   const [searchParam] = useSearchParams();
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const dayId = (searchParam.get("day") || "").toString();
   const week = (searchParam.get("week") || "").toString();
 
@@ -114,6 +73,14 @@ export default function LessonPage() {
   React.useEffect(() => {
     window.scroll(0, 0);
   }, [currentLesson]);
+
+  // Calculate progress
+  const completedCount = lessons.filter(l => l.status === 'completed').length;
+  const totalCount = lessons.length;
+  const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+  // Determine timer display
+  const showTimer = (currentLesson?.type === 'quiz' && examStarted) ? mmss : undefined;
 
   // Load lesson detail when currentLesson is a lesson (for media + insight tab)
   const [lessonDetail, setLessonDetail] = React.useState<any>(null);
@@ -206,17 +173,18 @@ export default function LessonPage() {
 
         return (
           <>
-            <Grid size={{ xs: 12, md: 8 }}>
-              <LessonMedia
-                src={firstMedia?.url || "https://youtu.be/4QnqpWLT5m4"}
-                type={firstMedia?.type === "audio" ? "audio" : "video"}
-              />
-              <Box mt={2}>
-                <LessonNotes lessonData={lessonDetail} />
+            <Grid size={{ xs: 12 }} sx={{ display: "flex", justifyContent: "center" }}>
+              <Box sx={{ width: "100%", display:"flex", justifyContent: "center", maxWidth: "1000px" }}>
+                <LessonMedia
+                  src={firstMedia?.url || "https://youtu.be/4QnqpWLT5m4"}
+                  type={firstMedia?.type === "audio" ? "audio" : "video"}
+                />
               </Box>
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <LessonTranscript lesson={currentLesson} />
+            <Grid size={{ xs: 12 }}>
+              <Box>
+                <LessonNotes lessonData={lessonDetail} />
+              </Box>
             </Grid>
           </>
         );
@@ -345,70 +313,128 @@ export default function LessonPage() {
           minHeight: "100vh",
           width: "100%",
           background: "linear-gradient(135deg, #F5F7FA 0%, #E6EDF6 100%)",
-          py: "3%",
+          py: "2%",
         }}
       >
         <Container
-          id="lesson-top"
-          className="max-w-[1000px] mx-auto p-4 sm:p-6"
+          maxWidth={false}
           sx={{
-            borderRadius: "36px",
-            border: "1px solid rgba(0,0,0,0.06)",
-            bgcolor: (t) =>
-              t.palette.mode === "light"
-                ? "#FFFFFFCC"
-                : "rgba(255,255,255,0.08)",
-            backdropFilter: "blur(18px)",
-            boxShadow: "0 10px 28px rgba(0,0,0,0.06)",
-            pb: 2,
+            maxWidth: "1600px",
+            mx: "auto",
+            p: { xs: 2, md: 4 },
+            position: 'relative'
           }}
         >
-          <LessonHeader lesson={currentLesson} />
+          {!isSidebarOpen && (
+             <AnimatePresence>
+               {!isSidebarOpen && (
+                 <motion.div
+                   key="openSidebarBtn"
+                   initial={{ opacity: 0, scale: 0.96 }}
+                   animate={{ opacity: 1, scale: 1 }}
+                   exit={{ opacity: 0, scale: 0.96 }}
+                   transition={{ duration: 0.18 }}
+                   style={{ position: 'absolute', right: 24, top: 24, zIndex: 10 }}
+                 >
+                   <Tooltip title="Hiện danh sách bài học">
+                     <IconButton
+                       onClick={() => setIsSidebarOpen(true)}
+                       sx={{
+                         bgcolor: 'background.paper',
+                         boxShadow: 1,
+                         '&:hover': { bgcolor: 'background.paper' },
+                       }}
+                     >
+                       <KeyboardDoubleArrowLeftIcon />
+                     </IconButton>
+                   </Tooltip>
+                 </motion.div>
+               )}
+             </AnimatePresence>
+          )}
 
-          <Grid
-            container
-            spacing={2}
-            sx={{ mt: 2, justifyContent: "center", minHeight: "340px" }}
-          >
-            {loading ? (
-              <LessonContentSkeleton
-                lessonType={currentLesson ? currentLesson.type : "flash_card"}
-              />
-            ) : error ? (
-              <Alert severity="error">{error}</Alert>
-            ) : (
-              // --- PHẦN NÂNG CẤP CHÍNH NẰM Ở ĐÂY ---
-              <Box sx={{ width: "100%", position: "relative" }}>
-                <AnimatePresence mode="wait">
-                  {/* Mỗi khi currentLesson thay đổi, `activityKey` cũng thay đổi.
-                    AnimatePresence sẽ nhận biết sự thay đổi `key` này để chạy animation.
-                  */}
-                  <motion.div
-                    key={activityKey || currentLesson?.id} // Sử dụng activityKey hoặc id của lesson
-                    // Thêm prop "thần thánh" layout
-                    layout="position"
-                    // Hiệu ứng mờ dần ra/vào
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
-                    // Thời gian và kiểu chuyển động
-                    transition={{
-                      duration: 0.4,
-                      ease: [0.4, 0, 0.2, 1], // Easing mượt mà
-                    }}
-                  >
-                    {renderLessonContent()}
-                  </motion.div>
-                </AnimatePresence>
-              </Box>
-            )}
+           <Grid container spacing={3}>
+             {/* Main Content */}
+             <Grid
+               size={{ xs: 12, md: isSidebarOpen ? 9 : 12 }}
+               component={motion.div}
+               // avoid initial layout animation on first mount
+               initial={false}
+               layout
+               transition={{ layout: { duration: 0.32, ease: [0.4, 0, 0.2, 1] } }}
+             >
+                <Box sx={{ 
+                    bgcolor: (t) => t.palette.mode === "light" ? "#FFFFFFCC" : "rgba(255,255,255,0.08)",
+                    backdropFilter: "blur(18px)",
+                    borderRadius: "24px",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                    boxShadow: "0 10px 28px rgba(0,0,0,0.06)",
+                    p: { xs: 2, md: 4 },
+                    minHeight: '80vh'
+                }}>
+                    <LessonHeader 
+                        lesson={currentLesson} 
+                        progress={progress}
+                        timer={showTimer}
+                    />
+                    
+                    <Grid container spacing={2} sx={{ mt: 2, justifyContent: "center", minHeight: "340px" }}>
+                        {loading ? (
+                            <LessonContentSkeleton
+                                lessonType={currentLesson ? currentLesson.type : "flash_card"}
+                            />
+                        ) : error ? (
+                            <Alert severity="error">{error}</Alert>
+                        ) : (
+                            <Box sx={{ width: "100%", position: "relative", overflow: 'hidden' }}>
+                              <AnimatePresence mode="wait">
+                                <motion.div
+                                  key={activityKey || currentLesson?.id}
+                                  layout
+                                  initial={{ opacity: 0, y: 15 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -15 }}
+                                  transition={{
+                                    duration: 0.4,
+                                    ease: [0.4, 0, 0.2, 1],
+                                    layout: { duration: 0.32, ease: [0.4, 0, 0.2, 1] },
+                                  }}
+                                >
+                                  {renderLessonContent()}
+                                </motion.div>
+                              </AnimatePresence>
+                            </Box>
+                        )}
+                    </Grid>
+                </Box>
+             </Grid>
+
+             {/* Sidebar (animated) */}
+             <AnimatePresence mode="wait">
+               {isSidebarOpen && (
+                 <Grid
+                   component={motion.div}
+                   key="sidebar"
+                   size={{ xs: 12, md: 3 }}
+                   initial={{ opacity: 0, x: 18 }}
+                   animate={{ opacity: 1, x: 0 }}
+                   exit={{ opacity: 0, x: 18 }}
+                   transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                   sx={{ width: '100%' }}
+                 >
+                   <Box sx={{ position: 'sticky', top: 24, height: 'fit-content' }}>
+                     <LessonQueue
+                       lessons={lessons}
+                       currentLesson={currentLesson}
+                       onSelect={selectLesson}
+                       variant="vertical"
+                       onToggleSidebar={() => setIsSidebarOpen(false)}
+                     />
+                   </Box>
+                 </Grid>
+               )}
+             </AnimatePresence>
           </Grid>
-
-          <LessonQueue
-            lessons={lessons}
-            currentLesson={currentLesson}
-            onSelect={selectLesson}
-          />
 
           {showHistory && (
             <FlashcardHistoryModal

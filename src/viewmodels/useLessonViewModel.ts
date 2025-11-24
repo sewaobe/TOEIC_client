@@ -141,7 +141,7 @@ export const useLessonViewModel = (dayId: string, week: string) => {
     // Reset state của các bài học trước đó
     setExamStarted(false);
     setAnswers({});
-    setActivityStatus("intro");
+    setActivityStatus("studying");
     setQuizQuestions([]);
 
     const fetchLessonSpecificData = async () => {

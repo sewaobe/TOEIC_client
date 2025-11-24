@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
@@ -56,7 +56,7 @@ function extractHeadingsTree(markdown: string): HeadingNode[] {
   while ((match = regex.exec(markdown)) !== null) {
     const level = match[1].length; // số lượng dấu #
     const text = match[2].trim();
-    const id = "heading-" + text.toLowerCase().replace(/\s+/g, "-");
+    const id = text.toLowerCase().replace(/\s+/g, "-");
 
     const node: HeadingNode = { id, text, level, children: [] };
 
@@ -311,7 +311,10 @@ const Sidebar: React.FC<{
                   {/* mục lục khi expand */}
                   {isExpanded && headingsTree.length > 0 && (
                     <div className="ml-8 mt-1 mb-2 pl-2 border-l-2 border-indigo-300 space-y-1">
-                      <HeadingTree nodes={headingsTree} onJump={onJumpToHeading} />
+                      <HeadingTree nodes={headingsTree} onJump={(id: string) => {
+                        setActiveId(l.id);
+                        return onJumpToHeading(id);
+                      }} />
                     </div>
                   )}
                 </div>
@@ -528,7 +531,7 @@ export default function StudyNotebookFlip3D({
             _id: note._id,
             id: note._id,
             title: note.title,
-            dateISO: note.created_at,
+            dateISO: note.updated_at,
             content: note.content,
           };
         });
@@ -581,6 +584,8 @@ export default function StudyNotebookFlip3D({
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
+  // ref to keep track of scheduled requestAnimationFrame for jumping
+  const jumpRafRef = useRef<number | null>(null);
 
   const active = useMemo(
     () => lessons.find((l) => l.id === activeId) || null,
@@ -617,15 +622,16 @@ export default function StudyNotebookFlip3D({
 
     try {
       // Update on server
-      await user_note_service.updateNote(
+      const updated = await user_note_service.updateNote(
         { title },
         active._id || active.id
       );
 
       // Update local state
       setLessons((prev) =>
-        prev.map((l) => (l.id === active.id ? { ...l, title } : l))
+        prev.map((l) => (l.id === active.id ? { ...l, title, dateISO: updated.updated_at } : l))
       );
+
     } catch (err) {
       console.error("Error updating title:", err);
       setError("Không thể cập nhật tiêu đề.");
@@ -656,7 +662,7 @@ export default function StudyNotebookFlip3D({
     if (!active) return;
 
     try {
-      await user_note_service.updateNote(
+      const saved = await user_note_service.updateNote(
         { content },
         active._id || active.id
       );
@@ -666,6 +672,9 @@ export default function StudyNotebookFlip3D({
         ...prev,
         [active.id]: content,
       }));
+      setLessons((prev) =>
+        prev.map((l) => (l.id === active.id ? { ...l, dateISO: saved.updated_at } : l))
+      );
     } catch (err) {
       console.error("Error saving content:", err);
       setError("Không thể lưu nội dung.");
@@ -673,11 +682,47 @@ export default function StudyNotebookFlip3D({
   };
 
   const handleJumpToHeading = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Cancel any previously scheduled jump
+    if (jumpRafRef.current) {
+      cancelAnimationFrame(jumpRafRef.current);
+      jumpRafRef.current = null;
     }
+
+    // Schedule the scroll on the next animation frame(s) so that
+    // React has time to commit the DOM after setActiveId.
+    jumpRafRef.current = requestAnimationFrame(() => {
+      // One extra frame can help when the editor is remounted
+      jumpRafRef.current = requestAnimationFrame(() => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          // Fallback: try to find headings inside the editor container
+          const container = document.querySelector('.markdown-editor');
+          if (container) {
+            const headings = container.querySelectorAll('h1,h2,h3,h4,h5,h6');
+            for (const h of Array.from(headings)) {
+              if ((h.textContent || '').trim().toLowerCase().includes(id.replace(/^heading-/, '').replace(/-/g, ' '))) {
+                (h as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                break;
+              }
+            }
+          }
+        }
+        jumpRafRef.current = null;
+      });
+    });
   };
+
+  // Cleanup any pending RAF when component unmounts
+  useEffect(() => {
+    return () => {
+      if (jumpRafRef.current) {
+        cancelAnimationFrame(jumpRafRef.current);
+        jumpRafRef.current = null;
+      }
+    };
+  }, []);
 
   const handlePasteClipboard = async () => {
     if (!clipboardText || !active) return;

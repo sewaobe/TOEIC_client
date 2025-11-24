@@ -471,7 +471,7 @@ const NotebookPage: React.FC<{
           <span className="text-gray-500">{fmtDate(lesson.updated_at)}</span>
           <span className="text-gray-300">•</span>
           <span className="text-gray-500">ID: {lesson._id.slice(0, 8)}</span>
-          {lesson.related_object && (
+          {lesson.related_object?.related_id && (
             <button
               onClick={handleNavigateToLesson}
               title="Go to lesson"

@@ -121,7 +121,7 @@ export default function PlanWizardDemo() {
               {activeStep === 2 && (
                 <Fade in mountOnEnter unmountOnExit>
                   <Box>
-                    <DetailedPlanStep />
+                    <DetailedPlanStep startScore={scoreNumber} />
                   </Box>
                 </Fade>
               )}

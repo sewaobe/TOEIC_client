@@ -1,14 +1,11 @@
-import * as React from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Card,
   CardContent,
   Chip,
-  Divider,
   Grid,
   Paper,
-  Slider,
   Stack,
   Typography,
   Tabs,
@@ -17,10 +14,19 @@ import {
   Alert,
   Collapse,
   TextField,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
+import LockIcon from '@mui/icons-material/Lock';
+import LockOpenIcon from '@mui/icons-material/LockOpen';
 import useLocalStorage from "../../hooks/useLocalStorage";
 import { diffInWeeks } from "../../utils/date";
 import { getHoursNeeded } from "../../utils/estimatedStudyHour";
@@ -28,7 +34,6 @@ import { WEEKDAYS, redistributeWeeks, redistributeDays } from "../../utils/planD
 import { PieChart } from "@mui/x-charts/PieChart";
 import { Weekday } from "../../types/PlanWizard";
 import { pieArcClasses, pieClasses } from "@mui/x-charts/PieChart";
-import { Pulse, Shake } from "../animations/motionWrappers";
 
 // Hàm tạo dải màu HSL đều nhau
 const generateColors = (count: number): string[] => {
@@ -48,84 +53,83 @@ const WEEK_LABELS: Record<string, string> = {
   Sun: "Chủ nhật",
 };
 
-const MIN_DAY = 30;
-const MAX_DAY = 600;
+const MIN_DAY = 0;
+const MAX_DAY = 24*60;
 const MIN_WEEK = 7 * MIN_DAY;
 const MAX_WEEK = 7 * 1440;
 
-const TimeInput = ({
-  value,
-  min,
-  max,
-  onChange,
-  step = 5,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  onChange: (v: number) => void;
-  step?: number;
-}) => {
-  const clamp = (v: number) => Math.max(min, Math.min(max, v));
+// const TimeInput = ({
+//   value,
+//   min,
+//   max,
+//   onChange,
+//   step = 5,
+// }: {
+//   value: number;
+//   min: number;
+//   max: number;
+//   onChange: (v: number) => void;
+//   step?: number;
+// }) => {
+//   const clamp = (v: number) => Math.max(min, Math.min(max, v));
 
-  return (
-    <Stack direction="row" spacing={1} alignItems="center">
-      {/* Nút giảm */}
-      <Button
-        variant="outlined"
-        size="small"
-        onClick={() => onChange(clamp(value - step))}
-        sx={{ minWidth: 38, px: 1 }}
-      >
-        -
-      </Button>
+//   return (
+//     <Stack direction="row" spacing={1} alignItems="center">
+//       {/* Nút giảm */}
+//       <Button
+//         variant="outlined"
+//         size="small"
+//         onClick={() => onChange(clamp(value - step))}
+//         sx={{ minWidth: 38, px: 1 }}
+//       >
+//         -
+//       </Button>
 
-      {/* TextField nhập phút */}
-      <TextField
-        value={value}
-        size="small"
-        type="number"
-        onChange={(e) => {
-          const raw = Number(e.target.value);
-          if (!isNaN(raw)) onChange(clamp(raw));
-        }}
-        onBlur={(e) => {
-          // auto fix value
-          const raw = Number(e.target.value);
-          onChange(clamp(raw));
-        }}
-        inputProps={{
-          min,
-          max,
-          style: { textAlign: "center", width: 70, fontWeight: 600 },
-        }}
-      />
+//       {/* TextField nhập phút */}
+//       <TextField
+//         value={value}
+//         size="small"
+//         type="number"
+//         onChange={(e) => {
+//           const raw = Number(e.target.value);
+//           if (!isNaN(raw)) onChange(clamp(raw));
+//         }}
+//         onBlur={(e) => {
+//           // auto fix value
+//           const raw = Number(e.target.value);
+//           onChange(clamp(raw));
+//         }}
+//         inputProps={{
+//           min,
+//           max,
+//           style: { textAlign: "center", width: 70, fontWeight: 600 },
+//         }}
+//       />
 
-      <Typography variant="body2" sx={{ minWidth: 40 }}>
-        phút
-      </Typography>
+//       <Typography variant="body2" sx={{ minWidth: 40 }}>
+//         phút
+//       </Typography>
 
-      {/* Nút tăng */}
-      <Button
-        variant="outlined"
-        size="small"
-        onClick={() => onChange(clamp(value + step))}
-        sx={{ minWidth: 38, px: 1 }}
-      >
-        +
-      </Button>
-    </Stack>
-  );
-};
+//       {/* Nút tăng */}
+//       <Button
+//         variant="outlined"
+//         size="small"
+//         onClick={() => onChange(clamp(value + step))}
+//         sx={{ minWidth: 38, px: 1 }}
+//       >
+//         +
+//       </Button>
+//     </Stack>
+//   );
+// };
 
-
-export const DetailedPlanStep = () => {
+export const DetailedPlanStep = ({ startScore }: { startScore?: number }) => {
   const [planEnd] = useLocalStorage<string>("plan_end", "");
   const [planStart] = useLocalStorage<string>("plan_start", "");
   const [targetScore] = useLocalStorage<number>("score_target_plan", 650);
 
   const totalWeek = diffInWeeks(planStart, planEnd);
-  const totalHours = getHoursNeeded(400, targetScore);
+  const totalHours = getHoursNeeded(startScore ?? 400, targetScore);
   const totalMinutes = Math.max(0, Math.round(totalHours * 60));
   const weeklyHours = totalWeek > 0 ? parseFloat((totalHours / totalWeek).toFixed(1)) : 0;
 
@@ -134,6 +138,11 @@ export const DetailedPlanStep = () => {
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [tab, setTab] = useState(0);
   const [warning, setWarning] = useState<string>("");
+  // editing buffers so typing isn't clamped and to allow commit onBlur/Enter
+  const [editingCells, setEditingCells] = useState<Record<string, string>>({});
+  const [editingWeekTotals, setEditingWeekTotals] = useState<Record<number, string>>({});
+  // locked weeks: when true, redistribution preserves that week
+  const [lockedWeeks, setLockedWeeks] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     // Chỉ kiểm tra khi có dữ liệu
@@ -178,6 +187,83 @@ export const DetailedPlanStep = () => {
     return base;
   };
 
+  // Allow editing the total minutes for a week and redistribute difference across unlocked weeks
+  const handleWeekTotalChange = (weekIndex: number, newTotal: number) => {
+    if (!weeklyTotals || weeklyTotals.length === 0) return;
+    const idx = weekIndex - 1;
+    const oldTotal = weeklyTotals[idx] ?? 0;
+    const diff = Math.round(newTotal) - Math.round(oldTotal);
+    if (diff === 0) {
+      // still mark as locked (user changed then set same)
+      setLockedWeeks((prev) => ({ ...prev, [weekIndex]: true }));
+      return;
+    }
+
+    const totalCurrent = weeklyTotals.reduce((a, b) => a + b, 0);
+    const lockedIdxs = Object.entries(lockedWeeks).filter(([k, v]) => v).map(([k]) => Number(k) - 1).filter((i) => i !== idx);
+    const lockedSum = lockedIdxs.reduce((s, i) => s + (weeklyTotals[i] || 0), 0);
+
+    const unlockedIdxs = Array.from({ length: weeklyTotals.length }, (_, i) => i).filter((i) => i !== idx && !lockedIdxs.includes(i));
+
+    if (unlockedIdxs.length === 0) {
+      // no unlocked weeks to adjust: just set this week's total
+      setWeeklyTotals((prev) => {
+        const copy = prev && prev.length ? [...prev] : Array(weeklyTotals.length).fill(0);
+        copy[idx] = Math.round(newTotal);
+        return copy;
+      });
+      setWeekDays((prev) => ({ ...prev, [String(weekIndex)]: makeEvenWeekPlan(Math.round(newTotal)) }));
+      setLockedWeeks((prev) => ({ ...prev, [weekIndex]: true }));
+      return;
+    }
+
+    const sumUnlockedCurrent = unlockedIdxs.reduce((s, i) => s + (weeklyTotals[i] || 0), 0) || unlockedIdxs.length;
+    // new sum for unlocked weeks should absorb the inverse of diff so totalCurrent stays the same
+    const newSumUnlocked = Math.max(0, sumUnlockedCurrent - diff);
+
+    const redistributed = [...weeklyTotals];
+    redistributed[idx] = Math.round(newTotal);
+
+    unlockedIdxs.forEach((i) => {
+      const proportion = (weeklyTotals[i] || 0) / sumUnlockedCurrent;
+      redistributed[i] = Math.round(proportion * newSumUnlocked);
+    });
+
+    // fix rounding differences
+    let adjust = (totalCurrent - lockedSum) - (redistributed[idx] + unlockedIdxs.reduce((s, i) => s + redistributed[i], 0));
+    let guard = 0;
+    while (adjust !== 0 && guard < 200) {
+      for (const i of unlockedIdxs) {
+        if (adjust === 0) break;
+        redistributed[i] = Math.max(0, redistributed[i] + Math.sign(adjust));
+        adjust -= Math.sign(adjust);
+      }
+      guard++;
+    }
+
+    // scale per-day plans for changed weeks
+    const newWeekDays: Record<string, any> = { ...weekDays };
+    redistributed.forEach((wt, i) => {
+      const key = String(i + 1);
+      const oldPlan = newWeekDays[key] ?? makeEvenWeekPlan(wt);
+      // simple proportional scaling of days
+      const oldSum = WEEKDAYS.reduce((a, d) => a + oldPlan[d], 0) || 1;
+      const scaled: any = {};
+      WEEKDAYS.forEach((d) => {
+        scaled[d] = Math.round((oldPlan[d] * wt) / oldSum);
+      });
+      newWeekDays[key] = scaled;
+    });
+
+    setWeeklyTotals(redistributed);
+    setWeekDays(newWeekDays);
+    setLockedWeeks((prev) => ({ ...prev, [weekIndex]: true }));
+  };
+
+  const toggleLockWeek = (weekIndex: number) => {
+    setLockedWeeks((prev) => ({ ...prev, [weekIndex]: !prev[weekIndex] }));
+  };
+
   useEffect(() => {
     if (totalWeek <= 0 || totalMinutes <= 0) {
       setWeeklyTotals([]);
@@ -215,50 +301,82 @@ export const DetailedPlanStep = () => {
     [weeklyTotals, totalMinutes]
   );
 
-  const handleWeekChange = (index: number, newVal: number) => {
-    if (!weeklyTotals.length) return;
+  // Use currently-distributed weeklyTotals as the source of truth for header display.
+  const avgWeeklyMinutes = (weeklyTotals && weeklyTotals.length)
+    ? Math.round(weeklyTotals.reduce((a, b) => a + b, 0) / weeklyTotals.length)
+    : Math.round(weeklyHours * 60);
 
-    const redistributed = redistributeWeeks(weeklyTotals, index, Math.round(newVal), MIN_WEEK, MAX_WEEK);
+  const avgDailyMinutes = Math.ceil(avgWeeklyMinutes / 7);
 
-    const newWeekDays: Record<string, any> = { ...weekDays };
-    redistributed.forEach((newTotal, i) => {
-      const key = String(i + 1);
-      const oldPlan = newWeekDays[key] ?? makeEvenWeekPlan(newTotal);
-      const oldSum = WEEKDAYS.reduce((a, d) => a + oldPlan[d], 0) || 1;
-      const scaled: any = { ...oldPlan };
-      WEEKDAYS.forEach((d) => {
-        const v = Math.round((oldPlan[d] * newTotal) / oldSum);
-        scaled[d] = Math.max(MIN_DAY, Math.min(MAX_DAY, v));
-      });
-      let adjust = newTotal - WEEKDAYS.reduce((a, d) => a + scaled[d], 0);
-      let guard = 0;
-      while (adjust !== 0 && guard < 21) {
-        guard++;
-        for (const d of WEEKDAYS) {
-          if (adjust === 0) break;
-          const tryVal = scaled[d] + Math.sign(adjust);
-          if (tryVal >= MIN_DAY && tryVal <= MAX_DAY) {
-            scaled[d] = tryVal;
-            adjust -= Math.sign(adjust);
-          }
-        }
-      }
-      newWeekDays[key] = scaled;
-    });
+  // const handleWeekChange = (index: number, newVal: number) => {
+  //   if (!weeklyTotals.length) return;
 
-    setWeeklyTotals(redistributed);
-    setWeekDays(newWeekDays);
-    setSelectedWeek(index + 1);
-  };
+  //   const redistributed = redistributeWeeks(weeklyTotals, index, Math.round(newVal), MIN_WEEK, MAX_WEEK);
 
-  const handleDayChange = (day: string, newVal: number) => {
-    const key = String(selectedWeek);
-    const cur = weekDays[key];
-    if (!cur) return;
+  //   const newWeekDays: Record<string, any> = { ...weekDays };
+  //   redistributed.forEach((newTotal, i) => {
+  //     const key = String(i + 1);
+  //     const oldPlan = newWeekDays[key] ?? makeEvenWeekPlan(newTotal);
+  //     const oldSum = WEEKDAYS.reduce((a, d) => a + oldPlan[d], 0) || 1;
+  //     const scaled: any = { ...oldPlan };
+  //     WEEKDAYS.forEach((d) => {
+  //       const v = Math.round((oldPlan[d] * newTotal) / oldSum);
+  //       scaled[d] = Math.max(MIN_DAY, Math.min(MAX_DAY, v));
+  //     });
+  //     let adjust = newTotal - WEEKDAYS.reduce((a, d) => a + scaled[d], 0);
+  //     let guard = 0;
+  //     while (adjust !== 0 && guard < 21) {
+  //       guard++;
+  //       for (const d of WEEKDAYS) {
+  //         if (adjust === 0) break;
+  //         const tryVal = scaled[d] + Math.sign(adjust);
+  //         if (tryVal >= MIN_DAY && tryVal <= MAX_DAY) {
+  //           scaled[d] = tryVal;
+  //           adjust -= Math.sign(adjust);
+  //         }
+  //       }
+  //     }
+  //     newWeekDays[key] = scaled;
+  //   });
+
+  //   setWeeklyTotals(redistributed);
+  //   setWeekDays(newWeekDays);
+  //   setSelectedWeek(index + 1);
+  // };
+
+  // const handleDayChange = (day: string, newVal: number) => {
+  //   const key = String(selectedWeek);
+  //   const cur = weekDays[key];
+  //   if (!cur) return;
+
+  //   const updated = redistributeDays(cur, day as Weekday, Math.round(newVal), MIN_DAY, MAX_DAY);
+
+  //   const weekTotal = weeklyTotals[selectedWeek - 1] ?? WEEKDAYS.reduce((a, d) => a + updated[d], 0);
+  //   let adjust = weekTotal - WEEKDAYS.reduce((a, d) => a + updated[d], 0);
+  //   let guard = 0;
+  //   while (adjust !== 0 && guard < 21) {
+  //     guard++;
+  //     for (const d of WEEKDAYS) {
+  //       if (adjust === 0) break;
+  //       const tryVal = updated[d] + Math.sign(adjust);
+  //       if (tryVal >= MIN_DAY && tryVal <= MAX_DAY) {
+  //         updated[d] = tryVal;
+  //         adjust -= Math.sign(adjust);
+  //       }
+  //     }
+  //   }
+
+  //   setWeekDays({ ...weekDays, [key]: updated });
+  // };
+
+  // Allow editing a specific week's day cell (used by table where user can edit any week)
+  const handleDayChangeForWeek = (weekIndex: number, day: string, newVal: number) => {
+    const key = String(weekIndex);
+    const cur = weekDays[key] ?? makeEvenWeekPlan(weeklyTotals[weekIndex - 1] ?? Math.ceil(weeklyHours * 60));
 
     const updated = redistributeDays(cur, day as Weekday, Math.round(newVal), MIN_DAY, MAX_DAY);
 
-    const weekTotal = weeklyTotals[selectedWeek - 1] ?? WEEKDAYS.reduce((a, d) => a + updated[d], 0);
+    const weekTotal = weeklyTotals[weekIndex - 1] ?? WEEKDAYS.reduce((a, d) => a + updated[d], 0);
     let adjust = weekTotal - WEEKDAYS.reduce((a, d) => a + updated[d], 0);
     let guard = 0;
     while (adjust !== 0 && guard < 21) {
@@ -273,7 +391,18 @@ export const DetailedPlanStep = () => {
       }
     }
 
-    setWeekDays({ ...weekDays, [key]: updated });
+    // update weekDays and also sync weeklyTotals for that week
+    setWeekDays((prev) => ({ ...prev, [key]: updated }));
+
+    const newWeekSum = WEEKDAYS.reduce((a, d) => a + (updated[d] || 0), 0);
+    setWeeklyTotals((prev) => {
+      const copy = prev && prev.length ? [...prev] : Array(totalWeek).fill(Math.round(actualTotalMinutes / Math.max(1, totalWeek)));
+      copy[weekIndex - 1] = newWeekSum;
+      return copy;
+    });
+
+    // mark week as manual/locked so automatic redistribution avoids it
+    setLockedWeeks((prev) => ({ ...prev, [weekIndex]: true }));
   };
 
   const weeklyPieData = weeklyTotals.map((m, i) => ({
@@ -319,9 +448,9 @@ export const DetailedPlanStep = () => {
         </Stack>
         <Stack direction="row" spacing={1} flexWrap="wrap">
           <Chip label={`Số tuần: ${totalWeek}`} size="small" variant="outlined" />
-          <Chip label={`TB/tuần: ${weeklyHours * 60} phút (~${weeklyHours} giờ)`} size="small" variant="outlined" />
+          <Chip label={`TB/tuần: ${avgWeeklyMinutes} phút (~${(avgWeeklyMinutes / 60).toFixed(1)} giờ)`} size="small" variant="outlined" />
           <Chip
-            label={`TB/ngày: ${Math.ceil((weeklyHours * 60) / 7)} phút (~${Math.ceil(weeklyHours / 7)} giờ)`}
+            label={`TB/ngày: ${avgDailyMinutes} phút (~${Math.ceil(avgDailyMinutes / 60)} giờ)`}
             size="small"
             variant="outlined"
           />
@@ -423,98 +552,112 @@ export const DetailedPlanStep = () => {
         </Grid>
       )}
 
-      {/* Tab 2 - Chỉnh sửa */}
+      {/* Tab 2 - Chỉnh sửa: Bảng tuần x ngày */}
       {tab === 1 && (
         <Grid container spacing={3}>
-          <Grid size={{ xs: 12, md: 7 }}>
+          <Grid size={{ xs: 12 }}>
             <Card variant="outlined" className="rounded-2xl">
               <CardContent className="p-4">
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                  Tổng thời gian từng tuần
+                  Chi tiết phân bổ (Tuần × Ngày)
                 </Typography>
-                <Stack spacing={1.25} sx={{ pr: 1 }}>
-                  {Array.from({ length: totalWeek }, (_, i) => i + 1).map((week) => {
-                    const m = weeklyTotals[week - 1] ?? Math.ceil(weeklyHours * 60);
-                    return (
-                      <Stack key={week} spacing={0.5} onClick={() => setSelectedWeek(week)}>
 
-                        {/* Tuần + TimeInput cùng hàng */}
-                        <Stack
-                          direction="row"
-                          alignItems="center"
-                          justifyContent="space-between"
-                          spacing={2}
-                        >
-                          {/* Label Tuần */}
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ minWidth: 70 }}
-                          >
-                            Tuần {week}
-                          </Typography>
-
-                          {/* TimeInput */}
-                          <TimeInput
-                            value={m}
-                            min={MIN_WEEK}
-                            max={MAX_WEEK}
-                            step={15}
-                            onChange={(v) => {
-                              React.startTransition(() => handleWeekChange(week - 1, v))
-                            }}
-                          />
-                        </Stack>
-
-                        <Divider sx={{ opacity: 0.2 }} />
-                      </Stack>
-                    );
-                  })}
-                </Stack>
+                <TableContainer component={Paper} sx={{ mt: 2, width: '100%', overflowX: 'auto' }}>
+                  <Table size="small" sx={{ width: '100%', tableLayout: 'fixed' }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Tuần</TableCell>
+                        {WEEKDAYS.map((d) => (
+                          <TableCell key={d} align="center">
+                            {WEEK_LABELS[d]}
+                          </TableCell>
+                        ))}
+                        <TableCell align="center">Tổng (phút)</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {Array.from({ length: totalWeek }, (_, idx) => {
+                        const weekNo = idx + 1;
+                        const plan = weekDays[String(weekNo)] ?? makeEvenWeekPlan(weeklyTotals[idx] ?? Math.ceil(weeklyHours * 60));
+                        const rowTotal = WEEKDAYS.reduce((s, d) => s + (plan[d] || 0), 0);
+                          return (
+                          <TableRow key={weekNo} hover onClick={() => setSelectedWeek(weekNo)}>
+                            <TableCell component="th" scope="row" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleLockWeek(weekNo); }}>
+                                {lockedWeeks[weekNo] ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
+                              </IconButton>
+                              <span>Tuần {weekNo}</span>
+                            </TableCell>
+                            {WEEKDAYS.map((d) => {
+                              const cellKey = `${weekNo}-${d}`;
+                              const editingValue = editingCells[cellKey];
+                              return (
+                                <TableCell key={d} align="center" sx={{ minWidth: 72, maxWidth: 120, overflow: 'hidden' }}>
+                                  <TextField
+                                    size="small"
+                                    type="number"
+                                    value={editingValue ?? String(plan[d] ?? 0)}
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      setEditingCells((prev) => ({ ...prev, [cellKey]: v }));
+                                    }}
+                                    onBlur={() => {
+                                      const raw = Number(editingCells[cellKey] ?? plan[d] ?? 0);
+                                      const val = Number.isNaN(raw) ? (plan[d] ?? 0) : Math.round(raw);
+                                      handleDayChangeForWeek(weekNo, d, val);
+                                      setEditingCells((prev) => { const copy = { ...prev }; delete copy[cellKey]; return copy; });
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        const raw = Number(editingCells[cellKey] ?? plan[d] ?? 0);
+                                        const val = Number.isNaN(raw) ? (plan[d] ?? 0) : Math.round(raw);
+                                        handleDayChangeForWeek(weekNo, d, val);
+                                        setEditingCells((prev) => { const copy = { ...prev }; delete copy[cellKey]; return copy; });
+                                        (e.target as HTMLElement).blur();
+                                      }
+                                    }}
+                                    inputProps={{ style: { textAlign: 'center', width: 64, padding: '6px 8px' } }}
+                                  />
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell align="center">
+                              <Stack direction="row" alignItems="center" justifyContent="center" spacing={1}>
+                                <TextField
+                                  size="small"
+                                  type="number"
+                                  value={editingWeekTotals[weekNo] ?? String(rowTotal)}
+                                  onChange={(e) => setEditingWeekTotals((prev) => ({ ...prev, [weekNo]: e.target.value }))}
+                                  onBlur={() => {
+                                    const raw = Number(editingWeekTotals[weekNo] ?? rowTotal);
+                                    const val = Number.isNaN(raw) ? rowTotal : Math.round(raw);
+                                    handleWeekTotalChange(weekNo, val);
+                                    setEditingWeekTotals((prev) => { const copy = { ...prev }; delete copy[weekNo]; return copy; });
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const raw = Number(editingWeekTotals[weekNo] ?? rowTotal);
+                                      const val = Number.isNaN(raw) ? rowTotal : Math.round(raw);
+                                      handleWeekTotalChange(weekNo, val);
+                                      setEditingWeekTotals((prev) => { const copy = { ...prev }; delete copy[weekNo]; return copy; });
+                                      (e.target as HTMLElement).blur();
+                                    }
+                                  }}
+                                  inputProps={{ style: { textAlign: 'center', width: 80 } }}
+                                />
+                              </Stack>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid size={{ xs: 12, md: 5 }}>
-            <Card variant="outlined" className="rounded-2xl">
-              <CardContent className="p-4">
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Thời gian mỗi ngày trong tuần {selectedWeek}
-                </Typography>
-                <Stack spacing={1}>
-                  {WEEKDAYS.map((d) => {
-                    const plan = weekDays[String(selectedWeek)] || makeEvenWeekPlan(Math.ceil(weeklyHours * 60));
-                    const val = plan[d];
-                    return (
-                      <Stack
-                        key={d}
-                        direction="row"
-                        alignItems="center"
-                        justifyContent="space-between"
-                        spacing={2}
-                      >
-                        {/* Tên ngày */}
-                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 70 }}>
-                          {WEEK_LABELS[d]}
-                        </Typography>
-
-                        {/* TimeInput nằm cùng hàng */}
-                        <TimeInput
-                          value={val}
-                          min={MIN_DAY}
-                          max={MAX_DAY}
-                          step={5}
-                          onChange={(v) => {
-                            React.startTransition(() => handleDayChange(d, v))
-                          }}
-                        />
-                      </Stack>
-                    );
-                  })}
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
+          {/* (Removed compact edit panel — edits now happen inline in the table) */}
         </Grid>
       )}
       <Grid size={{ xs: 12, md: 12 }}>

@@ -5,7 +5,7 @@ import quizService from "../services/quiz.service";
 import { getDurationMinutes, grade } from "../constants/questionBank";
 import useLocalStorage from "../hooks/useLocalStorage";
 import { LessonItem, QCQuestion } from "../types/Lesson";
-import { Word } from "../components/flashCardItem/FlashCard";
+import { FlashcardItem } from "../components/modals/CreateFlashcardItemModal";
 
 export const useLessonViewModel = (dayId: string, week: string) => {
   // =================================================================
@@ -19,7 +19,7 @@ export const useLessonViewModel = (dayId: string, week: string) => {
     "current_lesson",
     null
   );
-  const [vocabularies, setVocabularies] = useLocalStorage<Word[]>(
+  const [vocabularies, setVocabularies] = useLocalStorage<FlashcardItem[]>(
     "vocabularies",
     []
   );
@@ -116,7 +116,7 @@ export const useLessonViewModel = (dayId: string, week: string) => {
         if (!mounted) return;
         setLessons(data);
 
-        if (isInitialLoad.current) {
+        if (isInitialLoad.current && currentLesson === null) {
           const inProgressLesson = data.find((l) => l.status === "in_progress");
           setCurrentLesson(inProgressLesson || data[0] || null);
           isInitialLoad.current = false;
@@ -162,7 +162,7 @@ export const useLessonViewModel = (dayId: string, week: string) => {
           console.log("Quiz API response:", res);
 
           // Backend trả về { success, data: Quiz, message }
-          const quiz = res.data?.data || res.data;
+          const quiz = res.data;
 
           if (quiz && quiz.question_ids && Array.isArray(quiz.question_ids)) {
             // Map backend format to QCQuestion format

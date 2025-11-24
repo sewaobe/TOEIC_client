@@ -26,7 +26,8 @@ import {
 import EditIcon from "@mui/icons-material/EditNote";
 import ChatIcon from "@mui/icons-material/ChatBubbleOutline";
 import SummaryIcon from "@mui/icons-material/Summarize";
-import LessonSummary from "./LessonSummary";
+import LessonTakeNotes from "./LessonTakeNotes";
+
 
 /* ----------------------- Mock data ----------------------- */
 const comments = [
@@ -104,9 +105,8 @@ function a11yProps(index: number) {
 }
 
 /* ---------------------- Main Component ---------------------- */
-export default function LessonNotes({ lessonData }: { lessonData?: any }) {
+export default function LessonNotes({ lessonData, week, day_id }: { lessonData?: any, week: string, day_id: string }) {
   const [tabIndex, setTabIndex] = React.useState(0);
-
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabIndex(newValue);
   };
@@ -227,10 +227,10 @@ export default function LessonNotes({ lessonData }: { lessonData?: any }) {
                               s.type === "text"
                                 ? "default"
                                 : s.type === "example"
-                                ? "primary"
-                                : s.type === "error"
-                                ? "error"
-                                : "secondary"
+                                  ? "primary"
+                                  : s.type === "error"
+                                    ? "error"
+                                    : "secondary"
                             }
                             variant="outlined"
                           />
@@ -535,19 +535,7 @@ export default function LessonNotes({ lessonData }: { lessonData?: any }) {
               p: 2,
             }}
           >
-            <TextField
-              multiline
-              minRows={8}
-              placeholder="Viết ghi chú của bạn tại đây..."
-              variant="outlined"
-              fullWidth
-              sx={{
-                bgcolor: "background.paper",
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 2,
-                },
-              }}
-            />
+            <LessonTakeNotes lesson={lessonData} week={week} day_id={day_id} />
           </Box>
         </TabPanel>
 

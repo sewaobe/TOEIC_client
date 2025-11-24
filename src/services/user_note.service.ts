@@ -19,5 +19,9 @@ export const user_note_service = {
     async deleteNote(note_id: string): Promise<{ success: boolean }> {
         const res = await axiosClient.delete(`${BASE_URL}/${note_id}`)
         return res.success;
+    },
+    async getNoteByRelatedId(related_id: string): Promise<User_Note> {
+        const res = await axiosClient.get(`${BASE_URL}/related/${related_id}`)
+        return res.data;
     }
 }

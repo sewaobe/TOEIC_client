@@ -26,6 +26,9 @@ const MarkdownEditorImpl: FC<MarkdownEditorProps> = ({ initialValue, onSave }) =
   const isSavingRef = useRef(false);
   const pendingMarkdownRef = useRef<string | null>(null);
   const editorRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  // unique instance id for debugging multiple editors
+  const instanceIdRef = useRef<string>(`ed-${Date.now().toString(36)}-${Math.floor(Math.random() * 1000)}`);
 
   // ========= Milkdown Editor =========
   useEditor(
@@ -57,7 +60,7 @@ const MarkdownEditorImpl: FC<MarkdownEditorProps> = ({ initialValue, onSave }) =
 
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
-      const editorElement = document.querySelector(".markdown-editor");
+      const editorElement = containerRef.current;
 
       if (editorElement) {
         const editorRect = editorElement.getBoundingClientRect();
@@ -73,8 +76,15 @@ const MarkdownEditorImpl: FC<MarkdownEditorProps> = ({ initialValue, onSave }) =
   }, []);
 
   useEffect(() => {
-    const editorElement = document.querySelector(".markdown-editor");
+    const editorElement = containerRef.current;
     if (!editorElement) return;
+
+    // attach an instance id for easier debugging
+    try {
+      editorElement.setAttribute('data-editor-instance', instanceIdRef.current);
+    } catch (e) {
+      /* ignore */
+    }
 
     editorElement.addEventListener("mouseup", handleTextSelection);
     editorElement.addEventListener("keyup", handleTextSelection);
@@ -156,7 +166,7 @@ const MarkdownEditorImpl: FC<MarkdownEditorProps> = ({ initialValue, onSave }) =
     };
 
     const observer = new MutationObserver(handleChange);
-    const editorElement = document.querySelector(".markdown-editor");
+    const editorElement = containerRef.current;
     if (editorElement) {
       observer.observe(editorElement, {
         childList: true,
@@ -294,6 +304,7 @@ const MarkdownEditorImpl: FC<MarkdownEditorProps> = ({ initialValue, onSave }) =
       )}
 
       <div
+        ref={containerRef}
         className="flex-1 overflow-auto markdown-editor mb-16"
         style={{
           scrollbarWidth: "none",      // Firefox

@@ -3,7 +3,11 @@ export type User_Note = {
     user_id: string;
     title: string;
     content: string;
-    related_url?: string | null;
+    related_object?: {
+        related_id: string;
+        week_no: string;
+        day_id: string;
+    } | null;
     created_at: string;
     updated_at: string;
 }

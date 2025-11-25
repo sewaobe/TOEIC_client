@@ -9,6 +9,14 @@ import {
   Collapse,
   IconButton,
   Tooltip,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from "@mui/material";
 import KeyboardDoubleArrowLeftIcon from "@mui/icons-material/KeyboardDoubleArrowLeft";
 import MainLayout from "../layouts/MainLayout";
@@ -32,6 +40,12 @@ import { LessonFinishCard } from "../../components/flashCardItem/FinishedFlashCa
 import { motion, AnimatePresence } from "framer-motion"; // <-- 1. IMPORT
 import { LessonContentSkeleton } from "../../components/lesson/LessonSketelon";
 import { FlashcardHistoryModal } from "../../components/flashCardItem/FlashCardHistory";
+import {
+  HistoryModalShell,
+  HistoryLessonType,
+  BaseAttemptSummary,
+} from "../../components/history/HistoryModalShell";
+import { fetchLessonHistoryMock } from "../../services/history.mock";
 
 export default function LessonPage() {
   const [searchParam] = useSearchParams();
@@ -70,6 +84,287 @@ export default function LessonPage() {
     handleCloseModalStatistic,
   } = useLessonViewModel(dayId, week);
 
+  const [historyOpen, setHistoryOpen] = React.useState(false);
+  const [historyLoading, setHistoryLoading] = React.useState(false);
+  const [historyAttempts, setHistoryAttempts] = React.useState<
+    BaseAttemptSummary[]
+  >([]);
+  const [selectedAttemptId, setSelectedAttemptId] = React.useState<
+    string | undefined
+  >();
+
+  const renderHistoryDetail = React.useCallback(
+    (attempt?: BaseAttemptSummary) => {
+      if (!attempt) {
+        return (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Chọn một lần học ở danh sách bên trái để xem chi tiết.
+          </Typography>
+        );
+      }
+
+      const meta = attempt.meta || {};
+
+      if (attempt.type === "flash_card") {
+        return (
+          <Box>
+            <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+              Lịch sử ôn từ vựng
+            </Typography>
+            <Typography variant="body2">Điểm: {attempt.scoreLabel}</Typography>
+            {attempt.durationSec != null && (
+              <Typography variant="body2">
+                Thời lượng: {Math.round(attempt.durationSec / 60)} phút
+              </Typography>
+            )}
+            {meta.wordsReviewed != null && (
+              <Typography variant="body2">
+                Số từ đã ôn: {meta.wordsReviewed}
+              </Typography>
+            )}
+            {(meta.easy != null || meta.medium != null || meta.hard != null) && (
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Phân bố độ khó: dễ {meta.easy ?? 0}, vừa {meta.medium ?? 0}, khó {meta.hard ?? 0}
+              </Typography>
+            )}
+            {meta.avgResponseTime != null && (
+              <Typography variant="body2">
+                Thời gian phản hồi trung bình: {meta.avgResponseTime.toFixed(1)} giây
+              </Typography>
+            )}
+            {Array.isArray(meta.wordSummaries) && meta.wordSummaries.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Chi tiết từng từ
+                </Typography>
+                <TableContainer component={Paper} sx={{ maxHeight: 220 }}>
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Từ vựng</TableCell>
+                        <TableCell>Đánh giá</TableCell>
+                        <TableCell align="right">Thời gian (s)</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {meta.wordSummaries.map((w: any, idx: number) => (
+                        <TableRow key={idx} hover>
+                          <TableCell>{w.vocabText}</TableCell>
+                          <TableCell>{w.eval_type}</TableCell>
+                          <TableCell align="right">
+                            {w.response_time.toFixed(1)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+          </Box>
+        );
+      }
+
+      if (attempt.type === "quiz") {
+        return (
+          <Box>
+            <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+              Lịch sử làm bài kiểm tra
+            </Typography>
+            <Typography variant="body2">Điểm: {attempt.scoreLabel}</Typography>
+            {attempt.durationSec != null && (
+              <Typography variant="body2">
+                Thời lượng: {Math.round(attempt.durationSec / 60)} phút
+              </Typography>
+            )}
+            {meta.totalQuestions != null && (
+              <Typography variant="body2">
+                Số câu hỏi: {meta.totalQuestions}
+              </Typography>
+            )}
+            {meta.correct != null && (
+              <Typography variant="body2">
+                Số câu đúng: {meta.correct}
+              </Typography>
+            )}
+            {Array.isArray(meta.perQuestion) && meta.perQuestion.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Chi tiết từng câu hỏi
+                </Typography>
+                <TableContainer component={Paper} sx={{ maxHeight: 240 }}>
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Câu</TableCell>
+                        <TableCell>Nội dung</TableCell>
+                        <TableCell>Đáp án bạn chọn</TableCell>
+                        <TableCell>Đáp án đúng</TableCell>
+                        <TableCell align="center">Kết quả</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {meta.perQuestion.map((q: any) => (
+                        <TableRow key={q.index} hover>
+                          <TableCell>{q.index}</TableCell>
+                          <TableCell>{q.questionText}</TableCell>
+                          <TableCell>
+                            {q.chosenKey}. {q.chosenText}
+                          </TableCell>
+                          <TableCell>
+                            {q.correctKey}. {q.correctText}
+                          </TableCell>
+                          <TableCell align="center">
+                            {q.correct ? "Đúng" : "Sai"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+          </Box>
+        );
+      }
+
+      if (attempt.type === "dictation") {
+        return (
+          <Box>
+            <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+              Lịch sử nghe chép
+            </Typography>
+            <Typography variant="body2">Độ chính xác: {attempt.scoreLabel}</Typography>
+            {attempt.durationSec != null && (
+              <Typography variant="body2">
+                Thời lượng: {Math.round(attempt.durationSec / 60)} phút
+              </Typography>
+            )}
+            {meta.totalSegments != null && (
+              <Typography variant="body2">
+                Số câu/đoạn: {meta.totalSegments}
+              </Typography>
+            )}
+            {meta.mistakes != null && (
+              <Typography variant="body2">
+                Số lỗi: {meta.mistakes}
+              </Typography>
+            )}
+            {Array.isArray(meta.segments) && meta.segments.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Chi tiết từng câu
+                </Typography>
+                <TableContainer component={Paper} sx={{ maxHeight: 240 }}>
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Câu</TableCell>
+                        <TableCell>Đáp án đúng</TableCell>
+                        <TableCell>Câu bạn ghi</TableCell>
+                        <TableCell align="center">Kết quả</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {meta.segments.map((s: any) => (
+                        <TableRow key={s.index} hover>
+                          <TableCell>{s.index}</TableCell>
+                          <TableCell>{s.correctText}</TableCell>
+                          <TableCell>{s.userText}</TableCell>
+                          <TableCell align="center">
+                            {s.isCorrect ? "Đúng" : "Sai"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+          </Box>
+        );
+      }
+
+      if (attempt.type === "shadowing") {
+        return (
+          <Box>
+            <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+              Lịch sử nói đuổi
+            </Typography>
+            <Typography variant="body2">
+              Mức độ giống: {attempt.scoreLabel}
+            </Typography>
+            {attempt.durationSec != null && (
+              <Typography variant="body2">
+                Thời lượng: {Math.round(attempt.durationSec / 60)} phút
+              </Typography>
+            )}
+            {meta.scores && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="body2">
+                  Accuracy: {meta.scores.accuracy}% – Fluency: {meta.scores.fluency}% – Intonation: {meta.scores.intonation}%
+                </Typography>
+              </Box>
+            )}
+            {meta.overall_feedback && (
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Nhận xét tổng quan: {meta.overall_feedback}
+              </Typography>
+            )}
+            {meta.audioUrl && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Nghe lại bản ghi
+                </Typography>
+                <audio controls src={meta.audioUrl} style={{ width: "100%" }} />
+              </Box>
+            )}
+            {Array.isArray(meta.wordFeedback) && meta.wordFeedback.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Điểm phát âm theo từ
+                </Typography>
+                <TableContainer component={Paper} sx={{ maxHeight: 220 }}>
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Từ</TableCell>
+                        <TableCell align="right">Điểm (%)</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {meta.wordFeedback.map((w: any, idx: number) => (
+                        <TableRow key={idx} hover>
+                          <TableCell>{w.word}</TableCell>
+                          <TableCell align="right">{w.score}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+          </Box>
+        );
+      }
+
+      return (
+        <Box>
+          <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+            Chi tiết lần học
+          </Typography>
+          <Typography variant="body2">Điểm: {attempt.scoreLabel}</Typography>
+          {attempt.durationSec != null && (
+            <Typography variant="body2">
+              Thời lượng: {Math.round(attempt.durationSec / 60)} phút
+            </Typography>
+          )}
+        </Box>
+      );
+    },
+    []
+  );
+
   // Auto Scroll top
   React.useEffect(() => {
     window.scroll(0, 0);
@@ -106,6 +401,20 @@ export default function LessonPage() {
       mounted = false;
     };
   }, [currentLesson, dayId]);
+
+  const handleOpenHistoryFromHeader = async () => {
+    if (!currentLesson) return;
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    try {
+      const type = currentLesson.type as HistoryLessonType;
+      const data = await fetchLessonHistoryMock(type, currentLesson.id);
+      setHistoryAttempts(data);
+      setSelectedAttemptId(data[0]?.id);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
   // Một hàm phụ để render nội dung bài học đang hoạt động
   const renderActiveLesson = () => {
     if (!currentLesson) return null;
@@ -134,7 +443,7 @@ export default function LessonPage() {
       case "quiz":
         return (
           <>
-            <Grid size={{ xs: 12, md: 8 }}>
+            <Grid size={{ xs: 12, md: 12 }}>
               {!examStarted ? (
                 <LessonIntroExam lesson={currentLesson} onStart={startExam} />
               ) : (
@@ -146,18 +455,6 @@ export default function LessonPage() {
                   timeLeft={timeLeft}
                   mmss={mmss}
                   lessonType={currentLesson.type}
-                  onSubmit={submitExam}
-                />
-              )}
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              {examStarted && (
-                <LessonSidebarExam
-                  questions={questions}
-                  answers={answers}
-                  scorePct={scorePct}
-                  timeLeft={timeLeft}
-                  mmss={mmss}
                   onSubmit={submitExam}
                 />
               )}
@@ -411,6 +708,7 @@ export default function LessonPage() {
                   lesson={currentLesson}
                   progress={progress}
                   timer={showTimer}
+                  onOpenHistory={handleOpenHistoryFromHeader}
                 />
 
                 <Grid
@@ -492,6 +790,20 @@ export default function LessonPage() {
               topicId={topicId}
             />
           )}
+
+          <HistoryModalShell
+            open={historyOpen}
+            onClose={() => setHistoryOpen(false)}
+            lessonTitle={currentLesson?.title}
+            lessonType={
+              currentLesson?.type as HistoryLessonType | undefined
+            }
+            loading={historyLoading}
+            attempts={historyAttempts}
+            selectedAttemptId={selectedAttemptId}
+            onSelectAttempt={setSelectedAttemptId}
+            renderAttemptDetail={renderHistoryDetail}
+          />
         </Container>
       </Box>
     </MainLayout>

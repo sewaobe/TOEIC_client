@@ -1,7 +1,7 @@
-import { Box, Button, Stack, Typography, LinearProgress, Chip, Breadcrumbs, Link } from "@mui/material";
+import { Box, Button, Stack, Typography, LinearProgress, Chip, Breadcrumbs, Link, IconButton, Tooltip } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import SchoolIcon from "@mui/icons-material/School";
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import HistoryIcon from "@mui/icons-material/History";
 import { useNavigate } from "react-router-dom";
 import { LessonItem } from "../../types/Lesson";
 
@@ -9,6 +9,7 @@ interface LessonHeaderProps {
     lesson: LessonItem | null;
     progress?: number;
     timer?: string;
+    onOpenHistory?: () => void;
 }
 
 const getTypeLabel = (type: string) => {
@@ -22,22 +23,22 @@ const getTypeLabel = (type: string) => {
     return map[type] || type;
 };
 
-export default function LessonHeader({ lesson, progress, timer }: LessonHeaderProps) {
+export default function LessonHeader({ lesson, progress, timer, onOpenHistory }: LessonHeaderProps) {
     const navigate = useNavigate();
-    
+
     return (
         <Box className="sticky top-0 z-10"
-            sx={{ 
-                border: "1px solid rgba(0,0,0,0.06)", 
-                px: 3, 
-                py: 2, 
-                borderRadius: "24px", 
-                mb: 3, 
+            sx={{
+                border: "1px solid rgba(0,0,0,0.06)",
+                px: 3,
+                py: 2,
+                borderRadius: "24px",
+                mb: 3,
                 position: "relative",
                 bgcolor: 'background.paper',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.04)'
             }}>
-            
+
             <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Button
                     startIcon={<ArrowBackIosNewIcon fontSize="small" />}
@@ -52,9 +53,9 @@ export default function LessonHeader({ lesson, progress, timer }: LessonHeaderPr
                 <Stack direction="column" alignItems="center" spacing={0.5} sx={{ flex: 1, px: 2 }}>
                     {/* Breadcrumbs */}
                     <Breadcrumbs aria-label="breadcrumb" sx={{ '& .MuiBreadcrumbs-ol': { justifyContent: 'center' } }}>
-                        <Link 
-                            underline="hover" 
-                            color="inherit" 
+                        <Link
+                            underline="hover"
+                            color="inherit"
                             onClick={() => navigate("/programs")}
                             sx={{ cursor: 'pointer', fontSize: '0.75rem' }}
                         >
@@ -76,18 +77,15 @@ export default function LessonHeader({ lesson, progress, timer }: LessonHeaderPr
                 </Stack>
 
                 <Box sx={{ minWidth: 'fit-content' }}>
-                     {timer ? (
-                        <Chip 
-                            icon={<AccessTimeIcon />} 
-                            label={timer} 
-                            variant="outlined" 
-                            color="primary" 
-                            size="small"
-                            sx={{ fontWeight: 700, minWidth: 80 }}
-                        />
-                     ) : (
-                        <Box sx={{ width: 24 }} /> // Spacer to balance the back button roughly
-                     )}
+                    {lesson && onOpenHistory ? (
+                        <Tooltip title="Xem lịch sử học">
+                            <IconButton size="small" onClick={onOpenHistory}>
+                                <HistoryIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                    ) : (
+                        <Box sx={{ width: 24 }} />
+                    )}
                 </Box>
             </Stack>
 
@@ -95,11 +93,11 @@ export default function LessonHeader({ lesson, progress, timer }: LessonHeaderPr
             {typeof progress === 'number' && (
                 <Box sx={{ mt: 2, width: '100%', display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Box sx={{ flex: 1 }}>
-                        <LinearProgress 
-                            variant="determinate" 
-                            value={progress} 
-                            sx={{ 
-                                height: 8, 
+                        <LinearProgress
+                            variant="determinate"
+                            value={progress}
+                            sx={{
+                                height: 8,
                                 borderRadius: 4,
                                 bgcolor: 'action.hover',
                                 '& .MuiLinearProgress-bar': {
@@ -107,7 +105,7 @@ export default function LessonHeader({ lesson, progress, timer }: LessonHeaderPr
                                     background: 'linear-gradient(90deg, #2196F3 0%, #21CBF3 100%)',
                                     boxShadow: '0 0 8px rgba(33, 150, 243, 0.6)'
                                 }
-                            }} 
+                            }}
                         />
                     </Box>
                     <Typography variant="caption" fontWeight={700} color="text.secondary">

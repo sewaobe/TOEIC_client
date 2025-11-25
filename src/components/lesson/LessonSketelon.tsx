@@ -35,8 +35,6 @@ export const LessonContentSkeleton: React.FC<LessonContentSkeletonProps> = ({ le
   switch (lessonType) {
     case 'quiz':
     case 'lesson':
-      return <TwoColumnLessonSkeleton />;
-
     case 'flash_card':
     case 'shadowing':
     case 'dictation':

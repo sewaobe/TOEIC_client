@@ -5,7 +5,7 @@ interface HighlightPopupState {
 }
 
 const initialState: HighlightPopupState = {
-  enabled: true,
+  enabled: false,
 };
 
 const highlightPopupSlice = createSlice({

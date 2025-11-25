@@ -20,8 +20,6 @@ import { MarkdownEditor } from "../../components/common/MarkdownEditor";
 import { user_note_service } from "../../services/user_note.service";
 import { User_Note } from "../../types/User_Note";
 import { useDebounce } from "../../hooks/useDebounce";
-import { useDispatch } from "react-redux";
-import { disableHighlightPopup, enableHighlightPopup } from "../../stores/highlightPopupSlice";
 import { useNavigate } from "react-router-dom";
 
 // ========= Types =========
@@ -525,8 +523,6 @@ export default function StudyNotebookFlip3D({
   const [aiMenuOpen, setAiMenuOpen] = useState(false);
   const [aiMenuPos, setAiMenuPos] = useState<{ top: number; left: number } | null>(null);
 
-  // disable highlight popup
-  const dispatch = useDispatch();
 
   // Close AI menu when clicking outside
   useEffect(() => {
@@ -584,12 +580,6 @@ export default function StudyNotebookFlip3D({
     };
     fetchNotes();
 
-    if (isOpen) {
-      dispatch(disableHighlightPopup());
-    }
-    return () => {
-      dispatch(enableHighlightPopup());
-    }
   }, [isOpen]);
 
   // Hiển thị toast khi có clipboard text

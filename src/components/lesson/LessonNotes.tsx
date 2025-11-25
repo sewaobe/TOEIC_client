@@ -22,40 +22,118 @@ import {
   TableCell,
   TableRow,
   TextField,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/EditNote";
 import ChatIcon from "@mui/icons-material/ChatBubbleOutline";
 import SummaryIcon from "@mui/icons-material/Summarize";
 import LessonTakeNotes from "./LessonTakeNotes";
-
+import FeedbackIcon from "@mui/icons-material/Feedback";
 
 /* ----------------------- Mock data ----------------------- */
-const comments = [
-  {
-    id: "c1",
-    user: { name: "Minh Anh", avatar: "https://i.pravatar.cc/100?img=1" },
-    rating: 4.5,
-    content:
-      "Phần hội thoại Part 3 khá rõ, có nhiều paraphrase. Mẹo note keyword ở 5–10s đầu giúp bắt kịp mạch câu hỏi.",
-    time: "2 giờ trước",
-  },
-  {
-    id: "c2",
-    user: { name: "Quốc Huy", avatar: "https://i.pravatar.cc/100?img=12" },
-    rating: 4,
-    content:
-      "Từ vựng về lịch trình (reschedule, postpone, itinerary) xuất hiện dày. Nên làm flashcards.",
-    time: "hôm qua",
-  },
-  {
-    id: "c3",
-    user: { name: "Lan Phương", avatar: "https://i.pravatar.cc/100?img=5" },
-    rating: 5,
-    content:
-      "Part 7 đoạn đơn dễ nhầm distractor dạng số liệu. Hãy gạch chân units trước khi đọc đáp án.",
-    time: "2 ngày trước",
-  },
-];
+// Generate ~50 mock comments dynamically
+const generateComments = () => {
+  const names = [
+    "Minh Anh", "Quốc Huy", "Lan Phương", "Tuấn Anh", "Linh Chi",
+    "Hồng Nhung", "Thanh Hương", "Gia Bảo", "Khánh Linh", "Mạnh Tuấn",
+    "Thảo Nguyên", "Đức Minh", "Phương Linh", "Trung Kiên", "Bảo Châu",
+    "Vân Anh", "Hải Đăng", "Tâm Anh", "Hoài Phong", "Thị Hương",
+    "Chí Công", "Diễn Thị", "Gia Nhu", "Hải Yến", "Khắc Vinh",
+  ];
+  const contents = [
+    "Phần hội thoại Part 3 khá rõ, có nhiều paraphrase. Mẹo note keyword ở 5–10s đầu giúp bắt kịp mạch câu hỏi.",
+    "Từ vựng về lịch trình (reschedule, postpone, itinerary) xuất hiện dày. Nên làm flashcards.",
+    "Part 7 đoạn đơn dễ nhầm distractor dạng số liệu. Hãy gạch chân units trước khi đọc đáp án.",
+    "Bài này giúp tôi nắm rõ hơn về các cụm từ collocation. Tuyệt vời!",
+    "Part 5 khá challenging, cần practice nhiều hơn nữa.",
+    "Listening comprehension ở đây rất tốt. Các bài tập nghe khá bổ ích.",
+    "Tôi thích cách giải thích của bạn. Dễ hiểu và chi tiết.",
+    "Speaking tips rất hữu ích, sẽ áp dụng ngay.",
+    "Reading section quá dài, nhưng nội dung chất lượng cao.",
+    "Vocabulary coverage khá toàn diện. Ghi chú thêm được nhiều từ mới.",
+    "Grammar explanations rất clear. Thanks for breaking it down!",
+    "Cấu trúc bài học logic, dễ theo dõi từ đầu đến cuối.",
+    "Phần practice exercises rất giúp ích cho mình.",
+    "Audio quality tốt, nghe rõ từng từ.",
+    "Timing của bài học vừa đủ, không quá dài hay quá ngắn.",
+    "Các ví dụ minh họa rất sống động và dễ nhớ.",
+    "Bạn nên thêm flashcards practice vào bài.",
+    "Phần luyện tập interactive rất hấp dẫn.",
+    "Tôi recommend bài này cho bạn bè của mình.",
+    "Giải thích chi tiết và rõ ràng. 5 sao!",
+    "Content quality tuyệt vời, keep it up!",
+    "Bài giảng cấu trúc tốt, dễ nắm bắt.",
+    "Tôi học được rất nhiều từ bài này.",
+    "Video quality cao, hình ảnh rõ nét.",
+    "Transcript được cung cấp đầy đủ, thuận tiện.",
+    "Tốc độ nói rõ ràng, không quá nhanh.",
+    "Điều chỉnh playback speed rất tiện lợi.",
+    "Nội dung cập nhật và phù hợp với đề thi hiện tại.",
+    "Bài tập consolidation giúp ôn lại tốt.",
+    "Không quá phức tạp nhưng cũng không quá dễ.",
+    "Layout của trang học rất clean và dễ sử dụng.",
+    "Phần note-taking có sẵn giúp tôi ghi lại key points.",
+    "Âm thanh background không quá lớn, hoàn toàn chấp nhận được.",
+    "Tôi thích cách phân chia phần khó thành bite-size chunks.",
+    "Bạn nên thêm quiz sau mỗi section để kiểm tra hiểu biết.",
+    "Content từng phần rất organized và logic.",
+    "Mình thích interactive elements trong bài giảng.",
+    "Đây là một trong những bài học tốt nhất mà tôi từng học.",
+    "Thậm chí áp dụng ngay những tips vào kỳ thi thử.",
+    "Lớp tôi cùng học bài này và đều thích lắm.",
+    "Lecturer giải thích rất tận tình và chi tiết.",
+    "Tài liệu bổ trợ được tổ chức rất khoa học.",
+    "Phần cuối cùng của bài học là highlight của tôi.",
+    "Tôi đã luyện tập lại phần này 3 lần rồi.",
+    "Cảm ơn vì đã tạo ra một bài học chất lượng như này.",
+    "Sẽ quay lại bài này để review trước kỳ thi chính.",
+    "Mấy bạn trẻ nên học bài này để nâng level English.",
+    "Amazing content! Definitely worth your time.",
+    "10/10 would recommend to anyone preparing for TOEIC.",
+  ];
+
+  const comments = [];
+  for (let i = 0; i < 50; i++) {
+    const nameIndex = i % names.length;
+    const contentIndex = i % contents.length;
+    const ratingOptions = [3, 3.5, 4, 4.5, 5];
+    const timeOptions = [
+      "1 giờ trước", "2 giờ trước", "hôm qua", "2 ngày trước", "3 ngày trước",
+      "1 tuần trước", "2 tuần trước", "1 tháng trước"
+    ];
+
+    comments.push({
+      id: `c${i + 1}`,
+      user: {
+        name: names[nameIndex],
+        avatar: `https://i.pravatar.cc/100?img=${(i % 20) + 1}`,
+      },
+      rating: ratingOptions[i % ratingOptions.length],
+      content: contents[contentIndex],
+      time: timeOptions[i % timeOptions.length],
+    });
+  }
+  return comments;
+};
+
+const comments = generateComments();
+
+// Fetch comments with pagination
+const fetchComments = async (page: number, pageSize: number = 10) => {
+  // Simulate API call delay
+  return new Promise<typeof comments>((resolve) => {
+    setTimeout(() => {
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedComments = comments.slice(startIndex, endIndex);
+      resolve(paginatedComments);
+    }, 500);
+  });
+};
 
 const overview = {
   summary:
@@ -105,14 +183,39 @@ function a11yProps(index: number) {
 }
 
 /* ---------------------- Main Component ---------------------- */
+const COMMENTS_PER_PAGE = 10; // Load 10 comments initially, then 10 more on scroll
+
 export default function LessonNotes({ lessonData, week, day_id }: { lessonData?: any, week: string, day_id: string }) {
   const [tabIndex, setTabIndex] = React.useState(0);
-  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+  // keep comments in state so new feedback can be appended
+  const [commentsState, setCommentsState] = React.useState(comments);
+  const [feedbackSent, setFeedbackSent] = React.useState(false);
+  const [feedbackModalOpen, setFeedbackModalOpen] = React.useState(false);
+  const [modalRating, setModalRating] = React.useState<number | null>(0);
+  const [modalText, setModalText] = React.useState("");
+  const [modalSending, setModalSending] = React.useState(false);
+  // Infinite scroll state
+  const [displayedComments, setDisplayedComments] = React.useState(
+    commentsState.slice(0, COMMENTS_PER_PAGE)
+  );
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  const handleChange = (_: React.SyntheticEvent, newValue: number) => {
     setTabIndex(newValue);
   };
 
+  // Calculate displayed comments for current page
+  React.useEffect(() => {
+    fetchComments(currentPage, COMMENTS_PER_PAGE).then((paginatedComments) => {
+      setDisplayedComments(paginatedComments);
+    });
+  }, [currentPage]);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(commentsState.length / COMMENTS_PER_PAGE);
+
   const avg =
-    comments.reduce((s, c) => s + c.rating, 0) / Math.max(1, comments.length);
+    commentsState.reduce((s, c) => s + (c.rating || 0), 0) / Math.max(1, commentsState.length);
 
   const filteredSections = React.useMemo(() => {
     if (!lessonData) return [];
@@ -185,7 +288,7 @@ export default function LessonNotes({ lessonData, week, day_id }: { lessonData?:
           <Tab
             icon={<ChatIcon fontSize="small" />}
             iconPosition="start"
-            label={`Feedback (${comments.length})`}
+            label={`Feedback (${commentsState.length})`}
             {...a11yProps(2)}
           />
         </Tabs>
@@ -541,12 +644,12 @@ export default function LessonNotes({ lessonData, week, day_id }: { lessonData?:
 
         {/* TAB 2: THẢO LUẬN (FEEDBACK) */}
         <TabPanel value={tabIndex} index={2}>
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Stack
               direction="row"
               spacing={1}
               alignItems="center"
-              sx={{ mb: 1 }}
+              sx={{ mb: 1, flexShrink: 0 }}
             >
               <Typography variant="subtitle2" color="text.secondary">
                 Đánh giá trung bình
@@ -555,17 +658,141 @@ export default function LessonNotes({ lessonData, week, day_id }: { lessonData?:
               <Typography variant="body2" color="text.secondary">
                 {avg.toFixed(1)}/5
               </Typography>
+              <Box sx={{ flex: 1 }} />
+              <Button
+                variant="outlined"
+                onClick={() => setFeedbackModalOpen(true)}
+                disabled={feedbackSent}
+              >
+                Feedback
+              </Button>
             </Stack>
 
-            <Divider sx={{ mb: 1.5 }} />
+            <Divider sx={{ mb: 1.5, flexShrink: 0 }} />
 
-            <List disablePadding>
-              {comments.map((cmt, idx) => (
-                <React.Fragment key={cmt.id}>
-                  <ListItem alignItems="flex-start" sx={{ px: 0 }}>
-                    <ListItemAvatar>
-                      <Avatar alt={cmt.user.name} src={cmt.user.avatar} />
-                    </ListItemAvatar>
+            {/* Feedback modal (rating + feedback) */}
+            <Dialog
+              open={feedbackModalOpen}
+              onClose={() => setFeedbackModalOpen(false)}
+              fullWidth
+              maxWidth="sm"
+              PaperProps={{
+                sx: {
+                  borderRadius: 3,
+                  p: 1,
+                },
+              }}
+            >
+              <DialogTitle>
+                <Stack direction="row" alignItems="center" spacing={1.2}>
+                  <FeedbackIcon sx={{ color: "#1976d2" }} />
+                  <Typography variant="h6" fontWeight={600}>
+                    Gửi Feedback
+                  </Typography>
+                </Stack>
+              </DialogTitle>
+
+              <DialogContent sx={{ mt: 1 }}>
+                <Stack spacing={3}>
+                  <Stack spacing={1}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Đánh giá của bạn
+                    </Typography>
+                    <Rating
+                      value={modalRating}
+                      onChange={(_, val) => setModalRating(val)}
+                      size="large"
+                    />
+                  </Stack>
+
+                  <TextField
+                    label="Nội dung góp ý"
+                    placeholder="Hãy cho chúng tôi biết trải nghiệm của bạn..."
+                    multiline
+                    minRows={3}
+                    fullWidth
+                    value={modalText}
+                    onChange={(e) => setModalText(e.target.value)}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                </Stack>
+              </DialogContent>
+
+              <DialogActions sx={{ px: 3, pb: 2 }}>
+                <Button
+                  onClick={() => setFeedbackModalOpen(false)}
+                  sx={{ color: "text.secondary" }}
+                >
+                  Hủy
+                </Button>
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  disabled={
+                    modalSending ||
+                    feedbackSent ||
+                    (!modalText.trim() && (!modalRating || modalRating <= 0))
+                  }
+                  onClick={async () => {
+                    if (feedbackSent) return;
+
+                    if (!modalText.trim() && (!modalRating || modalRating <= 0)) return;
+
+                    setModalSending(true);
+
+                    try {
+                      const mockSend = (_: any) =>
+                        new Promise((resolve) =>
+                          setTimeout(
+                            () => resolve({ ok: true, id: `fb-${Date.now()}` }),
+                            700
+                          )
+                        );
+
+                      const res: any = await mockSend({
+                        content: modalText,
+                        rating: modalRating,
+                      });
+
+                      const newComment = {
+                        id: res.id || `fb-${Date.now()}`,
+                        user: { name: "Bạn", avatar: "" },
+                        rating: modalRating || 0,
+                        content: modalText,
+                        time: "vừa xong",
+                      };
+
+                      setCommentsState((prev) => [newComment, ...prev]);
+                      setDisplayedComments((prev) => [newComment, ...prev]);
+                      setFeedbackSent(true);
+                      setFeedbackModalOpen(false);
+                    } catch (err) {
+                      console.error("Send feedback failed", err);
+                    } finally {
+                      setModalSending(false);
+                    }
+                  }}
+                  sx={{ px: 3, borderRadius: 2 }}
+                >
+                  {modalSending ? "Đang gửi..." : "Gửi"}
+                </Button>
+              </DialogActions>
+            </Dialog>
+
+            {/* Comments list with scroll */}
+            <Box sx={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+              <List disablePadding>
+                {displayedComments.map((cmt, idx) => (
+                  <React.Fragment key={cmt.id}>
+                    <ListItem alignItems="flex-start" sx={{ px: 0 }}>
+                      <ListItemAvatar>
+                        <Avatar alt={cmt.user.name} src={cmt.user.avatar} />
+                      </ListItemAvatar>
                     <ListItemText
                       primary={
                         <Box
@@ -573,47 +800,66 @@ export default function LessonNotes({ lessonData, week, day_id }: { lessonData?:
                           justifyContent="space-between"
                           alignItems="center"
                         >
+                          <div className="flex items-center gap-2">
+                            <Typography
+                              component="span"
+                              variant="subtitle2"
+                              fontWeight="bold"
+                            >
+                              {cmt.user.name}
+                            </Typography>
+
+                            <Rating
+                              value={cmt.rating}
+                              readOnly
+                              size="small"
+                              sx={{ my: 0.5 }}
+                            />
+                          </div>
                           <Typography
                             component="span"
-                            variant="subtitle2"
-                            fontWeight="bold"
-                          >
-                            {cmt.user.name}
-                          </Typography>
-                          <Typography
-                            component="span"
-                            variant="caption"
-                            color="text.secondary"
+                            sx={{
+                              fontSize: "12px !important",
+                              fontStyle: "italic",
+                              color: "text.secondary"
+                            }}
                           >
                             {cmt.time}
                           </Typography>
                         </Box>
                       }
                       secondary={
-                        <>
-                          <Rating
-                            value={cmt.rating}
-                            readOnly
-                            size="small"
-                            sx={{ my: 0.5 }}
-                          />
-                          <Typography
-                            variant="body2"
-                            color="text.primary"
-                            sx={{ display: "block", mb: 0.5 }}
-                          >
-                            {cmt.content}
-                          </Typography>
-                        </>
+                        <Typography
+                          variant="body2"
+                          color="text.primary"
+                          sx={{ display: "block", mb: 0.5 }}
+                        >
+                          {cmt.content}
+                        </Typography>
                       }
                     />
                   </ListItem>
-                  {idx < comments.length - 1 && (
+                  {idx < displayedComments.length - 1 && (
                     <Divider variant="inset" component="li" />
                   )}
                 </React.Fragment>
               ))}
-            </List>
+              </List>
+
+              {/* Pagination buttons */}
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? 'contained' : 'outlined'}
+                    size="small"
+                    onClick={() => setCurrentPage(page)}
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </Box>
+            </Box>
           </Box>
         </TabPanel>
       </Box>

@@ -33,7 +33,9 @@ export const useLessonViewModel = (dayId: string, week: string) => {
   const [quizQuestions, setQuizQuestions] = React.useState<QCQuestion[]>([]);
 
   // State quản lý vòng đời của bài học
-  const [activityStatus, setActivityStatus] = React.useState("intro"); // Mặc định là intro
+  // For "lesson" type, default to "studying" (no intro needed)
+  // For other types, default to "intro"
+  const [activityStatus, setActivityStatus] = React.useState<"intro" | "studying" | "finished">("studying");
 
   // State riêng cho Quiz
   const [examStarted, setExamStarted] = React.useState(false);
@@ -141,6 +143,8 @@ export const useLessonViewModel = (dayId: string, week: string) => {
     // Reset state của các bài học trước đó
     setExamStarted(false);
     setAnswers({});
+    // For "lesson" type, directly go to studying (no intro needed)
+    // For other types, also go to studying immediately
     setActivityStatus("studying");
     setQuizQuestions([]);
 

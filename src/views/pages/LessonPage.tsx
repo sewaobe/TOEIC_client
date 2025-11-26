@@ -45,7 +45,7 @@ import {
   HistoryLessonType,
   BaseAttemptSummary,
 } from "../../components/history/HistoryModalShell";
-import { fetchLessonHistoryMock } from "../../services/history.mock";
+import { historyService } from "../../services/history.service";
 
 export default function LessonPage() {
   const [searchParam] = useSearchParams();
@@ -408,7 +408,10 @@ export default function LessonPage() {
     setHistoryLoading(true);
     try {
       const type = currentLesson.type as HistoryLessonType;
-      const data = await fetchLessonHistoryMock(type, currentLesson.id);
+      const data = await historyService.getLessonHistory(
+        type,
+        currentLesson.id
+      );
       setHistoryAttempts(data);
       setSelectedAttemptId(data[0]?.id);
     } finally {

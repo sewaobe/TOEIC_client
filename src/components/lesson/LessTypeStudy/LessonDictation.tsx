@@ -1,340 +1,801 @@
-import React, { useState, useRef, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
-    Box,
-    Button,
-    Typography,
-    IconButton,
-    TextField,
-    Chip,
-    Menu,
-    MenuItem,
-    Slider,
-    Select,
-    FormControl,
-    InputLabel,
+  PlayArrow as PlayIcon,
+  Replay as ReplayIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  Speed as SpeedIcon,
+  CheckCircle as CheckCircleIcon,
+  ErrorOutline as ErrorIcon,
+  RestartAlt as RestartIcon,
+  AutoAwesome as AutoAwesomeIcon,
+} from "@mui/icons-material";
+import HelpIcon from "@mui/icons-material/Help";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Checkbox,
+  Typography,
+  Slider,
+  IconButton,
+  Menu,
+  MenuItem,
+  LinearProgress,
+  Alert,
 } from "@mui/material";
-import { PlayArrow, Pause, Replay, Settings } from "@mui/icons-material";
+import { motion, AnimatePresence } from "framer-motion";
+import { Dictation, DictationAttemptLog } from "../../../types/Dictation";
+import { toast } from "sonner";
+import geminiService from "../../../services/gemini.service";
+import DictationAIAnalysis from "../../practices/DictationAIAnalysis";
+import SentenceRenderer from "../../practices/SetenceRenderer";
+import { loadStopWords } from "../../../utils/stopWord";
+import DictationTourGuide from "../../tour-guide/DictationTourGuide";
+import { learningPathActivityService } from "../../../services/learningPathActivity.service";
 
-export const LessonDictation = () => {
-    const [mode, setMode] = useState(0); // 0: điền trống, 1: transcript
-    const [difficulty, setDifficulty] = useState<"medium" | "hard" | "full">("medium");
-    const [playing, setPlaying] = useState(false);
-    const [showAnswer, setShowAnswer] = useState(false);
-    const [playbackRate, setPlaybackRate] = useState(1);
-    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+/* ===== Types ===== */
+type Difficulty = "easy" | "medium" | "hard";
 
-    // progress slider
-    const [progress, setProgress] = useState(0);
-    const [duration, setDuration] = useState(0);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+interface LessonDictationProps {
+  dictation: Dictation;
+  dayStudyId: string;
+  onSubmitted?: (score?: number) => void;
+}
 
-    // mock nhiều câu
-    const sentences = [
-        "He's lifting some furniture.",
-        "The woman is holding a bag.",
-        "They are sitting around a table.",
-        "The man is opening the window.",
-        "Children are playing in the park.",
-    ];
-    const [index, setIndex] = useState(0);
+export interface DictationWord {
+  word: string;
+  isBlank: boolean;
+  index: number;
+}
 
-    const currentSentence = sentences[index];
+/* ===== Helpers ===== */
+const normalize = (text: string): string =>
+  text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
 
-    // tách từ
-    const words = useMemo(
-        () => currentSentence.replace(/[.]/g, "").split(" "),
-        [currentSentence]
-    );
+const getBlankRatio = (level: Difficulty): number =>
+  level === "easy" ? 0.2 : level === "hard" ? 0.55 : 0.35;
 
-    // chọn blank theo độ khó
-    const blankIndices = useMemo(() => {
-        if (difficulty === "full") {
-            return words.map((_, i) => i); // ẩn tất cả
-        }
+const buildWords = async (
+  text: string,
+  ratio: number
+): Promise<DictationWord[]> => {
+  const stopWords = await loadStopWords();
+  const parts = text.split(/\s+/);
+  const total = parts.length;
 
-        let candidates = words.map((w, i) => ({ word: w, index: i }));
+  const candidates = parts
+    .map((word, i) => {
+      const norm = word.toLowerCase().replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "");
+      return { word, norm, index: i };
+    })
+    .filter(({ norm }) => !stopWords.has(norm) && norm.length >= 4)
+    .map(({ index }) => index);
 
-        if (difficulty === "hard") {
-            candidates = candidates.sort((a, b) => b.word.length - a.word.length);
-            return candidates.slice(0, Math.min(3, words.length)).map((c) => c.index);
-        }
+  const blanks = new Set<number>();
+  const blankCount = Math.max(1, Math.floor(total * ratio));
 
-        if (difficulty === "medium") {
-            const nBlank = Math.min(2, words.length);
-            const arr: number[] = [];
-            while (arr.length < nBlank) {
-                const r = Math.floor(Math.random() * words.length);
-                if (!arr.includes(r)) arr.push(r);
-            }
-            return arr;
-        }
+  while (blanks.size < blankCount && candidates.length > 0) {
+    const randIdx = Math.floor(Math.random() * candidates.length);
+    blanks.add(candidates[randIdx]);
+    candidates.splice(randIdx, 1);
+  }
 
-        return [];
-    }, [currentSentence, difficulty]);
-
-    const [answers, setAnswers] = useState<Record<number, string>>({});
-
-    // --- Audio logic ---
-    const estimateDuration = (text: string, rate: number) => {
-        const n = text.split(" ").length;
-        return (n * 0.6) / rate;
-    };
-
-    const speak = (text: string) => {
-        if (!("speechSynthesis" in window)) {
-            alert("Trình duyệt không hỗ trợ SpeechSynthesis API");
-            return;
-        }
-        window.speechSynthesis.cancel();
-        if (timerRef.current) clearInterval(timerRef.current);
-
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = "en-US";
-        utter.rate = playbackRate;
-
-        const est = estimateDuration(text, playbackRate);
-        setDuration(est);
-        setProgress(0);
-
-        utter.onstart = () => {
-            setPlaying(true);
-            let t = 0;
-            timerRef.current = setInterval(() => {
-                t += 0.1;
-                setProgress(Math.min(t, est));
-                if (t >= est && timerRef.current) clearInterval(timerRef.current);
-            }, 100);
-        };
-        utter.onend = () => {
-            setPlaying(false);
-            if (timerRef.current) clearInterval(timerRef.current);
-            setProgress(est);
-        };
-
-        window.speechSynthesis.speak(utter);
-    };
-
-    const handlePlayPause = () => {
-        if (playing) {
-            window.speechSynthesis.cancel();
-            setPlaying(false);
-            if (timerRef.current) clearInterval(timerRef.current);
-        } else {
-            speak(currentSentence);
-        }
-    };
-
-    // setting
-    const handleOpenMenu = (e: React.MouseEvent<HTMLButtonElement>) =>
-        setAnchorEl(e.currentTarget);
-    const handleCloseMenu = () => setAnchorEl(null);
-    const handleChangeRate = (rate: number) => {
-        setPlaybackRate(rate);
-        handleCloseMenu();
-    };
-
-    // kiểm tra
-    const checkCorrect = () => {
-        setShowAnswer(true);
-    };
-
-    // chuyển câu mới
-    const goNext = () => {
-        if (index < sentences.length - 1) {
-            setIndex(index + 1);
-            setShowAnswer(false);
-            setAnswers({});
-        }
-    };
-    const goPrev = () => {
-        if (index > 0) {
-            setIndex(index - 1);
-            setShowAnswer(false);
-            setAnswers({});
-        }
-    };
-
-    return (
-        <Box
-            sx={{
-                p: 3,
-                borderRadius: "16px",
-                bgcolor: "#fafafa",
-                width: "min(960px, 95%)",
-                mx: "auto",
-            }}
-        >
-            {/* Chế độ */}
-            <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-                <Chip
-                    label="Điền từ"
-                    clickable
-                    color={mode === 0 ? "primary" : "default"}
-                    variant={mode === 0 ? "filled" : "outlined"}
-                    onClick={() => setMode(0)}
-                />
-                <Chip
-                    label="Xem transcript"
-                    clickable
-                    color={mode === 1 ? "primary" : "default"}
-                    variant={mode === 1 ? "filled" : "outlined"}
-                    onClick={() => setMode(1)}
-                />
-            </Box>
-
-            {/* Chọn độ khó */}
-            {mode === 0 && (
-                <Box sx={{ mb: 2 }}>
-                    <FormControl size="small">
-                        <InputLabel id="difficulty-label">Chế độ</InputLabel>
-                        <Select
-                            labelId="difficulty-label"
-                            value={difficulty}
-                            onChange={(e) =>
-                                setDifficulty(e.target.value as "medium" | "hard" | "full")
-                            }
-                            sx={{ minWidth: 180 }}
-                            MenuProps={{
-                                disableScrollLock: true,  
-                            }}
-                        >
-                            <MenuItem value="medium">Điền từ (Trung Bình)</MenuItem>
-                            <MenuItem value="hard">Điền từ (Khó)</MenuItem>
-                            <MenuItem value="full">Chép cả câu</MenuItem>
-                        </Select>
-                    </FormControl>
-                </Box>
-            )}
-
-            {/* Danh sách câu (chips) */}
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
-                {sentences.map((_, i) => (
-                    <Chip
-                        key={i}
-                        label={`Câu ${i + 1}`}
-                        clickable
-                        color={i === index ? "primary" : "default"}
-                        variant={i === index ? "filled" : "outlined"}
-                        onClick={() => {
-                            setIndex(i);
-                            setShowAnswer(false);
-                            setAnswers({});
-                        }}
-                    />
-                ))}
-            </Box>
-
-            {/* Audio control */}
-            <Box display="flex" alignItems="center" gap={2} mb={2} width="100%">
-                <IconButton color="primary" onClick={handlePlayPause} size="large">
-                    {playing ? <Pause /> : <PlayArrow />}
-                </IconButton>
-                <Slider
-                    min={0}
-                    max={duration || 1}
-                    step={0.1}
-                    value={progress}
-                    sx={{ flex: 1 }}
-                />
-                <IconButton onClick={() => speak(currentSentence)}>
-                    <Replay />
-                </IconButton>
-                <IconButton onClick={handleOpenMenu}>
-                    <Settings />
-                </IconButton>
-                <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseMenu} disableScrollLock>
-                    {[0.75, 1, 1.25, 1.5].map((r) => (
-                        <MenuItem
-                            key={r}
-                            selected={playbackRate === r}
-                            onClick={() => handleChangeRate(r)}
-                        >
-                            {r}x
-                        </MenuItem>
-                    ))}
-                </Menu>
-            </Box>
-
-            {/* Câu hỏi */}
-            <Box
-                sx={{
-                    border: "1px solid #ddd",
-                    p: 3,
-                    borderRadius: "12px",
-                    textAlign: "center",
-                    mb: 2,
-                    fontSize: "18px",
-                }}
-            >
-                <b>({index + 1})</b>&nbsp;
-                {mode === 0 ? (
-                    <>
-                        {words.map((w, i) =>
-                            blankIndices.includes(i) ? (
-                                <TextField
-                                    key={i}
-                                    value={answers[i] || ""}
-                                    onChange={(e) => setAnswers({ ...answers, [i]: e.target.value })}
-                                    variant="standard"
-                                    sx={{ minWidth: 60, mx: 0.5 }}
-                                />
-                            ) : (
-                                <span key={i} style={{ margin: "0 4px" }}>
-                                    {w}
-                                </span>
-                            )
-                        )}
-                    </>
-                ) : (
-                    currentSentence
-                )}
-            </Box>
-
-            {/* Buttons */}
-            <Box display="flex" justifyContent="center" gap={1} mb={2}>
-                <Button variant="outlined" onClick={goPrev} disabled={index === 0}>
-                    Câu trước
-                </Button>
-                <Button variant="contained" onClick={checkCorrect}>
-                    Kiểm tra
-                </Button>
-                <Button
-                    variant="outlined"
-                    onClick={goNext}
-                    disabled={index === sentences.length - 1}
-                >
-                    Câu sau
-                </Button>
-            </Box>
-
-            {/* Feedback */}
-            {showAnswer && (
-                <Box
-                    sx={{
-                        borderTop: "1px dashed #aaa",
-                        mt: 2,
-                        pt: 2,
-                        textAlign: "center",
-                    }}
-                >
-                    <Typography variant="body1">
-                        Đáp án: <b>{currentSentence}</b>
-                    </Typography>
-                    {blankIndices.map((i) => {
-                        const userAns = (answers[i] || "").trim().toLowerCase();
-                        const correct = words[i].toLowerCase();
-                        return (
-                            <Typography
-                                key={i}
-                                variant="body2"
-                                color={userAns === correct ? "green" : "red"}
-                            >
-                                Ô trống {i + 1}: bạn nhập "{answers[i] || ""}" → đúng là "{words[i]}"
-                            </Typography>
-                        );
-                    })}
-                </Box>
-            )}
-        </Box>
-    );
+  return parts.map((word, i) => ({
+    word,
+    index: i,
+    isBlank: blanks.has(i),
+  }));
 };
+
+/* ===== Component ===== */
+export default function LessonDictation({
+  dictation,
+  dayStudyId,
+  onSubmitted,
+}: LessonDictationProps) {
+  const [difficulty] = useState<Difficulty>("hard");
+  const [sentences, setSentences] = useState<
+    { id: number; text: string; words: DictationWord[] }[]
+  >([]);
+  const [loadingSentences, setLoadingSentences] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [autoNext, setAutoNext] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [anchorSpeed, setAnchorSpeed] = useState<null | HTMLElement>(null);
+  const [completed, setCompleted] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [startedAt, setStartedAt] = useState<number>(Date.now());
+  const [attemptLogs, setAttemptLogs] = useState<DictationAttemptLog[]>([]);
+  const [openComplete, setOpenComplete] = useState(false);
+  const [summary, setSummary] = useState({
+    accuracy: 0,
+    total: 0,
+    avgTime: 0,
+    logs: [] as DictationAttemptLog[],
+  });
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [isRunGuide, setIsRunGuide] = useState<boolean>(() => {
+    return localStorage.getItem("dictation_tour_seen") !== "true";
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const build = async () => {
+      setLoadingSentences(true);
+      const ratio = getBlankRatio(difficulty);
+      const results = await Promise.all(
+        (dictation.timings || []).map(async (seg, i) => ({
+          id: i + 1,
+          text: seg.text,
+          words: await buildWords(seg.text, ratio),
+        }))
+      );
+      if (isMounted) {
+        setSentences(results);
+        setLoadingSentences(false);
+      }
+    };
+    build();
+    return () => {
+      isMounted = false;
+    };
+  }, [dictation, difficulty]);
+
+  const totalItems = sentences.length;
+  const currentItem = sentences[currentIndex];
+  const currentSegment = dictation.timings?.[currentIndex];
+  const blankIndices =
+    currentItem?.words.filter((w) => w.isBlank).map((w) => w.index) || [];
+
+  const handlePlay = useCallback(() => {
+    if (!dictation.audio_url || !currentSegment) return;
+    const audio = audioRef.current ?? new Audio(dictation.audio_url);
+    audioRef.current = audio;
+
+    const start = (currentSegment.startTime || 0) / 1000;
+    const end = (currentSegment.endTime || 0) / 1000;
+    const duration = end - start;
+
+    audio.currentTime = start;
+    audio.playbackRate = playbackRate;
+    setIsPlaying(true);
+    setProgress(0);
+
+    const onTime = () => {
+      const current = audio.currentTime;
+      if (current >= end) {
+        audio.pause();
+        setIsPlaying(false);
+        setProgress(100);
+        audio.removeEventListener("timeupdate", onTime);
+        return;
+      }
+      const p = ((current - start) / duration) * 100;
+      setProgress(p);
+    };
+
+    audio.addEventListener("timeupdate", onTime);
+    audio.play().catch(() => setIsPlaying(false));
+  }, [dictation.audio_url, currentSegment, playbackRate]);
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!dictation.audio_url || !currentSegment) return;
+    if (isRunGuide) return;
+    handlePlay();
+    setStartedAt(Date.now());
+  }, [currentIndex, isRunGuide]);
+
+  const handleWordChange = (index: number, value: string) =>
+    setUserAnswers((prev) => ({ ...prev, [index]: value }));
+
+  const calcAccuracy = useCallback((): number => {
+    if (!currentItem) return 0;
+
+    if (difficulty === "hard") {
+      const userText = normalize(userAnswers[0] || "");
+      const correctText = normalize(currentItem.text);
+      return userText === correctText ? 100 : 0;
+    }
+
+    if (difficulty === "easy") {
+      const userSentence = normalize(userAnswers[0] || "");
+      const correctSentence = normalize(currentItem.text);
+      return userSentence === correctSentence ? 100 : 0;
+    }
+
+    if (blankIndices.length === 0) return 0;
+    let correct = 0;
+    blankIndices.forEach((i) => {
+      const correctWord = normalize(currentItem.words[i].word);
+      const userWord = normalize(userAnswers[i] || "");
+      if (userWord === correctWord) correct++;
+    });
+    return Math.round((correct / blankIndices.length) * 100);
+  }, [currentItem, blankIndices, userAnswers, difficulty]);
+
+  const handleCheck = () => {
+    const acc = calcAccuracy();
+    setShowAnswer(true);
+    const finishedAt = Date.now();
+    const duration = Math.round((finishedAt - startedAt) / 1000);
+    let mistakes: string[] = [];
+
+    if (difficulty === "medium") {
+      mistakes = blankIndices
+        .filter(
+          (i) =>
+            normalize(userAnswers[i] || "") !==
+            normalize(currentItem.words[i].word)
+        )
+        .map((i) => currentItem.words[i].word);
+    } else if (difficulty === "hard" || difficulty === "easy") {
+      const userText = normalize(userAnswers[0] || "");
+      const correctText = normalize(currentItem.text);
+      if (userText !== correctText) mistakes = ["Cau chua chinh xac"];
+    }
+
+    const newLog: DictationAttemptLog = {
+      index: currentIndex,
+      accuracy: acc,
+      answers: { ...userAnswers },
+      difficulty,
+      mistakes,
+      duration,
+      started_at: new Date(startedAt).toISOString(),
+      finished_at: new Date(finishedAt).toISOString(),
+    };
+    setAttemptLogs((prev) => [...prev, newLog]);
+
+    if (acc === 100) {
+      setCompleted((prev) => Math.min(prev + 1, totalItems));
+      if (autoNext && currentIndex < totalItems - 1) {
+        setTimeout(() => {
+          setCurrentIndex((i) => i + 1);
+          setShowAnswer(false);
+          setUserAnswers({});
+          setProgress(0);
+        }, 1200);
+      }
+    }
+  };
+
+  const handleRetry = () => {
+    setUserAnswers({});
+    setShowAnswer(false);
+    setProgress(0);
+    setStartedAt(Date.now());
+  };
+
+  const handleNext = () => {
+    if (calcAccuracy() === 100 && currentIndex < totalItems - 1) {
+      setCurrentIndex((i) => i + 1);
+      setShowAnswer(false);
+      setUserAnswers({});
+      setProgress(0);
+      setStartedAt(Date.now());
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex((i) => i - 1);
+      setShowAnswer(false);
+      setUserAnswers({});
+      setProgress(0);
+      setStartedAt(Date.now());
+    }
+  };
+
+  const allFilled =
+    difficulty === "medium"
+      ? blankIndices.every((i) => (userAnswers[i] || "").trim())
+      : (userAnswers[0] || "").trim().length > 0;
+
+  const overallProgress = Math.round((completed / totalItems) * 100);
+  const accuracy = calcAccuracy();
+
+  const handleSubmit = async () => {
+    if (!dayStudyId) {
+      toast.error("Thieu day_study_id de luu ket qua.");
+      return;
+    }
+    try {
+      await toast.promise(
+        learningPathActivityService.submitDictation(
+          dictation._id,
+          attemptLogs,
+          dayStudyId
+        ),
+        {
+          loading: "Đang lưu kết quả luyện tập...",
+          success: "Lưu kết quả luyện tập thành công!",
+        }
+      );
+
+      const total = attemptLogs.length;
+      const accuracy = Math.round(
+        attemptLogs.reduce((sum, log) => sum + (log.accuracy || 0), 0) / total
+      );
+      const avgTime = Math.round(
+        attemptLogs.reduce((sum, log) => sum + (log.duration || 0), 0) / total
+      );
+
+      setSummary({ accuracy, total, avgTime, logs: attemptLogs });
+      setOpenComplete(true);
+      onSubmitted?.(accuracy);
+    } catch {
+      toast.error("Co loi xay ra khi luu ket qua luyen tap.");
+    }
+  };
+
+  const handleAnalyzeWithAI = async () => {
+    try {
+      setLoadingAI(true);
+      toast.loading("Đang phân tích bài luyện với AI...");
+      const result = await geminiService.analyzeDictation(summary.logs, {
+        _id: dictation._id,
+        title: dictation.title,
+        level: dictation.level,
+      });
+      toast.dismiss();
+      toast.success("AI đã hoàn tất phân tích!");
+      setAiAnalysis(result);
+    } catch {
+      toast.dismiss();
+      toast.error("Không thể phân tích bằng AI, vui lòng thử lại.");
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
+  if (loadingSentences)
+    return (
+      <Box textAlign="center" mt={10}>
+        <Typography variant="h6" color="text.secondary">
+          Đang chuẩn bị bài luyện tập...
+        </Typography>
+      </Box>
+    );
+
+  if (aiAnalysis) {
+    return (
+      <DictationAIAnalysis
+        loading={loadingAI}
+        analysis={aiAnalysis}
+        onConfirm={() => window.location.reload()}
+      />
+    );
+  }
+
+  if (!totalItems)
+    return (
+      <Box textAlign="center" mt={10}>
+        <Typography variant="h5" color="text.secondary">
+          Chưa có bài luyện tập nào
+        </Typography>
+      </Box>
+    );
+
+  return (
+    <Box
+      sx={{
+        p: 4,
+        width: "min(980px, 95%)",
+        mx: "auto",
+        minHeight: "calc(100vh - 100px)",
+        overflowY: "auto",
+      }}
+    >
+      <DictationTourGuide isRun={isRunGuide} />
+
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+        className="dictation-header"
+      >
+        <Box>
+          <Typography variant="h4" fontWeight={700} color="#2563eb">
+            {dictation.title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Luyen nghe chep chinh ta {dictation.level || "-"} - {totalItems} cau
+          </Typography>
+        </Box>
+
+        <Box
+          display="flex"
+          alignItems="center"
+          gap={2}
+          className="dictation-progress"
+        >
+          <Box sx={{ minWidth: 160 }}>
+            <Typography variant="caption" color="text.secondary">
+              Tien do {completed}/{totalItems}
+            </Typography>
+            <LinearProgress
+              variant="determinate"
+              value={overallProgress}
+              sx={{ mt: 0.5, height: 8, borderRadius: 5 }}
+            />
+          </Box>
+
+          <Button
+            onClick={handleAnalyzeWithAI}
+            startIcon={<AutoAwesomeIcon sx={{ fontSize: 20 }} />}
+            disabled={completed < totalItems || loadingAI}
+            sx={{
+              px: 2.5,
+              py: 1,
+              fontWeight: 600,
+              borderRadius: "999px",
+              textTransform: "none",
+              fontSize: 14,
+              color: "#fff",
+              background: "linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899)",
+              backgroundSize: "300% 300%",
+              animation:
+                completed >= totalItems
+                  ? "gradientShift 4s ease infinite"
+                  : "none",
+              opacity: completed >= totalItems ? 1 : 0.5,
+              cursor: completed >= totalItems ? "pointer" : "not-allowed",
+              "&:hover": {
+                transform: completed >= totalItems ? "scale(1.05)" : "none",
+              },
+            }}
+          >
+            Phan tich voi AI
+          </Button>
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          background: "linear-gradient(90deg,#2563eb,#06b6d4)",
+          borderRadius: "999px",
+          p: 1,
+          px: 2,
+          display: "flex",
+          alignItems: "center",
+          mb: 3,
+          gap: 1.5,
+        }}
+        className="dictation-audio"
+      >
+        <IconButton onClick={handlePlay} sx={{ color: "#fff" }}>
+          {isPlaying ? <ReplayIcon /> : <PlayIcon />}
+        </IconButton>
+
+        <Slider
+          min={0}
+          max={100}
+          value={progress}
+          onChange={(_, newValue) => {
+            if (!audioRef.current || !currentSegment) return;
+            const start = (currentSegment.startTime || 0) / 1000;
+            const end = (currentSegment.endTime || 0) / 1000;
+            const duration = end - start;
+            const newTime = start + ((newValue as number) / 100) * duration;
+            audioRef.current.currentTime = newTime;
+            setProgress(newValue as number);
+          }}
+          sx={{
+            flex: 1,
+            color: "#fff",
+            "& .MuiSlider-thumb": { backgroundColor: "#fff" },
+          }}
+        />
+
+        <Button
+          onClick={(e) => setAnchorSpeed(e.currentTarget)}
+          startIcon={<SpeedIcon />}
+          sx={{ color: "#fff", textTransform: "none" }}
+        >
+          {playbackRate.toFixed(2)}x
+        </Button>
+
+        <Menu
+          anchorEl={anchorSpeed}
+          open={Boolean(anchorSpeed)}
+          onClose={() => setAnchorSpeed(null)}
+        >
+          {[0.75, 1, 1.25, 1.5].map((r) => (
+            <MenuItem
+              key={r}
+              selected={playbackRate === r}
+              onClick={() => {
+                setPlaybackRate(r);
+                setAnchorSpeed(null);
+              }}
+            >
+              {r}x
+            </MenuItem>
+          ))}
+        </Menu>
+      </Box>
+
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+        className="dictation-difficulty"
+      >
+        <Box>
+          <Typography variant="body2" color="text.secondary">
+            Che do: Dien nguyen cau
+          </Typography>
+        </Box>
+
+        <Box display="flex" alignItems="center" gap={1}>
+          <Checkbox
+            size="small"
+            checked={autoNext}
+            onChange={(e) => setAutoNext(e.target.checked)}
+          />
+          <Typography variant="body2">Tu dong chuyen cau</Typography>
+          <IconButton
+            onClick={() => {
+              localStorage.setItem("dictation_tour_seen", "false");
+              setIsRunGuide(false);
+              setTimeout(() => setIsRunGuide(true), 150);
+            }}
+            size="small"
+            sx={{
+              color: "#2563eb",
+              backgroundColor: "rgba(37,99,235,0.1)",
+              "&:hover": {
+                backgroundColor: "rgba(37,99,235,0.2)",
+              },
+            }}
+          >
+            <HelpIcon />
+          </IconButton>
+        </Box>
+      </Box>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentIndex}
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -14 }}
+          transition={{ duration: 0.25 }}
+        >
+          <Card variant="outlined" sx={{ borderRadius: 3, mb: 3 }}>
+            <CardContent>
+              <Typography mb={2} fontWeight="bold" color="primary">
+                Câu {currentIndex + 1}/{totalItems}
+              </Typography>
+              <Box
+                textAlign="center"
+                fontSize={18}
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  gap: 1,
+                }}
+                className="dictation-sentence"
+              >
+                <Box sx={{ width: "100%" }}>
+                  <SentenceRenderer
+                    mode={difficulty}
+                    sentence={currentItem}
+                    userAnswers={userAnswers}
+                    onChange={handleWordChange}
+                    showAnswer={showAnswer}
+                  />
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </AnimatePresence>
+
+      <Box display="flex" justifyContent="center" gap={1} mb={2}>
+        <Button
+          variant="outlined"
+          startIcon={<ChevronLeftIcon />}
+          onClick={handlePrev}
+          disabled={currentIndex === 0}
+        >
+          Truoc
+        </Button>
+
+        {!showAnswer ? (
+          <Button
+            variant="contained"
+            onClick={handleCheck}
+            disabled={!allFilled}
+            className="dictation-check"
+          >
+            Kiem tra
+          </Button>
+        ) : accuracy === 100 ? (
+          <Button
+            variant="contained"
+            color="success"
+            endIcon={<ChevronRightIcon />}
+            onClick={() => {
+              if (currentIndex >= totalItems - 1) handleSubmit();
+              else handleNext();
+            }}
+          >
+            {currentIndex >= totalItems - 1 ? "Hoan thanh" : "Tiep theo"}
+          </Button>
+        ) : (
+          <Button
+            variant="outlined"
+            color="warning"
+            startIcon={<RestartIcon />}
+            onClick={handleRetry}
+          >
+            Lam lai cau nay
+          </Button>
+        )}
+      </Box>
+
+      <AnimatePresence>
+        {showAnswer && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+          >
+            {accuracy === 100 ? (
+              <Alert
+                icon={<CheckCircleIcon />}
+                severity="success"
+                sx={{ mt: 1, borderRadius: 2 }}
+              >
+                Tuyet voi! Ban da nghe chinh xac toan bo cau nay.
+              </Alert>
+            ) : (
+              <Alert
+                icon={<ErrorIcon />}
+                severity="warning"
+                sx={{ mt: 1, borderRadius: 2 }}
+              >
+                Ban dung khoang {accuracy}% tu can dien. Nghe lai doan nay va sua nhung o con thieu.
+              </Alert>
+            )}
+            <Box
+              sx={{
+                mt: 2,
+                p: 2,
+                borderRadius: 2,
+                border: "1px solid #e2e8f0",
+                backgroundColor: "#f9fafb",
+              }}
+            >
+              <Typography
+                variant="subtitle2"
+                fontWeight={600}
+                color="text.secondary"
+              >
+                Dap an cua ban:
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{
+                  mt: 0.5,
+                  color: "text.primary",
+                  backgroundColor: "#fff",
+                  borderRadius: 1,
+                  p: 1.2,
+                  border: "1px solid #e5e7eb",
+                  fontStyle: userAnswers[0] ? "normal" : "italic",
+                }}
+              >
+                {difficulty === "medium"
+                  ? currentItem.words
+                      .map((w) =>
+                        w.isBlank
+                          ? userAnswers[w.index]
+                            ? userAnswers[w.index]
+                            : "____"
+                          : w.word
+                      )
+                      .join(" ")
+                  : userAnswers[0] || "(Chua nhap noi dung)"}
+              </Typography>
+
+              <Typography
+                variant="subtitle2"
+                fontWeight={600}
+                color="text.secondary"
+                sx={{ mt: 2 }}
+              >
+                Transcript goc:
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{
+                  mt: 0.5,
+                  color: "#1e3a8a",
+                  backgroundColor: "#eef2ff",
+                  borderRadius: 1,
+                  p: 1.2,
+                  border: "1px solid #c7d2fe",
+                }}
+              >
+                {currentItem.text}
+              </Typography>
+            </Box>
+          </motion.div>
+        )}
+
+        {openComplete && (
+          <Box
+            onClick={() => setOpenComplete(false)}
+            sx={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              bgcolor: "rgba(0,0,0,0.4)",
+              backdropFilter: "blur(2px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1300,
+              flexDirection: "column",
+              px: 2,
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Card sx={{ borderRadius: 3, maxWidth: 520 }}>
+                <CardContent sx={{ textAlign: "center", p: 4 }}>
+                  <CheckCircleIcon color="success" sx={{ fontSize: 48, mb: 1 }} />
+                  <Typography variant="h5" fontWeight={700} gutterBottom>
+                    Hoan thanh bai dictation!
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Accuracy: {summary.accuracy}% • Cau da lam: {summary.total} • Thoi gian TB: {summary.avgTime}s
+                  </Typography>
+                  <Box mt={3} display="flex" justifyContent="center" gap={1.5}>
+                    <Button variant="contained" onClick={() => window.location.reload()}>
+                      Lam lai
+                    </Button>
+                    <Button variant="outlined" onClick={() => setOpenComplete(false)}>
+                      Dong
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </Box>
+        )}
+      </AnimatePresence>
+    </Box>
+  );
+}

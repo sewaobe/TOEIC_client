@@ -1,11 +1,13 @@
-import * as React from "react";
+﻿import * as React from "react";
 import { dayStudyService } from "../services/dayStudy.service";
 import { flashCardService } from "../services/flashCard.service";
-import quizService from "../services/quiz.service";
 import { getDurationMinutes, grade } from "../constants/questionBank";
 import useLocalStorage from "../hooks/useLocalStorage";
 import { LessonItem, QCQuestion } from "../types/Lesson";
 import { FlashcardItem } from "../components/modals/CreateFlashcardItemModal";
+import quizService from "../services/quiz.service";
+import { learningPathActivityService } from "../services/learningPathActivity.service";
+import { toast } from "sonner";
 
 export const useLessonViewModel = (dayId: string, week: string) => {
   // =================================================================
@@ -26,6 +28,10 @@ export const useLessonViewModel = (dayId: string, week: string) => {
   const [topicId, setTopicId] = React.useState("");
   const [activityKey, setActivityKey] = React.useState(0);
   const [isReviewMode, setIsReviewMode] = React.useState(false);
+  const [lastResult, setLastResult] = React.useState<{
+    score?: number;
+    type?: string;
+  } | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -35,10 +41,13 @@ export const useLessonViewModel = (dayId: string, week: string) => {
   // State quản lý vòng đời của bài học
   // For "lesson" type, default to "studying" (no intro needed)
   // For other types, default to "intro"
-  const [activityStatus, setActivityStatus] = React.useState<"intro" | "studying" | "finished">("studying");
+  const [activityStatus, setActivityStatus] = React.useState<
+    "intro" | "studying" | "finished"
+  >("studying");
 
   // State riêng cho Quiz
   const [examStarted, setExamStarted] = React.useState(false);
+  const [examStartedAt, setExamStartedAt] = React.useState<number | null>(null);
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = React.useState(0);
 
@@ -75,19 +84,9 @@ export const useLessonViewModel = (dayId: string, week: string) => {
 
   // Handle Lesson Status
   const startLesson = () => {
-    console.log(
-      "[useLessonViewModel] startLesson",
-      currentLesson?.id,
-      currentLesson?.title
-    );
     setActivityStatus("studying");
   };
   const finishLesson = () => {
-    console.log(
-      "[useLessonViewModel] finishLesson",
-      currentLesson?.id,
-      currentLesson?.title
-    );
     // Tại đây bạn có thể gọi API để đánh dấu bài học hoàn thành nếu cần
     setActivityStatus("finished");
   };
@@ -142,6 +141,7 @@ export const useLessonViewModel = (dayId: string, week: string) => {
 
     // Reset state của các bài học trước đó
     setExamStarted(false);
+    setExamStartedAt(null);
     setAnswers({});
     // For "lesson" type, directly go to studying (no intro needed)
     // For other types, also go to studying immediately
@@ -163,7 +163,6 @@ export const useLessonViewModel = (dayId: string, week: string) => {
       if (currentLesson.type === "quiz") {
         try {
           const res = await quizService.getQuizById(currentLesson.id);
-          console.log("Quiz API response:", res);
 
           // Backend trả về { success, data: Quiz, message }
           const quiz = res.data;
@@ -181,7 +180,6 @@ export const useLessonViewModel = (dayId: string, week: string) => {
                 answer: q.correctAnswer,
               })
             );
-            console.log("Mapped quiz questions:", mappedQuestions);
             setQuizQuestions(mappedQuestions);
           } else {
             console.error("Quiz data invalid or empty:", quiz);
@@ -228,16 +226,12 @@ export const useLessonViewModel = (dayId: string, week: string) => {
     (score?: number) => {
       if (!currentLesson) return;
 
-      console.log(
-        "[useLessonViewModel] completeAndGoToNext for",
-        currentLesson.id
-      );
-
       const currentIndex = lessons.findIndex((l) => l.id === currentLesson.id);
       if (currentIndex === -1) return;
 
       const newList: LessonItem[] = lessons.map((lesson, index) => {
         if (index === currentIndex) return { ...lesson, status: "completed" };
+        // Chỉ unlock bài tiếp theo nếu nó đang lock, không động vào bài completed
         if (index === currentIndex + 1 && lesson.status === "lock")
           return { ...lesson, status: "in_progress" };
         return lesson;
@@ -246,16 +240,33 @@ export const useLessonViewModel = (dayId: string, week: string) => {
 
       const nextLesson = newList[currentIndex + 1];
       if (nextLesson) {
-        console.log(
-          "[useLessonViewModel] unlocking + selecting next lesson",
-          nextLesson.id
-        );
         selectLesson(nextLesson);
       } else {
         alert("Hoàn thành tất cả bài học!");
       }
     },
     [currentLesson, lessons, setLessons, selectLesson]
+  );
+
+  // Đánh dấu bài học hiện tại hoàn thành nhưng KHÔNG điều hướng sang bài tiếp theo
+  const markLessonCompletedWithoutNav = React.useCallback(
+    (result?: { score?: number; type?: string }) => {
+      if (!currentLesson) return;
+
+      const currentIndex = lessons.findIndex((l) => l.id === currentLesson.id);
+      if (currentIndex === -1) return;
+
+      const newList: LessonItem[] = lessons.map((lesson, index) => {
+        if (index === currentIndex) return { ...lesson, status: "completed" };
+        // Chỉ unlock bài tiếp theo nếu nó đang lock, không động vào bài completed hoặc in_progress
+        if (index === currentIndex + 1 && lesson.status === "lock")
+          return { ...lesson, status: "in_progress" };
+        return lesson;
+      });
+      setLessons(newList);
+      if (result) setLastResult(result);
+    },
+    [currentLesson, lessons, setLessons]
   );
 
   const retryLesson = React.useCallback(() => {
@@ -268,16 +279,71 @@ export const useLessonViewModel = (dayId: string, week: string) => {
 
   // Actions riêng cho Quiz
   const startExam = React.useCallback(() => {
+    if (!questions.length) {
+      alert("Đang tải đề quiz, vui lòng đợi trong giây lát.");
+      return;
+    }
     const duration = getDurationMinutes(currentLesson);
     setTimeLeft(duration > 0 ? duration * 60 : 0);
     setExamStarted(true);
-  }, [currentLesson]);
+    setExamStartedAt(Date.now());
+  }, [currentLesson, questions.length]);
 
-  const submitExam = React.useCallback(() => {
-    const finalScore = grade(questions, answers);
-    alert(`Bạn đã nộp bài. Điểm: ${finalScore}%`);
-    completeAndGoToNext(finalScore);
-  }, [questions, answers, completeAndGoToNext]);
+  const submitExam = React.useCallback(async () => {
+    if (!currentLesson) return;
+    if (!dayId) {
+      toast.error("Thiếu day_study_id để nộp quiz.");
+      return;
+    }
+
+    const payloadAnswers = Object.entries(answers).map(
+      ([question_id, user_answer]) => ({ question_id, user_answer })
+    );
+    const time_spent =
+      examStartedAt != null
+        ? Math.max(0, Math.round((Date.now() - examStartedAt) / 1000))
+        : 0;
+
+    try {
+      const res = await toast.promise(
+        learningPathActivityService.submitQuiz(
+          currentLesson.id,
+          payloadAnswers,
+          dayId,
+          time_spent
+        ),
+        {
+          loading: "Đang nộp quiz...",
+          success: "Nộp quiz thành công!",
+          error: "Nộp quiz thất bại, vui lòng thử lại.",
+        }
+      );
+
+      const apiScore =
+        (res as any)?.data?.score ?? (res as any)?.data?.data?.score;
+      const finalScore =
+        typeof apiScore === "number" ? apiScore : grade(questions, answers);
+
+      // Thay vì chuyển sang bài tiếp theo, chỉ cập nhật trạng thái hiện tại là hoàn thành
+      try {
+        markLessonCompletedWithoutNav({ score: finalScore, type: "quiz" });
+        finishLesson();
+      } catch (e) {
+        console.error("Update after submitQuiz failed:", e);
+        // fallback: select next lesson to preserve previous behavior
+        completeAndGoToNext(finalScore);
+      }
+    } catch (error) {
+      console.error("Nop quiz learning path that bai", error);
+    }
+  }, [
+    answers,
+    completeAndGoToNext,
+    currentLesson,
+    dayId,
+    examStartedAt,
+    questions,
+  ]);
 
   // =================================================================
   // 5. VIEWMODEL API: Trả về state và actions cho View
@@ -317,5 +383,7 @@ export const useLessonViewModel = (dayId: string, week: string) => {
     showHistory,
     handleOpenModalStatistic,
     handleCloseModalStatistic,
+    markLessonCompletedWithoutNav,
+    lastResult,
   };
 };

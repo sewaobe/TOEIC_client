@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Box,
   Typography,
@@ -19,7 +20,7 @@ import { EmptyState } from "../../components/common/EmptyState";
 import { usePracticeDefinitionBasedDetailVM } from "../../viewmodels/PracticeDefinitionBasedDetail/usePracticeDefinitionBasedDetailVM";
 import PracticeLayout from "../layouts/PracticeLayout";
 import { HeaderBanner } from "../../components/practices/HeaderBanner";
-import { VolumeUp } from "@mui/icons-material";
+import { VolumeUp, Visibility, VisibilityOff } from "@mui/icons-material";
 import { useSpeech } from "../../hooks/useSpeech";
 import F5Modal from "../../components/modals/F5Modal";
 import ResumeSessionModal from "../../components/modals/ResumeSessionModal";
@@ -38,6 +39,7 @@ const PracticeDefinitionBasedDetailPage = () => {
     setShowGuider,
   } = usePracticeDefinitionBasedDetailVM();
   const { speak } = useSpeech();
+  const [showHint, setShowHint] = useState(false);
 
   if (vm.isLoading("fetchVocabularies") || vm.showResumeModal) {
     return (
@@ -127,6 +129,7 @@ const PracticeDefinitionBasedDetailPage = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25 }}
+              onAnimationStart={() => setShowHint(false)}
             >
               <Paper
                 sx={{
@@ -284,8 +287,65 @@ const PracticeDefinitionBasedDetailPage = () => {
                     </motion.div>
                   </Box>
 
-                  {/* IMAGE (nếu có) */}
-                  {vocab.image && (
+                  {/* IMAGE (nếu có) - Chỉ hiện cho mode guess khi bấm nút */}
+                  {vocab.image && mode === "guess" && (
+                    <Box sx={{ mt: 2 }}>
+                      {!showHint ? (
+                        <Button
+                          variant="outlined"
+                          startIcon={<Visibility />}
+                          onClick={() => setShowHint(true)}
+                          fullWidth
+                          sx={{
+                            borderRadius: 3,
+                            py: 1.5,
+                            borderColor: "#d1d5db",
+                            color: "#374151",
+                            textTransform: "none",
+                            fontWeight: 600,
+                            "&:hover": {
+                              borderColor: "#2563eb",
+                              color: "#2563eb",
+                              backgroundColor: "rgba(37,99,235,0.05)",
+                            },
+                          }}
+                        >
+                          🖼️ Xem ảnh gợi ý
+                        </Button>
+                      ) : (
+                        <Box>
+                          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                            <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                              Ảnh gợi ý:
+                            </Typography>
+                            <IconButton
+                              size="small"
+                              onClick={() => setShowHint(false)}
+                              sx={{ color: "#6b7280" }}
+                            >
+                              <VisibilityOff fontSize="small" />
+                            </IconButton>
+                          </Box>
+                          <Box
+                            component="img"
+                            src={vocab.image}
+                            alt={vocab.word}
+                            sx={{
+                              maxHeight: 140,
+                              width: "100%",
+                              objectFit: "contain",
+                              borderRadius: 2,
+                              backgroundColor: "#f9fafb",
+                              border: "1px solid #e5e7eb",
+                            }}
+                          />
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+
+                  {/* IMAGE cho mode definition - hiển thị luôn */}
+                  {vocab.image && mode === "definition" && (
                     <Box
                       component="img"
                       src={vocab.image}
@@ -360,12 +420,58 @@ const PracticeDefinitionBasedDetailPage = () => {
                       </Typography>
 
                       {mode === "definition" && (
-                        <Typography sx={{ mt: 1.5 }}>
-                          <strong>Định nghĩa chuẩn (TOEIC):</strong>{" "}
-                          {vm.current_standard_definition ||
-                            vocab.definitions?.[0] ||
-                            "Chưa có dữ liệu định nghĩa."}
-                        </Typography>
+                        <Box sx={{ mt: 1.5 }}>
+                          {!showHint ? (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<Visibility />}
+                              onClick={() => setShowHint(true)}
+                              sx={{
+                                borderRadius: 2,
+                                textTransform: "none",
+                                fontWeight: 600,
+                                borderColor: "#d1d5db",
+                                color: "#374151",
+                                "&:hover": {
+                                  borderColor: "#2563eb",
+                                  color: "#2563eb",
+                                  backgroundColor: "rgba(37,99,235,0.05)",
+                                },
+                              }}
+                            >
+                              💡 Xem định nghĩa mẫu từ AI
+                            </Button>
+                          ) : (
+                            <Box
+                              sx={{
+                                p: 2,
+                                borderRadius: 2,
+                                backgroundColor: "#f9fafb",
+                                border: "1px solid #e5e7eb",
+                                position: "relative",
+                              }}
+                            >
+                              <Box display="flex" justifyContent="space-between" alignItems="start" mb={1}>
+                                <Typography fontWeight={600} color="#374151">
+                                  Định nghĩa chuẩn (TOEIC):
+                                </Typography>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => setShowHint(false)}
+                                  sx={{ color: "#6b7280", mt: -0.5 }}
+                                >
+                                  <VisibilityOff fontSize="small" />
+                                </IconButton>
+                              </Box>
+                              <Typography color="#374151">
+                                {vm.current_standard_definition ||
+                                  vocab.definitions?.[0] ||
+                                  "Chưa có dữ liệu định nghĩa."}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
                       )}
 
                       {mode === "guess" && !isCorrect && (

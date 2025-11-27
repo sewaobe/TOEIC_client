@@ -12,16 +12,24 @@ interface InteractiveVideoProps {
   videoUrl: string;
   markers: QuestionMarker[];
   title?: string;
+  onVideoEnd?: () => void;
 }
 
 export const InteractiveVideo: React.FC<InteractiveVideoProps> = ({
   videoUrl,
   markers,
   title = "Bài học video",
+  onVideoEnd,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const { activeQuestion, resumeVideo, isFullscreen, player, warning, closeWarning } =
-    useInteractiveVideo(videoRef, markers, videoUrl);
+  const {
+    activeQuestion,
+    resumeVideo,
+    isFullscreen,
+    player,
+    warning,
+    closeWarning,
+  } = useInteractiveVideo(videoRef, markers, videoUrl, onVideoEnd);
 
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
@@ -58,7 +66,10 @@ export const InteractiveVideo: React.FC<InteractiveVideoProps> = ({
             border: "1px solid #e5e7eb",
           }}
         >
-          <Typography variant="h6" className="mb-5 font-semibold flex justify-center items-center gap-2">
+          <Typography
+            variant="h6"
+            className="mb-5 font-semibold flex justify-center items-center gap-2"
+          >
             💬 {activeQuestion.question}
           </Typography>
 
@@ -68,7 +79,10 @@ export const InteractiveVideo: React.FC<InteractiveVideoProps> = ({
               const isSelected = selectedAnswer === i;
 
               return (
-                <motion.div key={i} whileHover={!answered ? { scale: 1.03, y: -2 } : {}}>
+                <motion.div
+                  key={i}
+                  whileHover={!answered ? { scale: 1.03, y: -2 } : {}}
+                >
                   <Button
                     onClick={() => handleAnswer(i)}
                     variant="outlined"
@@ -195,10 +209,15 @@ export const InteractiveVideo: React.FC<InteractiveVideoProps> = ({
             border: "1px solid #fca5a5",
           }}
         >
-          <Typography variant="h6" className="mb-3 font-bold flex justify-center items-center gap-2">
+          <Typography
+            variant="h6"
+            className="mb-3 font-bold flex justify-center items-center gap-2"
+          >
             ⚠️ Không được tua quá nhanh
           </Typography>
-          <Typography className="text-sm opacity-90 mb-5">{warning.message}</Typography>
+          <Typography className="text-sm opacity-90 mb-5">
+            {warning.message}
+          </Typography>
 
           <motion.div whileHover={{ scale: 1.05 }}>
             <Button
@@ -233,7 +252,10 @@ export const InteractiveVideo: React.FC<InteractiveVideoProps> = ({
         </Typography>
       )}
 
-      <div data-vjs-player className="relative rounded-xl overflow-hidden shadow-xl">
+      <div
+        data-vjs-player
+        className="relative rounded-xl overflow-hidden shadow-xl"
+      >
         <video
           ref={videoRef}
           className="video-js vjs-big-play-centered rounded-xl overflow-hidden shadow-lg"
@@ -241,7 +263,9 @@ export const InteractiveVideo: React.FC<InteractiveVideoProps> = ({
       </div>
 
       {!isFullscreen && overlayNormal}
-      {isFullscreen && player && ReactDOM.createPortal(overlayNormal, player.el()!)}
+      {isFullscreen &&
+        player &&
+        ReactDOM.createPortal(overlayNormal, player.el()!)}
     </Box>
   );
 };

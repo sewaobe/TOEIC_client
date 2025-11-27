@@ -60,6 +60,19 @@ export default function LessonExam({
     const [activeQuestionIndex, setActiveQuestionIndex] = React.useState(0);
     const [direction, setDirection] = React.useState(0);
 
+    // Guard: if no questions loaded yet, show a placeholder instead of crashing
+    if (!questions || questions.length === 0) {
+        return (
+            <Card variant="outlined" sx={{ borderRadius: 3 }}>
+                <CardContent>
+                    <Typography textAlign="center" color="text.secondary">
+                        Đang tải đề quiz...
+                    </Typography>
+                </CardContent>
+            </Card>
+        );
+    }
+
     const handleNext = () => {
         if (activeQuestionIndex < questions.length - 1) {
             setDirection(1);

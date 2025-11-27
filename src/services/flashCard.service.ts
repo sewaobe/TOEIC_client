@@ -4,21 +4,26 @@ import { FlashcardItem } from "../components/modals/CreateFlashcardItemModal";
 import axiosClient from "./axiosClient";
 import { ApiResponse } from "./learningPath.service";
 
-
 export const flashCardService = {
-  getFlashcardById: async (id: string): Promise<{ topic_id: string, dataVocabularies: FlashcardItem[] }> => {
+  getFlashcardById: async (
+    id: string
+  ): Promise<{ topic_id: string; dataVocabularies: FlashcardItem[] }> => {
     const res = await axiosClient.get<ApiResponse<any[]>>(`/flash-card/${id}`);
-    console.log('getFlashcardById', res);
     // map từ API response sang FlashcardItem[]
-    const words: FlashcardItem[] = res.data ? res.data.map((item: any) => ({
-      _id: item._id,
-      word: item.word,
-      meaning: item.definition,
-      example: item.phonetic,
-      weight: item.weight
-    })) : [];
+    const words: FlashcardItem[] = res.data
+      ? res.data.map((item: any) => ({
+          _id: item._id,
+          word: item.word,
+          meaning: item.definition,
+          example: item.phonetic,
+          weight: item.weight,
+        }))
+      : [];
 
-    return { topic_id: res.meta ? res.meta.topic_id : "", dataVocabularies: words };
+    return {
+      topic_id: res.meta ? res.meta.topic_id : "",
+      dataVocabularies: words,
+    };
   },
   submitAttemptFlashCard: async (
     topic_id: string,
@@ -28,28 +33,27 @@ export const flashCardService = {
     finished_at: string,
     logs: Log[],
     dayStudyId: string,
-    activityId: string,
+    activityId: string
   ): Promise<void> => {
-    console.log(dayStudyId, activityId)
-    const res = await axiosClient.post("/flash-card/submit",
-      {
-        flashCardAttempt: {
-          topic_id,
-          total_count,
-          accuracy,
-          started_at,
-          finished_at,
-          duration: new Date(finished_at).getTime() - new Date(started_at).getTime()
-        },
-        logs,
-        dayStudyId,
-        activityId
-      }
-    )
+    const res = await axiosClient.post("/flash-card/submit", {
+      flashCardAttempt: {
+        topic_id,
+        total_count,
+        accuracy,
+        started_at,
+        finished_at,
+        duration:
+          new Date(finished_at).getTime() - new Date(started_at).getTime(),
+      },
+      logs,
+      dayStudyId,
+      activityId,
+    });
   },
-  getHistoryFlashCardAttemptByTopic: async (topicId: string): Promise<Attempt[]> => {
+  getHistoryFlashCardAttemptByTopic: async (
+    topicId: string
+  ): Promise<Attempt[]> => {
     const res = await axiosClient.get(`/flash-card/history/${topicId}`);
-    console.log("Get history flash card attempt by topic", res);
     return res.data;
-  }
+  },
 };

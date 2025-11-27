@@ -1,4 +1,4 @@
-import * as React from "react";
+﻿import * as React from "react";
 import {
   Alert,
   Box,
@@ -6,7 +6,6 @@ import {
   Container,
   Grid,
   CircularProgress,
-  Collapse,
   IconButton,
   Tooltip,
   Typography,
@@ -21,19 +20,17 @@ import {
 import KeyboardDoubleArrowLeftIcon from "@mui/icons-material/KeyboardDoubleArrowLeft";
 import MainLayout from "../layouts/MainLayout";
 import LessonHeader from "../../components/lesson/LessonHeader";
-import LessonMedia from "../../components/lesson/LessonMedia";
 import { InteractiveVideo } from "../../components/common/InteractiveVideo";
 import LessonNotes from "../../components/lesson/LessonNotes";
 import { lessonService } from "../../services/lesson.service";
 import LessonExam from "../../components/lesson/LessTypeStudy/LessonExam";
-import LessonSidebarExam from "../../components/lesson/LessonSidebarExam";
 import LessonIntroExam from "../../components/lesson/LessonIntroExam";
 import LessonQueue from "../../components/lesson/LessonSidebar";
 import { useSearchParams } from "react-router-dom";
 import { LessonFlashcard } from "../../components/lesson/LessTypeStudy/LessonFlashcard";
-// We'll reuse the practice UI inside lesson flow by mounting practice components
-import DictationContent from "../../components/practices/DictationContent";
+import LessonDictation from "../../components/lesson/LessTypeStudy/LessonDictation";
 import ShadowingContent from "../../components/practices/ShadowingPractice";
+import LessonShadowing from "../../components/lesson/LessTypeStudy/LessonShadowing";
 import { LessonIntroCard } from "../../components/lesson/LessTypeStudy/LessonFlashcardIntro";
 import { useLessonViewModel } from "../../viewmodels/useLessonViewModel";
 import { LessonFinishCard } from "../../components/flashCardItem/FinishedFlashCard";
@@ -46,6 +43,7 @@ import {
   BaseAttemptSummary,
 } from "../../components/history/HistoryModalShell";
 import { historyService } from "../../services/history.service";
+import { learningPathActivityService } from "../../services/learningPathActivity.service";
 
 export default function LessonPage() {
   const [searchParam] = useSearchParams();
@@ -61,7 +59,6 @@ export default function LessonPage() {
     currentLesson,
     vocabularies,
     topicId,
-    isReviewMode,
     activityKey,
     examStarted,
     questions,
@@ -70,7 +67,6 @@ export default function LessonPage() {
     mmss,
     timeLeft,
     selectLesson,
-    retryLesson,
     completeAndGoToNext,
     startExam,
     submitExam,
@@ -79,6 +75,8 @@ export default function LessonPage() {
     startLesson,
     finishLesson,
     redoLesson,
+    markLessonCompletedWithoutNav,
+    lastResult,
     showHistory,
     handleOpenModalStatistic,
     handleCloseModalStatistic,
@@ -92,6 +90,7 @@ export default function LessonPage() {
   const [selectedAttemptId, setSelectedAttemptId] = React.useState<
     string | undefined
   >();
+  const lessonStartedAt = React.useRef<number | null>(null);
 
   const renderHistoryDetail = React.useCallback(
     (attempt?: BaseAttemptSummary) => {
@@ -122,45 +121,50 @@ export default function LessonPage() {
                 Số từ đã ôn: {meta.wordsReviewed}
               </Typography>
             )}
-            {(meta.easy != null || meta.medium != null || meta.hard != null) && (
+            {(meta.easy != null ||
+              meta.medium != null ||
+              meta.hard != null) && (
               <Typography variant="body2" sx={{ mt: 1 }}>
-                Phân bố độ khó: dễ {meta.easy ?? 0}, vừa {meta.medium ?? 0}, khó {meta.hard ?? 0}
+                Phân bổ độ khó: dễ {meta.easy ?? 0}, vừa {meta.medium ?? 0}, khó{" "}
+                {meta.hard ?? 0}
               </Typography>
             )}
             {meta.avgResponseTime != null && (
               <Typography variant="body2">
-                Thời gian phản hồi trung bình: {meta.avgResponseTime.toFixed(1)} giây
+                Thời gian phản hồi trung bình: {meta.avgResponseTime.toFixed(1)}{" "}
+                giây
               </Typography>
             )}
-            {Array.isArray(meta.wordSummaries) && meta.wordSummaries.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Chi tiết từng từ
-                </Typography>
-                <TableContainer component={Paper} sx={{ maxHeight: 220 }}>
-                  <Table size="small" stickyHeader>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Từ vựng</TableCell>
-                        <TableCell>Đánh giá</TableCell>
-                        <TableCell align="right">Thời gian (s)</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {meta.wordSummaries.map((w: any, idx: number) => (
-                        <TableRow key={idx} hover>
-                          <TableCell>{w.vocabText}</TableCell>
-                          <TableCell>{w.eval_type}</TableCell>
-                          <TableCell align="right">
-                            {w.response_time.toFixed(1)}
-                          </TableCell>
+            {Array.isArray(meta.wordSummaries) &&
+              meta.wordSummaries.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Chi tiết từng từ
+                  </Typography>
+                  <TableContainer component={Paper} sx={{ maxHeight: 220 }}>
+                    <Table size="small" stickyHeader>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Từ vựng</TableCell>
+                          <TableCell>Đánh giá</TableCell>
+                          <TableCell align="right">Thời gian (s)</TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            )}
+                      </TableHead>
+                      <TableBody>
+                        {meta.wordSummaries.map((w: any, idx: number) => (
+                          <TableRow key={idx} hover>
+                            <TableCell>{w.vocabText}</TableCell>
+                            <TableCell>{w.eval_type}</TableCell>
+                            <TableCell align="right">
+                              {w.response_time.toFixed(1)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              )}
           </Box>
         );
       }
@@ -234,7 +238,9 @@ export default function LessonPage() {
             <Typography variant="subtitle1" fontWeight={700} gutterBottom>
               Lịch sử nghe chép
             </Typography>
-            <Typography variant="body2">Độ chính xác: {attempt.scoreLabel}</Typography>
+            <Typography variant="body2">
+              Độ chính xác: {attempt.scoreLabel}
+            </Typography>
             {attempt.durationSec != null && (
               <Typography variant="body2">
                 Thời lượng: {Math.round(attempt.durationSec / 60)} phút
@@ -246,9 +252,7 @@ export default function LessonPage() {
               </Typography>
             )}
             {meta.mistakes != null && (
-              <Typography variant="body2">
-                Số lỗi: {meta.mistakes}
-              </Typography>
+              <Typography variant="body2">Số lỗi: {meta.mistakes}</Typography>
             )}
             {Array.isArray(meta.segments) && meta.segments.length > 0 && (
               <Box sx={{ mt: 2 }}>
@@ -289,7 +293,7 @@ export default function LessonPage() {
         return (
           <Box>
             <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-              Lịch sử nói đuổi
+              Lịch sử nói đuôi
             </Typography>
             <Typography variant="body2">
               Mức độ giống: {attempt.scoreLabel}
@@ -302,7 +306,9 @@ export default function LessonPage() {
             {meta.scores && (
               <Box sx={{ mt: 1 }}>
                 <Typography variant="body2">
-                  Accuracy: {meta.scores.accuracy}% – Fluency: {meta.scores.fluency}% – Intonation: {meta.scores.intonation}%
+                  Accuracy: {meta.scores.accuracy}% â€“ Fluency:{" "}
+                  {meta.scores.fluency}% â€“ Intonation:{" "}
+                  {meta.scores.intonation}%
                 </Typography>
               </Box>
             )}
@@ -319,31 +325,32 @@ export default function LessonPage() {
                 <audio controls src={meta.audioUrl} style={{ width: "100%" }} />
               </Box>
             )}
-            {Array.isArray(meta.wordFeedback) && meta.wordFeedback.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Điểm phát âm theo từ
-                </Typography>
-                <TableContainer component={Paper} sx={{ maxHeight: 220 }}>
-                  <Table size="small" stickyHeader>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Từ</TableCell>
-                        <TableCell align="right">Điểm (%)</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {meta.wordFeedback.map((w: any, idx: number) => (
-                        <TableRow key={idx} hover>
-                          <TableCell>{w.word}</TableCell>
-                          <TableCell align="right">{w.score}</TableCell>
+            {Array.isArray(meta.wordFeedback) &&
+              meta.wordFeedback.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Điểm phát âm theo từ
+                  </Typography>
+                  <TableContainer component={Paper} sx={{ maxHeight: 220 }}>
+                    <Table size="small" stickyHeader>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Từ</TableCell>
+                          <TableCell align="right">Điểm (%)</TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            )}
+                      </TableHead>
+                      <TableBody>
+                        {meta.wordFeedback.map((w: any, idx: number) => (
+                          <TableRow key={idx} hover>
+                            <TableCell>{w.word}</TableCell>
+                            <TableCell align="right">{w.score}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              )}
           </Box>
         );
       }
@@ -402,6 +409,12 @@ export default function LessonPage() {
     };
   }, [currentLesson, dayId]);
 
+  React.useEffect(() => {
+    if (currentLesson?.type === "lesson" && activityStatus === "studying") {
+      lessonStartedAt.current = Date.now();
+    }
+  }, [activityStatus, currentLesson]);
+
   const handleOpenHistoryFromHeader = async () => {
     if (!currentLesson) return;
     setHistoryOpen(true);
@@ -418,6 +431,32 @@ export default function LessonPage() {
       setHistoryLoading(false);
     }
   };
+
+  const handleCompleteLesson = React.useCallback(async () => {
+    if (!currentLesson || currentLesson.type !== "lesson") return;
+    const spent =
+      lessonStartedAt.current != null
+        ? Math.max(1, Math.round((Date.now() - lessonStartedAt.current) / 1000))
+        : 0;
+    try {
+      await learningPathActivityService.submitLesson(
+        currentLesson.id,
+        dayId,
+        spent
+      );
+      // Cập nhật UI rightbar: đánh dấu lesson hoàn thành nhưng KHÔNG chuyển nội dung
+      try {
+        markLessonCompletedWithoutNav();
+        finishLesson();
+      } catch (e) {
+        // Nếu cập nhật viewmodel bị lỗi thì chỉ log
+        console.error("Update local lesson status failed:", e);
+      }
+    } catch (error) {
+      console.error("Submit lesson failed:", error);
+    }
+  }, [currentLesson, dayId]);
+
   // Một hàm phụ để render nội dung bài học đang hoạt động
   const renderActiveLesson = () => {
     if (!currentLesson) return null;
@@ -429,21 +468,49 @@ export default function LessonPage() {
           <LessonFlashcard
             vocabularies={vocabularies}
             topicId={topicId}
-            activityId={activityStatus}
             dayId={dayId}
+            lessonId={currentLesson.id}
             onFinish={finishLesson}
+            onSubmitted={() => {
+              markLessonCompletedWithoutNav();
+              finishLesson();
+            }}
           />
         );
       case "shadowing":
-        return <LessonShadowingAdapter lessonId={currentLesson.id} />;
+        return (
+          <LessonShadowingAdapter
+            lessonId={currentLesson.id}
+            dayId={dayId}
+            onSubmitted={() => {
+              markLessonCompletedWithoutNav();
+              finishLesson();
+            }}
+          />
+        );
       case "dictation":
         return (
           <LessonDictationAdapter
             lessonId={currentLesson.id}
+            dayId={dayId}
             key={activityKey}
+            onSubmitted={(score) => {
+              markLessonCompletedWithoutNav({ score, type: "dictation" });
+              finishLesson();
+            }}
           />
         );
       case "quiz":
+        if (!questions.length) {
+          return (
+            <Box textAlign="center" mt={4}>
+              <CircularProgress />
+              <Typography mt={2} color="text.secondary">
+                Đang tải đề quiz...
+              </Typography>
+            </Box>
+          );
+        }
         return (
           <>
             <Grid size={{ xs: 12, md: 12 }}>
@@ -486,18 +553,12 @@ export default function LessonPage() {
                   maxWidth: "1000px",
                 }}
               >
-                {mediaMarkers && mediaMarkers.length > 0 ? (
-                  <InteractiveVideo
-                    videoUrl={firstMedia?.url || "https://youtu.be/4QnqpWLT5m4"}
-                    markers={mediaMarkers}
-                    title={lessonDetail?.title || "Bài học video"}
-                  />
-                ) : (
-                  <LessonMedia
-                    src={firstMedia?.url || "https://youtu.be/4QnqpWLT5m4"}
-                    type={firstMedia?.type === "audio" ? "audio" : "video"}
-                  />
-                )}
+                <InteractiveVideo
+                  videoUrl={firstMedia?.url || "https://youtu.be/4QnqpWLT5m4"}
+                  markers={mediaMarkers || []}
+                  title={lessonDetail?.title || "Bài học video"}
+                  onVideoEnd={handleCompleteLesson}
+                />
               </Box>
             </Grid>
             <Grid size={{ xs: 12 }}>
@@ -509,6 +570,14 @@ export default function LessonPage() {
                 />
               </Box>
             </Grid>
+            <Grid
+              size={{ xs: 12 }}
+              sx={{ display: "flex", justifyContent: "center", mt: 2 }}
+            >
+              <Button variant="contained" onClick={handleCompleteLesson}>
+                Hoàn thành bài học
+              </Button>
+            </Grid>
           </>
         );
       default:
@@ -517,7 +586,15 @@ export default function LessonPage() {
   };
 
   /* Adapter components: fetch the full lesson data and render practice UIs */
-  function LessonDictationAdapter({ lessonId }: { lessonId: string }) {
+  function LessonDictationAdapter({
+    lessonId,
+    dayId,
+    onSubmitted,
+  }: {
+    lessonId: string;
+    dayId: string;
+    onSubmitted: (score?: number) => void;
+  }) {
     const [data, setData] = React.useState<any>(null);
     const [loading, setLoading] = React.useState(false);
 
@@ -541,7 +618,7 @@ export default function LessonPage() {
       return () => {
         mounted = false;
       };
-    }, [lessonId]);
+    }, [dayId, lessonId]);
 
     if (loading || !data)
       return (
@@ -549,10 +626,24 @@ export default function LessonPage() {
           <CircularProgress />
         </Box>
       );
-    return <DictationContent dictation={data} />;
+    return (
+      <LessonDictation
+        dictation={data}
+        dayStudyId={dayId}
+        onSubmitted={onSubmitted}
+      />
+    );
   }
 
-  function LessonShadowingAdapter({ lessonId }: { lessonId: string }) {
+  function LessonShadowingAdapter({
+    lessonId,
+    dayId,
+    onSubmitted,
+  }: {
+    lessonId: string;
+    dayId: string;
+    onSubmitted: () => void;
+  }) {
     const [data, setData] = React.useState<any>(null);
     const [loading, setLoading] = React.useState(false);
 
@@ -576,7 +667,7 @@ export default function LessonPage() {
       return () => {
         mounted = false;
       };
-    }, [lessonId]);
+    }, [dayId, lessonId]);
 
     if (loading || !data)
       return (
@@ -584,7 +675,13 @@ export default function LessonPage() {
           <CircularProgress />
         </Box>
       );
-    return <ShadowingContent lesson={data} />;
+    return (
+      <LessonShadowing
+        lesson={data}
+        dayStudyId={dayId}
+        onSubmitted={onSubmitted}
+      />
+    );
   }
 
   const renderLessonContent = () => {
@@ -597,6 +694,7 @@ export default function LessonPage() {
           onRedo={redoLesson} // Hàm từ ViewModel
           onNext={completeAndGoToNext} // Hàm từ ViewModel
           onStats={handleOpenModalStatistic}
+          score={lastResult?.score}
         />
       );
     }
@@ -621,6 +719,7 @@ export default function LessonPage() {
             onRedo={redoLesson} // Hàm từ ViewModel
             onNext={completeAndGoToNext} // Hàm từ ViewModel
             onStats={handleOpenModalStatistic}
+            score={lastResult?.score}
           />
         );
 
@@ -798,9 +897,7 @@ export default function LessonPage() {
             open={historyOpen}
             onClose={() => setHistoryOpen(false)}
             lessonTitle={currentLesson?.title}
-            lessonType={
-              currentLesson?.type as HistoryLessonType | undefined
-            }
+            lessonType={currentLesson?.type as HistoryLessonType | undefined}
             loading={historyLoading}
             attempts={historyAttempts}
             selectedAttemptId={selectedAttemptId}

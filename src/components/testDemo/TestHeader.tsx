@@ -15,6 +15,7 @@ import { setInitialAnswers } from "../../stores/answerSlice";
 interface TestHeaderProps {
   setIsShowSideBar: React.Dispatch<React.SetStateAction<boolean>>;
   isTourRunning: boolean;
+  fromLesson?: boolean;
 }
 
 type State = {
@@ -58,6 +59,7 @@ function reducer(state: State, action: Action): State {
 const TestHeader: FC<TestHeaderProps> = ({
   setIsShowSideBar,
   isTourRunning,
+  fromLesson = false,
 }) => {
   const [state, dispatchLocal] = useReducer(reducer, initialState);
   const [answerTest, setAnswerTest] = useState<ResultPayload>({
@@ -110,7 +112,9 @@ const TestHeader: FC<TestHeaderProps> = ({
 
     // Xác định completedPart dựa trên logic mới
     let completedPart = "";
-    if (isDemoTest) {
+    if (fromLesson) {
+      completedPart = "mini_test";
+    } else if (isDemoTest) {
       completedPart = "demo_test";
     } else if (parts) {
       completedPart = parts;
@@ -221,6 +225,23 @@ const TestHeader: FC<TestHeaderProps> = ({
         } catch (e) {
           console.warn("Không lưu được last_test_result vào localStorage", e);
         }
+        // Nếu là mini test bắt nguồn từ Lesson (fromLesson=true), không hiện modal kết quả,
+        // thay vào đó điều hướng ngay về LessonPage để hiển thị kết quả trong context của lộ trình học.
+        if (fromLesson) {
+          const returnInfo = localStorage.getItem("mini_test_return");
+          try {
+            if (returnInfo) {
+              const { dayId, week } = JSON.parse(returnInfo);
+              navigate(`/lesson?day=${dayId}&week=${week}`);
+            } else {
+              navigate("/home");
+            }
+          } catch (e) {
+            console.warn("Error navigating back to lesson after mini_test", e);
+            navigate("/home");
+          }
+          return; // skip opening the modal
+        }
       } catch (e) {
         console.warn("Tính toán parts summary thất bại", e);
       }
@@ -330,7 +351,30 @@ const TestHeader: FC<TestHeaderProps> = ({
 
   const handleCloseScoreModal = () => {
     dispatchLocal({ type: "CLOSE_SCORE" });
-    navigate("/home");
+
+    // Debug log to help trace close action
+    try {
+      console.log("handleCloseScoreModal called", { fromLesson });
+    } catch (e) {
+      /* ignore */
+    }
+
+    // Nếu là mini test từ lesson, navigate về LessonPage
+    if (fromLesson) {
+      const returnInfo = localStorage.getItem("mini_test_return");
+      try {
+        console.log("mini_test_return:", returnInfo);
+      } catch (e) {}
+      if (returnInfo) {
+        const { dayId, week } = JSON.parse(returnInfo);
+        // LessonPage is mounted at `/lesson` route
+        navigate(`/lesson?day=${dayId}&week=${week}`);
+      } else {
+        navigate("/home");
+      }
+    } else {
+      navigate("/home");
+    }
   };
 
   return (

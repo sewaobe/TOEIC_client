@@ -295,6 +295,7 @@ export default function ToeicQuickResultModal({
       type="success"
       title="Kết quả bài thi TOEIC"
       buttonOther={renderFooter()}
+      onCancel={onClose}
     >
       <Stack gap={2} className="w-full">
         {/* ===== TOP SUMMARY (morphism) ===== */}

@@ -29,9 +29,10 @@ import LessonQueue from "../../components/lesson/LessonSidebar";
 import { useSearchParams } from "react-router-dom";
 import { LessonFlashcard } from "../../components/lesson/LessTypeStudy/LessonFlashcard";
 import LessonDictation from "../../components/lesson/LessTypeStudy/LessonDictation";
-import ShadowingContent from "../../components/practices/ShadowingPractice";
 import LessonShadowing from "../../components/lesson/LessTypeStudy/LessonShadowing";
 import { LessonIntroCard } from "../../components/lesson/LessTypeStudy/LessonFlashcardIntro";
+import { MiniTestIntro } from "../../components/lesson/LessTypeStudy/MiniTestIntro";
+import { MiniTestResultCard } from "../../components/lesson/LessTypeStudy/MiniTestResultCard";
 import { useLessonViewModel } from "../../viewmodels/useLessonViewModel";
 import { LessonFinishCard } from "../../components/flashCardItem/FinishedFlashCard";
 import { motion, AnimatePresence } from "framer-motion"; // <-- 1. IMPORT
@@ -44,12 +45,26 @@ import {
 } from "../../components/history/HistoryModalShell";
 import { historyService } from "../../services/history.service";
 import { learningPathActivityService } from "../../services/learningPathActivity.service";
+import { useNavigate } from "react-router-dom";
+
+interface MiniTestResult {
+  testId: string;
+  userId: string;
+  score: number;
+  parts: Array<{ part_name: string; accuracy: number }>;
+  submit_at: string;
+}
 
 export default function LessonPage() {
   const [searchParam] = useSearchParams();
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const dayId = (searchParam.get("day") || "").toString();
   const week = (searchParam.get("week") || "").toString();
+
+  // Mini test result state
+  const [miniTestResult, setMiniTestResult] =
+    React.useState<MiniTestResult | null>(null);
 
   // sử dụng hook custom cho state
   const {
@@ -377,6 +392,24 @@ export default function LessonPage() {
     window.scroll(0, 0);
   }, [currentLesson]);
 
+  // Check for mini test result from localStorage
+  React.useEffect(() => {
+    const returnInfo = localStorage.getItem("mini_test_return");
+    if (returnInfo) {
+      const resultData = localStorage.getItem("last_test_result");
+      if (resultData) {
+        try {
+          const result: MiniTestResult = JSON.parse(resultData);
+          setMiniTestResult(result);
+        } catch (err) {
+          console.error("Lỗi parse mini test result:", err);
+        }
+      }
+      // Clear return flag after reading
+      localStorage.removeItem("mini_test_return");
+    }
+  }, [dayId, week]);
+
   // Calculate progress
   const completedCount = lessons.filter((l) => l.status === "completed").length;
   const totalCount = lessons.length;
@@ -580,6 +613,40 @@ export default function LessonPage() {
             </Grid>
           </>
         );
+      case "mini_test":
+        // Navigate to TestDemoPage with mini_test params
+        const handleStartMiniTest = () => {
+          // Store return info in localStorage to come back after test
+          localStorage.setItem(
+            "mini_test_return",
+            JSON.stringify({
+              dayId,
+              week,
+              lessonId: currentLesson.id,
+            })
+          );
+          // Navigate directly to test page (skip overview)
+          navigate(`/test?testId=${currentLesson.id}&fromLesson=true`);
+        };
+
+        return (
+          <MiniTestIntro
+            title={currentLesson.title}
+            description="Bài kiểm tra mini gồm 100 câu hỏi để đánh giá kiến thức của bạn"
+            onStart={handleStartMiniTest}
+            questionCount={100}
+            duration={60}
+            parts={[
+              "Part 1",
+              "Part 2",
+              "Part 3",
+              "Part 4",
+              "Part 5",
+              "Part 6",
+              "Part 7",
+            ]}
+          />
+        );
       default:
         return <div>Loại bài học không xác định.</div>;
     }
@@ -686,6 +753,28 @@ export default function LessonPage() {
 
   const renderLessonContent = () => {
     if (!currentLesson) return <Box>Chọn một bài học để bắt đầu.</Box>;
+
+    // Show mini test result if available
+    if (miniTestResult && currentLesson.type === "mini_test") {
+      return (
+        <MiniTestResultCard
+          score={miniTestResult.score}
+          parts={miniTestResult.parts}
+          onNext={() => {
+            setMiniTestResult(null);
+            completeAndGoToNext();
+          }}
+          onViewDetail={() => {
+            // TODO: Navigate to detailed result page if needed
+            console.log("View detail clicked for test:", miniTestResult.testId);
+          }}
+          onRetry={() => {
+            // Retry the mini test: navigate back to test page with fromLesson
+            navigate(`/test?testId=${miniTestResult.testId}&fromLesson=true`);
+          }}
+        />
+      );
+    }
 
     if (currentLesson.status === "completed" && activityStatus === "intro") {
       return (

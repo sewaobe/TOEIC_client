@@ -38,6 +38,7 @@ const TestDemoPage: FC = () => {
   const testId = searchParams.get("testId");
   const partsQuery = searchParams.get("parts"); // ví dụ "1,2"
   const parts = partsQuery ? partsQuery.split(",").map(Number) : undefined;
+  const fromLesson = searchParams.get("fromLesson") === "true";
 
   const navigate = useNavigate();
   const [isShowSideBar, setIsShowSideBar] = useState<boolean>(false);
@@ -68,7 +69,6 @@ const TestDemoPage: FC = () => {
     }
   }, [groups, dispatch]);
 
-
   const handleJoyrideCallback = (data: any) => {
     const { status } = data;
     if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
@@ -93,6 +93,7 @@ const TestDemoPage: FC = () => {
       <TestHeader
         setIsShowSideBar={setIsShowSideBar}
         isTourRunning={isTourRunning}
+        fromLesson={fromLesson}
       />
 
       {/* Main layout */}

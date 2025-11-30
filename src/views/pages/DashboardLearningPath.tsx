@@ -223,9 +223,9 @@ function DayItem({ data, onOpen }: { data: Day; onOpen: (l: Day) => void }) {
         transition: "all .15s ease",
         "&:hover": !isLocked
           ? {
-              boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
-              transform: "translateY(-1px)",
-            }
+            boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
+            transform: "translateY(-1px)",
+          }
           : {},
       }}
       onClick={() => !isLocked && onOpen(data)}
@@ -320,6 +320,7 @@ export default function DashboardLearningPath({
 
   const openDay = (d: Day) => {
     localStorage.setItem("current_day", JSON.stringify(d));
+    localStorage.setItem("current_lesson", "");
     navigate(`/lesson?week=${activeWeek + 1}&day=${d.id}`);
   };
   const [lastVisitDate, setLastVisitDate] = useLocalStorage<string>(

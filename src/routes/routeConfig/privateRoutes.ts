@@ -50,6 +50,10 @@ const PracticeDefinitionBasedDetailPage = lazy(
   () => import("../../views/pages/PracticeDefinitionBasedDetailPage")
 );
 
+const PracticeSpeakingPage = lazy(
+  () => import("../../views/pages/PracticeSpeakingPage")
+);
+
 export interface AppRoute {
   path: string;
   element: ComponentType;
@@ -133,6 +137,11 @@ const privateRoutes: AppRoute[] = [
   {
     path: "/result-statistic",
     element: ResultStatisticPage,
+    guard: ProtectedRoute,
+  },
+  {
+    path: "/practice-skill/speaking_conversation",
+    element: PracticeSpeakingPage,
     guard: ProtectedRoute,
   },
   {

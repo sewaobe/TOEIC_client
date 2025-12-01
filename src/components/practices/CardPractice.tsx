@@ -1,4 +1,4 @@
-import { Card, CardContent, Typography, Box, Button } from "@mui/material"
+import { Card, CardContent, Typography, Box, Button, Tooltip } from "@mui/material"
 import { ReactNode } from "react"
 
 interface PracticeCardProps {
@@ -57,21 +57,30 @@ export default function PracticeCard({
               {title}
             </Typography>
             {subtitle && (
-              <Typography variant="body2" color="text.secondary">
-                {subtitle}
-              </Typography>
+              <Tooltip title={subtitle} arrow>
+                <Typography variant="body2" color="text.secondary" sx={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 1,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden"
+                }}>
+                  {subtitle}
+                </Typography>
+              </Tooltip>
             )}
           </Box>
         </Box>
 
         {/* Description */}
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ minHeight: 40, mb: 2 }}
-        >
-          {description}
-        </Typography>
+        <Tooltip title={description} arrow>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ minHeight: 40, mb: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+          >
+            {description}
+          </Typography>
+        </Tooltip>
 
         {/* CTA Button */}
         <Button

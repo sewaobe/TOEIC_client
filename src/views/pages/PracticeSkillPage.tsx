@@ -3,6 +3,7 @@ import HeadphonesIcon from "@mui/icons-material/Headphones";
 import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 import QuizIcon from "@mui/icons-material/Quiz";
 import BoltIcon from "@mui/icons-material/Bolt";
+import MicIcon from "@mui/icons-material/Mic";
 import PracticeLayout from "../layouts/PracticeLayout";
 import PracticeCard from "../../components/practices/CardPractice";
 import { useNavigate } from "react-router-dom";
@@ -54,6 +55,15 @@ export default function PracticeSkillPage() {
       description:
         "Luyện kỹ năng từ vựng bằng cách đoán từ dựa trên định nghĩa tiếng Anh.",
     },
+    {
+      key: "speaking_conversation",
+      title: "Short Conversation",
+      subtitle: "Luyện nói tương tác theo tình huống",
+      icon: <MicIcon sx={{ fontSize: 40, color: "#f97316" }} />, // Orange 500
+      gradient: "linear-gradient(to right, #fb923c, #f97316)", // Orange 400 → Orange 500
+      description:
+        "Luyện phản xạ giao tiếp và phát âm qua hội thoại mô phỏng thực tế. Bạn sẽ trò chuyện với AI theo các tình huống đời sống và công việc.",
+    }
   ];
 
   const navigate = useNavigate();

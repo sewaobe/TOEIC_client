@@ -19,7 +19,7 @@ export const dayStudyService = {
         lessons.push({
           id: `${it.activity_id ?? idx}`,
           week: Number(week),
-          title: `${capitalizeFirst(it.kind)} — Part ${session.part_type}`,
+          title: `${capitalizeFirst(it.kind)} ${session.part_type ? `— Part ${session.part_type}` : ""}`,
           type: it.kind as LessonItem["type"],
           status: it.status
         });

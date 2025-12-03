@@ -8,17 +8,22 @@ export const flashCardService = {
   getFlashcardById: async (
     id: string
   ): Promise<{ topic_id: string; dataVocabularies: FlashcardItem[] }> => {
-    const res = await axiosClient.get<ApiResponse<any[]>>(`/flash-card/${id}`);
-    // map từ API response sang FlashcardItem[]
-    const words: FlashcardItem[] = res.data
-      ? res.data.map((item: any) => ({
-          _id: item._id,
-          word: item.word,
-          meaning: item.definition,
-          example: item.phonetic,
-          weight: item.weight,
-        }))
-      : [];
+    const res = await axiosClient.get<ApiResponse<any>>(`/flash-card/${id}`);
+
+    const data = res.data || {};
+    const ids: string[] = data._id || [];
+    const wordsArr: string[] = data.word || [];
+    const defsArr: string[] = data.definition || [];
+    const phoneticsArr: string[] = data.phonetic || [];
+    const weightsArr: number[] = data.weight || [];
+
+    const words: FlashcardItem[] = ids.map((idVal, index) => ({
+      _id: idVal,
+      word: wordsArr[index],
+      definition: defsArr[index],
+      phonetic: phoneticsArr[index],
+      weight: weightsArr[index],
+    }));
 
     return {
       topic_id: res.meta ? res.meta.topic_id : "",

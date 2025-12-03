@@ -219,6 +219,20 @@ export const LessonFlashcard: FC<LessonFlashcardProps> = ({
     );
   }
 
+  if (!current) {
+    if (!vocabularies || vocabularies.length === 0) {
+      return (
+        <div className="w-full flex flex-col items-center justify-center py-10 text-center">
+          <p className="text-lg font-semibold mb-2">
+            Hiện chưa có flashcard cho bài học này.
+          </p>
+          <p className="text-sm text-gray-500">
+            Vui lòng quay lại sau hoặc chọn bài học khác.
+          </p>
+        </div>
+      );
+    }
+  }
   // Case: hết từ → theo flow bạn yêu cầu
   return (
     <>

@@ -321,6 +321,7 @@ export default function DashboardLearningPath({
   const openDay = (d: Day) => {
     localStorage.setItem("current_day", JSON.stringify(d));
     localStorage.setItem("current_lesson", "");
+    localStorage.setItem("vocabularies", "");
     navigate(`/lesson?week=${activeWeek + 1}&day=${d.id}`);
   };
   const [lastVisitDate, setLastVisitDate] = useLocalStorage<string>(

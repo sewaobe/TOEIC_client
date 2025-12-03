@@ -11,6 +11,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import ConfirmModal from "../modals/ConfirmModal";
 import ToeicQuickResultModal from "../modals/ToeicQuickResultModal";
 import { setInitialAnswers } from "../../stores/answerSlice";
+import { IRT_SERVICE } from "../../services/irt.service";
 
 interface TestHeaderProps {
   setIsShowSideBar: React.Dispatch<React.SetStateAction<boolean>>;
@@ -81,8 +82,8 @@ const TestHeader: FC<TestHeaderProps> = ({
   const duration = timeLimitParam
     ? parseInt(timeLimitParam, 10) * 60 // practice có giới hạn
     : parts
-    ? Infinity // practice không giới hạn
-    : 120 * 60; // full test mặc định 120 phút
+      ? Infinity // practice không giới hạn
+      : 120 * 60; // full test mặc định 120 phút
 
   const { timeLeft, formatTime } = useCountdown(duration, isTourRunning);
 
@@ -123,13 +124,26 @@ const TestHeader: FC<TestHeaderProps> = ({
     }
 
     try {
-      const result = await testService.submitTest(
-        testId,
-        userId,
-        answersMap,
-        elapsed,
-        completedPart
-      );
+      let result: {
+        score: number;
+        answers: any[];
+      } = { score: 0, answers: [] };
+      if (fromLesson) {
+        result = await IRT_SERVICE.generateWeeklyPlan(
+          testId,
+          answersMap,
+          elapsed
+        )
+      }
+      else {
+        result = await testService.submitTest(
+          testId,
+          userId,
+          answersMap,
+          elapsed,
+          completedPart
+        );
+      }
       console.log("Chi tiết từng câu:", result.answers);
       console.log("số điểm đạt được:", result.score);
       setAnswerTest({
@@ -364,7 +378,7 @@ const TestHeader: FC<TestHeaderProps> = ({
       const returnInfo = localStorage.getItem("mini_test_return");
       try {
         console.log("mini_test_return:", returnInfo);
-      } catch (e) {}
+      } catch (e) { }
       if (returnInfo) {
         const { dayId, week } = JSON.parse(returnInfo);
         // LessonPage is mounted at `/lesson` route

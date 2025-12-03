@@ -192,7 +192,7 @@ export const useLessonViewModel = (dayId: string, week: string) => {
 
     fetchLessonSpecificData();
   }, [currentLesson]);
-
+  
   // Effect: Quản lý bộ đếm thời gian cho quiz
   React.useEffect(() => {
     if (!examStarted || timeLeft <= 0) return;

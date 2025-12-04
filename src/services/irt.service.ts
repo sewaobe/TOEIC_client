@@ -16,6 +16,9 @@ export const IRT_SERVICE = {
             duration
         });
 
-        return res.success;
+        return {
+            score: res.data.score,
+            answers: res.data.detailedAnswers
+        };
     }
 }

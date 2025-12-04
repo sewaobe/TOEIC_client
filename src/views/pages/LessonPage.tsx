@@ -46,6 +46,7 @@ import {
 import { historyService } from "../../services/history.service";
 import { learningPathActivityService } from "../../services/learningPathActivity.service";
 import { useNavigate } from "react-router-dom";
+import AssessmentModal from "../../components/modals/AssessmentModal";
 
 interface MiniTestResult {
   testId: string;
@@ -65,6 +66,9 @@ export default function LessonPage() {
   // Mini test result state
   const [miniTestResult, setMiniTestResult] =
     React.useState<MiniTestResult | null>(null);
+
+  // Assessment modal state for mini test
+  const [isAssessmentOpen, setIsAssessmentOpen] = React.useState(false);
 
   // sử dụng hook custom cho state
   const {
@@ -405,10 +409,22 @@ export default function LessonPage() {
           console.error("Lỗi parse mini test result:", err);
         }
       }
-      // Clear return flag after reading
-      localStorage.removeItem("mini_test_return");
+      // Không xóa mini_test_return ở đây nữa; LessonPage vẫn dùng để biết nơi quay lại
     }
   }, [dayId, week]);
+
+  // Khi quay lại từ mini_test: xem có cần mở AssessmentModal không
+  React.useEffect(() => {
+    try {
+      const shouldShow = localStorage.getItem("mini_test_show_assessment");
+      if (shouldShow === "true") {
+        setIsAssessmentOpen(true);
+        localStorage.removeItem("mini_test_show_assessment");
+      }
+    } catch (e) {
+      console.warn("Không đọc được flag mini_test_show_assessment", e);
+    }
+  }, []);
 
   // Calculate progress
   const completedCount = lessons.filter((l) => l.status === "completed").length;
@@ -992,6 +1008,12 @@ export default function LessonPage() {
             selectedAttemptId={selectedAttemptId}
             onSelectAttempt={setSelectedAttemptId}
             renderAttemptDetail={renderHistoryDetail}
+          />
+
+          {/* Assessment modal for mini test, shown when returning from TestDemoPage */}
+          <AssessmentModal
+            open={isAssessmentOpen}
+            onClose={() => setIsAssessmentOpen(false)}
           />
         </Container>
       </Box>

@@ -11,6 +11,7 @@ import { setInitialAnswers } from "../../stores/answerSlice";
 import { ExamGroup, ExamQuestion } from "../../types/Exam";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import F5Modal from "../../components/modals/F5Modal";
+import AssessmentModal from "../../components/modals/AssessmentModal";
 
 const steps: Step[] = [
   {
@@ -44,9 +45,15 @@ const TestDemoPage: FC = () => {
   const [isShowSideBar, setIsShowSideBar] = useState<boolean>(false);
   const [_, setStepIndex] = useState<number>(0);
   const [isTourRunning, setIsTourRunning] = useState<boolean>(true);
+  const [isPlanReady, setIsPlanReady] = useState<boolean>(false);
 
   const dispatch = useDispatch<AppDispatch>();
   const groups = useSelector((s: RootState) => s.exam.groups);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleOpen = () => setIsModalOpen(true);
+  const handleClose = () => setIsModalOpen(false);
 
   // fetch test khi vào page
   useEffect(() => {
@@ -94,6 +101,8 @@ const TestDemoPage: FC = () => {
         setIsShowSideBar={setIsShowSideBar}
         isTourRunning={isTourRunning}
         fromLesson={fromLesson}
+        openModal={handleOpen}
+        onPlanReady={() => setIsPlanReady(true)}
       />
 
       {/* Main layout */}
@@ -109,6 +118,11 @@ const TestDemoPage: FC = () => {
 
       {/* Modal khi ấn reload */}
       <F5Modal onConfirm={() => navigate("/home")} />
+
+      <AssessmentModal
+        open={isModalOpen}
+        onClose={handleClose}
+      />
     </div>
   );
 };

@@ -17,6 +17,8 @@ interface TestHeaderProps {
   setIsShowSideBar: React.Dispatch<React.SetStateAction<boolean>>;
   isTourRunning: boolean;
   fromLesson?: boolean;
+  openModal?: () => void;
+  onPlanReady?: () => void;
 }
 
 type State = {
@@ -61,6 +63,8 @@ const TestHeader: FC<TestHeaderProps> = ({
   setIsShowSideBar,
   isTourRunning,
   fromLesson = false,
+  openModal,
+  onPlanReady,
 }) => {
   const [state, dispatchLocal] = useReducer(reducer, initialState);
   const [answerTest, setAnswerTest] = useState<ResultPayload>({
@@ -129,11 +133,28 @@ const TestHeader: FC<TestHeaderProps> = ({
         answers: any[];
       } = { score: 0, answers: [] };
       if (fromLesson) {
-        result = await IRT_SERVICE.generateWeeklyPlan(
-          testId,
-          answersMap,
-          elapsed
-        )
+        // Đánh dấu cần hiển thị AssessmentModal ở LessonPage ngay khi bắt đầu chấm
+        try {
+          localStorage.setItem("mini_test_show_assessment", "true");
+        } catch (e) {
+          console.warn("Không lưu được mini_test_show_assessment", e);
+        }
+
+        // Gọi IRT ở background, không chặn UI; kết quả chi tiết dùng cho plan ở Lesson
+        (async () => {
+          try {
+            result = await IRT_SERVICE.generateWeeklyPlan(
+              testId,
+              answersMap,
+              elapsed
+            );
+
+            // Nếu cần, có thể lưu weeklyPlanResult vào localStorage để LessonPage đọc
+            // localStorage.setItem("mini_test_weekly_plan", JSON.stringify(weeklyPlanResult));
+          } catch (e) {
+            console.error("generateWeeklyPlan failed", e);
+          }
+        })();
       }
       else {
         result = await testService.submitTest(

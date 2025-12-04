@@ -16,6 +16,10 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import KeyboardDoubleArrowLeftIcon from "@mui/icons-material/KeyboardDoubleArrowLeft";
 import MainLayout from "../layouts/MainLayout";
@@ -110,6 +114,15 @@ export default function LessonPage() {
     string | undefined
   >();
   const lessonStartedAt = React.useRef<number | null>(null);
+
+  // Resume video state
+  const [resumePromptOpen, setResumePromptOpen] = React.useState(false);
+  const [resumeTimeSec, setResumeTimeSec] = React.useState<number | null>(null);
+  const [chosenStartAt, setChosenStartAt] = React.useState<number | undefined>(
+    undefined
+  );
+  const [autoPlayRequested, setAutoPlayRequested] = React.useState(false);
+  const lastSavedRef = React.useRef<number>(0);
 
   const renderHistoryDetail = React.useCallback(
     (attempt?: BaseAttemptSummary) => {
@@ -391,6 +404,52 @@ export default function LessonPage() {
     []
   );
 
+  // Check for saved resume time when lesson changes
+  React.useEffect(() => {
+    try {
+      if (currentLesson && currentLesson.type === "lesson") {
+        const key = `lesson_resume_${currentLesson.id}`;
+        const v = localStorage.getItem(key);
+        if (v) {
+          const t = parseFloat(v);
+          if (!isNaN(t) && t >= 3) {
+            setResumeTimeSec(t);
+            setResumePromptOpen(true);
+            setChosenStartAt(undefined);
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    setResumePromptOpen(false);
+    setResumeTimeSec(null);
+    setChosenStartAt(undefined);
+  }, [currentLesson?.id, currentLesson?.type]);
+
+  // Debug: log when chosenStartAt changes
+  React.useEffect(() => {
+    // chosenStartAt changed (silent)
+  }, [chosenStartAt]);
+
+  // Callback to save video progress
+  const handleVideoProgress = React.useCallback(
+    (t: number) => {
+      if (!currentLesson || currentLesson.type !== "lesson") return;
+      const key = `lesson_resume_${currentLesson.id}`;
+      const last = lastSavedRef.current || 0;
+      try {
+        if (Math.abs(t - last) < 5) return; // throttle saves to ~5s
+        localStorage.setItem(key, String(Math.floor(t)));
+        lastSavedRef.current = t;
+      } catch (e) {
+        // ignore
+      }
+    },
+    [currentLesson]
+  );
+
   // Auto Scroll top
   React.useEffect(() => {
     window.scroll(0, 0);
@@ -493,6 +552,11 @@ export default function LessonPage() {
         dayId,
         spent
       );
+      try {
+        // Clear saved resume position on complete
+        const key = `lesson_resume_${currentLesson.id}`;
+        localStorage.removeItem(key);
+      } catch (e) {}
       // Cập nhật UI rightbar: đánh dấu lesson hoàn thành nhưng KHÔNG chuyển nội dung
       try {
         markLessonCompletedWithoutNav();
@@ -602,11 +666,70 @@ export default function LessonPage() {
                   maxWidth: "1000px",
                 }}
               >
+                {/* Resume prompt dialog */}
+                <Dialog
+                  open={resumePromptOpen && !!resumeTimeSec}
+                  onClose={() => setResumePromptOpen(false)}
+                  maxWidth="sm"
+                  fullWidth
+                >
+                  <DialogTitle>Bạn có muốn tiếp tục?</DialogTitle>
+                  <DialogContent>
+                    {resumeTimeSec != null && (
+                      <Typography>
+                        Chúng tôi phát hiện bạn đã xem tới{" "}
+                        <strong>
+                          {Math.floor(resumeTimeSec / 60)}:
+                          {("0" + Math.floor(resumeTimeSec % 60)).slice(-2)}
+                        </strong>
+                        . Bạn muốn tiếp tục từ điểm đó hay xem lại từ đầu?
+                      </Typography>
+                    )}
+                  </DialogContent>
+                  <DialogActions>
+                    <Button
+                      onClick={() => {
+                        // Start over
+                        try {
+                          const key = `lesson_resume_${currentLesson?.id}`;
+                          localStorage.removeItem(key);
+                        } catch (e) {}
+                        setChosenStartAt(0);
+                        // Request autoplay when restarting from beginning
+                        setAutoPlayRequested(true);
+                        // clear the flag shortly after to avoid affecting future loads
+                        setTimeout(() => setAutoPlayRequested(false), 4000);
+                        setResumePromptOpen(false);
+                      }}
+                    >
+                      Xem lại từ đầu
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={() => {
+                        // Resume
+                        const time = resumeTimeSec ?? 0;
+                        setChosenStartAt(time);
+                        // Request autoplay when resuming
+                        setAutoPlayRequested(true);
+                        // clear the flag shortly after to avoid affecting future loads
+                        setTimeout(() => setAutoPlayRequested(false), 4000);
+                        setResumePromptOpen(false);
+                      }}
+                    >
+                      Tiếp tục từ nơi đã dừng
+                    </Button>
+                  </DialogActions>
+                </Dialog>
+
                 <InteractiveVideo
                   videoUrl={firstMedia?.url || "https://youtu.be/4QnqpWLT5m4"}
                   markers={mediaMarkers || []}
                   title={lessonDetail?.title || "Bài học video"}
                   onVideoEnd={handleCompleteLesson}
+                  startAt={chosenStartAt}
+                  onProgress={handleVideoProgress}
+                  autoPlay={autoPlayRequested}
                 />
               </Box>
             </Grid>
@@ -782,7 +905,7 @@ export default function LessonPage() {
           }}
           onViewDetail={() => {
             // TODO: Navigate to detailed result page if needed
-            console.log("View detail clicked for test:", miniTestResult.testId);
+            // View detail clicked for test: (silent)
           }}
           onRetry={() => {
             // Retry the mini test: navigate back to test page with fromLesson

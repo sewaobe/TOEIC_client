@@ -13,6 +13,9 @@ interface InteractiveVideoProps {
   markers: QuestionMarker[];
   title?: string;
   onVideoEnd?: () => void;
+  startAt?: number;
+  onProgress?: (t: number) => void;
+  autoPlay?: boolean;
 }
 
 export const InteractiveVideo: React.FC<InteractiveVideoProps> = ({
@@ -20,6 +23,9 @@ export const InteractiveVideo: React.FC<InteractiveVideoProps> = ({
   markers,
   title = "Bài học video",
   onVideoEnd,
+  startAt,
+  onProgress,
+  autoPlay,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const {
@@ -29,7 +35,12 @@ export const InteractiveVideo: React.FC<InteractiveVideoProps> = ({
     player,
     warning,
     closeWarning,
-  } = useInteractiveVideo(videoRef, markers, videoUrl, onVideoEnd);
+    isReady,
+  } = useInteractiveVideo(videoRef, markers, videoUrl, onVideoEnd, {
+    startAt,
+    onProgress,
+    autoPlay: autoPlay,
+  });
 
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
@@ -260,6 +271,26 @@ export const InteractiveVideo: React.FC<InteractiveVideoProps> = ({
           ref={videoRef}
           className="video-js vjs-big-play-centered rounded-xl overflow-hidden shadow-lg"
         />
+        {!isReady && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              bgcolor: "rgba(0,0,0,0.7)",
+              zIndex: 9999,
+            }}
+          >
+            <Typography variant="body1" sx={{ color: "white" }}>
+              Đang tải video...
+            </Typography>
+          </Box>
+        )}
       </div>
 
       {!isFullscreen && overlayNormal}

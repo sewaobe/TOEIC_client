@@ -21,7 +21,12 @@ export const useInteractiveVideo = (
   videoRef: React.RefObject<HTMLVideoElement>,
   markers: QuestionMarker[],
   videoUrl: string,
-  onVideoEnd?: () => void
+  onVideoEnd?: () => void,
+  options?: {
+    startAt?: number;
+    onProgress?: (t: number) => void;
+    autoPlay?: boolean;
+  }
 ) => {
   const [player, setPlayer] = useState<Player | null>(null);
   const [activeQuestion, setActiveQuestion] = useState<QuestionMarker | null>(
@@ -32,18 +37,26 @@ export const useInteractiveVideo = (
     open: false,
     message: "",
   });
+  const [isReady, setIsReady] = useState(false);
 
   const warningRef = useRef(warning);
   const shownMarkersRef = useRef<Set<number>>(new Set());
   const seekStartPosRef = useRef<number>(0);
   const isSeekingRef = useRef(false);
   const isLockedRef = useRef(false);
-  // 🔽 THÊM DÒNG NÀY
   const maxWatchedTimeRef = useRef<number>(0);
+  const hasAppliedStartAtRef = useRef(false);
+  const skipSeekValidationRef = useRef(false);
 
   useEffect(() => {
     warningRef.current = warning;
   }, [warning]);
+
+  // Reset hasAppliedStartAtRef when startAt changes
+  useEffect(() => {
+    const startAt = options?.startAt ?? 0;
+    hasAppliedStartAtRef.current = false;
+  }, [options?.startAt]);
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -119,6 +132,15 @@ export const useInteractiveVideo = (
 
       isSeekingRef.current = false; // Đánh dấu là đã tua xong
 
+      // If we intentionally skipped validation for a resume seek, allow it and play
+      if (skipSeekValidationRef.current) {
+        skipSeekValidationRef.current = false;
+        try {
+          vjsPlayer.play();
+        } catch (e) {}
+        return;
+      }
+
       // Chỉ check 15s_rule NẾU:
       // 1. Tua tiến (delta > 0)
       // 2. Và tua đến điểm MỚI (newTime > maxWatched)
@@ -181,6 +203,7 @@ export const useInteractiveVideo = (
 
     // 🔽 THAY THẾ TOÀN BỘ HÀM NÀY
     /** ⏱ Khi thời gian video thay đổi */
+    let lastProgressCall = 0;
     const onTimeUpdate = () => {
       if (isSeekingRef.current || isLockedRef.current) return;
       const current = vjsPlayer.currentTime() ?? 0;
@@ -188,6 +211,17 @@ export const useInteractiveVideo = (
       // THÊM LOGIC MỚI: Cập nhật maxWatchedTime
       if (current > maxWatchedTimeRef.current) {
         maxWatchedTimeRef.current = current;
+      }
+
+      // Call onProgress callback (throttled to every 3 seconds)
+      const now = Date.now();
+      if (options?.onProgress && now - lastProgressCall > 3000) {
+        try {
+          options.onProgress(current);
+        } catch (e) {
+          // ignore
+        }
+        lastProgressCall = now;
       }
 
       const hit = markers.find(
@@ -217,7 +251,47 @@ export const useInteractiveVideo = (
       }
     };
 
-    vjsPlayer.on("loadedmetadata", renderMarkers);
+    const startAt = options?.startAt ?? 0;
+
+    // Helper to apply startAt
+    const applyStartAt = () => {
+      if (hasAppliedStartAtRef.current) {
+        return;
+      }
+      if (startAt && !isNaN(startAt) && startAt > 1) {
+        try {
+          // mark that this seek should bypass the usual seek-validation rules
+          skipSeekValidationRef.current = true;
+          vjsPlayer.currentTime(startAt);
+          hasAppliedStartAtRef.current = true;
+          // If caller requested autoplay (e.g., user pressed Resume), start playback
+          if (options?.autoPlay) {
+            try {
+              vjsPlayer.play();
+            } catch (e) {
+              console.warn("Autoplay after seek failed:", e);
+            }
+          }
+        } catch (e) {
+          console.warn("Could not seek to startAt:", e);
+        }
+      } else {
+      }
+    };
+
+    const onLoadedMeta = () => {
+      renderMarkers();
+      setIsReady(true);
+      applyStartAt();
+    };
+
+    const onCanPlay = () => {
+      // Fallback: try to apply startAt when video is ready to play
+      applyStartAt();
+    };
+
+    vjsPlayer.on("loadedmetadata", onLoadedMeta);
+    vjsPlayer.on("canplay", onCanPlay);
     vjsPlayer.on("seeking", onSeeking);
     vjsPlayer.on("seeked", onSeeked);
     vjsPlayer.on("timeupdate", onTimeUpdate);
@@ -232,6 +306,7 @@ export const useInteractiveVideo = (
     return () => {
       [
         "loadedmetadata",
+        "canplay",
         "seeking",
         "seeked",
         "timeupdate",
@@ -246,6 +321,47 @@ export const useInteractiveVideo = (
       }
     };
   }, [videoUrl, markers, onVideoEnd]);
+
+  // Trigger seek when player is ready and startAt changes
+  useEffect(() => {
+    const startAt = options?.startAt ?? 0;
+    if (player && isReady && startAt > 1 && !hasAppliedStartAtRef.current) {
+      try {
+        // mark that this seek is an intentional resume so we bypass seek-validation
+        skipSeekValidationRef.current = true;
+        player.currentTime(startAt);
+        hasAppliedStartAtRef.current = true;
+        if (options?.autoPlay) {
+          try {
+            player.play();
+          } catch (e) {
+            console.warn("Autoplay after delayed seek failed:", e);
+          }
+        }
+      } catch (e) {
+        console.warn("Delayed seek failed:", e);
+      }
+    }
+  }, [player, isReady, options?.startAt]);
+
+  // If autoPlay is requested and startAt is 0 (or not provided), attempt to play when ready
+  useEffect(() => {
+    const startAt = options?.startAt ?? 0;
+    if (
+      player &&
+      isReady &&
+      options?.autoPlay &&
+      !hasAppliedStartAtRef.current
+    ) {
+      try {
+        // mark applied to avoid repeating
+        hasAppliedStartAtRef.current = true;
+        player.play();
+      } catch (e) {
+        console.warn("Autoplay on ready failed:", e);
+      }
+    }
+  }, [player, isReady, options?.autoPlay, options?.startAt]);
 
   /** ▶️ Tiếp tục video sau khi trả lời */
   const resumeVideo = () => {
@@ -265,5 +381,6 @@ export const useInteractiveVideo = (
     isFullscreen,
     warning,
     closeWarning,
+    isReady,
   };
 };

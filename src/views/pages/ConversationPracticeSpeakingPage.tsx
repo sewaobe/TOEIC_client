@@ -1,15 +1,39 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useConversationViewModel } from '../../viewmodels/useConversationViewModel';
 import {
-    Box, Button, Paper, Typography, IconButton, AppBar, Toolbar, Fade, Chip, Stack, CircularProgress
+    Box,
+    Button,
+    Paper,
+    Typography,
+    IconButton,
+    AppBar,
+    Toolbar,
+    Fade,
+    Chip,
+    Stack,
+    CircularProgress,
+    Collapse,
+    Tooltip,
+    Dialog,
+    DialogTitle,
+    DialogContent
 } from '@mui/material';
 import {
-    Mic as MicIcon, Stop as StopIcon, Replay as ReplayIcon, ArrowBack as ArrowBackIcon, Timer as TimerIcon
+    Mic as MicIcon,
+    Stop as StopIcon,
+    Replay as ReplayIcon,
+    ArrowBack as ArrowBackIcon,
+    Timer as TimerIcon,
+    Close as CloseIcon,
+    TipsAndUpdates as TipsAndUpdatesIcon,
+    Translate as TranslateIcon,
+    Send as SendIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SessionResult, SpeakerRole, UserConfig } from '../../types/PracticeSpeaking';
+import { Feedback, SessionResult, SpeakerRole, UserConfig } from '../../types/PracticeSpeaking';
 import FeedbackCard from '../../components/practices/speaking/FeedbackCard';
 import AudioVisualizer from '../../components/practices/speaking/AudioVisualizer';
+import PracticeModal from '../../components/practices/speaking/PracticeModal';
 
 interface Props {
     config: UserConfig;
@@ -20,15 +44,29 @@ interface Props {
 const ConversationPracticeSpeakingPage: React.FC<Props> = ({ config, onFinish, onBack }) => {
     const vm = useConversationViewModel(config, onFinish);
     const chatEndRef = useRef<HTMLDivElement>(null);
+    const [expandedTranslations, setExpandedTranslations] = useState<Set<string>>(new Set());
+    const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [vm.messages, vm.isProcessing, vm.isBotThinking, vm.isRecording]);
+    }, [vm.messages, vm.isProcessing, vm.isBotThinking, vm.isRecording, vm.suggestions]);
 
     const formatTime = (seconds: number) => {
         const m = Math.floor(seconds / 60);
         const s = Math.floor(seconds % 60);
         return `${m}:${s < 10 ? '0' : ''}${s}`;
+    };
+
+    const toggleTranslation = (id: string) => {
+        setExpandedTranslations(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
     };
 
     return (
@@ -56,7 +94,7 @@ const ConversationPracticeSpeakingPage: React.FC<Props> = ({ config, onFinish, o
             </AnimatePresence>
 
             {/* Header */}
-            <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: 'white' }}>
+            <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: 'white', zIndex: 10 }}>
                 <Toolbar>
                     <IconButton edge="start" onClick={onBack} sx={{ mr: 1 }}>
                         <ArrowBackIcon />
@@ -82,7 +120,7 @@ const ConversationPracticeSpeakingPage: React.FC<Props> = ({ config, onFinish, o
             </AppBar>
 
             {/* Chat Area */}
-            <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2, pb: 15, display: 'flex', flexDirection: 'column', gap: 2 }} className="custom-scrollbar">
+            <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2, pb: 15, display: 'flex', flexDirection: 'column', gap: 2 }} className="no-scrollbar">
                 <AnimatePresence>
                     {vm.messages.map((msg) => (
                         <motion.div
@@ -99,34 +137,84 @@ const ConversationPracticeSpeakingPage: React.FC<Props> = ({ config, onFinish, o
                             <Paper
                                 elevation={0}
                                 sx={{
-                                    p: 2,
-                                    borderRadius: 3,
-                                    borderTopRightRadius: msg.role === SpeakerRole.USER ? 0 : 3,
-                                    borderTopLeftRadius: msg.role === SpeakerRole.BOT ? 0 : 3,
+                                    p: 1.5,
+                                    borderRadius: msg.role === SpeakerRole.BOT ? "0 10px 10px 0" : "10px 0 0 10px",
                                     bgcolor: msg.role === SpeakerRole.USER ? 'primary.main' : 'white',
                                     color: msg.role === SpeakerRole.USER ? 'primary.contrastText' : 'text.primary',
                                     border: msg.role === SpeakerRole.BOT ? '1px solid #e2e8f0' : 'none',
                                     width: "fit-content",
-                                    marginLeft: "auto",                                
+                                    marginLeft: "auto",
                                 }}
                             >
                                 <Typography variant="body1" sx={{ lineHeight: 1.5, textAlign: "justify" }}>{msg.text}</Typography>
-
-                                {msg.role === SpeakerRole.BOT && msg.audioBase64 && (
-                                    <Button
-                                        startIcon={<ReplayIcon />}
-                                        size="small"
-                                        onClick={() => vm.playBotAudio(msg.audioBase64!)}
-                                        sx={{ mt: 1, textTransform: 'none', color: 'primary.main' }}
-                                    >
-                                        Replay
-                                    </Button>
+                                {msg.role === SpeakerRole.BOT && (
+                                    <Collapse in={expandedTranslations.has(msg.id)}>
+                                        <Typography variant="caption" color="text.secondary" fontStyle="italic" sx={{ mt: 0.5, borderLeft: '2px solid #cbd5e1', pl: 1 }}>
+                                            {msg.translation || "Translation unavailable"}
+                                        </Typography>
+                                    </Collapse>
+                                )}
+                                {msg.role === SpeakerRole.USER && (
+                                    <Collapse in={expandedTranslations.has(msg.id)}>
+                                        <Typography variant="caption" color="#e0e0e0" fontStyle="italic" sx={{ mt: 0.5, borderRight: '2px solid #cbd5e1', pr: 1, textAlign: 'right' }}>
+                                            {msg.translation || "Translation unavailable"}
+                                        </Typography>
+                                    </Collapse>
                                 )}
                             </Paper>
 
+                            {msg.role === SpeakerRole.BOT && (
+
+                                <Stack direction="row" spacing={1}>
+                                    {msg.audioBase64 && (
+                                        <Button
+                                            startIcon={<ReplayIcon />}
+                                            size="small"
+                                            onClick={() => vm.playBotAudio(msg.audioBase64!)}
+                                            sx={{ textTransform: 'none', color: 'primary.main', minWidth: 'auto' }}
+                                        >
+                                            Replay
+                                        </Button>
+                                    )}
+
+                                    <Tooltip title="Toggle Vietnamese Translation">
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => toggleTranslation(msg.id)}
+                                            sx={{
+                                                color: expandedTranslations.has(msg.id) ? 'primary.main' : 'text.secondary',
+                                                bgcolor: expandedTranslations.has(msg.id) ? 'rgba(99, 102, 241, 0.1)' : 'transparent'
+                                            }}
+                                        >
+                                            <TranslateIcon fontSize="small" />
+                                        </IconButton>
+                                    </Tooltip>
+                                </Stack>
+                            )}
+
+                            {msg.role === SpeakerRole.USER && (
+                                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                    <Tooltip title="Toggle Vietnamese Translation">
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => toggleTranslation(msg.id)}
+                                            sx={{
+                                                color: 'inherit',
+                                                bgcolor: expandedTranslations.has(msg.id) ? 'rgba(255, 255, 255, 0.2)' : 'transparent'
+                                            }}
+                                        >
+                                            <TranslateIcon fontSize="small" />
+                                        </IconButton>
+                                    </Tooltip>
+                                </Stack>
+                            )}
                             {msg.role === SpeakerRole.USER && msg.feedback && (
-                                <Box mt={1} mr={2} width="40vw" minWidth="330px" marginLeft="auto">
-                                    <FeedbackCard feedback={msg.feedback} />
+                                <Box mt={1} mr={1} width="40vw" minWidth="330px" marginLeft="auto">
+                                    <FeedbackCard
+                                        feedback={msg.feedback}
+                                        onPractice={vm.openPractice}
+                                        onClick={() => setSelectedFeedback(msg.feedback || null)}
+                                    />
                                 </Box>
                             )}
                         </motion.div>
@@ -161,90 +249,206 @@ const ConversationPracticeSpeakingPage: React.FC<Props> = ({ config, onFinish, o
 
             {/* Bottom Controls */}
             <Paper
-                elevation={4}
+                elevation={6}
                 sx={{
                     position: 'absolute',
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    p: 1,
-                    borderTopLeftRadius: 24,
-                    borderTopRightRadius: 24,
                     bgcolor: 'white',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center'
+                    zIndex: 20,
+                    borderTop: '1px solid #e2e8f0'
                 }}
             >
-                <AnimatePresence mode="wait">
-                    {!vm.isRecording ? (
-                        // IDLE STATE: Big Mic Button
+                {/* Floating Suggestions (Above the bar) */}
+                <AnimatePresence>
+                    {vm.suggestions.length > 0 && !vm.isRecording && (
                         <motion.div
-                            key="idle"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ duration: 0.2 }}
-                            style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            style={{
+                                position: 'absolute',
+                                bottom: '100%',
+                                left: 0,
+                                right: 0,
+                                paddingBottom: 8,
+                                display: 'flex',
+                                justifyContent: 'center'
+                            }}
                         >
-                            <Button
-                                onClick={vm.startRecording}
-                                disabled={vm.isInitializing || vm.isProcessing || vm.isBotThinking}
-                                variant="contained"
-                                color="primary"
-                                sx={{
-                                    borderRadius: '50%',
-                                    width: 66,
-                                    height: 66,
-                                    boxShadow: '0 8px 24px rgba(99, 102, 241, 0.4)',
-                                    transition: 'transform 0.1s',
-                                    '&:active': { transform: 'scale(0.95)' }
-                                }}
-                            >
-                                {vm.isInitializing ? <CircularProgress size={30} color="inherit" /> : <MicIcon sx={{ fontSize: 30 }} />}
-                            </Button>
-                            <Typography variant="body2" color="text.secondary" mt={2} fontWeight="medium">
-                                Tap to Speak
-                            </Typography>
-                        </motion.div>
-                    ) : (
-                        // RECORDING STATE: Visualizer + Stop Button
-                        <motion.div
-                            key="recording"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.2 }}
-                            style={{ width: '100%', maxWidth: 600 }}
-                        >
-                            <Stack direction="row" spacing={2} alignItems="center">
-                                <Box sx={{ flexGrow: 1, height: 60, bgcolor: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
-                                    <AudioVisualizer analyser={vm.analyser} isRecording={vm.isRecording} />
-                                </Box>
-
-                                <Button
-                                    onClick={vm.stopRecording}
-                                    variant="contained"
-                                    color="error"
-                                    sx={{
-                                        borderRadius: '50%',
-                                        width: 60,
-                                        height: 60,
-                                        minWidth: 60,
-                                        boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
-                                    }}
-                                >
-                                    <StopIcon fontSize="large" />
-                                </Button>
+                            <Stack direction="row" spacing={1} overflow="auto" sx={{ maxWidth: '100%', px: 2, pb: 1 }}>
+                                {vm.suggestions.map((s, i) => (
+                                    <Chip
+                                        key={i}
+                                        label={s}
+                                        onClick={() => { }} // Could be used to autofill TTS in future
+                                        variant="filled"
+                                        color="primary"
+                                        size="medium"
+                                        sx={{ boxShadow: 2 }}
+                                    />
+                                ))}
                             </Stack>
-                            <Typography variant="caption" align="center" display="block" color="error.main" mt={1} fontWeight="bold">
-                                {vm.recordingTime}s • Recording...
-                            </Typography>
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                <Box sx={{ p: 1.5, minHeight: 72, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <AnimatePresence mode="wait">
+                        {!vm.isRecording ? (
+                            // IDLE STATE: Horizontal Layout
+                            <motion.div
+                                key="idle"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                style={{ width: '100%', maxWidth: 800, display: 'flex', alignItems: 'center', gap: 12 }}
+                            >
+                                {/* Suggestion Button */}
+                                <Tooltip title="Get hints">
+                                    <IconButton
+                                        onClick={vm.getSuggestions}
+                                        disabled={vm.isSuggesting || vm.isBotThinking}
+                                        sx={{
+                                            bgcolor: '#f1f5f9',
+                                            color: vm.isSuggesting ? 'text.disabled' : '#f59e0b',
+                                            border: '1px solid #e2e8f0'
+                                        }}
+                                    >
+                                        {vm.isSuggesting ? <CircularProgress size={20} /> : <TipsAndUpdatesIcon />}
+                                    </IconButton>
+                                </Tooltip>
+
+                                {/* Fake Input Field (Visual Cue) */}
+                                <Box
+                                    onClick={vm.isInitializing || vm.isProcessing || vm.isBotThinking ? undefined : vm.startRecording}
+                                    sx={{
+                                        flexGrow: 1,
+                                        height: 44,
+                                        bgcolor: '#f8fafc',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: 24,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        px: 2,
+                                        cursor: 'pointer',
+                                        color: 'text.secondary',
+                                        '&:hover': { bgcolor: '#f1f5f9' }
+                                    }}
+                                >
+                                    <Typography variant="body2">Tap microphone to speak...</Typography>
+                                </Box>
+
+                                {/* Mic Button */}
+                                <Button
+                                    onClick={vm.startRecording}
+                                    disabled={vm.isInitializing || vm.isProcessing || vm.isBotThinking}
+                                    variant="contained"
+                                    color="primary"
+                                    sx={{
+                                        borderRadius: '50%',
+                                        minWidth: 56,
+                                        width: 56,
+                                        height: 56,
+                                        boxShadow: 3
+                                    }}
+                                >
+                                    {vm.isInitializing ? <CircularProgress size={24} color="inherit" /> : <MicIcon fontSize="medium" />}
+                                </Button>
+                            </motion.div>
+                        ) : (
+                            // RECORDING STATE: Horizontal Layout
+                            <motion.div
+                                key="recording"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                style={{ width: '100%', maxWidth: 800, display: 'flex', alignItems: 'center', gap: 12 }}
+                            >
+                                {/* Cancel Button */}
+                                <IconButton
+                                    onClick={vm.cancelRecording}
+                                    sx={{
+                                        color: '#ef4444',
+                                        border: '1px solid #fee2e2',
+                                        bgcolor: '#fef2f2'
+                                    }}
+                                >
+                                    <CloseIcon />
+                                </IconButton>
+
+                                {/* Visualizer Container */}
+                                <Box sx={{ flexGrow: 1, height: 48, bgcolor: '#f1f5f9', borderRadius: 24, overflow: 'hidden', position: 'relative', border: '1px solid #e2e8f0' }}>
+                                    <AudioVisualizer analyser={vm.analyser} isRecording={vm.isRecording} />
+                                    <Box sx={{ position: 'absolute', right: 16, top: 0, bottom: 0, display: 'flex', alignItems: 'center' }}>
+                                        <Typography variant="caption" fontWeight="bold" color="error">
+                                            {vm.recordingTime}s
+                                        </Typography>
+                                    </Box>
+                                </Box>
+
+                                {/* Send/Stop Button */}
+                                <Button
+                                    onClick={vm.stopRecording}
+                                    variant="contained"
+                                    color="primary" // Changed to primary (Send) metaphor, or Error (Stop) metaphor. Let's use Send Icon for positive action.
+                                    sx={{
+                                        borderRadius: '50%',
+                                        minWidth: 56,
+                                        width: 56,
+                                        height: 56,
+                                        boxShadow: 3
+                                    }}
+                                >
+                                    <SendIcon />
+                                </Button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </Box>
             </Paper>
+
+            {/* Practice Modal */}
+            <PracticeModal
+                isOpen={vm.isPracticeOpen}
+                onClose={vm.closePractice}
+                targetPhrase={vm.practiceTarget}
+                isRecording={vm.isPracticeRecording}
+                isProcessing={vm.isPracticeProcessing}
+                onStartRecording={vm.startPracticeRecording}
+                onStopRecording={vm.stopPracticeRecording}
+                analyser={vm.analyser}
+                result={vm.practiceResult}
+            />
+
+            {/* Feedback Zoom Dialog */}
+            <Dialog
+                open={!!selectedFeedback}
+                onClose={() => setSelectedFeedback(null)}
+                maxWidth="md"
+                fullWidth
+                PaperProps={{
+                    sx: { borderRadius: 3 }
+                }}
+            >
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="h6" fontWeight="bold">Detailed Analysis</Typography>
+                    <IconButton onClick={() => setSelectedFeedback(null)}>
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent sx={{ p: 3 }}>
+                    {selectedFeedback && (
+                        <FeedbackCard
+                            feedback={selectedFeedback}
+                            onPractice={(phrase) => {
+                                vm.openPractice(phrase);
+                            }}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
         </Box>
     );
 };

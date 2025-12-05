@@ -1,10 +1,12 @@
 import React from 'react';
-import { Box, Card, CardContent, Typography, Chip, Stack, Divider } from '@mui/material';
-import { Lightbulb as LightbulbIcon } from '@mui/icons-material';
+import { Box, Card, CardContent, Typography, Chip, Stack, Divider, IconButton, Tooltip } from '@mui/material';
+import { Lightbulb as LightbulbIcon, Mic as MicIcon } from '@mui/icons-material';
 import { Feedback } from '../../../types/PracticeSpeaking';
 
 interface Props {
     feedback: Feedback;
+    onPractice?: (phrase: string) => void;
+    onClick?: () => void;
 }
 
 const ScoreRing: React.FC<{ score: number; label: string }> = ({ score, label }) => {
@@ -42,9 +44,25 @@ const ScoreRing: React.FC<{ score: number; label: string }> = ({ score, label })
     );
 };
 
-const FeedbackCard: React.FC<Props> = ({ feedback }) => {
+const FeedbackCard: React.FC<Props> = ({ feedback, onPractice, onClick }) => {
     return (
-        <Card variant="outlined" sx={{ mt: 1, borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#fff', minWidth: { xs: '100%', sm: 400 } }}>
+        <Card
+            variant="outlined"
+            onClick={onClick}
+            sx={{
+                mt: 1,
+                borderRadius: 3,
+                border: '1px solid #e2e8f0',
+                bgcolor: '#fff',
+                minWidth: { xs: '100%', sm: 400 },
+                cursor: onClick ? 'pointer' : 'default',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                '&:hover': onClick ? {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                } : {}
+            }}
+        >
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
                     <Typography variant="subtitle2" fontWeight="bold" color="text.secondary">Turn Analysis</Typography>
@@ -68,10 +86,27 @@ const FeedbackCard: React.FC<Props> = ({ feedback }) => {
                         <Typography variant="caption" display="block" fontWeight="bold" color="error.main" mb={1} textTransform="uppercase">Mistakes</Typography>
                         <Stack spacing={1}>
                             {feedback.mistakes.map((m, idx) => (
-                                <Box key={idx} sx={{ bgcolor: '#fef2f2', p: 1, borderRadius: 1, border: '1px solid #fecaca' }}>
-                                    <Typography variant="body2" sx={{ textDecoration: 'line-through', color: '#991b1b' }}>{m.original}</Typography>
-                                    <Typography variant="body2" fontWeight="bold" color="success.main">{m.correction}</Typography>
-                                    <Typography variant="caption" color="text.secondary" display="block">{m.explanation}</Typography>
+                                <Box key={idx} sx={{ bgcolor: '#fef2f2', p: 1, borderRadius: 1, border: '1px solid #fecaca', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <Box>
+                                        <Typography variant="body2" sx={{ textDecoration: 'line-through', color: '#991b1b' }}>{m.original}</Typography>
+                                        <Typography variant="body2" fontWeight="bold" color="success.main">{m.correction}</Typography>
+                                        <Typography variant="caption" color="text.secondary" display="block">{m.explanation}</Typography>
+                                    </Box>
+
+                                    {onPractice && (
+                                        <Tooltip title="Practice this phrase">
+                                            <IconButton
+                                                size="small"
+                                                sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#f1f5f9' } }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onPractice(m.correction);
+                                                }}
+                                            >
+                                                <MicIcon fontSize="small" color="primary" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
                                 </Box>
                             ))}
                         </Stack>

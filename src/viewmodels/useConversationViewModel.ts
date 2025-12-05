@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Message, SessionResult, SpeakerRole, UserConfig } from '../types/PracticeSpeaking';
+import { UserConfig, Message, SpeakerRole, SessionResult, PracticeResult, TurnResponse } from '../types/PracticeSpeaking';
 import { blobToBase64, playAudio } from '../utils/audio.util';
 import { RECORDING_TIMEOUT_MS } from '../constants/PracticeSpeaking';
 
@@ -25,12 +25,24 @@ export const useConversationViewModel = (
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [showStartOverlay, setShowStartOverlay] = useState(false);
 
+    // Suggestion State
+    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [isSuggesting, setIsSuggesting] = useState(false);
+
+    // Practice State
+    const [isPracticeOpen, setIsPracticeOpen] = useState(false);
+    const [practiceTarget, setPracticeTarget] = useState("");
+    const [isPracticeRecording, setIsPracticeRecording] = useState(false);
+    const [isPracticeProcessing, setIsPracticeProcessing] = useState(false);
+    const [practiceResult, setPracticeResult] = useState<PracticeResult | null>(null);
+
     // Refs (Logic & Audio)
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
     const timerRef = useRef<number | undefined>(undefined);
     const timeoutRef = useRef<number | undefined>(undefined);
     const recordingStartRef = useRef<number>(0);
+    const isCancelledRef = useRef<boolean>(false);
 
     const analysisContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
@@ -75,9 +87,12 @@ export const useConversationViewModel = (
         const initChat = async () => {
             setIsBotThinking(true);
             try {
-                // const openingText = await generateOpening(config);
-                const openingText = "Hello! Let's start our conversation.";
-                await addBotMessage(openingText);
+                // const opening = await generateOpening(config);
+                const opening = {
+                    text: "Hello! Let's start our conversation practice. How are you today?",
+                    translation: "Xin chào! Hãy bắt đầu luyện tập hội thoại của chúng ta. Hôm nay bạn thế nào?"
+                }
+                await addBotMessage(opening.text, opening.translation);
                 setHasStarted(true);
             } catch (err) {
                 setErrorMsg("Failed to start conversation. Please check API key.");
@@ -107,11 +122,16 @@ export const useConversationViewModel = (
         }
     };
 
-    const addBotMessage = async (text: string) => {
-        const id = Date.now().toString();
+    const generateId = () => {
+        return Date.now().toString() + Math.random().toString(36).substring(2, 9);
+    };
+
+    const addBotMessage = async (text: string, translation?: string) => {
+        const id = generateId();
         let audioBase64: string | undefined;
         try {
             // audioBase64 = await generateSpeech(text, config.botSpeed);
+            audioBase64 = ""
         } catch (e) {
             console.error("TTS failed", e);
         }
@@ -120,6 +140,7 @@ export const useConversationViewModel = (
             id,
             role: SpeakerRole.BOT,
             text,
+            translation,
             audioBase64,
             timestamp: Date.now()
         };
@@ -142,13 +163,61 @@ export const useConversationViewModel = (
         }
     };
 
+    const setupAudioStream = async () => {
+        if (analysisContextRef.current?.state === 'suspended') {
+            await analysisContextRef.current.resume();
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // Visualizer Setup
+        if (analysisContextRef.current) {
+            const source = analysisContextRef.current.createMediaStreamSource(stream);
+            const analyser = analysisContextRef.current.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+
+            sourceRef.current = source;
+            analyserRef.current = analyser;
+        }
+        return stream;
+    };
+
+    // --- SUGGESTIONS ---
+
+    const getSuggestions = async () => {
+        if (isSuggesting) return;
+        setIsSuggesting(true);
+        try {
+            const history = messages.slice(-6).map(m => ({ role: m.role, text: m.text }));
+            // const results = await generateSuggestions(history, config);
+            const results = ["Could you suggest some alternative phrases?", "How can I improve my vocabulary?", "What are some common mistakes to avoid?"];
+            setSuggestions(results);
+        } catch (e) {
+            console.error("Suggestion error", e);
+            setErrorMsg("Failed to get suggestions.");
+        } finally {
+            setIsSuggesting(false);
+        }
+    };
+
+    const clearSuggestions = () => {
+        setSuggestions([]);
+    };
+
+    // --- MAIN RECORDING ---
+
     const startRecording = async () => {
         if (isRecording || isInitializing) return;
+
+        // Clear suggestions when recording starts
+        clearSuggestions();
 
         setErrorMsg(null);
         setIsInitializing(true);
         setRecordingTime(0);
         hasSpeechRef.current = false;
+        isCancelledRef.current = false;
         browserTranscriptRef.current = "";
 
         if (timerRef.current) {
@@ -161,17 +230,27 @@ export const useConversationViewModel = (
         }
 
         try {
-            if (analysisContextRef.current?.state === 'suspended') {
-                await analysisContextRef.current.resume();
-                setShowStartOverlay(false);
-            }
+            const stream = await setupAudioStream();
 
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Detection Logic
+            const detectSound = () => {
+                if (!analyserRef.current) return;
+                const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+                analyserRef.current.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                const average = sum / dataArray.length;
+                if (average > 10) hasSpeechRef.current = true;
+                animationFrameRef.current = requestAnimationFrame(detectSound);
+            };
+            detectSound();
 
+            // Recorder Setup
             const mediaRecorder = new MediaRecorder(stream);
             mediaRecorderRef.current = mediaRecorder;
             chunksRef.current = [];
 
+            // Web Speech API
             const SpeechRecognition = (window as unknown as IWindow).SpeechRecognition || (window as unknown as IWindow).webkitSpeechRecognition;
             if (SpeechRecognition) {
                 recognitionRef.current = new SpeechRecognition();
@@ -182,49 +261,11 @@ export const useConversationViewModel = (
                 recognitionRef.current.onresult = (event: any) => {
                     let finalTrans = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) {
-                            finalTrans += event.results[i][0].transcript;
-                        }
+                        if (event.results[i].isFinal) finalTrans += event.results[i][0].transcript;
                     }
                     browserTranscriptRef.current += finalTrans + " ";
                 };
-
-                try {
-                    recognitionRef.current.start();
-                } catch (e) {
-                    console.warn("Speech recognition failed to start", e);
-                }
-            }
-
-            if (analysisContextRef.current) {
-                const source = analysisContextRef.current.createMediaStreamSource(stream);
-                const analyser = analysisContextRef.current.createAnalyser();
-                analyser.fftSize = 256;
-                source.connect(analyser);
-
-                sourceRef.current = source;
-                analyserRef.current = analyser;
-
-                const detectSound = () => {
-                    if (!analyserRef.current) return;
-
-                    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-                    analyserRef.current.getByteFrequencyData(dataArray);
-
-                    let sum = 0;
-                    for (let i = 0; i < dataArray.length; i++) {
-                        sum += dataArray[i];
-                    }
-                    const average = sum / dataArray.length;
-
-                    // Lowered threshold from 20 to 10
-                    if (average > 10) {
-                        hasSpeechRef.current = true;
-                    }
-
-                    animationFrameRef.current = requestAnimationFrame(detectSound);
-                };
-                detectSound();
+                try { recognitionRef.current.start(); } catch (e) { }
             }
 
             mediaRecorder.ondataavailable = (e) => {
@@ -259,6 +300,11 @@ export const useConversationViewModel = (
         }
     };
 
+    const cancelRecording = () => {
+        isCancelledRef.current = true;
+        stopRecording();
+    };
+
     const stopRecording = () => {
         if (timerRef.current) {
             clearInterval(timerRef.current);
@@ -272,9 +318,7 @@ export const useConversationViewModel = (
         stopAnalysis();
 
         if (recognitionRef.current) {
-            try {
-                recognitionRef.current.stop();
-            } catch (e) { }
+            try { recognitionRef.current.stop(); } catch (e) { }
         }
 
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -285,6 +329,12 @@ export const useConversationViewModel = (
     };
 
     const handleRecordingStop = async () => {
+        // If user cancelled, do not process
+        if (isCancelledRef.current) {
+            setIsRecording(false);
+            return;
+        }
+
         const duration = Date.now() - recordingStartRef.current;
 
         if (duration < 1000) {
@@ -319,20 +369,29 @@ export const useConversationViewModel = (
             }));
 
             // const response = await processUserTurn(base64Audio, history, config, browserTranscript);
-            // Mock data
-            const response = {
-                isUnintelligible: false,
-                userTranscript: browserTranscript || "Sample user transcript. Sample user transcript. Sample user transcript. Sample user transcript. Sample user transcript. Sample user transcript. Sample user transcript. Sample user transcrip",
-                botText: "This is a sample bot response.",
+            const response: TurnResponse = {
                 feedback: {
+
                     pronunciationScore: 85,
                     fluencyScore: 80,
-                    intonationScore: 75,
+                    intonationScore: 78,
                     grammarScore: 90,
-                    mistakes: [],
-                    improvementTip: "Try to speak more clearly.",
-                    totalScore: 75
-                }
+                    mistakes: [
+                        {
+                            original: "I goed to the store",
+                            correction: "I went to the store",
+                            type: "grammar",
+                            explanation: "The past tense of 'go' is 'went'."
+                        }
+                    ],
+                    improvementTip: "Try to focus on verb tenses.",
+                    totalScore: 83
+                },
+                botText: "That's great to hear! What did you do today?",
+                botTranslation: "Tuyệt vời khi nghe điều đó! Hôm nay bạn đã làm gì?",
+                userTranscript: "I went to the store.",
+                userTranslation: "Tôi đã đi đến cửa hàng.",
+                isUnintelligible: false,
             }
 
             if (response.isUnintelligible) {
@@ -342,9 +401,10 @@ export const useConversationViewModel = (
             }
 
             const userMsg: Message = {
-                id: Date.now().toString(),
+                id: generateId(),
                 role: SpeakerRole.USER,
                 text: response.userTranscript,
+                translation: response.userTranslation,
                 feedback: response.feedback,
                 timestamp: Date.now()
             };
@@ -353,7 +413,7 @@ export const useConversationViewModel = (
             setIsProcessing(false);
             setIsBotThinking(true);
 
-            await addBotMessage(response.botText);
+            await addBotMessage(response.botText, response.botTranslation);
             setIsBotThinking(false);
 
         } catch (err) {
@@ -362,6 +422,72 @@ export const useConversationViewModel = (
             setIsProcessing(false);
             setIsBotThinking(false);
         }
+    };
+
+    // --- PRACTICE MODE ---
+
+    const openPractice = (phrase: string) => {
+        setPracticeTarget(phrase);
+        setPracticeResult(null);
+        setIsPracticeOpen(true);
+    };
+
+    const closePractice = () => {
+        stopPracticeRecording(); // Safety cleanup
+        setIsPracticeOpen(false);
+        setPracticeResult(null);
+    };
+
+    const startPracticeRecording = async () => {
+        if (isPracticeRecording) return;
+
+        try {
+            const stream = await setupAudioStream();
+
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            chunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) chunksRef.current.push(e.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+                setIsPracticeProcessing(true);
+                try {
+                    const base64 = await blobToBase64(audioBlob);
+                    // const result = await evaluatePronunciation(base64, practiceTarget);
+                    const result: PracticeResult = {
+                        score: 88,
+                        feedback: "Good job! Focus on your intonation for better clarity.",
+                        detectedText: "Hello, how are you?"
+                    };
+
+                    setPracticeResult(result);
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    setIsPracticeProcessing(false);
+                }
+            };
+
+            mediaRecorder.start();
+            setIsPracticeRecording(true);
+            setPracticeResult(null);
+
+        } catch (e) {
+            console.error("Practice mic error", e);
+        }
+    };
+
+    const stopPracticeRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+            mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+        }
+        setIsPracticeRecording(false);
+        stopAnalysis();
     };
 
     const handleFinishSession = () => {
@@ -390,9 +516,27 @@ export const useConversationViewModel = (
         errorMsg,
         showStartOverlay,
         analyser: analyserRef.current,
+
+        // Suggestions
+        suggestions,
+        isSuggesting,
+        getSuggestions,
+
+        // Practice Props
+        isPracticeOpen,
+        practiceTarget,
+        isPracticeRecording,
+        isPracticeProcessing,
+        practiceResult,
+        openPractice,
+        closePractice,
+        startPracticeRecording,
+        stopPracticeRecording,
+
         handleStartAudio,
         startRecording,
         stopRecording,
+        cancelRecording,
         playBotAudio,
         handleFinishSession
     };

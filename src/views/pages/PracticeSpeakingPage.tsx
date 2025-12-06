@@ -52,7 +52,7 @@ const PracticeSpeakingPage: React.FC = () => {
                             <ArrowBackIcon />
                         </IconButton>
                         <SetupPracticeSpeakingPage onStart={handleStart} />
-                        <Zoom in={history.length > 0}>
+                        <Zoom in>
                             <Tooltip title="View History">
                                 <Fab
                                     color="secondary"

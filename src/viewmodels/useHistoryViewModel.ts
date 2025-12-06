@@ -6,6 +6,7 @@ const PAGE_SIZE = 5;
 export const useHistoryViewModel = (results: SessionResult[]) => {
     const [page, setPage] = useState(1);
     const totalPages = Math.ceil(results.length / PAGE_SIZE);
+    const isLoading = false;
 
     // Pagination logic
     const startIndex = (page - 1) * PAGE_SIZE;
@@ -18,6 +19,7 @@ export const useHistoryViewModel = (results: SessionResult[]) => {
         page,
         setPage,
         totalPages,
-        displayedResults
+        displayedResults,
+        isLoading,
     };
 };

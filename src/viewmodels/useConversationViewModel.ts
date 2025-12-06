@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { UserConfig, Message, SpeakerRole, SessionResult, PracticeResult, TurnResponse } from '../types/PracticeSpeaking';
 import { blobToBase64, playAudio } from '../utils/audio.util';
 import { RECORDING_TIMEOUT_MS } from '../constants/PracticeSpeaking';
+import { speakingService } from '../services/speaking.service';
 
 // Add type definitions for Web Speech API
 interface IWindow extends Window {
@@ -15,6 +16,7 @@ export const useConversationViewModel = (
 ) => {
     // State
     const [messages, setMessages] = useState<Message[]>([]);
+    const [sessionId, setSessionId] = useState<string | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [isInitializing, setIsInitializing] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -87,15 +89,23 @@ export const useConversationViewModel = (
         const initChat = async () => {
             setIsBotThinking(true);
             try {
-                // const opening = await generateOpening(config);
+                // 1) Tạo session luyện nói trên BE
+                const session = await speakingService.createSession({
+                    title: config.scenario || "Practice speaking session",
+                    config,
+                });
+                setSessionId(session._id);
+
+                // 2) Thêm tin nhắn mở đầu (hiện tại vẫn client-side)
                 const opening = {
                     text: "Hello! Let's start our conversation practice. How are you today?",
-                    translation: "Xin chào! Hãy bắt đầu luyện tập hội thoại của chúng ta. Hôm nay bạn thế nào?"
-                }
+                    translation: "Xin chào! Hãy bắt đầu luyện tập hội thoại của chúng ta. Hôm nay bạn thế nào?",
+                };
                 await addBotMessage(opening.text, opening.translation);
                 setHasStarted(true);
             } catch (err) {
-                setErrorMsg("Failed to start conversation. Please check API key.");
+                console.error("initChat error", err);
+                setErrorMsg("Failed to start conversation. Please check API.");
             } finally {
                 setIsBotThinking(false);
             }
@@ -363,36 +373,16 @@ export const useConversationViewModel = (
             const base64Audio = await blobToBase64(audioBlob);
             const browserTranscript = browserTranscriptRef.current.trim();
 
-            const history = messages.slice(-6).map(m => ({
-                role: m.role,
-                text: m.text
-            }));
-
-            // const response = await processUserTurn(base64Audio, history, config, browserTranscript);
-            const response: TurnResponse = {
-                feedback: {
-
-                    pronunciationScore: 85,
-                    fluencyScore: 80,
-                    intonationScore: 78,
-                    grammarScore: 90,
-                    mistakes: [
-                        {
-                            original: "I goed to the store",
-                            correction: "I went to the store",
-                            type: "grammar",
-                            explanation: "The past tense of 'go' is 'went'."
-                        }
-                    ],
-                    improvementTip: "Try to focus on verb tenses.",
-                    totalScore: 83
-                },
-                botText: "That's great to hear! What did you do today?",
-                botTranslation: "Tuyệt vời khi nghe điều đó! Hôm nay bạn đã làm gì?",
-                userTranscript: "I went to the store.",
-                userTranslation: "Tôi đã đi đến cửa hàng.",
-                isUnintelligible: false,
+            if (!sessionId) {
+                throw new Error("Session not initialized");
             }
+
+            // Gửi lượt nói lên BE để chấm điểm (mock Python hiện tại)
+            const { turn: response } = await speakingService.processTurn({
+                sessionId,
+                userTranscript: browserTranscript || undefined,
+                audioBase64: base64Audio,
+            });
 
             if (response.isUnintelligible) {
                 setErrorMsg("No distinct words detected.");

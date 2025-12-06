@@ -1,5 +1,5 @@
 import React from 'react';
-import { useHistoryViewModel } from '../../viewmodels/useHistoryViewModel';
+import { useSpeakingHistoryViewModel } from '../../viewmodels/useSpeakingHistoryViewModel';
 import {
     Box, Container, Typography, Button, Card, CardContent, Stack, Chip, IconButton, Pagination,
     Divider
@@ -13,7 +13,7 @@ interface Props {
 }
 
 const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack }) => {
-    const { page, setPage, totalPages, displayedResults } = useHistoryViewModel(results);
+    const vm = useSpeakingHistoryViewModel();
 
     return (
         <Box sx={{
@@ -31,7 +31,13 @@ const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack }) => {
                     </Stack>
                 </Stack>
 
-                {results.length === 0 ? (
+                {vm.isLoading ? (
+                    <Card variant="outlined" sx={{ textAlign: 'center', py: 8, bgcolor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(10px)' }}>
+                        <HistoryIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+                        <Typography variant="h6" color="text.primary">Loading speaking history...</Typography>
+                        <Typography variant="body2" color="text.secondary">Please wait a moment while we fetch your past sessions.</Typography>
+                    </Card>
+                ) : (vm.displayedResults.length === 0 ? (
                     <Card variant="outlined" sx={{ textAlign: 'center', py: 8, borderStyle: 'dashed', bgcolor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(10px)' }}>
                         <HistoryIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
                         <Typography variant="h6" color="text.secondary">No sessions yet</Typography>
@@ -43,7 +49,7 @@ const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack }) => {
                 ) : (
                     <>
                         <Stack spacing={2} mb={4}>
-                            {displayedResults.map((res, idx) => (
+                            {vm.displayedResults.map((res, idx) => (
                                 <Card
                                     key={idx}
                                     elevation={1}
@@ -129,12 +135,12 @@ const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack }) => {
                             ))}
                         </Stack>
 
-                        {totalPages > 1 && (
+                        {vm.totalPages > 1 && (
                             <Box display="flex" justifyContent="center">
                                 <Pagination
-                                    count={totalPages}
-                                    page={page}
-                                    onChange={(_, p) => setPage(p)}
+                                    count={vm.totalPages}
+                                    page={vm.page}
+                                    onChange={(_, p) => vm.setPage(p)}
                                     color="primary"
                                     size="large"
                                     shape="rounded"
@@ -142,7 +148,7 @@ const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack }) => {
                             </Box>
                         )}
                     </>
-                )}
+                ))}
             </Container>
         </Box>
     );

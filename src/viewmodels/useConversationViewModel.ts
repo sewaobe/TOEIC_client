@@ -136,16 +136,8 @@ export const useConversationViewModel = (
         return Date.now().toString() + Math.random().toString(36).substring(2, 9);
     };
 
-    const addBotMessage = async (text: string, translation?: string) => {
+    const addBotMessage = async (text: string, translation?: string, audioBase64?: string) => {
         const id = generateId();
-        let audioBase64: string | undefined;
-        try {
-            // audioBase64 = await generateSpeech(text, config.botSpeed);
-            audioBase64 = ""
-        } catch (e) {
-            console.error("TTS failed", e);
-        }
-
         const msg: Message = {
             id,
             role: SpeakerRole.BOT,
@@ -155,12 +147,33 @@ export const useConversationViewModel = (
             timestamp: Date.now()
         };
 
+        // Chỉ cập nhật state, việc auto-play sẽ do effect phía dưới xử lý
         setMessages(prev => [...prev, msg]);
-
-        if (audioBase64) {
-            await playBotAudio(audioBase64);
-        }
     };
+
+    // Tự động phát audio cho tin nhắn BOT mới nhất sau khi đã render UI
+    const lastBotAudioIdRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        const lastBotWithAudio = [...messages]
+            .reverse()
+            .find(m => m.role === SpeakerRole.BOT && m.audioBase64);
+
+        if (!lastBotWithAudio) return;
+        if (lastBotWithAudio.id === lastBotAudioIdRef.current) return;
+
+        lastBotAudioIdRef.current = lastBotWithAudio.id;
+
+        const timer = window.setTimeout(() => {
+            if (lastBotWithAudio.audioBase64) {
+                playBotAudio(lastBotWithAudio.audioBase64);
+            }
+        }, 200);
+
+        return () => {
+            window.clearTimeout(timer);
+        };
+    }, [messages]);
 
     const stopAnalysis = () => {
         if (animationFrameRef.current) {
@@ -403,7 +416,11 @@ export const useConversationViewModel = (
             setIsProcessing(false);
             setIsBotThinking(true);
 
-            await addBotMessage(response.botText, response.botTranslation);
+            await addBotMessage(
+                response.botText,
+                response.botTranslation,
+                response.botAudioBase64,
+            );
             setIsBotThinking(false);
 
         } catch (err) {

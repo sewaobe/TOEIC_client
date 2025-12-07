@@ -55,6 +55,7 @@ export interface TurnResponse {
   userTranscript: string;
   userTranslation?: string;
   isUnintelligible: boolean;
+    botAudioBase64?: string;
 }
 
 export interface PracticeResult {

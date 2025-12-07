@@ -5,7 +5,9 @@ import {
     Divider
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, History as HistoryIcon, EventNote as EventNoteIcon, AccessTime as AccessTimeIcon } from '@mui/icons-material';
-import { SessionResult } from '../../types/PracticeSpeaking';
+import { SessionResult, SessionWithDetail, Message, SpeakerRole } from '../../types/PracticeSpeaking';
+import SessionDetailModal from './SessionDetailModal';
+import { speakingService } from '../../services/speaking.service';
 
 interface Props {
     results: SessionResult[];
@@ -13,8 +15,9 @@ interface Props {
     onOpenSession: (sessionId: string, config: SessionResult['config'] & { actualDurationSeconds?: number }) => void;
 }
 
-    const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack, onOpenSession }) => {
+const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack, onOpenSession }) => {
     const vm = useSpeakingHistoryViewModel();
+    const [selectedSession, setSelectedSession] = React.useState<SessionWithDetail | null>(null);
 
     return (
         <Box sx={{
@@ -65,13 +68,22 @@ interface Props {
                                             bgcolor: 'white'
                                         }
                                     }}
-                                    >
+                                >
                                     <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
                                         <Stack
                                             direction={{ xs: 'column', md: 'row' }}
                                             alignItems={{ xs: 'flex-start', md: 'center' }}
                                             spacing={3}
-                                            onClick={() => res._id && onOpenSession(res._id, { ...res.config, actualDurationSeconds: res.actualDurationSeconds })}
+                                            onClick={async () => {
+                                                if (!res._id) return;
+
+                                                try {
+                                                    const detail = await speakingService.getSessionDetail(res as any);
+                                                    setSelectedSession(detail);
+                                                } catch (e) {
+                                                    console.error('Failed to load session detail', e);
+                                                }
+                                            }}
                                             sx={{ cursor: res._id ? 'pointer' : 'default' }}
                                         >
 
@@ -166,6 +178,10 @@ interface Props {
                     </>
                 ))}
             </Container>
+            <SessionDetailModal
+                session={selectedSession}
+                onClose={() => setSelectedSession(null)}
+            />
         </Box>
     );
 };

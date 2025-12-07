@@ -50,6 +50,28 @@ export interface SessionResult {
     actualDurationSeconds?: number;
 }
 
+export interface SessionReport {
+    /** 0–100 */
+    fluency: number;
+    coherence: number;
+    lexicalRange: number;
+    grammaticalAccuracy: number;
+    /** Optional overall average score from BE */
+    averageScore?: number;
+    totalTurns?: number;
+    totalMistakes?: number;
+    /** Tổng kết chung sau buổi học (map từ report_overall của BE) */
+    generalFeedback: string;
+    /** Các câu cần cải thiện, dùng lại Mistake (original/correction/explanation/type) */
+    paraphrasedLines: Mistake[];
+}
+
+export interface SessionWithDetail extends SessionResult {
+    messages: Message[];
+    /** Báo cáo tổng hợp, có thể null nếu chưa generate */
+    report: SessionReport | null;
+}
+
 export interface TurnResponse {
   feedback: Feedback;
   botText: string;

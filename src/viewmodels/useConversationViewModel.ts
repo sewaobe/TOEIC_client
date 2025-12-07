@@ -12,7 +12,8 @@ interface IWindow extends Window {
 
 export const useConversationViewModel = (
     config: UserConfig,
-    onFinish: (result: SessionResult) => void
+    onFinish: (result: SessionResult) => void,
+    replaySessionId?: string
 ) => {
     // State
     const [messages, setMessages] = useState<Message[]>([]);
@@ -89,20 +90,37 @@ export const useConversationViewModel = (
         const initChat = async () => {
             setIsBotThinking(true);
             try {
-                // 1) Tạo session luyện nói trên BE
-                const session = await speakingService.createSession({
-                    title: config.scenario || "Practice speaking session",
-                    config,
-                });
-                setSessionId(session._id);
+                if (replaySessionId) {
+                    // Replay mode: load existing session messages
+                    const apiRes = await speakingService.getSessionMessages(replaySessionId);
+                    const messagesFromApi = apiRes;
+                    setSessionId(replaySessionId);
+                    const mapped: Message[] = messagesFromApi.map((m: any) => ({
+                        id: m._id || `${m.sender}-${m.created_at}`,
+                        role: m.sender === 'user' ? SpeakerRole.USER : SpeakerRole.BOT,
+                        text: m.text,
+                        translation: m.meta?.translation,
+                        feedback: m.meta?.feedback || m.meta?.pronunciation_feedback,
+                        audioBase64: m.meta?.audioBase64,
+                        timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
+                    }));
+                    setMessages(mapped);
+                    setHasStarted(true);
+                } else {
+                    // Normal live session
+                    const session = await speakingService.createSession({
+                        title: config.scenario || "Practice speaking session",
+                        config,
+                    });
+                    setSessionId(session._id);
 
-                // 2) Thêm tin nhắn mở đầu (hiện tại vẫn client-side)
-                const opening = {
-                    text: "Hello! Let's start our conversation practice. How are you today?",
-                    translation: "Xin chào! Hãy bắt đầu luyện tập hội thoại của chúng ta. Hôm nay bạn thế nào?",
-                };
-                await addBotMessage(opening.text, opening.translation);
-                setHasStarted(true);
+                    const opening = {
+                        text: "Hello! Let's start our conversation practice. How are you today?",
+                        translation: "Xin chào! Hãy bắt đầu luyện tập hội thoại của chúng ta. Hôm nay bạn thế nào?",
+                    };
+                    await addBotMessage(opening.text, opening.translation);
+                    setHasStarted(true);
+                }
             } catch (err) {
                 console.error("initChat error", err);
                 setErrorMsg("Failed to start conversation. Please check API.");
@@ -112,7 +130,7 @@ export const useConversationViewModel = (
         };
         initChat();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [replaySessionId]);
 
     // --- ACTIONS ---
 
@@ -497,7 +515,7 @@ export const useConversationViewModel = (
         stopAnalysis();
     };
 
-    const handleFinishSession = () => {
+    const handleFinishSession = async () => {
         const userMessages = messages.filter(m => m.role === SpeakerRole.USER && m.feedback);
         const avgScore = userMessages.reduce((acc, m) => acc + (m.feedback?.totalScore || 0), 0) / (userMessages.length || 1);
         const totalMistakes = userMessages.reduce((acc, m) => acc + (m.feedback?.mistakes.length || 0), 0);
@@ -509,6 +527,22 @@ export const useConversationViewModel = (
             messageCount: messages.length,
             mistakeCount: totalMistakes
         };
+
+        // Thời lượng thực tế = thời lượng cấu hình - thời gian còn lại (nếu dùng countdown)
+        const configuredSeconds = config.durationMinutes * 60;
+        const actualDurationSeconds = Math.max(0, configuredSeconds - sessionTime);
+
+        try {
+            if (sessionId) {
+                await speakingService.endSession({
+                    sessionId,
+                    actualDurationSeconds,
+                });
+            }
+        } catch (e) {
+            console.error("Failed to end session on server", e);
+        }
+
         onFinish(result);
     };
 

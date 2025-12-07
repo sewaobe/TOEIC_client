@@ -4,15 +4,16 @@ import {
     Box, Container, Typography, Button, Card, CardContent, Stack, Chip, IconButton, Pagination,
     Divider
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, History as HistoryIcon, EventNote as EventNoteIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, History as HistoryIcon, EventNote as EventNoteIcon, AccessTime as AccessTimeIcon } from '@mui/icons-material';
 import { SessionResult } from '../../types/PracticeSpeaking';
 
 interface Props {
     results: SessionResult[];
     onBack: () => void;
+    onOpenSession: (sessionId: string, config: SessionResult['config'] & { actualDurationSeconds?: number }) => void;
 }
 
-const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack }) => {
+    const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack, onOpenSession }) => {
     const vm = useSpeakingHistoryViewModel();
 
     return (
@@ -49,7 +50,7 @@ const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack }) => {
                 ) : (
                     <>
                         <Stack spacing={2} mb={4}>
-                            {vm.displayedResults.map((res, idx) => (
+                            {vm.displayedResults.map((res: SessionResult & { _id?: string }, idx) => (
                                 <Card
                                     key={idx}
                                     elevation={1}
@@ -64,9 +65,15 @@ const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack }) => {
                                             bgcolor: 'white'
                                         }
                                     }}
-                                >
+                                    >
                                     <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
-                                        <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'flex-start', md: 'center' }} spacing={3}>
+                                        <Stack
+                                            direction={{ xs: 'column', md: 'row' }}
+                                            alignItems={{ xs: 'flex-start', md: 'center' }}
+                                            spacing={3}
+                                            onClick={() => res._id && onOpenSession(res._id, { ...res.config, actualDurationSeconds: res.actualDurationSeconds })}
+                                            sx={{ cursor: res._id ? 'pointer' : 'default' }}
+                                        >
 
                                             {/* Left Side: Info */}
                                             <Box sx={{ flex: 1, width: '100%' }}>
@@ -87,6 +94,15 @@ const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack }) => {
                                                         color="primary"
                                                         sx={{ fontWeight: 'bold' }}
                                                     />
+                                                    {typeof res.actualDurationSeconds === 'number' && (
+                                                        <Chip
+                                                            icon={<AccessTimeIcon fontSize="small" />}
+                                                            label={`${Math.floor(res.actualDurationSeconds / 60)}m ${res.actualDurationSeconds % 60}s`}
+                                                            size="small"
+                                                            variant="outlined"
+                                                            sx={{ bgcolor: 'white', borderColor: 'divider' }}
+                                                        />
+                                                    )}
                                                 </Stack>
                                             </Box>
 

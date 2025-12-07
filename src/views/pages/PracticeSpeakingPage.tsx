@@ -13,13 +13,16 @@ import { useNavigate } from 'react-router-dom';
 enum PracticeSpeakingState {
     SETUP,
     CONVERSATION,
-    HISTORY
+    HISTORY,
+    HISTORY_REPLAY,
 }
 
 const PracticeSpeakingPage: React.FC = () => {
     const [appState, setAppState] = useState<PracticeSpeakingState>(PracticeSpeakingState.SETUP);
     const [currentConfig, setCurrentConfig] = useState<UserConfig | null>(null);
     const [history, setHistory] = useState<SessionResult[]>([]);
+    const [replaySessionId, setReplaySessionId] = useState<string | null>(null);
+    const [replayDurationSeconds, setReplayDurationSeconds] = useState<number | undefined>(undefined);
     const navigate = useNavigate();
 
     const handleStart = (config: UserConfig) => {
@@ -30,6 +33,13 @@ const PracticeSpeakingPage: React.FC = () => {
     const handleFinish = (result: SessionResult) => {
         setHistory(prev => [...prev, result]);
         setAppState(PracticeSpeakingState.HISTORY);
+    };
+
+    const handleOpenHistorySession = (sessionId: string, config: UserConfig & { actualDurationSeconds?: number }) => {
+        setCurrentConfig(config);
+        setReplaySessionId(sessionId);
+        setReplayDurationSeconds(config.actualDurationSeconds);
+        setAppState(PracticeSpeakingState.HISTORY_REPLAY);
     };
 
     const renderScreen = () => {
@@ -80,9 +90,20 @@ const PracticeSpeakingPage: React.FC = () => {
                         <HistoryPracticeSpeakingPage
                             results={history}
                             onBack={() => setAppState(PracticeSpeakingState.SETUP)}
+                            onOpenSession={handleOpenHistorySession}
                         />
                     </PracticeLayout>
                 );
+            case PracticeSpeakingState.HISTORY_REPLAY:
+                return currentConfig && replaySessionId ? (
+                    <ConversationPracticeSpeakingPage
+                        config={currentConfig}
+                        onFinish={handleFinish}
+                        onBack={() => setAppState(PracticeSpeakingState.HISTORY)}
+                        replaySessionId={replaySessionId}
+                        replayDurationSeconds={replayDurationSeconds}
+                    />
+                ) : null;
             default:
                 return null;
         }

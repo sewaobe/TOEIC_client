@@ -21,6 +21,7 @@ interface ChatSessionFromApi {
   created_at: string;
   updated_at: string;
   config?: any;
+  actual_duration_seconds?: number;
 }
 
 export const useSpeakingHistoryViewModel = () => {
@@ -29,6 +30,7 @@ export const useSpeakingHistoryViewModel = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   const fetchPage = async (pageToLoad: number) => {
     setIsLoading(true);
@@ -37,7 +39,7 @@ export const useSpeakingHistoryViewModel = () => {
       const { items, total } = await speakingService.getSessions(pageToLoad, PAGE_SIZE);
 
       // Với mỗi session, lấy messages để tính score/mistakes
-      const sessionResults: SessionResult[] = [];
+      const sessionResults: (SessionResult & { _id: string })[] = [];
 
       for (const rawSession of items as ChatSessionFromApi[]) {
         const messages = await speakingService.getSessionMessages(rawSession._id) as ChatMessageFromApi[];
@@ -55,13 +57,15 @@ export const useSpeakingHistoryViewModel = () => {
 
         const config = rawSession.config || {};
 
-        sessionResults.push({
-          date: rawSession.updated_at || rawSession.created_at,
-          config,
-          averageScore: Math.round(avgScore),
-          messageCount: messages.length,
-          mistakeCount: totalMistakes,
-        });
+          sessionResults.push({
+            _id: rawSession._id,
+            date: rawSession.updated_at || rawSession.created_at,
+            config,
+            averageScore: Math.round(avgScore),
+            messageCount: messages.length,
+            mistakeCount: totalMistakes,
+            actualDurationSeconds: rawSession.actual_duration_seconds ?? undefined,
+          });
       }
 
       setResults(sessionResults);
@@ -85,7 +89,7 @@ export const useSpeakingHistoryViewModel = () => {
   };
 
   // Pagination on already-fetched page results (server-side pagination already applied)
-  const displayedResults = results;
+  const displayedResults = results as (SessionResult & { _id?: string })[];
 
   return {
     results,
@@ -95,5 +99,7 @@ export const useSpeakingHistoryViewModel = () => {
     setPage: handlePageChange,
     isLoading,
     error,
+    selectedSessionId,
+    setSelectedSessionId,
   };
 };

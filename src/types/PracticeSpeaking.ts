@@ -46,6 +46,8 @@ export interface SessionResult {
     averageScore: number;
     messageCount: number;
     mistakeCount: number;
+    /** Actual practiced duration in seconds (optional, from history) */
+    actualDurationSeconds?: number;
 }
 
 export interface TurnResponse {

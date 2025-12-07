@@ -35,4 +35,9 @@ export const speakingService = {
     const res = await axiosClient.get(`${BASE_URL}/messages/${sessionId}`);
     return res.data;
   },
+
+  endSession: async (payload: { sessionId: string; actualDurationSeconds?: number }) => {
+    const res = await axiosClient.post(`${BASE_URL}/session/end`, payload);
+    return res.data;
+  },
 };

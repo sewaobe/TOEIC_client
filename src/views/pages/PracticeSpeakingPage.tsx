@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-import { Fab, Zoom, Tooltip, IconButton } from '@mui/material';
+import { Fab, Zoom, Tooltip, IconButton, Stack } from '@mui/material';
 import { History as HistoryIcon } from '@mui/icons-material';
 import { SessionResult, SessionWithDetail, UserConfig } from '../../types/PracticeSpeaking';
 import SetupPracticeSpeakingPage from './SetupPracticeSpeakingPage';
@@ -10,12 +10,15 @@ import PracticeLayout from '../layouts/PracticeLayout';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate } from 'react-router-dom';
 import SessionDetailModal from './SessionDetailModal';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import AnalyticsTimeLine from '../../components/practices/speaking/AnalyticsTimeLine';
 
 enum PracticeSpeakingState {
     SETUP,
     CONVERSATION,
     HISTORY,
     HISTORY_REPLAY,
+    ANALYTICS
 }
 
 const PracticeSpeakingPage: React.FC = () => {
@@ -69,18 +72,32 @@ const PracticeSpeakingPage: React.FC = () => {
                             <ArrowBackIcon />
                         </IconButton>
                         <SetupPracticeSpeakingPage onStart={handleStart} />
-                        <Zoom in>
-                            <Tooltip title="View History">
-                                <Fab
-                                    color="secondary"
-                                    aria-label="history"
-                                    sx={{ position: 'fixed', bottom: 24, right: 24 }}
-                                    onClick={() => setAppState(PracticeSpeakingState.HISTORY)}
-                                >
-                                    <HistoryIcon />
-                                </Fab>
-                            </Tooltip>
-                        </Zoom>
+
+                        <Stack direction="column" spacing={2} sx={{ position: 'fixed', bottom: 24, right: 24 }}>
+                            <Zoom in={true}>
+                                <Tooltip title="Learning Analytics" placement="left">
+                                    <Fab
+                                        color="primary"
+                                        aria-label="analytics"
+                                        onClick={() => setAppState(PracticeSpeakingState.ANALYTICS)}
+                                    >
+                                        <TimelineIcon />
+                                    </Fab>
+                                </Tooltip>
+                            </Zoom>
+
+                            <Zoom in={true}>
+                                <Tooltip title="View History" placement="left">
+                                    <Fab
+                                        color="secondary"
+                                        aria-label="history"
+                                        onClick={() => setAppState(PracticeSpeakingState.HISTORY)}
+                                    >
+                                        <HistoryIcon />
+                                    </Fab>
+                                </Tooltip>
+                            </Zoom>
+                        </Stack>
                     </PracticeLayout>
                 );
             case PracticeSpeakingState.CONVERSATION:
@@ -102,16 +119,14 @@ const PracticeSpeakingPage: React.FC = () => {
                         />
                     </PracticeLayout>
                 );
-            case PracticeSpeakingState.HISTORY_REPLAY:
-                return currentConfig && replaySessionId ? (
-                    <ConversationPracticeSpeakingPage
-                        config={currentConfig}
-                        onFinish={handleFinish}
-                        onBack={() => setAppState(PracticeSpeakingState.HISTORY)}
-                        replaySessionId={replaySessionId}
-                        replayDurationSeconds={replayDurationSeconds}
-                    />
-                ) : null;
+            case PracticeSpeakingState.ANALYTICS:
+                return (
+                    <PracticeLayout>
+                        <AnalyticsTimeLine
+                            onBack={() => setAppState(PracticeSpeakingState.SETUP)}
+                        />
+                    </PracticeLayout>
+                )
             default:
                 return null;
         }

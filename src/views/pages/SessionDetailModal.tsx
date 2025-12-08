@@ -11,14 +11,19 @@ import {
   Stack,
   Chip,
   Paper,
+  Grid,
+  Divider,
 } from '@mui/material';
 import {
   Close as CloseIcon,
   AutoAwesome as AutoAwesomeIcon,
   RecordVoiceOver as RecordVoiceOverIcon,
   Assignment as AssignmentIcon,
+  MenuBook as MenuBookIcon,
 } from '@mui/icons-material';
 import { SessionWithDetail, SpeakerRole } from '../../types/PracticeSpeaking';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 
 interface Props {
   session: SessionWithDetail | null;
@@ -49,7 +54,35 @@ const SessionDetailModal: React.FC<Props> = ({ session, onClose }) => {
   if (!session) return null;
 
   const report = session.report;
-  const userMessages = session.messages.filter(m => m.role === SpeakerRole.USER && m.feedback);
+
+  // Mock data for Tab 3 (only used when BE chưa trả thật)
+  const vocabSuggestions = report?.vocabularySuggestions ?? [
+    {
+      word: 'very good',
+      context: 'You often used "very good" to describe things.',
+      alternatives: ['excellent', 'fantastic', 'really good', 'great'],
+    },
+    {
+      word: 'a lot of',
+      context: 'You used "a lot of" many times when describing quantities.',
+      alternatives: ['plenty of', 'a large number of', 'numerous'],
+    },
+  ];
+
+  const grammarBreakdown = report?.grammarBreakdown ?? [
+    {
+      structure: 'Present Perfect',
+      example: "I have visit Paris last year.",
+      advice: 'Use past simple with finished time: "I visited Paris last year."',
+      status: 'Needs Improvement' as const,
+    },
+    {
+      structure: 'Linking Words',
+      example: "I like traveling and I learn a lot.",
+      advice: 'Try using connectors: "I like traveling because I can learn a lot."',
+      status: 'Correct' as const,
+    },
+  ];
 
   // Luôn dùng dữ liệu thật từ report tổng hợp BE
   const fluency = report?.fluency ?? 0;
@@ -92,6 +125,7 @@ const SessionDetailModal: React.FC<Props> = ({ session, onClose }) => {
         <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} variant="fullWidth">
           <Tab icon={<AutoAwesomeIcon />} iconPosition="start" label="Analysis Report" />
           <Tab icon={<AssignmentIcon />} iconPosition="start" label="Transcript" />
+          <Tab icon={<MenuBookIcon />} iconPosition="start" label="Vocab & Grammar" />
         </Tabs>
       </Box>
 
@@ -281,6 +315,96 @@ const SessionDetailModal: React.FC<Props> = ({ session, onClose }) => {
                 )}
               </Box>
             ))}
+          </Box>
+        )}
+
+        {tabIndex === 2 && (
+          <Box sx={{ p: 3 }}>
+            {!report ? (
+              <Box textAlign="center" py={4}>
+                <Typography color="text.secondary">Report unavailable.</Typography>
+              </Box>
+            ) : (
+              <Grid container spacing={3}>
+                {/* Vocabulary Section */}
+                <Grid size={{ xs: 12, md: 6 }} >
+                  <Paper sx={{ p: 3, borderRadius: 3, height: '100%' }} elevation={0} variant="outlined">
+                    <Typography variant="h6" fontWeight="bold" color="primary.main" mb={2}>
+                      Vocabulary Builder
+                    </Typography>
+                    <Stack spacing={2}>
+                      {vocabSuggestions.map((vocab, i) => (
+                        <Box
+                          key={i}
+                          sx={{
+                            p: 2,
+                            bgcolor: '#f0f9ff',
+                            borderRadius: 2,
+                            border: '1px solid #bae6fd',
+                          }}
+                        >
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            {vocab.word}
+                          </Typography>
+                          <Typography variant="caption" display="block" color="text.secondary" mb={1}>
+                            {vocab.context}
+                          </Typography>
+                          <Divider sx={{ my: 1 }} />
+                          <Typography variant="caption" fontWeight="bold" color="text.secondary">
+                            ALTERNATIVES:
+                          </Typography>
+                          <Stack direction="row" spacing={1} mt={0.5} flexWrap="wrap">
+                            {vocab.alternatives.map((alt, j) => (
+                              <Chip key={j} label={alt} size="small" color="primary" variant="filled" />
+                            ))}
+                          </Stack>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Paper>
+                </Grid>
+
+                {/* Grammar Section */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Paper sx={{ p: 3, borderRadius: 3, height: '100%' }} elevation={0} variant="outlined">
+                    <Typography variant="h6" fontWeight="bold" color="secondary.main" mb={2}>
+                      Grammar Structures
+                    </Typography>
+                    <Stack spacing={2}>
+                      {grammarBreakdown.map((gram, i) => (
+                        <Box
+                          key={i}
+                          sx={{
+                            p: 2,
+                            bgcolor: gram.status === 'Correct' ? '#f0fdf4' : '#fef2f2',
+                            borderRadius: 2,
+                            border: '1px solid',
+                            borderColor: gram.status === 'Correct' ? '#bbf7d0' : '#fecaca',
+                          }}
+                        >
+                          <Stack direction="row" justifyContent="space-between">
+                            <Typography variant="subtitle2" fontWeight="bold">
+                              {gram.structure}
+                            </Typography>
+                            {gram.status === 'Correct' ? (
+                              <CheckCircleIcon color="success" fontSize="small" />
+                            ) : (
+                              <CancelIcon color="error" fontSize="small" />
+                            )}
+                          </Stack>
+                          <Typography variant="body2" sx={{ my: 1, fontStyle: 'italic' }}>
+                            "{gram.example}"
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            💡 {gram.advice}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Paper>
+                </Grid>
+              </Grid>
+            )}
           </Box>
         )}
       </DialogContent>

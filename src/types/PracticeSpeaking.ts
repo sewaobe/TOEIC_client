@@ -64,6 +64,67 @@ export interface SessionReport {
     generalFeedback: string;
     /** Các câu cần cải thiện, dùng lại Mistake (original/correction/explanation/type) */
     paraphrasedLines: Mistake[];
+    // Tab 3 mock-only fields (currently BE chưa trả):
+    vocabularySuggestions?: VocabSuggestion[];
+    grammarBreakdown?: GrammarBreakdownItem[];
+}
+
+export interface VocabSuggestion {
+    word: string;
+    context: string;
+    alternatives: string[]; // Synonyms or better collocations
+}
+
+export interface GrammarBreakdownItem {
+    structure: string;
+    example: string;
+    advice: string;
+    status: 'Correct' | 'Needs Improvement';
+}
+
+
+export interface SkillMastery {
+    fluency: number;
+    grammar: number;
+    vocabulary: number;
+    pronunciation: number;
+}
+
+export interface TrendPoint {
+    sessionIndex: number; // 1, 2, 3...
+    score: number;
+    date: string;
+}
+
+export interface AdaptiveTask {
+    title: string;
+    description: string;
+    // Categories based on specific business rules
+    category: 'Foundation' | 'Advanced' | 'New Topic' | 'Spaced Repetition'; 
+    reason: string; // Why this was suggested (e.g., "Low grammar score detected")
+}
+
+export interface LearningProfile {
+    // Progress Tracker (Time Series for ALL 4 Skills)
+    skillMastery: SkillMastery; // Current average
+    progressTrends: {
+        overall: TrendPoint[];
+        fluency: TrendPoint[];
+        grammar: TrendPoint[];
+        lexical: TrendPoint[];      // Lexical Range
+        pronunciation: TrendPoint[]; // Pronunciation
+    };
+    
+    // Skill Analysis
+    weakestSkill: string;
+    strongestSkill: string;
+    
+    // Readiness
+    readinessScore: number; // 0-100
+    readinessMessage: string;
+
+    // Adaptive Roadmap
+    recommendedPath: AdaptiveTask[];
 }
 
 export interface SessionWithDetail extends SessionResult {

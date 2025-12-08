@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { UserConfig, Message, SpeakerRole, SessionResult, PracticeResult, TurnResponse } from '../types/PracticeSpeaking';
+import { UserConfig, Message, SpeakerRole, SessionResult, PracticeResult, TurnResponse, SessionWithDetail } from '../types/PracticeSpeaking';
 import { blobToBase64, playAudio } from '../utils/audio.util';
 import { RECORDING_TIMEOUT_MS } from '../constants/PracticeSpeaking';
 import { speakingService } from '../services/speaking.service';
@@ -12,7 +12,7 @@ interface IWindow extends Window {
 
 export const useConversationViewModel = (
     config: UserConfig,
-    onFinish: (result: SessionResult) => void,
+    onFinish: (result: SessionResult & { _id?: string }, detail?: SessionWithDetail | null) => void,
     replaySessionId?: string
 ) => {
     // State
@@ -26,6 +26,7 @@ export const useConversationViewModel = (
     const [sessionTime, setSessionTime] = useState(config.durationMinutes * 60);
     const [hasStarted, setHasStarted] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
     const [showStartOverlay, setShowStartOverlay] = useState(false);
 
     // Suggestion State
@@ -520,30 +521,48 @@ export const useConversationViewModel = (
         const avgScore = userMessages.reduce((acc, m) => acc + (m.feedback?.totalScore || 0), 0) / (userMessages.length || 1);
         const totalMistakes = userMessages.reduce((acc, m) => acc + (m.feedback?.mistakes.length || 0), 0);
 
-        const result: SessionResult = {
+        const result: SessionResult & { _id?: string } = {
             date: new Date().toISOString(),
             config,
             averageScore: Math.round(avgScore),
             messageCount: messages.length,
-            mistakeCount: totalMistakes
+            mistakeCount: totalMistakes,
+            _id: sessionId || undefined,
         };
 
         // Thời lượng thực tế = thời lượng cấu hình - thời gian còn lại (nếu dùng countdown)
         const configuredSeconds = config.durationMinutes * 60;
         const actualDurationSeconds = Math.max(0, configuredSeconds - sessionTime);
 
+        let detail: SessionWithDetail | null = null;
+        const start = Date.now();
         try {
             if (sessionId) {
+                setIsGeneratingReport(true);
+
                 await speakingService.endSession({
                     sessionId,
                     actualDurationSeconds,
                 });
+
+                // Gọi BE để lấy session detail + overall report
+                detail = await speakingService.getSessionDetail({
+                    ...result,
+                    _id: sessionId,
+                } as any);
+
+                const elapsed = Date.now() - start;
+                if(elapsed < 400) {
+                    await new Promise(res => setTimeout(res, 400 - elapsed));
+                }
             }
         } catch (e) {
-            console.error("Failed to end session on server", e);
+            console.error("Failed to end session on server or generate report", e);
+        } finally {
+            setIsGeneratingReport(false);
         }
 
-        onFinish(result);
+        onFinish(result, detail);
     };
 
     return {
@@ -556,6 +575,7 @@ export const useConversationViewModel = (
         sessionTime,
         errorMsg,
         showStartOverlay,
+        isGeneratingReport,
         analyser: analyserRef.current,
 
         // Suggestions

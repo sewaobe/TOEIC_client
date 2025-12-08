@@ -13,11 +13,11 @@ interface Props {
     results: SessionResult[];
     onBack: () => void;
     onOpenSession: (sessionId: string, config: SessionResult['config'] & { actualDurationSeconds?: number }) => void;
+    onOpenDetail: (session: SessionWithDetail | null) => void;
 }
 
-const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack, onOpenSession }) => {
+const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack, onOpenSession, onOpenDetail }) => {
     const vm = useSpeakingHistoryViewModel();
-    const [selectedSession, setSelectedSession] = React.useState<SessionWithDetail | null>(null);
 
     return (
         <Box sx={{
@@ -79,7 +79,7 @@ const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack, onOpenS
 
                                                 try {
                                                     const detail = await speakingService.getSessionDetail(res as any);
-                                                    setSelectedSession(detail);
+                                                    onOpenDetail(detail);
                                                 } catch (e) {
                                                     console.error('Failed to load session detail', e);
                                                 }
@@ -178,10 +178,6 @@ const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack, onOpenS
                     </>
                 ))}
             </Container>
-            <SessionDetailModal
-                session={selectedSession}
-                onClose={() => setSelectedSession(null)}
-            />
         </Box>
     );
 };

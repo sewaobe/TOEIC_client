@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 
 import { Fab, Zoom, Tooltip, IconButton } from '@mui/material';
 import { History as HistoryIcon } from '@mui/icons-material';
-import { SessionResult, UserConfig } from '../../types/PracticeSpeaking';
+import { SessionResult, SessionWithDetail, UserConfig } from '../../types/PracticeSpeaking';
 import SetupPracticeSpeakingPage from './SetupPracticeSpeakingPage';
 import ConversationPracticeSpeakingPage from './ConversationPracticeSpeakingPage';
 import HistoryPracticeSpeakingPage from './HistoryPracticeSpeakingPage';
 import PracticeLayout from '../layouts/PracticeLayout';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate } from 'react-router-dom';
+import SessionDetailModal from './SessionDetailModal';
 
 enum PracticeSpeakingState {
     SETUP,
@@ -23,6 +24,7 @@ const PracticeSpeakingPage: React.FC = () => {
     const [history, setHistory] = useState<SessionResult[]>([]);
     const [replaySessionId, setReplaySessionId] = useState<string | null>(null);
     const [replayDurationSeconds, setReplayDurationSeconds] = useState<number | undefined>(undefined);
+    const [selectedSession, setSelectedSession] = useState<SessionWithDetail | null>(null);
     const navigate = useNavigate();
 
     const handleStart = (config: UserConfig) => {
@@ -30,8 +32,13 @@ const PracticeSpeakingPage: React.FC = () => {
         setAppState(PracticeSpeakingState.CONVERSATION);
     };
 
-    const handleFinish = (result: SessionResult) => {
+    const handleFinish = (result: SessionResult & { _id?: string }, detail?: SessionWithDetail | null) => {
         setHistory(prev => [...prev, result]);
+
+        if (detail) {
+            setSelectedSession(detail);
+        }
+
         setAppState(PracticeSpeakingState.HISTORY);
     };
 
@@ -91,6 +98,7 @@ const PracticeSpeakingPage: React.FC = () => {
                             results={history}
                             onBack={() => setAppState(PracticeSpeakingState.SETUP)}
                             onOpenSession={handleOpenHistorySession}
+                            onOpenDetail={setSelectedSession}
                         />
                     </PracticeLayout>
                 );
@@ -109,7 +117,15 @@ const PracticeSpeakingPage: React.FC = () => {
         }
     };
 
-    return renderScreen();
+    return (
+        <>
+            {renderScreen()}
+            <SessionDetailModal
+                session={selectedSession}
+                onClose={() => setSelectedSession(null)}
+            />
+        </>
+    );
 };
 
 export default PracticeSpeakingPage;

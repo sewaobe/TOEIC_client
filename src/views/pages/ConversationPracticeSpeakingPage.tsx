@@ -16,7 +16,8 @@ import {
     Tooltip,
     Dialog,
     DialogTitle,
-    DialogContent
+    DialogContent,
+    Backdrop
 } from '@mui/material';
 import {
     Mic as MicIcon,
@@ -30,14 +31,14 @@ import {
     Send as SendIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Feedback, SessionResult, SpeakerRole, UserConfig } from '../../types/PracticeSpeaking';
+import { Feedback, SessionResult, SpeakerRole, UserConfig, SessionWithDetail } from '../../types/PracticeSpeaking';
 import FeedbackCard from '../../components/practices/speaking/FeedbackCard';
 import AudioVisualizer from '../../components/practices/speaking/AudioVisualizer';
 import PracticeModal from '../../components/practices/speaking/PracticeModal';
 
 interface Props {
     config: UserConfig;
-    onFinish: (result: SessionResult) => void;
+    onFinish: (result: SessionResult & { _id?: string }, detail?: SessionWithDetail | null) => void;
     onBack: () => void;
     replaySessionId?: string;
     replayDurationSeconds?: number;
@@ -469,6 +470,24 @@ const ConversationPracticeSpeakingPage: React.FC<Props> = ({ config, onFinish, o
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Generating Report Overlay */}
+            <Backdrop
+                open={vm.isGeneratingReport}
+                sx={{
+                    color: '#fff',
+                    zIndex: (theme) => theme.zIndex.drawer + 1,
+                    flexDirection: 'column'
+                }}
+            >
+                <CircularProgress color="inherit" size={60} />
+                <Typography variant="h6" sx={{ mt: 2, fontWeight: 'bold' }}>
+                    Generating Report...
+                </Typography>
+                <Typography variant="body2">
+                    Analyzing fluency, grammar, and creating suggestions
+                </Typography>
+            </Backdrop>
         </Box>
     );
 };

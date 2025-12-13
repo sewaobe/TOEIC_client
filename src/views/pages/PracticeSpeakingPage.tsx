@@ -23,6 +23,7 @@ import TimelineIcon from '@mui/icons-material/Timeline';
 import AnalyticsTimeLine from '../../components/practices/speaking/AnalyticsTimeLine';
 import RolePlayCard from '../../components/practices/speaking/CardType/RolePlayCard';
 import LiveCallCard from '../../components/practices/speaking/CardType/LiveCallCard';
+import MeetRoomPage from './MeetRoomPage';
 
 
 enum PracticeSpeakingState {
@@ -180,9 +181,7 @@ const PracticeSpeakingPage: React.FC = () => {
                             <Typography variant="h4" fontWeight="bold" gutterBottom>
                                 Live Speaking with Native Speaker
                             </Typography>
-                            <Typography variant="body1" color="text.secondary">
-                                This is the speaking_live area. You can implement your live call UI here.
-                            </Typography>
+                            <MeetRoomPage />
                         </Box>
                     </PracticeLayout>
                 );

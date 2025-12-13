@@ -37,6 +37,8 @@ export const blobToBase64 = (blob: Blob): Promise<string> => {
 // Once you switch to Azure TTS (WAV), this part becomes legacy fallback.
 
 let pcmAudioContext: AudioContext | null = null;
+let currentPcmSource: AudioBufferSourceNode | null = null;
+let currentHtmlAudio: HTMLAudioElement | null = null;
 
 const getPcmAudioContext = () => {
   if (!pcmAudioContext) {
@@ -75,9 +77,24 @@ const playPCM = async (base64: string): Promise<void> => {
   const source = ctx.createBufferSource();
   source.buffer = audioBuffer;
   source.connect(ctx.destination);
-  
+
+  // Stop any previous PCM source before starting a new one
+  if (currentPcmSource) {
+    try {
+      currentPcmSource.stop();
+    } catch {
+      // ignore
+    }
+  }
+  currentPcmSource = source;
+
   return new Promise((resolve) => {
-    source.onended = () => resolve();
+    source.onended = () => {
+      if (currentPcmSource === source) {
+        currentPcmSource = null;
+      }
+      resolve();
+    };
     source.start();
   });
 };
@@ -87,8 +104,26 @@ const playPCM = async (base64: string): Promise<void> => {
 const playWav = (base64: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     const audio = new Audio(`data:audio/wav;base64,${base64}`);
-    audio.onended = () => resolve();
-    audio.onerror = (e) => reject(e);
+
+    // Stop any previous HTMLAudio before starting a new one
+    if (currentHtmlAudio) {
+      currentHtmlAudio.pause();
+      currentHtmlAudio.currentTime = 0;
+    }
+    currentHtmlAudio = audio;
+
+    audio.onended = () => {
+      if (currentHtmlAudio === audio) {
+        currentHtmlAudio = null;
+      }
+      resolve();
+    };
+    audio.onerror = (e) => {
+      if (currentHtmlAudio === audio) {
+        currentHtmlAudio = null;
+      }
+      reject(e);
+    };
     audio.play().catch(reject);
   });
 };
@@ -114,3 +149,39 @@ export const playAudio = async (base64: string): Promise<void> => {
     return playPCM(base64);
   }
 };
+
+// --- GLOBAL STOP HELPER ---
+
+export const stopAllAudio = (): void => {
+  // Stop HTMLAudio playback
+  if (currentHtmlAudio) {
+    try {
+      currentHtmlAudio.pause();
+      currentHtmlAudio.currentTime = 0;
+    } catch {
+      // ignore
+    }
+    currentHtmlAudio = null;
+  }
+
+  // Stop PCM source playback
+  if (currentPcmSource) {
+    try {
+      currentPcmSource.stop();
+    } catch {
+      // ignore
+    }
+    currentPcmSource = null;
+  }
+
+  // Optionally close the AudioContext so it doesn't keep playing
+  if (pcmAudioContext && pcmAudioContext.state !== 'closed') {
+    pcmAudioContext.close();
+    pcmAudioContext = null;
+  }
+};
+
+// Export stopAllAudio to window for cross-utility access
+if (typeof window !== 'undefined') {
+  (window as any).__stopAllAudio = stopAllAudio;
+}

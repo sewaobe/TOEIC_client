@@ -17,7 +17,6 @@ enum PracticeSpeakingState {
     SETUP,
     CONVERSATION,
     HISTORY,
-    HISTORY_REPLAY,
     ANALYTICS
 }
 
@@ -25,8 +24,6 @@ const PracticeSpeakingPage: React.FC = () => {
     const [appState, setAppState] = useState<PracticeSpeakingState>(PracticeSpeakingState.SETUP);
     const [currentConfig, setCurrentConfig] = useState<UserConfig | null>(null);
     const [history, setHistory] = useState<SessionResult[]>([]);
-    const [replaySessionId, setReplaySessionId] = useState<string | null>(null);
-    const [replayDurationSeconds, setReplayDurationSeconds] = useState<number | undefined>(undefined);
     const [selectedSession, setSelectedSession] = useState<SessionWithDetail | null>(null);
     const navigate = useNavigate();
 
@@ -43,13 +40,6 @@ const PracticeSpeakingPage: React.FC = () => {
         }
 
         setAppState(PracticeSpeakingState.HISTORY);
-    };
-
-    const handleOpenHistorySession = (sessionId: string, config: UserConfig & { actualDurationSeconds?: number }) => {
-        setCurrentConfig(config);
-        setReplaySessionId(sessionId);
-        setReplayDurationSeconds(config.actualDurationSeconds);
-        setAppState(PracticeSpeakingState.HISTORY_REPLAY);
     };
 
     const renderScreen = () => {
@@ -112,9 +102,7 @@ const PracticeSpeakingPage: React.FC = () => {
                 return (
                     <PracticeLayout>
                         <HistoryPracticeSpeakingPage
-                            results={history}
                             onBack={() => setAppState(PracticeSpeakingState.SETUP)}
-                            onOpenSession={handleOpenHistorySession}
                             onOpenDetail={setSelectedSession}
                         />
                     </PracticeLayout>

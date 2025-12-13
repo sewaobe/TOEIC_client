@@ -22,8 +22,8 @@ export const useAnalyticsTimeLineViewModel = () => {
                 const sessionCount = 10;
                 const baseDates = items.length
                     ? [...items]
-                          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                          .slice(0, sessionCount)
+                        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                        .slice(0, sessionCount)
                     : [];
 
                 const makeTrend = (scores: number[]) =>
@@ -35,7 +35,7 @@ export const useAnalyticsTimeLineViewModel = () => {
 
                 const fluencyTrend = makeTrend([60, 65, 63, 70, 68, 75, 73, 78, 80, 82]);
                 const grammarTrend = makeTrend([55, 58, 56, 60, 62, 61, 64, 66, 65, 68]);
-                const lexicalTrend = makeTrend([50, 55, 57, 60, 63, 67, 70, 72, 74, 76]);
+                const intonationTrend = makeTrend([50, 55, 57, 60, 63, 67, 70, 72, 74, 76]);
                 const pronunciationTrend = makeTrend([45, 50, 52, 55, 58, 60, 63, 65, 67, 70]);
 
                 const overallTrend = makeTrend([
@@ -53,7 +53,7 @@ export const useAnalyticsTimeLineViewModel = () => {
 
                 const avgFluency = fluencyTrend.reduce((acc, p) => acc + p.score, 0) / fluencyTrend.length;
                 const avgGrammar = grammarTrend.reduce((acc, p) => acc + p.score, 0) / grammarTrend.length;
-                const avgLexical = lexicalTrend.reduce((acc, p) => acc + p.score, 0) / lexicalTrend.length;
+                const avgIntonation = intonationTrend.reduce((acc, p) => acc + p.score, 0) / intonationTrend.length;
                 const avgPronunciation =
                     pronunciationTrend.reduce((acc, p) => acc + p.score, 0) / pronunciationTrend.length;
                 const overallAvg = overallTrend.reduce((acc, p) => acc + p.score, 0) / overallTrend.length;
@@ -62,25 +62,25 @@ export const useAnalyticsTimeLineViewModel = () => {
                     skillMastery: {
                         fluency: Math.round(avgFluency),
                         grammar: Math.round(avgGrammar),
-                        vocabulary: Math.round(avgLexical),
+                        intonation: Math.round(avgIntonation),
                         pronunciation: Math.round(avgPronunciation),
                     },
                     progressTrends: {
                         overall: overallTrend,
                         fluency: fluencyTrend,
                         grammar: grammarTrend,
-                        lexical: lexicalTrend,
+                        intonation: intonationTrend,
                         pronunciation: pronunciationTrend,
                     },
-                    weakestSkill: avgGrammar <= avgLexical && avgGrammar <= avgPronunciation ? 'grammar' : 'pronunciation',
-                    strongestSkill: avgFluency >= avgLexical && avgFluency >= avgPronunciation ? 'fluency' : 'lexical',
+                    weakestSkill: avgGrammar <= avgIntonation && avgGrammar <= avgPronunciation ? 'grammar' : 'pronunciation',
+                    strongestSkill: avgFluency >= avgIntonation && avgFluency >= avgPronunciation ? 'fluency' : 'intonation',
                     readinessScore: Math.round(overallAvg),
                     readinessMessage:
                         overallAvg >= 80
                             ? 'You are ready for advanced speaking tasks.'
                             : overallAvg >= 60
-                            ? 'Solid foundation. Keep practicing to reach advanced level.'
-                            : 'Focus on building core fluency and accuracy.',
+                                ? 'Solid foundation. Keep practicing to reach advanced level.'
+                                : 'Focus on building core fluency and accuracy.',
                     recommendedPath: [
                         {
                             title: 'Grammar Accuracy Booster',

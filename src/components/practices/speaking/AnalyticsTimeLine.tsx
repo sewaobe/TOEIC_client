@@ -158,15 +158,15 @@ const AnalyticsTimeLine: React.FC<Props> = ({ onBack }) => {
                                             </Box>
                                         </Box>
                                     </Grid>
-                                    {/* Lexical Range */}
+                                    {/* Intonation Range */}
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
                                             <Stack direction="row" alignItems="center" spacing={1} mb={1}>
                                                 <MenuBookIcon fontSize="small" color="success" />
-                                                <Typography variant="subtitle2" fontWeight="bold">Lexical Range</Typography>
+                                                <Typography variant="subtitle2" fontWeight="bold">Intonation Range</Typography>
                                             </Stack>
                                             <Box sx={{ height: 80 }}>
-                                                <SimpleLineChart data={profile.progressTrends.lexical} color="#10b981" />
+                                                <SimpleLineChart data={profile.progressTrends.intonation} color="#10b981" />
                                             </Box>
                                         </Box>
                                     </Grid>

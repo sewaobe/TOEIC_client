@@ -53,8 +53,8 @@ export interface SessionResult {
 export interface SessionReport {
     /** 0–100 */
     fluency: number;
-    coherence: number;
-    lexicalRange: number;
+    pronunciation: number;
+    intonation: number;
     grammaticalAccuracy: number;
     /** Optional overall average score from BE */
     averageScore?: number;
@@ -86,8 +86,8 @@ export interface GrammarBreakdownItem {
 export interface SkillMastery {
     fluency: number;
     grammar: number;
-    vocabulary: number;
     pronunciation: number;
+    intonation: number;
 }
 
 export interface TrendPoint {
@@ -100,7 +100,7 @@ export interface AdaptiveTask {
     title: string;
     description: string;
     // Categories based on specific business rules
-    category: 'Foundation' | 'Advanced' | 'New Topic' | 'Spaced Repetition'; 
+    category: 'Foundation' | 'Advanced' | 'New Topic' | 'Spaced Repetition';
     reason: string; // Why this was suggested (e.g., "Low grammar score detected")
 }
 
@@ -111,14 +111,14 @@ export interface LearningProfile {
         overall: TrendPoint[];
         fluency: TrendPoint[];
         grammar: TrendPoint[];
-        lexical: TrendPoint[];      // Lexical Range
+        intonation: TrendPoint[];      // Intonation Range
         pronunciation: TrendPoint[]; // Pronunciation
     };
-    
+
     // Skill Analysis
     weakestSkill: string;
     strongestSkill: string;
-    
+
     // Readiness
     readinessScore: number; // 0-100
     readinessMessage: string;
@@ -134,12 +134,12 @@ export interface SessionWithDetail extends SessionResult {
 }
 
 export interface TurnResponse {
-  feedback: Feedback;
-  botText: string;
-  botTranslation: string;
-  userTranscript: string;
-  userTranslation?: string;
-  isUnintelligible: boolean;
+    feedback: Feedback;
+    botText: string;
+    botTranslation: string;
+    userTranscript: string;
+    userTranslation?: string;
+    isUnintelligible: boolean;
     botAudioBase64?: string;
 }
 

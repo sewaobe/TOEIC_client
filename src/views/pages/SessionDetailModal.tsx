@@ -86,8 +86,8 @@ const SessionDetailModal: React.FC<Props> = ({ session, onClose }) => {
 
   // Luôn dùng dữ liệu thật từ report tổng hợp BE
   const fluency = report?.fluency ?? 0;
-  const coherence = report?.coherence ?? 0;
-  const lexicalRange = report?.lexicalRange ?? 0;
+  const pronunciation = report?.pronunciation ?? 0;
+  const intonation = report?.intonation ?? 0;
   const grammaticalAccuracy = report?.grammaticalAccuracy ?? 0;
 
   const paraphrasedLines = report?.paraphrasedLines ?? [];
@@ -149,8 +149,8 @@ const SessionDetailModal: React.FC<Props> = ({ session, onClose }) => {
                   }}
                 >
                   <ScoreBar label="Fluency" score={fluency} />
-                  <ScoreBar label="Coherence" score={coherence} />
-                  <ScoreBar label="Lexical Range (Vocabulary)" score={lexicalRange} />
+                  <ScoreBar label="Pronunciation" score={pronunciation} />
+                  <ScoreBar label="Intonation" score={intonation} />
                   <ScoreBar label="Grammatical Accuracy" score={grammaticalAccuracy} />
                 </Box>
                 {report && (

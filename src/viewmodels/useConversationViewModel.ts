@@ -3,6 +3,7 @@ import { UserConfig, Message, SpeakerRole, SessionResult, PracticeResult, TurnRe
 import { blobToBase64, playAudio } from '../utils/audio.util';
 import { RECORDING_TIMEOUT_MS } from '../constants/PracticeSpeaking';
 import { speakingService } from '../services/speaking.service';
+import { speakText } from '../utils/tts.util';
 
 // Add type definitions for Web Speech API
 interface IWindow extends Window {
@@ -121,6 +122,7 @@ export const useConversationViewModel = (
                     };
                     await addBotMessage(opening.text, opening.translation);
                     setHasStarted(true);
+                    speakText(opening.text, config.botTone);
                 }
             } catch (err) {
                 console.error("initChat error", err);
@@ -144,6 +146,11 @@ export const useConversationViewModel = (
 
     const playBotAudio = async (base64: string) => {
         try {
+            // Dừng TTS nếu đang nói
+            if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+
             await playAudio(base64);
         } catch (e) {
             console.error("Audio playback failed", e);
@@ -552,7 +559,7 @@ export const useConversationViewModel = (
                 } as any);
 
                 const elapsed = Date.now() - start;
-                if(elapsed < 400) {
+                if (elapsed < 400) {
                     await new Promise(res => setTimeout(res, 400 - elapsed));
                 }
             }

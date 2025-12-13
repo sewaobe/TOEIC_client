@@ -233,6 +233,7 @@ const ConversationPracticeSpeakingPage: React.FC<Props> = ({ config, onFinish, o
                                         feedback={msg.feedback}
                                         onPractice={vm.openPractice}
                                         onClick={() => setSelectedFeedback(msg.feedback || null)}
+                                        config={config}
                                     />
                                 </Box>
                             )}
@@ -466,6 +467,7 @@ const ConversationPracticeSpeakingPage: React.FC<Props> = ({ config, onFinish, o
                             onPractice={(phrase) => {
                                 vm.openPractice(phrase);
                             }}
+                            config={config}
                         />
                     )}
                 </DialogContent>

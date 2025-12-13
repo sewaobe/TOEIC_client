@@ -5,18 +5,15 @@ import {
     Divider
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, History as HistoryIcon, EventNote as EventNoteIcon, AccessTime as AccessTimeIcon } from '@mui/icons-material';
-import { SessionResult, SessionWithDetail, Message, SpeakerRole } from '../../types/PracticeSpeaking';
-import SessionDetailModal from './SessionDetailModal';
+import { SessionResult, SessionWithDetail } from '../../types/PracticeSpeaking';
 import { speakingService } from '../../services/speaking.service';
 
 interface Props {
-    results: SessionResult[];
     onBack: () => void;
-    onOpenSession: (sessionId: string, config: SessionResult['config'] & { actualDurationSeconds?: number }) => void;
     onOpenDetail: (session: SessionWithDetail | null) => void;
 }
 
-const HistoryPracticeSpeakingPage: React.FC<Props> = ({ results, onBack, onOpenSession, onOpenDetail }) => {
+const HistoryPracticeSpeakingPage: React.FC<Props> = ({ onBack, onOpenDetail }) => {
     const vm = useSpeakingHistoryViewModel();
 
     return (

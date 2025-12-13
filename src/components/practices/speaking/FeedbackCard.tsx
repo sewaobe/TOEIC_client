@@ -1,12 +1,14 @@
 import React from 'react';
 import { Box, Card, CardContent, Typography, Chip, Stack, Divider, IconButton, Tooltip } from '@mui/material';
-import { Lightbulb as LightbulbIcon, Mic as MicIcon } from '@mui/icons-material';
-import { Feedback } from '../../../types/PracticeSpeaking';
+import { Lightbulb as LightbulbIcon, Mic as MicIcon, VolumeUp as VolumeUpIcon } from '@mui/icons-material';
+import { Feedback, UserConfig } from '../../../types/PracticeSpeaking';
+import { speakText } from '../../../utils/tts.util';
 
 interface Props {
     feedback: Feedback;
     onPractice?: (phrase: string) => void;
     onClick?: () => void;
+    config: UserConfig;
 }
 
 const ScoreRing: React.FC<{ score: number; label: string }> = ({ score, label }) => {
@@ -44,7 +46,7 @@ const ScoreRing: React.FC<{ score: number; label: string }> = ({ score, label })
     );
 };
 
-const FeedbackCard: React.FC<Props> = ({ feedback, onPractice, onClick }) => {
+const FeedbackCard: React.FC<Props> = ({ feedback, onPractice, onClick, config }) => {
     return (
         <Card
             variant="outlined"
@@ -87,26 +89,41 @@ const FeedbackCard: React.FC<Props> = ({ feedback, onPractice, onClick }) => {
                         <Stack spacing={1}>
                             {feedback.mistakes.map((m, idx) => (
                                 <Box key={idx} sx={{ bgcolor: '#fef2f2', p: 1, borderRadius: 1, border: '1px solid #fecaca', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <Box>
+                                    <Box sx={{ flexGrow: 1 }}>
                                         <Typography variant="body2" sx={{ textDecoration: 'line-through', color: '#991b1b' }}>{m.original}</Typography>
                                         <Typography variant="body2" fontWeight="bold" color="success.main">{m.correction}</Typography>
                                         <Typography variant="caption" color="text.secondary" display="block">{m.explanation}</Typography>
                                     </Box>
 
-                                    {onPractice && (
-                                        <Tooltip title="Practice this phrase">
+                                    <Stack direction="row" spacing={0.5}>
+                                        <Tooltip title="Listen to correction">
                                             <IconButton
                                                 size="small"
                                                 sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#f1f5f9' } }}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    onPractice(m.correction);
+                                                    speakText(m.correction, config.botTone, config.botSpeed);
                                                 }}
                                             >
-                                                <MicIcon fontSize="small" color="primary" />
+                                                <VolumeUpIcon fontSize="small" color="action" />
                                             </IconButton>
                                         </Tooltip>
-                                    )}
+
+                                        {onPractice && (
+                                            <Tooltip title="Practice this phrase">
+                                                <IconButton
+                                                    size="small"
+                                                    sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#f1f5f9' } }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onPractice(m.correction);
+                                                    }}
+                                                >
+                                                    <MicIcon fontSize="small" color="primary" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                    </Stack>
                                 </Box>
                             ))}
                         </Stack>

@@ -12,6 +12,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
 import PeopleIcon from "@mui/icons-material/People";
 import PersonIcon from "@mui/icons-material/Person";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 /* =========================
    ANIMATIONS
@@ -72,11 +73,12 @@ interface RemoteVideoTileProps {
         socketId: string;
         micOn?: boolean;
         camOn?: boolean;
+        isSpeaking?: boolean;
     };
 }
 
 function RemoteVideoTile({ participant }: RemoteVideoTileProps) {
-    const { userId, fullname, socketId, micOn, camOn } = participant;
+    const { userId, fullname, socketId, micOn, camOn, isSpeaking } = participant;
     const displayName = fullname || userId;
 
     return (
@@ -97,17 +99,34 @@ function RemoteVideoTile({ participant }: RemoteVideoTileProps) {
                     }`}
             />
 
+            {/* Speaking indicator when camera is on */}
+            {camOn && micOn && (
+                <div className="absolute top-3 left-3">
+                    <div className="relative w-6 h-6 flex items-center justify-center">
+                        {isSpeaking && (
+                            <div className="absolute inset-0 rounded-full border-2 border-blue-400 animate-ping" />
+                        )}
+                        <div className="relative w-6 h-6 rounded-full bg-blue-500/90" />
+                    </div>
+                </div>
+            )}
+
             {/* Avatar overlay when camera is off */}
             {!camOn && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                    <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 300 }}
-                        className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center"
-                    >
-                        <PersonIcon style={{ fontSize: 40 }} className="text-white" />
-                    </motion.div>
+                    <div className="relative w-20 h-20 flex items-center justify-center">
+                        {micOn && isSpeaking && (
+                            <div className="absolute inset-0 rounded-full border-2 border-blue-400 animate-ping" />
+                        )}
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: "spring", stiffness: 300 }}
+                            className="relative w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center"
+                        >
+                            <PersonIcon style={{ fontSize: 40 }} className="text-white" />
+                        </motion.div>
+                    </div>
                 </div>
             )}
 
@@ -160,6 +179,7 @@ export default function MeetRoomPage() {
         mediaError,
         selfId,
         selfFullname,
+        isSpeaking,
         localVideoRef,
         setRoomId,
         clearMediaError,
@@ -172,6 +192,7 @@ export default function MeetRoomPage() {
     const [showParticipants, setShowParticipants] = useState(false);
     const [copied, setCopied] = useState(false);
     const [roomInput, setRoomInput] = useState("");
+    const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
     const copyRoomId = () => {
         if (!roomId) return;
@@ -184,6 +205,19 @@ export default function MeetRoomPage() {
         const id = roomInput.trim() || `room-${Date.now()}`;
         setRoomInput(id);
         joinRoom(id);
+    };
+
+    const handleRequestLeave = () => {
+        setShowLeaveConfirm(true);
+    };
+
+    const handleConfirmLeave = async () => {
+        await leaveRoom();
+        setShowLeaveConfirm(false);
+    };
+
+    const handleCancelLeave = () => {
+        setShowLeaveConfirm(false);
     };
 
     // ===== PRE-JOIN SCREEN =====
@@ -297,6 +331,14 @@ export default function MeetRoomPage() {
                 className="bg-gray-800/90 backdrop-blur-sm border-b border-gray-700/50 px-4 py-3 flex items-center justify-between"
             >
                 <div className="flex items-center gap-4">
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleRequestLeave}
+                        className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-200 transition-colors"
+                    >
+                        <ArrowBackIcon style={{ fontSize: 20 }} />
+                    </motion.button>
                     <h1 className="text-white font-semibold">Meeting Room</h1>
                     <motion.button
                         whileHover={{ scale: 1.05 }}
@@ -353,17 +395,34 @@ export default function MeetRoomPage() {
                                     }`}
                             />
 
+                            {/* Speaking indicator when camera is on (self) */}
+                            {camOn && micOn && (
+                                <div className="absolute top-3 left-3">
+                                    <div className="relative w-7 h-7 flex items-center justify-center">
+                                        {isSpeaking && (
+                                            <div className="absolute inset-0 rounded-full border-2 border-blue-400 animate-ping" />
+                                        )}
+                                        <div className="relative w-7 h-7 rounded-full bg-blue-500/90" />
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Avatar when camera off */}
                             {!camOn && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
-                                    <motion.div
-                                        initial={{ scale: 0 }}
-                                        animate={{ scale: 1 }}
-                                        transition={{ type: "spring", stiffness: 300 }}
-                                        className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center"
-                                    >
-                                        <PersonIcon style={{ fontSize: 48 }} className="text-white" />
-                                    </motion.div>
+                                    <div className="relative w-24 h-24 flex items-center justify-center">
+                                        {micOn && isSpeaking && (
+                                            <div className="absolute inset-0 rounded-full border-2 border-blue-400 animate-ping" />
+                                        )}
+                                        <motion.div
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            transition={{ type: "spring", stiffness: 300 }}
+                                            className="relative w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center"
+                                        >
+                                            <PersonIcon style={{ fontSize: 48 }} className="text-white" />
+                                        </motion.div>
+                                    </div>
                                 </div>
                             )}
 
@@ -479,6 +538,46 @@ export default function MeetRoomPage() {
                 </AnimatePresence>
             </div>
 
+            {/* Leave confirmation modal */}
+            <AnimatePresence>
+                {showLeaveConfirm && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-700/70"
+                        >
+                            <h2 className="text-white text-lg font-semibold mb-2">
+                                Bạn muốn kết thúc cuộc gọi này?
+                            </h2>
+                            <p className="text-gray-300 text-sm mb-6">
+                                Dữ liệu sẽ bắt đầu được phân tích sau khi bạn kết thúc cuộc gọi.
+                            </p>
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    onClick={handleCancelLeave}
+                                    className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm font-medium transition-colors"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    onClick={handleConfirmLeave}
+                                    className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-semibold shadow-md transition-colors"
+                                >
+                                    Xác nhận
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Control Bar */}
             <motion.footer
                 initial={{ y: 20, opacity: 0 }}
@@ -512,7 +611,7 @@ export default function MeetRoomPage() {
                     <motion.button
                         whileHover={{ scale: 1.08 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={leaveRoom}
+                        onClick={handleRequestLeave}
                         className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center transition-colors shadow-lg"
                         title="Leave meeting"
                     >

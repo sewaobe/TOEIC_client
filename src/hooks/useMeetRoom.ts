@@ -11,6 +11,7 @@ export interface Participant {
     socketId: string;
     micOn?: boolean;
     camOn?: boolean;
+    isSpeaking?: boolean;
 }
 
 interface WebRTCOffer {
@@ -50,12 +51,21 @@ export function useMeetRoom() {
     const [participants, setParticipants] = useState<Participant[]>([]);
     const [mediaError, setMediaError] = useState<string | null>(null);
     const [selfFullname, setSelfFullname] = useState<string>("");
+    const [isSpeaking, setIsSpeaking] = useState(false);
 
     // ===== REFS =====
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
     const pcsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
     const iceCandidateBufferRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+    const mediaRecordRef = useRef<MediaRecorder | null>(null);
+    const recordedChunksRef = useRef<Blob[]>([]);
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const analyserRef = useRef<AnalyserNode | null>(null);
+    const speakingRafRef = useRef<number | null>(null);
+    const remoteAnalysersRef = useRef<Map<string, { analyser: AnalyserNode; dataArray: Uint8Array<ArrayBuffer> }>>(new Map());
+    const remoteSpeakingStateRef = useRef<Map<string, boolean>>(new Map());
+    const remoteSpeakingRafRef = useRef<number | null>(null);
 
     // ===== HELPERS =====
     const getOrCreateEmptyStream = useCallback(() => {
@@ -92,6 +102,168 @@ export function useMeetRoom() {
         return sender || null;
     }, []);
 
+    // ===== RECORDING =====
+    const startRecording = useCallback(() => {
+        if (!localStreamRef.current) return;
+
+        const audioTracks = localStreamRef.current.getAudioTracks();
+        if (audioTracks.length === 0) {
+            console.warn("Cannot start recording: no audio track available.");
+            return;
+        }
+
+        const audioStream = new MediaStream(audioTracks);
+
+        const recorder = new MediaRecorder(audioStream, {
+            mimeType: 'audio/webm'
+        })
+
+        recordedChunksRef.current = [];
+
+        recorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                recordedChunksRef.current.push(event.data);
+            }
+        }
+
+        recorder.start();
+        mediaRecordRef.current = recorder;
+
+        console.log("Recording started.");
+    }, []);
+
+    const stopRecording = useCallback((): Promise<Blob | null> => {
+        return new Promise<Blob | null>((resolve) => {
+            const recorder = mediaRecordRef.current;
+            if (!recorder) {
+                console.warn("No recording in progress.");
+                resolve(null);
+                return;
+            }
+
+            recorder.onstop = () => {
+                const blob = new Blob(recordedChunksRef.current, {
+                    type: 'audio/webm'
+                });
+                console.log("Recording stopped. Blob size:", blob.size);
+                resolve(blob);
+            };
+
+            recorder.stop();
+            mediaRecordRef.current = null;
+        })
+    }, []);
+
+    // ===== SPEAKING DETECTION (SELF) =====
+    const setupAudioAnalyser = useCallback(() => {
+        const stream = localStreamRef.current;
+        if (!stream) return;
+
+        const audioTracks = stream.getAudioTracks();
+        if (audioTracks.length === 0) return;
+
+        if (!audioContextRef.current) {
+            const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
+            audioContextRef.current = new AudioCtx();
+        }
+
+        if (!analyserRef.current) {
+            const audioContext = audioContextRef.current!;
+            const source = audioContext.createMediaStreamSource(stream);
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 512;
+            source.connect(analyser);
+            analyserRef.current = analyser;
+        }
+
+        if (speakingRafRef.current !== null) {
+            return;
+        }
+
+        const analyser = analyserRef.current!;
+        const dataArray: Uint8Array<ArrayBuffer> = new Uint8Array(analyser.frequencyBinCount) as Uint8Array<ArrayBuffer>;
+
+        const update = () => {
+            analyser.getByteTimeDomainData(dataArray);
+            let sumSquares = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                const v = (dataArray[i] - 128) / 128;
+                sumSquares += v * v;
+            }
+            const rms = Math.sqrt(sumSquares / dataArray.length);
+            const speaking = rms > 0.03;
+            setIsSpeaking(prev => (prev === speaking ? prev : speaking));
+
+            speakingRafRef.current = requestAnimationFrame(update);
+        };
+
+        speakingRafRef.current = requestAnimationFrame(update);
+    }, []);
+
+    const teardownAudioAnalyser = useCallback(() => {
+        if (speakingRafRef.current !== null) {
+            cancelAnimationFrame(speakingRafRef.current);
+            speakingRafRef.current = null;
+        }
+        setIsSpeaking(false);
+    }, []);
+
+    // ===== SPEAKING DETECTION (REMOTES) =====
+    const startRemoteSpeakingLoop = useCallback(() => {
+        if (remoteSpeakingRafRef.current !== null) return;
+
+        const update = () => {
+            remoteAnalysersRef.current.forEach((entry, socketId) => {
+                const { analyser, dataArray } = entry;
+                analyser.getByteTimeDomainData(dataArray);
+
+                let sumSquares = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    const v = (dataArray[i] - 128) / 128;
+                    sumSquares += v * v;
+                }
+                const rms = Math.sqrt(sumSquares / dataArray.length);
+                const speaking = rms > 0.03;
+
+                const prevSpeaking = remoteSpeakingStateRef.current.get(socketId) ?? false;
+                if (prevSpeaking !== speaking) {
+                    remoteSpeakingStateRef.current.set(socketId, speaking);
+                    setParticipants(prev =>
+                        prev.map(p =>
+                            p.socketId === socketId ? { ...p, isSpeaking: speaking } : p
+                        )
+                    );
+                }
+            });
+
+            remoteSpeakingRafRef.current = requestAnimationFrame(update);
+        };
+
+        remoteSpeakingRafRef.current = requestAnimationFrame(update);
+    }, []);
+
+    const setupRemoteAnalyser = useCallback((peerSocketId: string, stream: MediaStream) => {
+        if (remoteAnalysersRef.current.has(peerSocketId)) return;
+
+        const audioTracks = stream.getAudioTracks();
+        if (audioTracks.length === 0) return;
+
+        if (!audioContextRef.current) {
+            const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
+            audioContextRef.current = new AudioCtx();
+        }
+
+        const audioContext = audioContextRef.current!;
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 512;
+        const dataArray: Uint8Array<ArrayBuffer> = new Uint8Array(analyser.frequencyBinCount) as Uint8Array<ArrayBuffer>;
+        source.connect(analyser);
+
+        remoteAnalysersRef.current.set(peerSocketId, { analyser, dataArray });
+        startRemoteSpeakingLoop();
+    }, [startRemoteSpeakingLoop]);
+
     // ===== PEER CONNECTION =====
     const createPeerConnection = useCallback((peerSocketId: string): RTCPeerConnection => {
         const existing = pcsRef.current.get(peerSocketId);
@@ -124,6 +296,10 @@ export function useMeetRoom() {
             };
 
             attachStream();
+
+            if (event.track.kind === "audio") {
+                setupRemoteAnalyser(peerSocketId, stream);
+            }
         };
 
         // Handle ICE candidates
@@ -142,7 +318,7 @@ export function useMeetRoom() {
 
         pcsRef.current.set(peerSocketId, pc);
         return pc;
-    }, [socket]);
+    }, [socket, setupRemoteAnalyser]);
 
     const processBufferedCandidates = useCallback(async (peerSocketId: string) => {
         const pc = pcsRef.current.get(peerSocketId);
@@ -256,6 +432,10 @@ export function useMeetRoom() {
             const success = await requestMedia("audio");
             if (success) {
                 socket.emit("meet:media-update", { roomId, micOn: true, camOn });
+
+                if (!mediaRecordRef.current) {
+                    startRecording();
+                }
             }
             return;
         }
@@ -310,9 +490,36 @@ export function useMeetRoom() {
         setJoined(true);
     }, [socket, getOrCreateEmptyStream]);
 
-    const leaveRoom = useCallback(() => {
+    const leaveRoom = useCallback(async () => {
         socket.emit("meet:leave", { roomId });
+
+        const audioBlob = await stopRecording();
+        if (audioBlob) {
+            const url = URL.createObjectURL(audioBlob);
+            const a = document.createElement("a");
+            a.style.display = "none";
+            a.href = url;
+            a.download = `meeting-audio-${Date.now()}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            console.log("Recording downloaded.");
+        }
         setJoined(false);
+
+        teardownAudioAnalyser();
+        if (remoteSpeakingRafRef.current !== null) {
+            cancelAnimationFrame(remoteSpeakingRafRef.current);
+            remoteSpeakingRafRef.current = null;
+        }
+        remoteAnalysersRef.current.clear();
+        remoteSpeakingStateRef.current.clear();
+        if (audioContextRef.current) {
+            audioContextRef.current.close().catch(() => undefined);
+            audioContextRef.current = null;
+        }
+        analyserRef.current = null;
 
         // Cleanup
         pcsRef.current.forEach(pc => pc.close());
@@ -325,7 +532,7 @@ export function useMeetRoom() {
         setMicOn(false);
         setCamOn(false);
         setParticipants([]);
-    }, [socket, roomId]);
+    }, [socket, roomId, stopRecording, teardownAudioAnalyser]);
 
     // ===== SOCKET EVENT HANDLERS =====
     useEffect(() => {
@@ -345,7 +552,8 @@ export function useMeetRoom() {
             setParticipants(remotes.map(u => ({
                 ...u,
                 micOn: u.micOn ?? false,
-                camOn: u.camOn ?? false
+                camOn: u.camOn ?? false,
+                isSpeaking: false
             })));
 
             // Ensure we have a local (possibly empty) stream ready
@@ -423,7 +631,8 @@ export function useMeetRoom() {
                         fullname: fullname || userId,
                         socketId: newSocketId,
                         micOn: false,
-                        camOn: false
+                        camOn: false,
+                        isSpeaking: false
                     }
                 ];
             });
@@ -442,6 +651,8 @@ export function useMeetRoom() {
         const handleUserLeft = ({ socketId }: { socketId: string }) => {
             closePeerConnection(socketId);
             setParticipants(prev => prev.filter(p => p.socketId !== socketId));
+            remoteAnalysersRef.current.delete(socketId);
+            remoteSpeakingStateRef.current.delete(socketId);
         };
 
         // Register listeners
@@ -472,6 +683,15 @@ export function useMeetRoom() {
         closePeerConnection
     ]);
 
+    // Start/stop speaking detection based on mic state
+    useEffect(() => {
+        if (micOn && joined && localStreamRef.current && localStreamRef.current.getAudioTracks().length > 0) {
+            setupAudioAnalyser();
+        } else {
+            teardownAudioAnalyser();
+        }
+    }, [micOn, joined, setupAudioAnalyser, teardownAudioAnalyser]);
+
     // Set local video when joined
     useEffect(() => {
         if (joined && localStreamRef.current && localVideoRef.current) {
@@ -489,6 +709,7 @@ export function useMeetRoom() {
         mediaError,
         selfId: socket.id,
         selfFullname,
+        isSpeaking,
 
         // Refs
         localVideoRef,

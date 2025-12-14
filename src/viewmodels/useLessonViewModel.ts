@@ -135,6 +135,46 @@ export const useLessonViewModel = (dayId: string, week: string) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayId, week]);
 
+  // Lắng nghe sự kiện khi một adjustment request được phản hồi (approve/reject)
+  // Nếu thay đổi ảnh hưởng tới ngày hiện tại (dayId) thì reload dữ liệu ngày
+  React.useEffect(() => {
+    const handler = (e: any) => {
+      try {
+        const req = e?.detail?.request;
+        if (!req || !Array.isArray(req.changes)) return;
+        const affectsCurrentDay = req.changes.some(
+          (c: any) => c.dayStudyId && String(c.dayStudyId) === String(dayId)
+        );
+        if (affectsCurrentDay) {
+          // Reload dữ liệu ngày
+          (async () => {
+            try {
+              const data = await dayStudyService.getDayStudyById(dayId, week);
+              setLessons(data);
+              // Nếu currentLesson đang null hoặc hết, cập nhật
+              const inProgressLesson = data.find(
+                (l) => l.status === "in_progress"
+              );
+              setCurrentLesson(inProgressLesson || data[0] || null);
+            } catch (err) {
+              console.error("Lỗi reload dayStudy sau adjustment:", err);
+            }
+          })();
+        }
+      } catch (err) {
+        console.error("Error handling adjustment:responded event", err);
+      }
+    };
+
+    window.addEventListener("adjustment:responded", handler as EventListener);
+    return () =>
+      window.removeEventListener(
+        "adjustment:responded",
+        handler as EventListener
+      );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayId, week]);
+
   // Effect: Lấy dữ liệu riêng cho từng bài học (ví dụ: flashcard, quiz)
   React.useEffect(() => {
     if (!currentLesson) return;
@@ -192,7 +232,7 @@ export const useLessonViewModel = (dayId: string, week: string) => {
 
     fetchLessonSpecificData();
   }, [currentLesson]);
-  
+
   // Effect: Quản lý bộ đếm thời gian cho quiz
   React.useEffect(() => {
     if (!examStarted || timeLeft <= 0) return;

@@ -10,7 +10,7 @@ export const notificationService = {
     items: Notification[];
     pageCount: number;
     total: number;
-    unreadCount: number
+    unreadCount: number;
   }> => {
     const page = params.page ?? 1;
     const limit = params.limit ?? 10;
@@ -26,20 +26,22 @@ export const notificationService = {
     //  Chuẩn hóa dữ liệu
     const rawItems = res.data.items || res.data.notifications || [];
     const items: Notification[] = rawItems.map((n: any) => ({
-      id: n._id, // ✨ chuyển đổi ngay tại đây
+      id: n._id,
       senderId: n.senderId,
       recipientId: n.recipientId,
       message: n.message,
       description: n.description,
       type: n.type,
       isRead: n.isRead,
+      metadata: n.metadata || undefined,
       createdAt: n.createdAt,
     }));
 
     // ⚙️ fix lỗi '??' và '||' bằng cách thêm ngoặc
-    const total: number = (res.data.total ?? items.length);
-    const pageCount: number = (res.data.pageCount ?? Math.ceil(total / limit)) || 1;
-    const unreadCount: number = (res.data.unreadCount ?? 0);
+    const total: number = res.data.total ?? items.length;
+    const pageCount: number =
+      (res.data.pageCount ?? Math.ceil(total / limit)) || 1;
+    const unreadCount: number = res.data.unreadCount ?? 0;
     return { items, pageCount, total, unreadCount };
   },
 
@@ -59,8 +61,10 @@ export const notificationService = {
       senderId: n.senderId,
       recipientId: n.recipientId,
       message: n.message,
+      description: n.description,
       type: n.type,
       isRead: n.isRead,
+      metadata: n.metadata || undefined,
       createdAt: n.createdAt,
     };
   },

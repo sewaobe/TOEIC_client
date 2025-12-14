@@ -30,6 +30,7 @@ import { useTheme } from "@mui/material/styles";
 import { useNotifications } from "../../hooks/useNotifications";
 import { Notification } from "../../types/Notification";
 import NotificationDetailDialog from "./NotificationDetailDialog";
+import { useAdjustment } from "../../contexts/AdjustmentContext";
 
 const MotionIconButton = motion(IconButton);
 
@@ -46,12 +47,32 @@ export default function NotificationDropdown() {
     hasMore,
     isLoading,
   } = useNotifications();
+  const { openDialogWithRequest } = useAdjustment();
 
   const [selectedNotif, setSelectedNotif] = useState<Notification | null>(null);
   const [openDetail, setOpenDetail] = useState(false);
   const [isDialogClosing, setIsDialogClosing] = useState(false); // ✅ NEW
 
-  const handleOpenDetail = (notif: Notification) => {
+  const handleOpenDetail = async (notif: Notification) => {
+    console.log("🔔 Click notification:", notif);
+
+    // Nếu notification có adjustmentRequestId → mở adjustment dialog thay vì detail dialog
+    if (notif.metadata?.adjustmentRequestId) {
+      console.log(
+        "📋 Mở adjustment dialog với ID:",
+        notif.metadata.adjustmentRequestId
+      );
+      // Đảm bảo đóng dropdown và đóng mọi dialog chi tiết đang mở
+      handleClose(); // Đóng dropdown
+      setSelectedNotif(null);
+      setOpenDetail(false);
+      if (!notif.isRead) markAsRead(notif.id);
+      await openDialogWithRequest(notif.metadata.adjustmentRequestId);
+      return;
+    }
+
+    // Nếu không có metadata → mở detail dialog như bình thường
+    console.log("📄 Mở detail dialog");
     setSelectedNotif(notif);
     setOpenDetail(true);
     if (!notif.isRead) markAsRead(notif.id);
@@ -81,24 +102,51 @@ export default function NotificationDropdown() {
   const renderIcon = (type: Notification["type"]) => {
     switch (type) {
       case "chat":
-        return <Chat sx={{ color: theme.palette.primary.main }} fontSize="small" />;
+        return (
+          <Chat sx={{ color: theme.palette.primary.main }} fontSize="small" />
+        );
       case "comment":
-        return <Comment sx={{ color: theme.palette.success.main }} fontSize="small" />;
+        return (
+          <Comment
+            sx={{ color: theme.palette.success.main }}
+            fontSize="small"
+          />
+        );
       case "error":
-        return <ErrorOutline sx={{ color: theme.palette.error.main }} fontSize="small" />;
+        return (
+          <ErrorOutline
+            sx={{ color: theme.palette.error.main }}
+            fontSize="small"
+          />
+        );
       case "test":
-        return <Info sx={{ color: theme.palette.warning.main }} fontSize="small" />; // icon cảnh báo nhẹ
+        return (
+          <Info sx={{ color: theme.palette.warning.main }} fontSize="small" />
+        ); // icon cảnh báo nhẹ
       case "lesson":
-        return <Info sx={{ color: theme.palette.info.main }} fontSize="small" />;
+        return (
+          <Info sx={{ color: theme.palette.info.main }} fontSize="small" />
+        );
       case "flashcard":
-        return <Info sx={{ color: theme.palette.secondary.main }} fontSize="small" />;
+        return (
+          <Info sx={{ color: theme.palette.secondary.main }} fontSize="small" />
+        );
       case "chatbot":
-        return <Chat sx={{ color: theme.palette.info.main }} fontSize="small" />;
+        return (
+          <Chat sx={{ color: theme.palette.info.main }} fontSize="small" />
+        );
       case "other":
-        return <Info sx={{ color: theme.palette.text.secondary }} fontSize="small" />;
+        return (
+          <Info sx={{ color: theme.palette.text.secondary }} fontSize="small" />
+        );
       case "system":
       default:
-        return <NotificationsNone sx={{ color: theme.palette.text.primary }} fontSize="small" />;
+        return (
+          <NotificationsNone
+            sx={{ color: theme.palette.text.primary }}
+            fontSize="small"
+          />
+        );
     }
   };
 
@@ -256,8 +304,8 @@ export default function NotificationDropdown() {
                                 bgcolor: n.isRead
                                   ? "transparent"
                                   : theme.palette.mode === "light"
-                                    ? `${theme.palette.primary.main}1F` // màu primary nhạt (opacity 12%)
-                                    : `${theme.palette.primary.light}22`,
+                                  ? `${theme.palette.primary.main}1F` // màu primary nhạt (opacity 12%)
+                                  : `${theme.palette.primary.light}22`,
                                 "&:hover": {
                                   bgcolor: theme.palette.action.selected,
                                   transform: "translateY(-1px)",
@@ -305,12 +353,15 @@ export default function NotificationDropdown() {
                                       display: "block",
                                     }}
                                   >
-                                    {new Date(n.createdAt).toLocaleString("vi-VN", {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                      day: "2-digit",
-                                      month: "2-digit",
-                                    })}
+                                    {new Date(n.createdAt).toLocaleString(
+                                      "vi-VN",
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                      }
+                                    )}
                                   </Typography>
                                 }
                               />
@@ -341,7 +392,10 @@ export default function NotificationDropdown() {
                         }}
                       >
                         {isLoading ? (
-                          <CircularProgress size={22} sx={{ color: theme.palette.primary.main }} />
+                          <CircularProgress
+                            size={22}
+                            sx={{ color: theme.palette.primary.main }}
+                          />
                         ) : (
                           <Button
                             size="small"

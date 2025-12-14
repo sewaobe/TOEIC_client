@@ -12,6 +12,9 @@ import { ChatbotDrawer } from "../../components/chatbot/ChatbotDrawer";
 import ReportIssueModal from "../../components/modals/ReportIssueModal";
 import DictionaryDrawer from "../../components/dictionary/DictionaryDrawer";
 import CreateVocabularyModal from "../../components/modals/CreateVocabularyModal";
+import { AdjustmentRequestDialog } from "../../components/modals/AdjustmentRequestDialog";
+import { useAdjustmentSocket } from "../../hooks/useAdjustmentSocket";
+import { AdjustmentProvider } from "../../contexts/AdjustmentContext";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -40,6 +43,15 @@ function MainLayout({ children }: MainLayoutProps) {
 
   const { selectedText, rect, clearSelection } = useTextSelection();
 
+  // Quản lý adjustment dialog (không còn auto-popup)
+  const { pendingRequest, showDialog, closeDialog, openDialogWithRequest } =
+    useAdjustmentSocket();
+
+  const handleAdjustmentResponded = () => {
+    // Callback sau khi học viên phản hồi
+    closeDialog();
+  };
+
   const handleSaveNotebook = () => {
     console.log("📘 Save to notebook:", selectedText);
     // Lưu vào clipboard tạm
@@ -63,67 +75,75 @@ function MainLayout({ children }: MainLayoutProps) {
   };
 
   return (
-    <div className="max-h-screen custom-scrollbar">
-      <Navbar />
-      <div className="pt-16">
-        {children}
-        {selectedText && rect && isAuthenticated && highlightPopupEnabled && (
-          <HighlightPopup
-            rect={rect}
-            text={selectedText}
-            onSaveNotebook={handleSaveNotebook}
-            onSaveFlashcard={handleSaveFlashcard}
-            onAskAI={handleAskAI}
-          />
+    <AdjustmentProvider openDialogWithRequest={openDialogWithRequest}>
+      <div className="max-h-screen custom-scrollbar">
+        <Navbar />
+        <div className="pt-16">
+          {children}
+          {selectedText && rect && isAuthenticated && highlightPopupEnabled && (
+            <HighlightPopup
+              rect={rect}
+              text={selectedText}
+              onSaveNotebook={handleSaveNotebook}
+              onSaveFlashcard={handleSaveFlashcard}
+              onAskAI={handleAskAI}
+            />
+          )}
+        </div>
+        <Footer />
+        {isAuthenticated && (
+          <>
+            <RightMenuDrawer
+              onShowNotebook={setShowNotebook}
+              onShowProgress={setShowLearningProgress}
+              onShowChatbot={setShowChatbot}
+              onShowReport={setShowReportModal}
+              onShowDictionary={setShowDictionary}
+            />
+            <StudyNotebookFlip3D
+              isOpen={showNotebook}
+              onClose={() => {
+                setShowNotebook(false);
+                // Clear clipboard khi đóng
+                setNotebookClipboard("");
+              }}
+              clipboardText={notebookClipboard}
+            />
+            <LearningProgressModal
+              isFirstVisitToday={showLearningProgress}
+              setIsFirstVisitToday={setShowLearningProgress}
+            />
+            <ChatbotDrawer
+              isOpen={showChatbot}
+              onClose={() => setShowChatbot(false)}
+              initialQuestion={chatDrawerQuestion || undefined}
+            />
+            <ReportIssueModal
+              open={showReportModal}
+              onClose={() => setShowReportModal(false)}
+            />
+            <DictionaryDrawer
+              open={showDictionary}
+              onClose={() => setShowDictionary(false)}
+            />
+            <CreateVocabularyModal
+              open={showCreateVocabulary}
+              onClose={() => {
+                setShowCreateVocabulary(false);
+                setHighlightedWord("");
+              }}
+              initialWord={highlightedWord}
+            />
+            <AdjustmentRequestDialog
+              open={showDialog}
+              onClose={closeDialog}
+              request={pendingRequest}
+              onResponded={handleAdjustmentResponded}
+            />
+          </>
         )}
       </div>
-      <Footer />
-      {isAuthenticated && (
-        <>
-          <RightMenuDrawer
-            onShowNotebook={setShowNotebook}
-            onShowProgress={setShowLearningProgress}
-            onShowChatbot={setShowChatbot}
-            onShowReport={setShowReportModal}
-            onShowDictionary={setShowDictionary}
-          />
-          <StudyNotebookFlip3D
-            isOpen={showNotebook}
-            onClose={() => {
-              setShowNotebook(false);
-              // Clear clipboard khi đóng
-              setNotebookClipboard("");
-            }}
-            clipboardText={notebookClipboard}
-          />
-          <LearningProgressModal
-            isFirstVisitToday={showLearningProgress}
-            setIsFirstVisitToday={setShowLearningProgress}
-          />
-          <ChatbotDrawer
-            isOpen={showChatbot}
-            onClose={() => setShowChatbot(false)}
-            initialQuestion={chatDrawerQuestion || undefined}
-          />
-          <ReportIssueModal
-            open={showReportModal}
-            onClose={() => setShowReportModal(false)}
-          />
-          <DictionaryDrawer
-            open={showDictionary}
-            onClose={() => setShowDictionary(false)}
-          />
-          <CreateVocabularyModal
-            open={showCreateVocabulary}
-            onClose={() => {
-              setShowCreateVocabulary(false);
-              setHighlightedWord("");
-            }}
-            initialWord={highlightedWord}
-          />
-        </>
-      )}
-    </div>
+    </AdjustmentProvider>
   );
 }
 

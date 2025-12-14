@@ -25,6 +25,20 @@ export const initSocket = () => {
     console.error("⚠️ Socket connect error:", err.message);
   });
 
+  // Forward any socket event to window as a CustomEvent so other parts
+  // of the app (e.g., topbar) can trigger lightweight reloads.
+  // We intentionally filter out very noisy events if needed later.
+  try {
+    // `onAny` exists on socket.io-client v3+
+    (socket as any).onAny((event: string, ...args: any[]) => {
+      window.dispatchEvent(
+        new CustomEvent("socket:any", { detail: { event, args } })
+      );
+    });
+  } catch (err) {
+    // If onAny isn't available, ignore silently.
+  }
+
   return socket;
 };
 

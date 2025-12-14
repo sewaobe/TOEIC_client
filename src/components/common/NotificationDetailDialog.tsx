@@ -23,6 +23,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { useTheme } from "@mui/material/styles";
 import { Notification } from "../../types/Notification";
+import { useAdjustment } from "../../contexts/AdjustmentContext";
 
 interface NotificationDetailDialogProps {
   open: boolean;
@@ -36,28 +37,66 @@ export default function NotificationDetailDialog({
   notification,
 }: NotificationDetailDialogProps) {
   const theme = useTheme();
+  const { openDialogWithRequest } = useAdjustment();
+
+  const handleOpenAdjustmentRequest = async () => {
+    // Nếu có metadata → mở dialog cụ thể
+    if (notification?.metadata?.adjustmentRequestId) {
+      onClose(); // Đóng detail dialog trước
+      await openDialogWithRequest(notification.metadata.adjustmentRequestId);
+      return;
+    }
+    // Nếu không có metadata thì không thao tác — chỉ đóng/để người dùng xem chi tiết thông báo
+  };
 
   const renderIcon = (type: Notification["type"]) => {
     switch (type) {
       case "chat":
-        return <Chat sx={{ color: theme.palette.primary.main }} fontSize="small" />;
+        return (
+          <Chat sx={{ color: theme.palette.primary.main }} fontSize="small" />
+        );
       case "comment":
-        return <Comment sx={{ color: theme.palette.success.main }} fontSize="small" />;
+        return (
+          <Comment
+            sx={{ color: theme.palette.success.main }}
+            fontSize="small"
+          />
+        );
       case "error":
-        return <ErrorOutline sx={{ color: theme.palette.error.main }} fontSize="small" />;
+        return (
+          <ErrorOutline
+            sx={{ color: theme.palette.error.main }}
+            fontSize="small"
+          />
+        );
       case "test":
-        return <Info sx={{ color: theme.palette.warning.main }} fontSize="small" />; // icon cảnh báo nhẹ
+        return (
+          <Info sx={{ color: theme.palette.warning.main }} fontSize="small" />
+        ); // icon cảnh báo nhẹ
       case "lesson":
-        return <Info sx={{ color: theme.palette.info.main }} fontSize="small" />;
+        return (
+          <Info sx={{ color: theme.palette.info.main }} fontSize="small" />
+        );
       case "flashcard":
-        return <Info sx={{ color: theme.palette.secondary.main }} fontSize="small" />;
+        return (
+          <Info sx={{ color: theme.palette.secondary.main }} fontSize="small" />
+        );
       case "chatbot":
-        return <Chat sx={{ color: theme.palette.info.main }} fontSize="small" />;
+        return (
+          <Chat sx={{ color: theme.palette.info.main }} fontSize="small" />
+        );
       case "other":
-        return <Info sx={{ color: theme.palette.text.secondary }} fontSize="small" />;
+        return (
+          <Info sx={{ color: theme.palette.text.secondary }} fontSize="small" />
+        );
       case "system":
       default:
-        return <NotificationsNone sx={{ color: theme.palette.text.primary }} fontSize="small" />;
+        return (
+          <NotificationsNone
+            sx={{ color: theme.palette.text.primary }}
+            fontSize="small"
+          />
+        );
     }
   };
 
@@ -68,7 +107,8 @@ export default function NotificationDetailDialog({
         return (
           <Box mt={2}>
             <Typography variant="body2" color="text.secondary">
-              Tin nhắn đến từ người dùng: <b>{notification.senderId || "Ẩn danh"}</b>
+              Tin nhắn đến từ người dùng:{" "}
+              <b>{notification.senderId || "Ẩn danh"}</b>
             </Typography>
             <Button
               variant="contained"
@@ -106,6 +146,82 @@ export default function NotificationDetailDialog({
           </Box>
         );
       case "system":
+        // Kiểm tra nếu là adjustment request notification
+        if (notification?.metadata?.adjustmentRequestId) {
+          const responseStatus = notification.metadata.responseStatus;
+          const isResponded =
+            responseStatus &&
+            (responseStatus === "APPROVED" || responseStatus === "REJECTED");
+
+          // Nếu đã phản hồi, hiển thị kết quả với lý do (nếu có)
+          if (isResponded) {
+            const isApproved = responseStatus === "APPROVED";
+            return (
+              <Box mt={2}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Chi tiết yêu cầu điều chỉnh:
+                </Typography>
+                {notification.description && (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.5, mb: 2, whiteSpace: "pre-line" }}
+                  >
+                    {notification.description}
+                  </Typography>
+                )}
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: isApproved ? "success.light" : "error.light",
+                    color: isApproved
+                      ? "success.contrastText"
+                      : "error.contrastText",
+                  }}
+                >
+                  <Typography variant="body1" fontWeight="bold">
+                    {isApproved ? "✅ Bạn đã đồng ý" : "❌ Bạn đã từ chối"}
+                  </Typography>
+                  {!isApproved && notification.metadata.responseReason && (
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      Lý do: {notification.metadata.responseReason}
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            );
+          }
+
+          // Nếu chưa phản hồi, hiển thị button xem yêu cầu
+          return (
+            <Box mt={2}>
+              <Typography variant="body2" color="text.secondary">
+                CTV đã gửi yêu cầu điều chỉnh lộ trình học của bạn.
+              </Typography>
+              {notification.description && (
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.5, whiteSpace: "pre-line" }}
+                >
+                  {notification.description}
+                </Typography>
+              )}
+              <Button
+                variant="contained"
+                color="primary"
+                size="medium"
+                sx={{ mt: 2 }}
+                onClick={handleOpenAdjustmentRequest}
+              >
+                Xem yêu cầu điều chỉnh
+              </Button>
+            </Box>
+          );
+        }
+
+        // System notification thông thường
         return (
           <Box mt={2}>
             <Typography variant="body2" color="text.secondary">
@@ -126,8 +242,8 @@ export default function NotificationDetailDialog({
         return (
           <Box mt={2}>
             <Typography variant="body2" color="text.disabled">
-              Thông báo liên quan đến bài kiểm tra.
-              Vui lòng kiểm tra trang quản lý bài kiểm tra để biết thêm chi tiết.
+              Thông báo liên quan đến bài kiểm tra. Vui lòng kiểm tra trang quản
+              lý bài kiểm tra để biết thêm chi tiết.
             </Typography>
             {notification.description && (
               <Typography
@@ -144,8 +260,8 @@ export default function NotificationDetailDialog({
         return (
           <Box mt={2}>
             <Typography variant="body2" color="text.disabled">
-              Thông báo liên quan đến quản lý bài học.
-              Vui lòng kiểm tra trang quản lý bài học để biết thêm chi tiết.
+              Thông báo liên quan đến quản lý bài học. Vui lòng kiểm tra trang
+              quản lý bài học để biết thêm chi tiết.
             </Typography>
             {notification.description && (
               <Typography
@@ -162,7 +278,8 @@ export default function NotificationDetailDialog({
         return (
           <Box mt={2}>
             <Typography variant="body2" color="text.secondary">
-              Liên quan đến thẻ ghi nhớ (Flashcard). Vui lòng kiểm tra tiến độ ôn tập của bạn.
+              Liên quan đến thẻ ghi nhớ (Flashcard). Vui lòng kiểm tra tiến độ
+              ôn tập của bạn.
             </Typography>
             {notification.description && (
               <Typography

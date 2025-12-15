@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMeetRoom } from "../../hooks/useMeetRoom";
+import { useNavigate } from "react-router-dom";
 
 // MUI Icons
 import MicIcon from "@mui/icons-material/Mic";
@@ -13,6 +14,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import PeopleIcon from "@mui/icons-material/People";
 import PersonIcon from "@mui/icons-material/Person";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import Pagination from "@mui/material/Pagination";
 
 /* =========================
    ANIMATIONS
@@ -77,6 +79,14 @@ interface RemoteVideoTileProps {
     };
 }
 
+interface NativeSpeaker {
+    id: string;
+    fullname: string;
+    country: string;
+    specialties: string[];
+    rating: number;
+}
+
 function RemoteVideoTile({ participant }: RemoteVideoTileProps) {
     const { userId, fullname, socketId, micOn, camOn, isSpeaking } = participant;
     const displayName = fullname || userId;
@@ -88,7 +98,7 @@ function RemoteVideoTile({ participant }: RemoteVideoTileProps) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ type: "spring", stiffness: 200, damping: 20 }}
-            className="relative bg-gray-900 rounded-2xl overflow-hidden shadow-xl"
+            className="relative bg-white rounded-2xl overflow-hidden shadow-xl border border-gray-200"
             style={{ aspectRatio: "16 / 9" }}
         >
             <video
@@ -113,7 +123,7 @@ function RemoteVideoTile({ participant }: RemoteVideoTileProps) {
 
             {/* Avatar overlay when camera is off */}
             {!camOn && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
                     <div className="relative w-20 h-20 flex items-center justify-center">
                         {micOn && isSpeaking && (
                             <div className="absolute inset-0 rounded-full border-2 border-blue-400 animate-ping" />
@@ -169,7 +179,11 @@ function RemoteVideoTile({ participant }: RemoteVideoTileProps) {
 /* =========================
    MAIN COMPONENT
 ========================= */
-export default function MeetRoomPage() {
+interface MeetRoomPageProps {
+    onBack?: () => void;
+}
+
+export default function MeetRoomPage({ onBack }: MeetRoomPageProps) {
     const {
         micOn,
         camOn,
@@ -191,8 +205,17 @@ export default function MeetRoomPage() {
 
     const [showParticipants, setShowParticipants] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [roomInput, setRoomInput] = useState("");
+    const [nativeSpeakers, setNativeSpeakers] = useState<NativeSpeaker[]>([]);
+    const [loadingNatives, setLoadingNatives] = useState(true);
+    const [nativesError, setNativesError] = useState<string | null>(null);
+    const [selectedNative, setSelectedNative] = useState<NativeSpeaker | null>(null);
+    const [preJoinPhase, setPreJoinPhase] = useState<"select" | "waiting">("select");
+    const [searchTerm, setSearchTerm] = useState<string>("");
     const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+    const [page, setPage] = useState(1);
+    const itemsPerPage = 6;
+
+    const navigate = useNavigate();
 
     const copyRoomId = () => {
         if (!roomId) return;
@@ -201,10 +224,104 @@ export default function MeetRoomPage() {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const handleJoin = () => {
-        const id = roomInput.trim() || `room-${Date.now()}`;
-        setRoomInput(id);
-        joinRoom(id);
+    // Mock fetch native speakers (replace with real API later)
+    useEffect(() => {
+        setLoadingNatives(true);
+        setNativesError(null);
+
+        const fetchNatives = async () => {
+            try {
+                const data = await new Promise<NativeSpeaker[]>(resolve => {
+                    setTimeout(
+                        () =>
+                            resolve([
+                                {
+                                    id: "native-anna",
+                                    fullname: "Anna Johnson",
+                                    country: "USA",
+                                    specialties: ["Interview", "Business", "Daily Conversation"],
+                                    rating: 4.9
+                                },
+                                {
+                                    id: "native-liam",
+                                    fullname: "Liam Smith",
+                                    country: "UK",
+                                    specialties: ["Order Coffee", "Restaurant", "Shopping"],
+                                    rating: 4.8
+                                },
+                                {
+                                    id: "native-sophia",
+                                    fullname: "Sophia Brown",
+                                    country: "Canada",
+                                    specialties: ["Travel", "Hotel", "Airport"],
+                                    rating: 4.7
+                                },
+                                {
+                                    id: "native-noah",
+                                    fullname: "Noah Wilson",
+                                    country: "Australia",
+                                    specialties: ["Job Interview", "Presentation", "Meeting"],
+                                    rating: 4.85
+                                },
+                                {
+                                    id: "native-emma",
+                                    fullname: "Emma Davis",
+                                    country: "USA",
+                                    specialties: ["Small Talk", "Networking", "Social Events"],
+                                    rating: 4.75
+                                },
+                                {
+                                    id: "native-oliver",
+                                    fullname: "Oliver Jones",
+                                    country: "UK",
+                                    specialties: ["Phone Call", "Email", "Customer Service"],
+                                    rating: 4.82
+                                },
+                                {
+                                    id: "native-ava",
+                                    fullname: "Ava Taylor",
+                                    country: "Canada",
+                                    specialties: ["Medical", "Health", "Emergency"],
+                                    rating: 4.88
+                                },
+                                {
+                                    id: "native-william",
+                                    fullname: "William Brown",
+                                    country: "Australia",
+                                    specialties: ["Sports", "Fitness", "Hobbies"],
+                                    rating: 4.72
+                                }
+                            ]),
+                        500
+                    );
+                });
+
+                setNativeSpeakers(data);
+            } catch (err) {
+                console.error("Failed to load native speakers", err);
+                setNativesError("Không thể tải danh sách người bản xứ. Vui lòng thử lại.");
+            } finally {
+                setLoadingNatives(false);
+            }
+        };
+
+        fetchNatives();
+    }, []);
+
+    const handleJoinWithNative = (native: NativeSpeaker) => {
+        setSelectedNative(native);
+        setPreJoinPhase("waiting");
+    };
+
+    const handleCancelNativeRequest = () => {
+        setPreJoinPhase("select");
+        setSelectedNative(null);
+    };
+
+    const handleStartCallNow = () => {
+        if (!selectedNative) return;
+        const targetRoomId = selectedNative.id;
+        joinRoom(targetRoomId);
     };
 
     const handleRequestLeave = () => {
@@ -214,85 +331,257 @@ export default function MeetRoomPage() {
     const handleConfirmLeave = async () => {
         await leaveRoom();
         setShowLeaveConfirm(false);
+        // Reset pre-join state to speaker selection
+        setPreJoinPhase("select");
+        setSelectedNative(null);
+        setSearchTerm("");
+        setPage(1);
     };
 
     const handleCancelLeave = () => {
         setShowLeaveConfirm(false);
     };
 
+    const handleBackToPractice = () => {
+        if (onBack) {
+            onBack();
+        } else {
+            navigate(-1);
+        }
+    };
+
     // ===== PRE-JOIN SCREEN =====
     if (!joined) {
+        const filteredSpeakers = nativeSpeakers.filter(speaker => {
+            const lowered = searchTerm.toLowerCase();
+            const matchesSearch =
+                !lowered ||
+                speaker.fullname.toLowerCase().includes(lowered) ||
+                speaker.country.toLowerCase().includes(lowered) ||
+                speaker.specialties.some(s => s.toLowerCase().includes(lowered));
+            return matchesSearch;
+        });
+
+        const totalPages = Math.ceil(filteredSpeakers.length / itemsPerPage);
+        const paginatedSpeakers = filteredSpeakers.slice(
+            (page - 1) * itemsPerPage,
+            page * itemsPerPage
+        );
+
+        const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
+            setPage(value);
+        };
+
         return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
-                <motion.div
-                    {...fadeInUp}
-                    className="bg-gray-800/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 max-w-md w-full border border-gray-700/50"
-                >
-                    {/* Header */}
-                    <motion.div {...scaleIn} className="text-center mb-8">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
-                            <VideocamIcon style={{ fontSize: 32 }} className="text-white" />
-                        </div>
-                        <h1 className="text-3xl font-bold text-white mb-2">Video Call</h1>
-                        <p className="text-gray-400">Join or create a meeting room</p>
-                    </motion.div>
-
-                    {/* Room ID Input */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="space-y-4"
-                    >
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Room ID
-                            </label>
-                            <input
-                                type="text"
-                                value={roomInput}
-                                onChange={e => setRoomInput(e.target.value)}
-                                placeholder="Enter room ID or leave empty to create new"
-                                className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                            />
-                        </div>
-
-                        {/* Error Message */}
-                        <AnimatePresence>
-                            {mediaError && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="bg-red-500/20 border border-red-500/30 rounded-xl p-4"
-                                >
-                                    <p className="text-red-300 text-sm">{mediaError}</p>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        {/* Join Button */}
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={handleJoin}
-                            className="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+            <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-100 to-slate-200 flex flex-col">
+                <div className="max-w-6xl mx-auto w-full px-4 py-8 md:py-12 relative">
+                    {onBack && (
+                        <button
+                            onClick={handleBackToPractice}
+                            className="absolute -top-2 left-0 md:-top-4 md:-left-2 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-100 transition-colors"
                         >
-                            <VideocamIcon />
-                            Join Meeting
-                        </motion.button>
-                    </motion.div>
+                            <ArrowBackIcon fontSize="small" />
+                        </button>
+                    )}
 
-                    {/* Hint */}
-                    <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                        className="text-center text-gray-500 text-sm mt-6"
-                    >
-                        Tip: Mic & camera will be requested when you click their buttons
-                    </motion.p>
-                </motion.div>
+                    <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-xl border border-gray-200/50 px-4 md:px-8 py-6 md:py-8 space-y-8">
+                        {/* Top header */}
+                        <motion.div
+                            {...fadeInUp}
+                            className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                    <VideocamIcon style={{ fontSize: 28 }} className="text-white" />
+                                </div>
+                                <div>
+                                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                                        Video Call
+                                    </h1>
+                                    <p className="text-gray-600 text-sm md:text-base">
+                                        Kết nối với người bản xứ để luyện nghe và nói.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col items-start md:items-end gap-2">
+                                {mediaError && (
+                                    <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 max-w-sm">
+                                        <p className="text-red-600 text-xs md:text-sm">
+                                            {mediaError}
+                                        </p>
+                                    </div>
+                                )}
+                                <p className="text-gray-500 text-xs md:text-sm">
+                                    Mic & camera sẽ được yêu cầu khi bạn bắt đầu cuộc gọi.
+                                </p>
+                            </div>
+                        </motion.div>
+
+                        {/* Search bar */}
+                        {preJoinPhase === "select" && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100/50 rounded-2xl px-4 py-3 md:px-6 md:py-4"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="text-gray-700 text-sm font-medium whitespace-nowrap">
+                                        Tìm kiếm
+                                    </span>
+                                    <input
+                                        value={searchTerm}
+                                        onChange={e => {
+                                            setSearchTerm(e.target.value);
+                                            setPage(1);
+                                        }}
+                                        placeholder="Tìm theo tên, quốc gia hoặc chuyên môn..."
+                                        className="flex-1 px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {preJoinPhase === "select" && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-4"
+                            >
+                                {nativesError && (
+                                    <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                                        <p className="text-red-600 text-sm">{nativesError}</p>
+                                    </div>
+                                )}
+
+                                {loadingNatives ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {Array.from({ length: 6 }).map((_, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="animate-pulse rounded-2xl bg-gray-200 h-28 border border-gray-300"
+                                            />
+                                        ))}
+                                    </div>
+                                ) : filteredSpeakers.length === 0 ? (
+                                    <p className="text-gray-500 text-sm text-center py-8">
+                                        Không tìm thấy người bản xứ phù hợp.
+                                    </p>
+                                ) : (
+                                    <>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {paginatedSpeakers.map(speaker => (
+                                                <motion.button
+                                                    key={speaker.id}
+                                                    whileHover={{ y: -4, scale: 1.02 }}
+                                                    whileTap={{ scale: 0.98 }}
+                                                    onClick={() => handleJoinWithNative(speaker)}
+                                                    className="w-full text-left bg-white hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 rounded-2xl p-4 border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200"
+                                                >
+                                                    <div className="flex items-start gap-3 mb-3">
+                                                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shadow-md flex-shrink-0">
+                                                            {speaker.fullname.charAt(0)}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-gray-900 text-sm font-semibold truncate">
+                                                                {speaker.fullname}
+                                                            </p>
+                                                            <p className="text-gray-600 text-xs truncate">
+                                                                {speaker.country}
+                                                            </p>
+                                                            <p className="text-yellow-500 text-xs mt-0.5">
+                                                                ★ {speaker.rating.toFixed(1)}
+                                                            </p>
+                                                        </div>
+                                                        <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-600 text-[11px] font-medium flex-shrink-0">
+                                                            Online
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {speaker.specialties.map((specialty, idx) => (
+                                                            <span
+                                                                key={idx}
+                                                                className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium"
+                                                            >
+                                                                {specialty}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </motion.button>
+                                            ))}
+                                        </div>
+                                        {totalPages > 1 && (
+                                            <div className="flex justify-center mt-6">
+                                                <Pagination
+                                                    count={totalPages}
+                                                    page={page}
+                                                    onChange={handlePageChange}
+                                                    color="primary"
+                                                    size="large"
+                                                    showFirstButton
+                                                    showLastButton
+                                                />
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </motion.div>
+                        )}
+
+                        {preJoinPhase === "waiting" && selectedNative && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex flex-col items-center justify-center py-16 gap-6"
+                            >
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="relative w-20 h-20 flex items-center justify-center">
+                                    <div className="absolute inset-0 rounded-full border-2 border-blue-500/60 animate-ping" />
+                                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-semibold shadow-lg">
+                                        {selectedNative.fullname.charAt(0)}
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-gray-600 text-sm mb-1">Đang gửi yêu cầu tới</p>
+                                    <p className="text-gray-900 text-xl font-semibold">
+                                        {selectedNative.fullname}
+                                    </p>
+                                    <p className="text-gray-600 text-xs mt-1">
+                                        {selectedNative.country}
+                                    </p>
+                                    <div className="flex flex-wrap justify-center gap-1.5 mt-2">
+                                        {selectedNative.specialties.map((specialty, idx) => (
+                                            <span
+                                                key={idx}
+                                                className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium"
+                                            >
+                                                {specialty}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="text-gray-600 text-sm max-w-md text-center">
+                                Vui lòng chờ người bản xứ chấp nhận cuộc gọi của bạn. Bạn có thể hủy yêu cầu bất kỳ lúc nào.
+                            </p>
+                            <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
+                                <button
+                                    onClick={handleCancelNativeRequest}
+                                    className="px-4 py-2 rounded-xl bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium border border-gray-300 transition-colors"
+                                >
+                                    Hủy yêu cầu
+                                </button>
+                                <button
+                                    onClick={handleStartCallNow}
+                                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold shadow-lg transition-all"
+                                >
+                                    Bắt đầu cuộc gọi ngay (demo)
+                                </button>
+                            </div>
+                        </motion.div>
+                        )}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -303,7 +592,7 @@ export default function MeetRoomPage() {
         totalParticipants <= 1 ? 1 : totalParticipants <= 4 ? 2 : totalParticipants <= 9 ? 3 : 4;
 
     return (
-        <div className="min-h-screen bg-gray-900 flex flex-col">
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-100 to-slate-200 flex flex-col">
             {/* Error Toast - for permission denied etc */}
             <AnimatePresence>
                 {mediaError && (
@@ -328,29 +617,29 @@ export default function MeetRoomPage() {
             <motion.header
                 initial={{ y: -20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                className="bg-gray-800/90 backdrop-blur-sm border-b border-gray-700/50 px-4 py-3 flex items-center justify-between"
+                className="bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm"
             >
                 <div className="flex items-center gap-4">
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleRequestLeave}
-                        className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-200 transition-colors"
+                        className="p-2 rounded-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 transition-colors"
                     >
                         <ArrowBackIcon style={{ fontSize: 20 }} />
                     </motion.button>
-                    <h1 className="text-white font-semibold">Meeting Room</h1>
+                    <h1 className="text-gray-900 font-semibold">Meeting Room</h1>
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={copyRoomId}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                        className="flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors"
                     >
-                        <span className="text-gray-300 text-sm font-mono">{roomId}</span>
+                        <span className="text-gray-700 text-sm font-mono">{roomId}</span>
                         {copied ? (
-                            <CheckIcon style={{ fontSize: 16 }} className="text-green-400" />
+                            <CheckIcon style={{ fontSize: 16 }} className="text-green-600" />
                         ) : (
-                            <ContentCopyIcon style={{ fontSize: 16 }} className="text-gray-400" />
+                            <ContentCopyIcon style={{ fontSize: 16 }} className="text-gray-500" />
                         )}
                     </motion.button>
                 </div>
@@ -358,10 +647,10 @@ export default function MeetRoomPage() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setShowParticipants(!showParticipants)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors"
                 >
-                    <PeopleIcon style={{ fontSize: 18 }} className="text-gray-300" />
-                    <span className="text-gray-300 text-sm">{totalParticipants}</span>
+                    <PeopleIcon style={{ fontSize: 18 }} className="text-gray-700" />
+                    <span className="text-gray-700 text-sm">{totalParticipants}</span>
                 </motion.button>
             </motion.header>
 
@@ -383,7 +672,7 @@ export default function MeetRoomPage() {
                         {/* Local Video */}
                         <motion.div
                             layout
-                            className="relative bg-gray-800 rounded-2xl overflow-hidden shadow-xl border-2 border-blue-500/80"
+                            className="relative bg-white rounded-2xl overflow-hidden shadow-xl border-2 border-blue-500"
                             style={{ aspectRatio: "16 / 9" }}
                         >
                             <video
@@ -409,7 +698,7 @@ export default function MeetRoomPage() {
 
                             {/* Avatar when camera off */}
                             {!camOn && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+                                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
                                     <div className="relative w-24 h-24 flex items-center justify-center">
                                         {micOn && isSpeaking && (
                                             <div className="absolute inset-0 rounded-full border-2 border-blue-400 animate-ping" />
@@ -467,10 +756,10 @@ export default function MeetRoomPage() {
                             animate={{ width: 280, opacity: 1 }}
                             exit={{ width: 0, opacity: 0 }}
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                            className="bg-gray-800 border-l border-gray-700/50 overflow-hidden"
+                            className="bg-white border-l border-gray-200 overflow-hidden shadow-lg"
                         >
                             <div className="p-4">
-                                <h2 className="text-white font-semibold mb-4">
+                                <h2 className="text-gray-900 font-semibold mb-4">
                                     Participants ({totalParticipants})
                                 </h2>
                                 <div className="space-y-2">
@@ -478,7 +767,7 @@ export default function MeetRoomPage() {
                                     <motion.div
                                         initial={{ x: -20, opacity: 0 }}
                                         animate={{ x: 0, opacity: 1 }}
-                                        className="flex items-center gap-3 p-3 bg-gray-700/50 rounded-xl"
+                                        className="flex items-center gap-3 p-3 bg-slate-800/70 rounded-xl"
                                     >
                                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                                             <PersonIcon className="text-white" />
@@ -508,10 +797,10 @@ export default function MeetRoomPage() {
                                             initial={{ x: -20, opacity: 0 }}
                                             animate={{ x: 0, opacity: 1 }}
                                             transition={{ delay: (idx + 1) * 0.05 }}
-                                            className="flex items-center gap-3 p-3 bg-gray-700/30 rounded-xl"
+                                            className="flex items-center gap-3 p-3 bg-slate-800/40 rounded-xl"
                                         >
-                                            <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
-                                                <PersonIcon className="text-gray-300" />
+                                            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
+                                                <PersonIcon className="text-slate-200" />
                                             </div>
                                             <div className="flex-1">
                                                 <p className="text-white text-sm font-medium">{p.fullname || p.userId}</p>
@@ -545,24 +834,24 @@ export default function MeetRoomPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70"
                     >
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-700/70"
+                            className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-200"
                         >
-                            <h2 className="text-white text-lg font-semibold mb-2">
+                            <h2 className="text-gray-900 text-lg font-semibold mb-2">
                                 Bạn muốn kết thúc cuộc gọi này?
                             </h2>
-                            <p className="text-gray-300 text-sm mb-6">
+                            <p className="text-gray-600 text-sm mb-6">
                                 Dữ liệu sẽ bắt đầu được phân tích sau khi bạn kết thúc cuộc gọi.
                             </p>
                             <div className="flex justify-end gap-3">
                                 <button
                                     onClick={handleCancelLeave}
-                                    className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm font-medium transition-colors"
+                                    className="px-4 py-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-sm font-medium transition-colors"
                                 >
                                     Hủy
                                 </button>
@@ -582,7 +871,7 @@ export default function MeetRoomPage() {
             <motion.footer
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                className="bg-gray-800/90 backdrop-blur-sm border-t border-gray-700/50 px-4 py-4"
+                className="bg-white/95 backdrop-blur-sm border-t border-gray-200 px-4 py-4 shadow-lg"
             >
                 <div className="flex items-center justify-center gap-4">
                     {/* Mic Button */}
@@ -591,7 +880,7 @@ export default function MeetRoomPage() {
                         isOn={micOn}
                         activeIcon={<MicIcon className="text-white" />}
                         inactiveIcon={<MicOffIcon className="text-white" />}
-                        activeColor="bg-gray-600 hover:bg-gray-500"
+                        activeColor="bg-blue-600 hover:bg-blue-500"
                         inactiveColor="bg-red-500 hover:bg-red-400"
                         title={micOn ? "Turn off microphone" : "Turn on microphone"}
                     />
@@ -602,7 +891,7 @@ export default function MeetRoomPage() {
                         isOn={camOn}
                         activeIcon={<VideocamIcon className="text-white" />}
                         inactiveIcon={<VideocamOffIcon className="text-white" />}
-                        activeColor="bg-gray-600 hover:bg-gray-500"
+                        activeColor="bg-blue-600 hover:bg-blue-500"
                         inactiveColor="bg-red-500 hover:bg-red-400"
                         title={camOn ? "Turn off camera" : "Turn on camera"}
                     />

@@ -163,26 +163,7 @@ const PracticeSpeakingPage: React.FC = () => {
             case PracticeSpeakingState.SPEAKING_LIVE:
                 return (
                     <PracticeLayout>
-                        <IconButton
-                            sx={{
-                                position: 'fixed',
-                                top: 100,
-                                left: 16,
-                                zIndex: 999,
-                                backgroundColor: 'white',
-                                boxShadow: 2,
-                                '&:hover': { backgroundColor: '#f3f4f6' }
-                            }}
-                            onClick={() => setAppState(PracticeSpeakingState.SETUP)}
-                        >
-                            <ArrowBackIcon />
-                        </IconButton>
-                        <Box sx={{ mt: 12, textAlign: 'center' }}>
-                            <Typography variant="h4" fontWeight="bold" gutterBottom>
-                                Live Speaking with Native Speaker
-                            </Typography>
-                            <MeetRoomPage />
-                        </Box>
+                        <MeetRoomPage onBack={() => setAppState(PracticeSpeakingState.SETUP)} />
                     </PracticeLayout>
                 );
             case PracticeSpeakingState.ANALYTICS:

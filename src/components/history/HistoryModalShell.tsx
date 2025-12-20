@@ -19,7 +19,8 @@ export type HistoryLessonType =
   | "flash_card"
   | "dictation"
   | "shadowing"
-  | "quiz";
+  | "quiz"
+  | "mini_test";
 
 export interface BaseAttemptSummary {
   id: string;
@@ -191,11 +192,7 @@ export const HistoryModalShell: React.FC<HistoryModalShellProps> = ({
                 )}
               </>
             ) : (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 1 }}
-              >
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 Chọn một lần học ở danh sách bên trái để xem chi tiết.
               </Typography>
             )}

@@ -5,7 +5,10 @@ import { useCountdown } from "../../hooks/useCountDown";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../stores/store";
 import testService from "./../../services/test.service";
-import { mapAnswersToParts } from "../../utils/mapAnswersToParts";
+import {
+  mapAnswersToParts,
+  getPartFromQuestionNo as getPartFromQuestionNumber,
+} from "../../utils/mapAnswersToParts";
 import { ResultPayload } from "../modals/ToeicQuickResultModal";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ConfirmModal from "../modals/ConfirmModal";
@@ -63,8 +66,6 @@ const TestHeader: FC<TestHeaderProps> = ({
   setIsShowSideBar,
   isTourRunning,
   fromLesson = false,
-  openModal,
-  onPlanReady,
 }) => {
   const [state, dispatchLocal] = useReducer(reducer, initialState);
   const [answerTest, setAnswerTest] = useState<ResultPayload>({
@@ -86,8 +87,8 @@ const TestHeader: FC<TestHeaderProps> = ({
   const duration = timeLimitParam
     ? parseInt(timeLimitParam, 10) * 60 // practice có giới hạn
     : parts
-      ? Infinity // practice không giới hạn
-      : 120 * 60; // full test mặc định 120 phút
+    ? Infinity // practice không giới hạn
+    : 120 * 60; // full test mặc định 120 phút
 
   const { timeLeft, formatTime } = useCountdown(duration, isTourRunning);
 
@@ -140,13 +141,26 @@ const TestHeader: FC<TestHeaderProps> = ({
           console.warn("Không lưu được mini_test_show_assessment", e);
         }
 
+        // Lấy day_study_id từ localStorage để trigger auto unlock
+        let dayStudyId: string | undefined;
+        try {
+          const returnInfo = localStorage.getItem("mini_test_return");
+          if (returnInfo) {
+            const parsed = JSON.parse(returnInfo);
+            dayStudyId = parsed.dayId;
+          }
+        } catch (e) {
+          console.warn("Không parse được mini_test_return", e);
+        }
+
         // Gọi IRT ở background, không chặn UI; kết quả chi tiết dùng cho plan ở Lesson
         (async () => {
           try {
             result = await IRT_SERVICE.generateWeeklyPlan(
               testId,
               answersMap,
-              elapsed
+              elapsed,
+              dayStudyId
             );
 
             // Nếu cần, có thể lưu weeklyPlanResult vào localStorage để LessonPage đọc
@@ -155,8 +169,7 @@ const TestHeader: FC<TestHeaderProps> = ({
             console.error("generateWeeklyPlan failed", e);
           }
         })();
-      }
-      else {
+      } else {
         result = await testService.submitTest(
           testId,
           userId,
@@ -244,22 +257,27 @@ const TestHeader: FC<TestHeaderProps> = ({
           }
         }
 
-        const payload = {
-          testId,
-          userId,
-          score: result.score,
-          parts: partsSummary,
-          submit_at: new Date().toISOString(),
-        };
+        // Chỉ lưu vào localStorage nếu KHÔNG phải mini test từ Lesson
+        // (mini test sẽ lấy kết quả từ BE)
+        if (!fromLesson) {
+          const payload = {
+            testId,
+            userId,
+            score: result.score,
+            parts: partsSummary,
+            submit_at: new Date().toISOString(),
+          };
 
-        try {
-          localStorage.setItem("last_test_result", JSON.stringify(payload));
-          if (isDemoTest) {
-            localStorage.setItem("demo_test_result", JSON.stringify(payload));
+          try {
+            localStorage.setItem("last_test_result", JSON.stringify(payload));
+            if (isDemoTest) {
+              localStorage.setItem("demo_test_result", JSON.stringify(payload));
+            }
+          } catch (e) {
+            console.warn("Không lưu được last_test_result vào localStorage", e);
           }
-        } catch (e) {
-          console.warn("Không lưu được last_test_result vào localStorage", e);
         }
+
         // Nếu là mini test bắt nguồn từ Lesson (fromLesson=true), không hiện modal kết quả,
         // thay vào đó điều hướng ngay về LessonPage để hiển thị kết quả trong context của lộ trình học.
         if (fromLesson) {
@@ -306,6 +324,7 @@ const TestHeader: FC<TestHeaderProps> = ({
       return;
     }
 
+    // Build questionMetas với part từ group.part (không dùng questionNumber nữa)
     let fallbackNumber = 1;
     const questionMetas = groups.flatMap((group) =>
       group.questions.map((q) => {
@@ -317,8 +336,11 @@ const TestHeader: FC<TestHeaderProps> = ({
           fallbackNumber = questionNumber + 1;
         }
         const options = Object.keys(q.choices || {});
+        // Lấy part từ group.part (mini test có sẵn), fallback dùng questionNumber cho full test
+        const part = group.part ?? getPartFromQuestionNumber(questionNumber);
         return {
           questionNumber,
+          part, // Thêm field part
           correctAnswer: q.correctAnswer,
           options,
         };
@@ -330,26 +352,78 @@ const TestHeader: FC<TestHeaderProps> = ({
       return;
     }
 
-    const questionNumbers = questionMetas.map((q) => q.questionNumber);
-    // Mục tiêu điểm ~400-420 → đặt tỷ lệ đúng khoảng 40% - 42%
-    const correctRatio = 0.4 + Math.random() * 0.02; // ~400-420 điểm
-    const targetCorrect = Math.max(
-      1,
-      Math.round(questionMetas.length * correctRatio)
-    );
-    const shuffledNumbers = shuffleArray(questionNumbers);
-    const correctSet = new Set(shuffledNumbers.slice(0, targetCorrect));
-
     const metaMap = new Map<
       number,
-      { correctAnswer: string; options: string[] }
+      { correctAnswer: string; options: string[]; part: number }
     >();
     questionMetas.forEach((meta) => {
       metaMap.set(meta.questionNumber, {
         correctAnswer: meta.correctAnswer,
         options: meta.options,
+        part: meta.part,
       });
     });
+
+    let correctSet: Set<number>;
+
+    if (fromLesson) {
+      // === MINI TEST: Part 4,5,7 yếu (10-20% đúng), Part 1,2,3,6 khá (50-60% đúng) ===
+      const weakParts = new Set([4, 5, 7]); // Parts điểm yếu
+      const weakMinRatio = 0.1; // 10%
+      const weakMaxRatio = 0.2; // 20%
+      const strongMinRatio = 0.5; // 50%
+      const strongMaxRatio = 0.6; // 60%
+
+      // Nhóm câu hỏi theo part (DÙNG meta.part từ group, không dùng getPartFromQuestionNumber)
+      const questionsByPart: Map<number, number[]> = new Map();
+      questionMetas.forEach((meta) => {
+        const part = meta.part; // Lấy trực tiếp từ meta.part
+        if (!questionsByPart.has(part)) {
+          questionsByPart.set(part, []);
+        }
+        questionsByPart.get(part)!.push(meta.questionNumber);
+      });
+
+      // Log thống kê để debug
+      console.log(
+        "📊 Questions per part:",
+        Array.from(questionsByPart.entries()).map(
+          ([p, qs]) => `Part ${p}: ${qs.length} câu`
+        )
+      );
+
+      // Chọn câu đúng cho từng part theo tỷ lệ ngẫu nhiên trong khoảng
+      const correctQuestions: number[] = [];
+      questionsByPart.forEach((questions, part) => {
+        let ratio: number;
+        if (weakParts.has(part)) {
+          // Part yếu: random 10-20%
+          ratio = weakMinRatio + Math.random() * (weakMaxRatio - weakMinRatio);
+        } else {
+          // Part khá: random 50-60%
+          ratio =
+            strongMinRatio + Math.random() * (strongMaxRatio - strongMinRatio);
+        }
+        const targetCorrect = Math.max(0, Math.round(questions.length * ratio));
+        const shuffled = shuffleArray(questions);
+        correctQuestions.push(...shuffled.slice(0, targetCorrect));
+      });
+
+      correctSet = new Set(correctQuestions);
+      console.log(
+        `Mini test quick submit: Part 4,5,7 → 10-20% | Part 1,2,3,6 → 50-60%`
+      );
+    } else {
+      // === FULL TEST / PRACTICE: giữ nguyên logic cũ (~40-42% đúng) ===
+      const questionNumbers = questionMetas.map((q) => q.questionNumber);
+      const correctRatio = 0.4 + Math.random() * 0.02; // ~400-420 điểm
+      const targetCorrect = Math.max(
+        1,
+        Math.round(questionMetas.length * correctRatio)
+      );
+      const shuffledNumbers = shuffleArray(questionNumbers);
+      correctSet = new Set(shuffledNumbers.slice(0, targetCorrect));
+    }
 
     const autoFilledAnswers: AnswerItem[] = answers.map((item) => {
       const meta = metaMap.get(item.question);
@@ -399,7 +473,7 @@ const TestHeader: FC<TestHeaderProps> = ({
       const returnInfo = localStorage.getItem("mini_test_return");
       try {
         console.log("mini_test_return:", returnInfo);
-      } catch (e) { }
+      } catch (e) {}
       if (returnInfo) {
         const { dayId, week } = JSON.parse(returnInfo);
         // LessonPage is mounted at `/lesson` route

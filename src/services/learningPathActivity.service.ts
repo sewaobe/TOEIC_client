@@ -2,7 +2,11 @@ import axiosClient from "./axiosClient";
 
 export const learningPathActivityService = {
   // Lesson
-  submitLesson: async (lessonId: string, dayStudyId: string, timeSpentSec: number) =>
+  submitLesson: async (
+    lessonId: string,
+    dayStudyId: string,
+    timeSpentSec: number
+  ) =>
     axiosClient.post(`/lessons-learningpath/${lessonId}/complete`, {
       day_study_id: dayStudyId,
       time_spent: timeSpentSec,
@@ -29,9 +33,12 @@ export const learningPathActivityService = {
 
   // Dictation
   getDictation: async (dictationId: string, dayStudyId?: string) => {
-    const res = await axiosClient.get(`/dictation-learningpath/${dictationId}`, {
-      params: { day_study_id: dayStudyId },
-    });
+    const res = await axiosClient.get(
+      `/dictation-learningpath/${dictationId}`,
+      {
+        params: { day_study_id: dayStudyId },
+      }
+    );
     return res.data?.data || res.data;
   },
   submitDictation: async (
@@ -46,9 +53,12 @@ export const learningPathActivityService = {
 
   // Shadowing
   getShadowing: async (shadowingId: string, dayStudyId?: string) => {
-    const res = await axiosClient.get(`/shadowing-learningpath/${shadowingId}`, {
-      params: { day_study_id: dayStudyId },
-    });
+    const res = await axiosClient.get(
+      `/shadowing-learningpath/${shadowingId}`,
+      {
+        params: { day_study_id: dayStudyId },
+      }
+    );
     return res.data?.data || res.data;
   },
   submitShadowing: async (
@@ -77,6 +87,18 @@ export const learningPathActivityService = {
       day_study_id: string;
     }
   ) => axiosClient.post(`/flashcards-learningpath/${topicId}/submit`, payload),
+
+  // Mini Test - chỉ cần complete activity (submit đã xử lý ở TestHeader)
+  completeMiniTest: async (
+    testId: string,
+    dayStudyId: string,
+    userTestId: string
+  ) =>
+    axiosClient.post(`/day-study/${dayStudyId}/complete-activity`, {
+      activity_id: testId,
+      activity_type: "MINI_TEST",
+      attempt_id: userTestId,
+    }),
 };
 
 export default learningPathActivityService;

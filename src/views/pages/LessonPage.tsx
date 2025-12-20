@@ -51,10 +51,12 @@ import { historyService } from "../../services/history.service";
 import { learningPathActivityService } from "../../services/learningPathActivity.service";
 import { useNavigate } from "react-router-dom";
 import AssessmentModal from "../../components/modals/AssessmentModal";
+import userTestService from "../../services/user_test.service";
 
 interface MiniTestResult {
   testId: string;
   userId: string;
+  userTestId: string; // ID của bản ghi UserTest để complete activity
   score: number;
   parts: Array<{ part_name: string; accuracy: number }>;
   submit_at: string;
@@ -387,6 +389,59 @@ export default function LessonPage() {
         );
       }
 
+      if (attempt.type === "mini_test") {
+        return (
+          <Box>
+            <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+              Lịch sử làm Mini Test
+            </Typography>
+            <Typography variant="body2">Điểm: {attempt.scoreLabel}</Typography>
+            {attempt.durationSec != null && (
+              <Typography variant="body2">
+                Thời lượng: {Math.round(attempt.durationSec / 60)} phút
+              </Typography>
+            )}
+            {meta.questionCount != null && (
+              <Typography variant="body2">
+                Số câu hỏi: {meta.questionCount}
+              </Typography>
+            )}
+            {meta.correctCount != null && (
+              <Typography variant="body2">
+                Số câu đúng: {meta.correctCount}
+              </Typography>
+            )}
+            {Array.isArray(meta.parts) && meta.parts.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Độ chính xác theo từng phần
+                </Typography>
+                <TableContainer component={Paper} sx={{ maxHeight: 240 }}>
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Phần</TableCell>
+                        <TableCell align="right">Độ chính xác (%)</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {meta.parts.map((part: any, idx: number) => (
+                        <TableRow key={idx} hover>
+                          <TableCell>{part.part_name}</TableCell>
+                          <TableCell align="right">
+                            {Math.round(part.accuracy)}%
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+          </Box>
+        );
+      }
+
       return (
         <Box>
           <Typography variant="subtitle1" fontWeight={700} gutterBottom>
@@ -455,21 +510,54 @@ export default function LessonPage() {
     window.scroll(0, 0);
   }, [currentLesson]);
 
-  // Check for mini test result from localStorage
+  // Check for mini test result from BE (when returning from test page)
   React.useEffect(() => {
     const returnInfo = localStorage.getItem("mini_test_return");
-    if (returnInfo) {
-      const resultData = localStorage.getItem("last_test_result");
-      if (resultData) {
-        try {
-          const result: MiniTestResult = JSON.parse(resultData);
-          setMiniTestResult(result);
-        } catch (err) {
-          console.error("Lỗi parse mini test result:", err);
-        }
-      }
-      // Không xóa mini_test_return ở đây nữa; LessonPage vẫn dùng để biết nơi quay lại
+    if (!returnInfo) return;
+
+    // Parse thông tin return
+    let testId: string | undefined;
+    try {
+      const parsed = JSON.parse(returnInfo);
+      testId = parsed.testId; // testId đã được lưu trong MiniTestIntro
+    } catch (e) {
+      console.warn("Lỗi parse mini_test_return", e);
     }
+
+    if (!testId) return;
+
+    // Fetch kết quả mới nhất của mini test từ BE
+    const fetchMiniTestResult = async () => {
+      try {
+        // Gọi API lấy lịch sử test, lấy bản ghi mới nhất
+        const historyData = await userTestService.getUserTestHistories(
+          1,
+          1,
+          testId
+        );
+        if (historyData && historyData.data && historyData.data.length > 0) {
+          const latest = historyData.data[0];
+          // Build MiniTestResult từ data BE
+          const result: MiniTestResult = {
+            testId,
+            userId: latest.user_id || "",
+            userTestId: latest._id || "", // ID của UserTest record
+            score: latest.score,
+            parts:
+              latest.parts?.map((p: any) => ({
+                part_name: p.part_name,
+                accuracy: p.accuracy,
+              })) || [],
+            submit_at: latest.submit_at || new Date().toISOString(),
+          };
+          setMiniTestResult(result);
+        }
+      } catch (err) {
+        console.error("Lỗi fetch mini test result:", err);
+      }
+    };
+
+    fetchMiniTestResult();
   }, [dayId, week]);
 
   // Khi quay lại từ mini_test: xem có cần mở AssessmentModal không
@@ -529,12 +617,46 @@ export default function LessonPage() {
     setHistoryLoading(true);
     try {
       const type = currentLesson.type as HistoryLessonType;
-      const data = await historyService.getLessonHistory(
-        type,
-        currentLesson.id
-      );
-      setHistoryAttempts(data);
-      setSelectedAttemptId(data[0]?.id);
+
+      // Mini test sử dụng API khác (userTest history)
+      if (type === "mini_test") {
+        const historyData = await userTestService.getUserTestHistories(
+          1,
+          20,
+          currentLesson.id
+        );
+
+        // Map data từ UserTest history sang BaseAttemptSummary
+        const mapped = (historyData.data || []).map((h: any) => ({
+          id: h._id,
+          type: "mini_test" as const,
+          started_at: h.submit_at,
+          finished_at: h.submit_at,
+          durationSec: h.duration,
+          scoreLabel: `${h.score} điểm`,
+          scoreValue: h.score,
+          submit_type: "mini_test",
+          meta: {
+            correctCount: h.correctCount,
+            questionCount: h.questionCount,
+            parts: h.parts || [],
+          },
+        }));
+
+        setHistoryAttempts(mapped);
+        setSelectedAttemptId(mapped[0]?.id);
+      } else {
+        // Các loại khác dùng historyService
+        const data = await historyService.getLessonHistory(
+          type,
+          currentLesson.id
+        );
+        setHistoryAttempts(data);
+        setSelectedAttemptId(data[0]?.id);
+      }
+    } catch (err) {
+      console.error("Error loading history:", err);
+      setHistoryAttempts([]);
     } finally {
       setHistoryLoading(false);
     }
@@ -761,7 +883,7 @@ export default function LessonPage() {
             JSON.stringify({
               dayId,
               week,
-              lessonId: currentLesson.id,
+              testId: currentLesson.id, // testId để fetch history sau
             })
           );
           // Navigate directly to test page (skip overview)
@@ -899,7 +1021,18 @@ export default function LessonPage() {
         <MiniTestResultCard
           score={miniTestResult.score}
           parts={miniTestResult.parts}
-          onNext={() => {
+          onNext={async () => {
+            // Complete mini test activity trước khi chuyển tiếp
+            try {
+              await learningPathActivityService.completeMiniTest(
+                currentLesson.id,
+                dayId,
+                miniTestResult.userTestId // Dùng userTestId (ID của UserTest record)
+              );
+              console.log("✅ Mini test completed successfully");
+            } catch (err) {
+              console.error("⚠️ Failed to complete mini test:", err);
+            }
             setMiniTestResult(null);
             completeAndGoToNext();
           }}

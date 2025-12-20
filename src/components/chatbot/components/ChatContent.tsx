@@ -11,6 +11,7 @@ import { ChatInputBar } from "./ChatInputBar";
 import { ChatMessage, ChatSession, ChatType } from "../../../types/Chat";
 import { useEffect, useRef, useState } from "react";
 import { chatService } from "../../../services/chat.service";
+import MarkdownPreview from "@uiw/react-markdown-preview";
 
 interface ChatContentProps {
     session: ChatSession;
@@ -201,7 +202,25 @@ export function ChatContent({
                                                     textAlign: "justify"
                                                 }}
                                             >
-                                                {msg.text}
+                                                {isUser ? (
+                                                    // User messages: plain text
+                                                    msg.text
+                                                ) : (
+                                                    // Bot messages: render markdown
+                                                    <MarkdownPreview
+                                                        source={msg.text}
+                                                        style={{
+                                                            background: "transparent",
+                                                            color: "inherit",
+                                                            fontSize: "inherit",
+                                                            fontFamily: "inherit",
+                                                            padding: 0,
+                                                        }}
+                                                        wrapperElement={{
+                                                            "data-color-mode": "light"
+                                                        }}
+                                                    />
+                                                )}
                                             </div>
                                         )}
 

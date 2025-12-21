@@ -17,9 +17,11 @@ import {
   Stack,
   LinearProgress,
   Autocomplete,
+  InputAdornment,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import { useDebounce } from "../../hooks/useDebounce";
 import { topicService } from "../../services/topic.service";
 import { vocabularyService } from "../../services/vocabulary.service";
 import { useDispatch } from "react-redux";
@@ -35,7 +37,7 @@ interface CreateVocabularyModalProps {
 }
 
 interface Topic {
-  _id: string;
+  id: string;
   title: string;
   description: string;
 }
@@ -62,6 +64,8 @@ const CreateVocabularyModal: React.FC<CreateVocabularyModalProps> = ({
   const [loadingTopics, setLoadingTopics] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showExtra, setShowExtra] = useState(false);
+  const [phoneticLoading, setPhoneticLoading] = useState(false);
+  const [phoneticEdited, setPhoneticEdited] = useState(false);
 
   // New Topic Form
   const [newTopicTitle, setNewTopicTitle] = useState("");
@@ -91,7 +95,14 @@ const CreateVocabularyModal: React.FC<CreateVocabularyModalProps> = ({
     setLoadingTopics(true);
     try {
       const response = await topicService.getAllTopicVocabulary(1, 100);
-      setTopics(response.items);
+      // response.items is an array of FlashcardList which contains `_id`.
+      // Map to our `Topic` shape: { id, title, description }
+      const mapped: Topic[] = (response.items || []).map((it: any) => ({
+        id: it._id ?? it.id ?? "",
+        title: it.title ?? "",
+        description: it.description ?? "",
+      }));
+      setTopics(mapped);
     } catch (error) {
       console.error("Error loading topics:", error);
       dispatch(
@@ -111,6 +122,8 @@ const CreateVocabularyModal: React.FC<CreateVocabularyModalProps> = ({
 
   const handleVocabularyChange = (field: keyof VocabularyFormData, value: any) => {
     setVocabularyData((prev) => ({ ...prev, [field]: value }));
+    if (field === "phonetic") setPhoneticEdited(true);
+    if (field === "word") setPhoneticEdited(false);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -120,6 +133,51 @@ const CreateVocabularyModal: React.FC<CreateVocabularyModalProps> = ({
     reader.onloadend = () => setVocabularyData((prev) => ({ ...prev, image: reader.result as string }));
     reader.readAsDataURL(file);
   };
+
+  const debouncedWord = useDebounce(vocabularyData.word, 500);
+
+  useEffect(() => {
+    const w = debouncedWord?.trim();
+    if (!w) {
+      // nếu rỗng thì clear (nếu user chưa chỉnh sửa)
+      if (!phoneticEdited) {
+        setVocabularyData((prev) => ({ ...prev, phonetic: "" }));
+      }
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setPhoneticLoading(true);
+        const res = await fetch(
+          `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(w)}`
+        );
+        if (!res.ok) {
+          if (!cancelled && !phoneticEdited) setVocabularyData((prev) => ({ ...prev, phonetic: "" }));
+          return;
+        }
+        const data = (await res.json()) as any;
+        const entry = Array.isArray(data) && data.length ? data[0] : null;
+        let phon = "";
+        if (entry) {
+          phon = entry.phonetic || (entry.phonetics && entry.phonetics.find((p: any) => p.text)?.text) || "";
+        }
+        if (!cancelled && !phoneticEdited) {
+          setVocabularyData((prev) => ({ ...prev, phonetic: phon || prev.phonetic }));
+        }
+      } catch (err) {
+        if (!cancelled && !phoneticEdited) setVocabularyData((prev) => ({ ...prev, phonetic: "" }));
+      } finally {
+        if (!cancelled) setPhoneticLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedWord]);
 
   const handleRemoveImage = () => setVocabularyData((prev) => ({ ...prev, image: null }));
 
@@ -310,7 +368,7 @@ const CreateVocabularyModal: React.FC<CreateVocabularyModalProps> = ({
             <FormControl fullWidth>
               <InputLabel>Chọn Chủ Đề</InputLabel>
               <Select
-                value={selectedTopicId}
+                    value={selectedTopicId ?? ""}
                 onChange={(e) => setSelectedTopicId(e.target.value)}
                 label="Chọn Chủ Đề"
                 disabled={loadingTopics || submitting}
@@ -324,7 +382,7 @@ const CreateVocabularyModal: React.FC<CreateVocabularyModalProps> = ({
                   <MenuItem disabled>Chưa có chủ đề nào</MenuItem>
                 ) : (
                   topics.map((topic) => (
-                    <MenuItem key={topic._id} value={topic._id}>
+                    <MenuItem key={topic.id} value={topic.id}>
                       {topic.title}
                     </MenuItem>
                   ))
@@ -485,6 +543,13 @@ const CreateVocabularyModal: React.FC<CreateVocabularyModalProps> = ({
               sx={{ mb: 3 }}
               placeholder="/prəˌnʌnsiˈeɪʃn/"
               disabled={submitting}
+              InputProps={{
+                endAdornment: phoneticLoading ? (
+                  <InputAdornment position="end">
+                    <CircularProgress size={18} />
+                  </InputAdornment>
+                ) : undefined,
+              }}
             />
 
             <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>

@@ -10,6 +10,9 @@ import userTestService from "../../services/user_test.service";
 import { AnswerListSection } from "../../components/testResult/AnswerListSection";
 import Comments from "../../components/testDetail/Comments";
 import AnswerDetailModal from "../../components/testResult/AnswerDetailModal";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "../../stores/store";
+import { disableHighlightPopup, enableHighlightPopup } from "../../stores/highlightPopupSlice";
 
 const ResultTestPage = () => {
     const location = useLocation();
@@ -62,7 +65,7 @@ const ResultTestPage = () => {
             return part !== undefined && q.isCorrect && part >= 5 && part <= 7;
         }).length
         : 0;
-
+    const dispatch = useDispatch<AppDispatch>();
     useEffect(() => {
         const fetchDetail = async () => {
             try {
@@ -80,6 +83,13 @@ const ResultTestPage = () => {
         fetchDetail();
         const storedTitle = localStorage.getItem("title_test") || "TOEIC Test";
         setTestTitle(storedTitle);
+
+
+        dispatch(enableHighlightPopup());
+
+        return () => {
+            dispatch(disableHighlightPopup());
+        }
     }, []);
 
     return (

@@ -16,7 +16,15 @@ export const topicService = {
                 limit
             }
         })
-        return res.data
+
+        const data = res.data.items.map((item: any) => ({
+            ...item,
+            _id: item.id
+        }))
+        return {
+            ...res.data,
+            items: data
+        }
     },
     getTopicVocabularyExplore: async (page = 1, limit = 7): Promise<{
         items: FlashcardExplore[];

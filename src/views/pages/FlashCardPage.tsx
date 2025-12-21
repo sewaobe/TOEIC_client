@@ -14,6 +14,7 @@ export interface FlashcardList {
     tags: string[];
     isPublic: boolean;
     created_at: string;
+    wordCount?: number;
 }
 
 const FlashcardsPage: React.FC = () => {

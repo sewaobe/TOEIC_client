@@ -56,7 +56,6 @@ export const MyListCard: React.FC<MyListCardProps> = ({ item, onCreateCard, onDe
             </Paper>
         );
     }
-
     const handleClick = () => {
         navigate(`/flash-cards/${item._id}?type=myList`);
         localStorage.setItem("flashcardInfo", JSON.stringify(item));
@@ -127,7 +126,7 @@ export const MyListCard: React.FC<MyListCardProps> = ({ item, onCreateCard, onDe
                 {/* Thông tin */}
                 <Box sx={{ display: "flex", gap: 2, color: "text.secondary", fontSize: 14, mb: 2 }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                        <LocalOfferIcon sx={{ fontSize: 16 }} /> <span>{item.vocabularies_id?.length || 0} từ</span>
+                        <LocalOfferIcon sx={{ fontSize: 16 }} /> <span>{item?.wordCount || 0} từ</span>
                     </Box>
                 </Box>
 

@@ -10,10 +10,12 @@ import {
     Stack,
     LinearProgress,
     CircularProgress,
+    InputAdornment,
 } from '@mui/material';
 import BaseModal from './BaseModal';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import { useDebounce } from '../../hooks/useDebounce';
 
 interface CreateFlashcardItemModalProps {
     open: boolean;
@@ -48,6 +50,7 @@ const CreateFlashcardItemModal: React.FC<CreateFlashcardItemModalProps> = ({
     const [image, setImage] = useState<string | null>(null);
     const [type, setType] = useState('');
     const [phonetic, setPhonetic] = useState('');
+    const [phoneticLoading, setPhoneticLoading] = useState(false);
     const [examples, setExamples] = useState<{ en: string; vi: string }[]>([]);
     const [notes, setNotes] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -71,6 +74,47 @@ const CreateFlashcardItemModal: React.FC<CreateFlashcardItemModalProps> = ({
             setNotes('');
         }
     }, [editData, open]);
+
+    const debouncedWord = useDebounce(word, 500);
+
+    useEffect(() => {
+        const w = debouncedWord?.trim();
+        if (!w) {
+            // nếu ô từ rỗng thì không lấy
+            setPhonetic((prev) => (prev && editData && editData.word === word ? prev : ''));
+            return;
+        }
+
+        let cancelled = false;
+
+        (async () => {
+            try {
+                setPhoneticLoading(true);
+                const res = await fetch(
+                    `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(w)}`
+                );
+                if (!res.ok) {
+                    if (!cancelled) setPhonetic('');
+                    return;
+                }
+                const data = (await res.json()) as any;
+                const entry = Array.isArray(data) && data.length ? data[0] : null;
+                let phon = '';
+                if (entry) {
+                    phon = entry.phonetic || (entry.phonetics && entry.phonetics.find((p: any) => p.text)?.text) || '';
+                }
+                if (!cancelled) setPhonetic(phon || '');
+            } catch (err) {
+                if (!cancelled) setPhonetic('');
+            } finally {
+                if (!cancelled) setPhoneticLoading(false);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [debouncedWord]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -240,6 +284,13 @@ const CreateFlashcardItemModal: React.FC<CreateFlashcardItemModalProps> = ({
                             onChange={(e) => setPhonetic(e.target.value)}
                             sx={{ mb: 3 }}
                             disabled={isLoading}
+                            InputProps={{
+                                endAdornment: phoneticLoading ? (
+                                    <InputAdornment position="end">
+                                        <CircularProgress size={18} />
+                                    </InputAdornment>
+                                ) : undefined,
+                            }}
                         />
 
                         <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>

@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../stores/store';
 import learningPathService from '../../services/learningPath.service';
+import OnboardingModal from '../modals/OnBoardingModal';
 
 // Định nghĩa kiểu cho props của FeatureItem
 interface FeatureItemProps {
@@ -44,6 +45,7 @@ const FeatureSection: React.FC = () => {
   
   const [hasLearningPath, setHasLearningPath] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [openOnboarding, setOpenOnboarding] = useState(false);
 
   useEffect(() => {
     const checkLearningPath = async () => {
@@ -237,7 +239,7 @@ const FeatureSection: React.FC = () => {
               variant='contained'
               size='large'
               className='rounded-full px-8 py-3 normal-case font-bold'
-              onClick={() => navigate(`/overview-test?testId=68af851b1918226d4c424e7f&demo_test=true`)}
+              onClick={() => setOpenOnboarding(true)}
               sx={{
                 backgroundColor: theme.palette.primary.main,
                 color: '#fff',
@@ -251,6 +253,12 @@ const FeatureSection: React.FC = () => {
           </div>
         </>
       )}
+      {/* Onboarding modal shown for new users; navigates when closed */}
+      <OnboardingModal
+        open={openOnboarding}
+        onClose={() => setOpenOnboarding(false)}
+        onNavigate={() => navigate(`/overview-test?testId=68af851b1918226d4c424e7f&demo_test=true`)}
+      />
     </Box>
   );
 };

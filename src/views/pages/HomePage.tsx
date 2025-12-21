@@ -7,7 +7,6 @@ import TestSection from "../../components/Home/TestSection";
 import ScrollToTopButton from "../../components/common/ScrollToTopButton";
 import testService from "../../services/test.service";
 import { ITestCard } from "../../types/Test";
-import { WelcomeModal } from "../../components/welcome/WelcomeModal";
 
 const HomePage: FC = () => {
   const [latestTests, setLatestTests] = useState<ITestCard[]>([]);
@@ -51,10 +50,7 @@ const HomePage: FC = () => {
         />
         <ScrollToTopButton scrollThreshold={700} />
       </Box>
-      <WelcomeModal
-        open={isOpenWelcomeModal}
-        onClose={() => setIsOpenWelcomeModal(false)}
-      />
+     
     </MainLayout>
   );
 };

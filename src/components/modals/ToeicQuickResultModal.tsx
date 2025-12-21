@@ -3,12 +3,14 @@ import {
   Box,
   Stack,
   Typography,
+  Tooltip,
   Chip,
   Button,
   Card,
   CardContent,
   CircularProgress,
   Grid,
+  useTheme,
 } from "@mui/material";
 import BaseModal from "./BaseModal";
 import VisibilityOutlined from "@mui/icons-material/VisibilityOutlined";
@@ -107,31 +109,65 @@ const PartMiniCard = ({
   total: number;
 }) => {
   const acc = total ? correct / total : 0;
+  const theme = useTheme();
   return (
     <Card
       elevation={0}
       className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/70 backdrop-blur-md shadow-[0_8px_30px_rgba(0,0,0,0.06)]"
     >
-      <CardContent className="p-3">
-        <Stack
-          direction="row"
-          alignItems="center"
-          justifyContent="space-between"
+      <CardContent
+        sx={{
+          p: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          gap: 1,
+          minHeight: { xs: 120, sm: 120 },
+        }}
+      >
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Tooltip title={title} arrow>
+            <Typography
+              variant="body2"
+              className="font-semibold"
+              sx={{
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: 'block',
+                maxWidth: '100%',
+              }}
+            >
+              {title}
+            </Typography>
+          </Tooltip>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Typography variant="caption" color="text.secondary">
+              {correct}/{total} • {pctText(acc)}
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Progress track - fixed height to ensure consistent rendering */}
+        <Box
+          sx={{
+            mt: 1.5,
+            height: 8,
+            width: '100%',
+            borderRadius: 999,
+            bgcolor: (t) => (t.palette.mode === 'dark' ? t.palette.grey[800] : t.palette.grey[100]),
+            overflow: 'hidden',
+            alignSelf: 'stretch',
+          }}
         >
-          <Typography variant="body2" className="font-semibold">
-            {title}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {correct}/{total} • {pctText(acc)}
-          </Typography>
-        </Stack>
-        <Box className="mt-2 h-2 w-full rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
           <Box
-            className="h-2 rounded-full"
-            style={{
+            sx={{
+              height: '100%',
+              borderRadius: 'inherit',
               width: `${acc * 100}%`,
-              background:
-                "linear-gradient(90deg, var(--mui-palette-primary-main), var(--mui-palette-success-main))",
+              bgcolor: theme.palette.primary.main,
+              transition: 'width 300ms ease',
+              display: 'block',
             }}
           />
         </Box>

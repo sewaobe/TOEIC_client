@@ -181,9 +181,10 @@ function RemoteVideoTile({ participant }: RemoteVideoTileProps) {
 ========================= */
 interface MeetRoomPageProps {
     onBack?: () => void;
+    isNativeHuman?: boolean;
 }
 
-export default function MeetRoomPage({ onBack }: MeetRoomPageProps) {
+export default function MeetRoomPage({ onBack, isNativeHuman = false }: MeetRoomPageProps) {
     const {
         micOn,
         camOn,
@@ -209,6 +210,7 @@ export default function MeetRoomPage({ onBack }: MeetRoomPageProps) {
     const [loadingNatives, setLoadingNatives] = useState(true);
     const [nativesError, setNativesError] = useState<string | null>(null);
     const [selectedNative, setSelectedNative] = useState<NativeSpeaker | null>(null);
+    const [incomingRequests, setIncomingRequests] = useState<{ id: string; studentId: string; studentName: string; roomId: string; message?: string }[]>([]);
     const [preJoinPhase, setPreJoinPhase] = useState<"select" | "waiting">("select");
     const [searchTerm, setSearchTerm] = useState<string>("");
     const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -349,6 +351,93 @@ export default function MeetRoomPage({ onBack }: MeetRoomPageProps) {
             navigate(-1);
         }
     };
+
+    // mock incoming requests for native human users
+    useEffect(() => {
+        if (!isNativeHuman) return;
+        const mock = [
+            { id: 'req-1', studentId: 's1', studentName: 'Nguyen Van A', roomId: 's1-room', message: 'Practice speaking - B1' },
+            { id: 'req-2', studentId: 's4', studentName: 'Pham Van D', roomId: 's4-room', message: 'Conversation - A2' }
+        ];
+        setIncomingRequests(mock);
+    }, [isNativeHuman]);
+
+    const handleAcceptRequest = (req: { id: string; studentId: string; studentName: string; roomId: string }) => {
+        // in real app notify server; here directly join
+        joinRoom(req.roomId);
+    };
+
+    const handleDeclineRequest = (id: string) => {
+        setIncomingRequests(prev => prev.filter(r => r.id !== id));
+    };
+
+
+    // If native human: show incoming student requests (accept to join their room)
+    if (!joined && isNativeHuman) {
+        return (
+            <div className="min-h-screen flex items-start justify-center py-8">
+                <div className="w-full max-w-5xl px-4">
+                    <div className="bg-gradient-to-br from-white/80 to-indigo-50/60 rounded-3xl shadow-2xl p-6 border border-gray-100">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h2 className="text-2xl font-semibold text-gray-900">Incoming Call Requests</h2>
+                                <p className="text-sm text-gray-500">Students requesting practice with you. Accept to join their room.</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => {
+                                        if (onBack) onBack(); else navigate(-1);
+                                    }}
+                                    className="px-3 py-1 rounded-lg bg-white border border-gray-200 text-sm text-gray-700 hover:bg-gray-50"
+                                >
+                                    Back
+                                </button>
+                            </div>
+                        </div>
+
+                        {incomingRequests.length === 0 ? (
+                            <div className="py-12 text-center">
+                                <p className="text-gray-600">No incoming requests right now. You'll see them here when students ask for a session.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {incomingRequests.map(req => (
+                                    <div key={req.id} className="flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm border border-gray-100">
+                                        <div className="flex-shrink-0">
+                                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-semibold">
+                                                {req.studentName.charAt(0)}
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-gray-900 font-medium truncate">{req.studentName}</p>
+                                            <p className="text-sm text-gray-500 truncate">{req.message}</p>
+                                            <div className="mt-2 flex gap-2">
+                                                <span className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded">New</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => handleDeclineRequest(req.id)}
+                                                className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50"
+                                            >
+                                                Decline
+                                            </button>
+                                            <button
+                                                onClick={() => handleAcceptRequest(req)}
+                                                className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-teal-500 text-white text-sm font-semibold shadow"
+                                            >
+                                                Accept
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     // ===== PRE-JOIN SCREEN =====
     if (!joined) {
@@ -534,51 +623,51 @@ export default function MeetRoomPage({ onBack }: MeetRoomPageProps) {
                                 animate={{ opacity: 1, y: 0 }}
                                 className="flex flex-col items-center justify-center py-16 gap-6"
                             >
-                            <div className="flex flex-col items-center gap-4">
-                                <div className="relative w-20 h-20 flex items-center justify-center">
-                                    <div className="absolute inset-0 rounded-full border-2 border-blue-500/60 animate-ping" />
-                                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-semibold shadow-lg">
-                                        {selectedNative.fullname.charAt(0)}
+                                <div className="flex flex-col items-center gap-4">
+                                    <div className="relative w-20 h-20 flex items-center justify-center">
+                                        <div className="absolute inset-0 rounded-full border-2 border-blue-500/60 animate-ping" />
+                                        <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-semibold shadow-lg">
+                                            {selectedNative.fullname.charAt(0)}
+                                        </div>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-gray-600 text-sm mb-1">Đang gửi yêu cầu tới</p>
+                                        <p className="text-gray-900 text-xl font-semibold">
+                                            {selectedNative.fullname}
+                                        </p>
+                                        <p className="text-gray-600 text-xs mt-1">
+                                            {selectedNative.country}
+                                        </p>
+                                        <div className="flex flex-wrap justify-center gap-1.5 mt-2">
+                                            {selectedNative.specialties.map((specialty, idx) => (
+                                                <span
+                                                    key={idx}
+                                                    className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium"
+                                                >
+                                                    {specialty}
+                                                </span>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="text-center">
-                                    <p className="text-gray-600 text-sm mb-1">Đang gửi yêu cầu tới</p>
-                                    <p className="text-gray-900 text-xl font-semibold">
-                                        {selectedNative.fullname}
-                                    </p>
-                                    <p className="text-gray-600 text-xs mt-1">
-                                        {selectedNative.country}
-                                    </p>
-                                    <div className="flex flex-wrap justify-center gap-1.5 mt-2">
-                                        {selectedNative.specialties.map((specialty, idx) => (
-                                            <span
-                                                key={idx}
-                                                className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium"
-                                            >
-                                                {specialty}
-                                            </span>
-                                        ))}
-                                    </div>
+                                <p className="text-gray-600 text-sm max-w-md text-center">
+                                    Vui lòng chờ người bản xứ chấp nhận cuộc gọi của bạn. Bạn có thể hủy yêu cầu bất kỳ lúc nào.
+                                </p>
+                                <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
+                                    <button
+                                        onClick={handleCancelNativeRequest}
+                                        className="px-4 py-2 rounded-xl bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium border border-gray-300 transition-colors"
+                                    >
+                                        Hủy yêu cầu
+                                    </button>
+                                    <button
+                                        onClick={handleStartCallNow}
+                                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold shadow-lg transition-all"
+                                    >
+                                        Bắt đầu cuộc gọi ngay (demo)
+                                    </button>
                                 </div>
-                            </div>
-                            <p className="text-gray-600 text-sm max-w-md text-center">
-                                Vui lòng chờ người bản xứ chấp nhận cuộc gọi của bạn. Bạn có thể hủy yêu cầu bất kỳ lúc nào.
-                            </p>
-                            <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
-                                <button
-                                    onClick={handleCancelNativeRequest}
-                                    className="px-4 py-2 rounded-xl bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium border border-gray-300 transition-colors"
-                                >
-                                    Hủy yêu cầu
-                                </button>
-                                <button
-                                    onClick={handleStartCallNow}
-                                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold shadow-lg transition-all"
-                                >
-                                    Bắt đầu cuộc gọi ngay (demo)
-                                </button>
-                            </div>
-                        </motion.div>
+                            </motion.div>
                         )}
                     </div>
                 </div>
@@ -603,7 +692,7 @@ export default function MeetRoomPage({ onBack }: MeetRoomPageProps) {
                         className="fixed top-4 left-1/3 -translate-x-1/2 z-50 bg-red-500/90 backdrop-blur-sm text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 max-w-md"
                     >
                         <span className="text-sm">{mediaError}</span>
-                        <button 
+                        <button
                             onClick={clearMediaError}
                             className="text-white/80 hover:text-white text-lg font-bold"
                         >

@@ -53,6 +53,7 @@ const PracticeDefinitionBasedDetailPage = lazy(
 const PracticeSpeakingPage = lazy(
   () => import("../../views/pages/PracticeSpeakingPage")
 );
+const NativeHumanHomePage = lazy(() => import("../../views/pages/NativeHumanHomePage"));
 
 export interface AppRoute {
   path: string;
@@ -61,6 +62,7 @@ export interface AppRoute {
 }
 
 const privateRoutes: AppRoute[] = [
+  { path: "/native/home", element: NativeHumanHomePage, guard: ProtectedRoute },
   { path: "/home", element: HomePage, guard: ProtectedRoute },
   { path: "/profile", element: ProfilePage, guard: ProtectedRoute },
   { path: "/flash-cards", element: FlashCardPage, guard: ProtectedRoute },

@@ -50,7 +50,18 @@ export const useAuthViewModel = () => {
           "/home",
           "login-toast"
         );
-      } else {
+      } else if (res?.meta?.role_name == "native_human") {
+        // native human users go to dedicated dashboard
+        dispatch(setAuth(true));
+        dispatch(getUserThunk());
+        showToastAndRedirect(
+          "success",
+          "Bạn đã đăng nhập thành công",
+          "/native/home",
+          "login-toast"
+        );
+      }
+      else {
         showToastAndRedirect(
           "error",
           "Đăng nhập thất bại!",

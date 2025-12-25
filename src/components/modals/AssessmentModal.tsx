@@ -4,6 +4,7 @@ import Dialog from '@mui/material/Dialog';
 import { AnimatePresence, motion } from 'framer-motion';
 import PhaseOneGrading from './PhaseOneGrading';
 import PhaseTwoAnalysis from './PhaseTwoAnalysis';
+import { initSocket, getSocket } from '../../services/socket.service';
 
 interface AssessmentModalProps {
     open: boolean;
@@ -18,11 +19,39 @@ export enum Phase {
 
 const AssessmentModal: React.FC<AssessmentModalProps> = ({ open, onClose }) => {
     const [phase, setPhase] = useState<Phase>(Phase.GRADING);
+    const [initialAbilitiesPayload, setInitialAbilitiesPayload] = useState<any | null>(null);
 
     // Reset phase when modal opens
     useEffect(() => {
         if (open) {
             setPhase(Phase.GRADING);
+        }
+    }, [open]);
+
+    // Ensure socket connection when modal opens
+    useEffect(() => {
+        if (open) {
+            const sock = getSocket() || initSocket();
+
+            // Capture abilities early in modal so PhaseTwo won't miss emits
+            const handleMiniTest = (payload: any) => {
+                try {
+                    // store whatever payload for PhaseTwo to consume
+                    setInitialAbilitiesPayload(payload);
+                } catch (err) {
+                    console.warn('Failed to capture mini_test payload in AssessmentModal', err);
+                }
+            };
+
+            sock?.off('mini_test_abilities', handleMiniTest);
+            sock?.on('mini_test_abilities', handleMiniTest);
+            sock?.off('mini_test_submitted', handleMiniTest);
+            sock?.on('mini_test_submitted', handleMiniTest);
+            return () => {
+                // keep socket alive globally; do not disconnect here
+                sock?.off('mini_test_abilities', handleMiniTest);
+                sock?.off('mini_test_submitted', handleMiniTest);
+            };
         }
     }, [open]);
 
@@ -93,17 +122,10 @@ const AssessmentModal: React.FC<AssessmentModalProps> = ({ open, onClose }) => {
                                 animate={{ opacity: 1, x: 0 }}
                                 className="absolute inset-0"
                             >
-                                <PhaseTwoAnalysis onComplete={handleAnalysisComplete} />
+                                <PhaseTwoAnalysis onComplete={handleAnalysisComplete} initialPayload={initialAbilitiesPayload} />
                             </motion.div>
                         )}
                     </AnimatePresence>
-                </div>
-
-                {/* Footer Disclaimer */}
-                <div className="bg-slate-50 py-2 text-center border-t border-slate-200/50 z-20">
-                    <p className="text-[10px] text-slate-400 italic">
-                        * Hình ảnh chỉ mang tính chất minh họa
-                    </p>
                 </div>
             </div>
         </Dialog>

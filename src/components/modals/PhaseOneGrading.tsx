@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { initSocket, getSocket } from '../../services/socket.service';
 import { CheckIcon } from '../common/Icons.tsx';
 
 interface PhaseOneProps {
@@ -23,13 +24,55 @@ const PhaseOneGrading: React.FC<PhaseOneProps> = ({ onComplete }) => {
         }))
     );
 
+    const [totalQuestions, setTotalQuestions] = useState<number>(TOTAL_QUESTIONS);
     const [scanningIndex, setScanningIndex] = useState(0);
+    const [startScanning, setStartScanning] = useState(false);
+    const [serverResults, setServerResults] = useState<('correct' | 'incorrect' | null)[] | null>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Socket: wait for server grading result before starting per-question animation
+    useEffect(() => {
+        const sock = getSocket() || initSocket();
+
+        const handleMiniTest = (payload: any) => {
+            try {
+                const detailed = payload?.detailedAnswers;
+                const total = payload?.totalQuestions ?? (Array.isArray(detailed) ? detailed.length : undefined);
+
+                if (Array.isArray(detailed) && total) {
+                    setTotalQuestions(total);
+
+                    const results = detailed.map((d: any) => {
+                        if (typeof d.isCorrect === 'boolean') return d.isCorrect ? 'correct' : 'incorrect';
+                        return null;
+                    });
+
+                    // initialize question list (pending) and set server results
+                    setQuestions(Array.from({ length: total }, (_, i) => ({ id: i + 1, status: 'pending' })));
+                    setServerResults(results as any);
+                    setScanningIndex(0);
+                    setStartScanning(true);
+                }
+            } catch (err) {
+                console.warn('Failed to process mini_test_submitted payload', err);
+            }
+        };
+
+        sock?.off('mini_test_submitted', handleMiniTest);
+        sock?.on('mini_test_submitted', handleMiniTest);
+
+        return () => {
+            sock?.off('mini_test_submitted', handleMiniTest);
+        };
+    }, [onComplete]);
 
     // Animation & Scroll Logic
     useEffect(() => {
+        // do not run scanning until server data arrives
+        if (!startScanning) return;
+
         // Check completion
-        if (scanningIndex > TOTAL_QUESTIONS) {
+        if (scanningIndex > totalQuestions) {
             const finishTimer = setTimeout(() => {
                 onComplete();
             }, 800);
@@ -37,7 +80,7 @@ const PhaseOneGrading: React.FC<PhaseOneProps> = ({ onComplete }) => {
         }
 
         // Auto-scroll logic: Keep the scanning item centered
-        if (scanningIndex > 0 && scanningIndex <= TOTAL_QUESTIONS) {
+        if (scanningIndex > 0 && scanningIndex <= totalQuestions) {
             const activeNode = document.getElementById(`question-node-${scanningIndex - 1}`);
             if (activeNode && scrollContainerRef.current) {
                 activeNode.scrollIntoView({
@@ -52,19 +95,19 @@ const PhaseOneGrading: React.FC<PhaseOneProps> = ({ onComplete }) => {
             setQuestions(prev => {
                 const newQuestions = [...prev];
 
-                // 1. Mark previous item as Done (Result)
-                if (scanningIndex > 0 && scanningIndex <= TOTAL_QUESTIONS) {
+                // 1. Mark previous item as Done (Result) using serverResults when available
+                if (scanningIndex > 0 && scanningIndex <= totalQuestions) {
                     const prevIndex = scanningIndex - 1;
-                    // Mock logic: 80% correct rate
-                    const isCorrect = Math.random() > 0.2;
-                    newQuestions[prevIndex] = {
-                        ...newQuestions[prevIndex],
-                        status: isCorrect ? 'correct' : 'incorrect'
-                    };
+                    if (serverResults && serverResults[prevIndex] != null) {
+                        newQuestions[prevIndex] = {
+                            ...newQuestions[prevIndex],
+                            status: serverResults[prevIndex] as 'correct' | 'incorrect'
+                        };
+                    }
                 }
 
                 // 2. Mark current item as Scanning (Focus)
-                if (scanningIndex < TOTAL_QUESTIONS) {
+                if (scanningIndex < totalQuestions) {
                     newQuestions[scanningIndex] = {
                         ...newQuestions[scanningIndex],
                         status: 'scanning'
@@ -77,7 +120,7 @@ const PhaseOneGrading: React.FC<PhaseOneProps> = ({ onComplete }) => {
         }, SCAN_DURATION_MS);
 
         return () => clearTimeout(timer);
-    }, [scanningIndex, onComplete]);
+    }, [scanningIndex, onComplete, startScanning, serverResults, totalQuestions]);
 
     return (
         <div className="w-full h-full flex flex-col bg-slate-50 relative">
@@ -89,9 +132,11 @@ const PhaseOneGrading: React.FC<PhaseOneProps> = ({ onComplete }) => {
                         Grading Progress
                     </h3>
                     <span className="text-xs xl:text-sm text-slate-500 font-mono mt-1">
-                        {scanningIndex < TOTAL_QUESTIONS
-                            ? `Scanning Question: ${scanningIndex + 1} / ${TOTAL_QUESTIONS}`
-                            : "Grading Complete"
+                        {!startScanning
+                            ? 'Waiting for grading results...'
+                            : scanningIndex < totalQuestions
+                                ? `Scanning Question: ${scanningIndex + 1} / ${totalQuestions}`
+                                : 'Grading Complete'
                         }
                     </span>
                 </div>
@@ -100,7 +145,7 @@ const PhaseOneGrading: React.FC<PhaseOneProps> = ({ onComplete }) => {
                     <motion.div
                         className="h-full bg-indigo-500"
                         initial={{ width: 0 }}
-                        animate={{ width: `${(Math.min(scanningIndex, TOTAL_QUESTIONS) / TOTAL_QUESTIONS) * 100}%` }}
+                        animate={{ width: `${startScanning && totalQuestions > 0 ? (Math.min(scanningIndex, totalQuestions) / totalQuestions) * 100 : 0}%` }}
                         transition={{ ease: "linear" }}
                     />
                 </div>
@@ -112,10 +157,18 @@ const PhaseOneGrading: React.FC<PhaseOneProps> = ({ onComplete }) => {
                 className="flex-1 overflow-y-auto p-4 md:p-6 xl:p-10 scroll-smooth no-scrollbar"
                 style={{ scrollBehavior: 'smooth' }}
             >
-                <div className="flex justify-center pb-20"> {/* pb-20 adds buffer for bottom items */}
+                    <div className="flex justify-center pb-20"> {/* pb-20 adds buffer for bottom items */}
                     {/* RESPONSIVE GRID: 5 cols on mobile, 10 on desktop. Increased max-width for XL screens */}
-                    <div className="grid grid-cols-5 md:grid-cols-10 gap-2 md:gap-3 xl:gap-4 w-full max-w-[500px] xl:max-w-[800px]">
-                        {questions.map((q, index) => {
+                    { !startScanning ? (
+                        <div className="w-full flex items-center justify-center p-8">
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-indigo-600" />
+                                <div className="text-sm text-slate-500">Đang chấm bài, vui lòng chờ...</div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-5 md:grid-cols-10 gap-2 md:gap-3 xl:gap-4 w-full max-w-[500px] xl:max-w-[800px]">
+                            {questions.map((q, index) => {
                             const isScanning = index === scanningIndex;
                             const isPending = q.status === 'pending';
                             const isDone = q.status === 'correct' || q.status === 'incorrect';
@@ -189,8 +242,9 @@ const PhaseOneGrading: React.FC<PhaseOneProps> = ({ onComplete }) => {
                                     </motion.div>
                                 </div>
                             );
-                        })}
-                    </div>
+                            })}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

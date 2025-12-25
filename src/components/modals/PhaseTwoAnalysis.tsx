@@ -4,9 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BrainIcon, CheckIcon, LayersIcon, BookIcon, HeadphonesIcon, SearchIcon } from '../common/Icons';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useNavigate } from 'react-router-dom';
+import { initSocket, getSocket } from '../../services/socket.service';
 
 interface PhaseTwoProps {
     onComplete: () => void;
+    initialPayload?: any | null;
 }
 
 // STAGE 1 DATA: 7 Exam Parts with more detail
@@ -29,21 +31,24 @@ const SYSTEM_MODULES = [
 
 // STAGE 3 DATA: Weekly Schedule (Right Column)
 const SCHEDULE_DATA = [
-    { day: 'Day 1', title: 'Vocab Booster', type: 'Vocab', color: 'border-blue-500 text-blue-700 bg-blue-50' },
-    { day: 'Day 2', title: 'Listening Drills', type: 'Audio', color: 'border-emerald-500 text-emerald-700 bg-emerald-50' },
-    { day: 'Day 3', title: 'Reading Tech', type: 'Reading', color: 'border-purple-500 text-purple-700 bg-purple-50' },
-    { day: 'Day 4', title: 'Grammar Fix', type: 'Mixed', color: 'border-orange-500 text-orange-700 bg-orange-50' },
-    { day: 'Day 5', title: 'Full Review', type: 'Review', color: 'border-rose-500 text-rose-700 bg-rose-50' },
+    { day: 'Day 1', title: 'Vocab Booster', type: 'Vocab', color: 'border-blue-500 text-blue-700 !bg-blue-50' },
+    { day: 'Day 2', title: 'Listening Drills', type: 'Audio', color: 'border-emerald-500 text-emerald-700 !bg-emerald-50' },
+    { day: 'Day 3', title: 'Reading Tech', type: 'Reading', color: 'border-purple-500 text-purple-700 !bg-purple-50' },
+    { day: 'Day 4', title: 'Grammar Fix', type: 'Mixed', color: 'border-orange-500 text-orange-700 !bg-orange-50' },
+    { day: 'Day 5', title: 'Full Review', type: 'Review', color: 'border-rose-500 text-rose-700 !bg-rose-50' },
+    { day: 'Day 6', title: 'Targeted Practice', type: 'Mixed', color: 'border-yellow-500 text-yellow-700 !bg-yellow-50' },
+    { day: 'Day 7', title: 'Mock Test & Review', type: 'Test', color: 'border-sky-500 text-sky-700 !bg-sky-50' },
 ];
 
 type Scene = 'scan' | 'retrieve' | 'distribute' | 'completed';
 
-const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete }) => {
+const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete, initialPayload = null }) => {
     const [scene, setScene] = useState<Scene>('scan');
 
     const [scannedPartIndex, setScannedPartIndex] = useState(-1);
     const [retrieving, setRetrieving] = useState(false);
     const [distributedCount, setDistributedCount] = useState(-1);
+    const [partsData, setPartsData] = useState(PARTS_DATA);
 
     // Responsive Checks
     const isMobile = useMediaQuery('(max-width:768px)');
@@ -60,7 +65,7 @@ const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete }) => {
         if (scene === 'scan') {
             const interval = setInterval(() => {
                 setScannedPartIndex(prev => {
-                    if (prev >= PARTS_DATA.length - 1) {
+                    if (prev >= partsData.length - 1) {
                         clearInterval(interval);
                         setTimeout(() => setScene('retrieve'), 20000);
                         return prev;
@@ -99,6 +104,108 @@ const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete }) => {
             return () => clearInterval(interval);
         }
     }, [scene, onComplete]);
+
+    // Socket: update partsData from server abilities or parts payload
+    useEffect(() => {
+        // If AssessmentModal captured an initial payload, apply it right away
+        if (initialPayload) {
+            try {
+                const thetaByPart = initialPayload?.abilities?.thetaByPart ?? initialPayload?.thetaByPart;
+                if (thetaByPart && typeof thetaByPart === 'object') {
+                    const MIN_THETA = -5;
+                    const MAX_THETA = 5;
+                    const mapped = PARTS_DATA.map((base, idx) => {
+                        const partNum = idx + 1;
+                        const raw = thetaByPart[partNum] ?? thetaByPart[String(partNum)];
+                        const theta = Number(raw);
+                        if (!Number.isFinite(theta)) return { ...base };
+                        const rawPercent = ((theta - MIN_THETA) / (MAX_THETA - MIN_THETA)) * 100;
+                        const score = Math.round(Math.max(0, Math.min(100, rawPercent)));
+                        let status = 'Average';
+                        if (score < 30) status = 'Weak';
+                        else if (score < 50) status = 'Average';
+                        else if (score < 70) status = 'Good';
+                        else status = 'Strong';
+                        return { ...base, score, status };
+                    });
+                    setPartsData(mapped);
+                }
+            } catch (err) {
+                console.warn('Failed to apply initialPayload in PhaseTwoAnalysis', err);
+            }
+        }
+        const sock = getSocket() || initSocket();
+
+        const handleMiniTest = (payload: any) => {
+            try {
+                const thetaByPart = payload?.abilities?.thetaByPart ?? payload?.thetaByPart;
+
+                // If thetaByPart present, map to percent and preserve names/ids
+                if (thetaByPart && typeof thetaByPart === 'object') {
+                    const MIN_THETA = -5;
+                    const MAX_THETA = 5;
+
+                    const mapped = PARTS_DATA.map((base, idx) => {
+                        const partNum = idx + 1;
+                        const raw = thetaByPart[partNum] ?? thetaByPart[String(partNum)];
+                        const theta = Number(raw);
+
+                        if (!Number.isFinite(theta)) return { ...base };
+
+                        const rawPercent = ((theta - MIN_THETA) / (MAX_THETA - MIN_THETA)) * 100;
+                        const score = Math.round(Math.max(0, Math.min(100, rawPercent)));
+
+                        let status = 'Average';
+                        if (score < 30) status = 'Weak';
+                        else if (score < 50) status = 'Average';
+                        else if (score < 70) status = 'Good';
+                        else status = 'Strong';
+
+                        return { ...base, score, status };
+                    });
+
+                    setPartsData(mapped);
+                    return;
+                }
+
+                // Fallback: server may send per-part accuracy in payload.parts
+                const parts = payload?.parts;
+                if (Array.isArray(parts) && parts.length > 0) {
+                    // Build map from part name or number to accuracy
+                    const mapped = PARTS_DATA.map(base => {
+                        // try to find by part_name or id
+                        const found = parts.find((p: any) => p.part_name === base.id || p.part_name === base.name || p.part === base.id || p.part === base.name);
+                        if (!found) return { ...base };
+                        const acc = Number(found.accuracy ?? found.accuracy_percent ?? 0);
+                        const score = Math.round(Math.max(0, Math.min(100, acc)));
+                        let status = 'Average';
+                        if (score < 30) status = 'Weak';
+                        else if (score < 50) status = 'Average';
+                        else if (score < 70) status = 'Good';
+                        else status = 'Strong';
+                        return { ...base, score, status };
+                    });
+
+                    setPartsData(mapped);
+                    return;
+                }
+            } catch (err) {
+                console.warn('Failed to update partsData from socket payload', err);
+            }
+        };
+
+        sock?.off('mini_test_abilities', handleMiniTest);
+        sock?.on('mini_test_abilities', handleMiniTest);
+
+        // Also listen to submitted event if server sends theta there
+        sock?.off('mini_test_submitted', handleMiniTest);
+        sock?.on('mini_test_submitted', handleMiniTest);
+
+        return () => {
+            sock?.off('mini_test_abilities', handleMiniTest);
+            sock?.off('mini_test_submitted', handleMiniTest);
+        };
+    }, []);
 
     // Helper for Status Badge Color
     const getStatusColor = (status: string) => {
@@ -305,7 +412,7 @@ const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete }) => {
                             </span>
                         </div>
                         <div className="p-2 space-y-1">
-                            {PARTS_DATA.map((part, idx) => {
+                            {partsData.map((part, idx) => {
                                 const isScanned = idx <= scannedPartIndex;
                                 const isCurrent = idx === scannedPartIndex;
 

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Box, Typography } from "@mui/material";
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import { CircularProgress } from '@mui/material';
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import { CircularProgress } from "@mui/material";
 import { useDebounce } from "../../hooks/useDebounce";
 import { MarkdownEditor } from "../common/MarkdownEditor";
 import { User_Note } from "../../types/User_Note";
@@ -17,11 +17,13 @@ interface LessonTakeNotesProps {
 export default function LessonTakeNotes({
   lesson,
   week,
-  day_id
+  day_id,
 }: LessonTakeNotesProps) {
   const [note, setNote] = useState<User_Note | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [status, setStatus] = useState<"idle" | "updating" | "updated" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "updating" | "updated" | "error"
+  >("idle");
   const [editorKey, setEditorKey] = useState(0);
 
   const fetchNote = async () => {
@@ -34,15 +36,14 @@ export default function LessonTakeNotes({
         related_object: {
           related_id: lesson?._id,
           week_no: week,
-          day_id
-        }
+          day_id,
+        },
       });
       setNote(newNote);
-    }
-    else {
+    } else {
       setNote(note);
     }
-  }
+  };
 
   useEffect(() => {
     try {
@@ -53,7 +54,7 @@ export default function LessonTakeNotes({
     } finally {
       setIsLoading(false);
     }
-  }, [])
+  }, []);
 
   // Listen for cross-component updates (NotebookPage dispatches 'note:updated')
   useEffect(() => {
@@ -72,15 +73,16 @@ export default function LessonTakeNotes({
           return;
         }
 
-        setNote((prev) => (prev ? { ...prev, content } as User_Note : prev));
+        setNote((prev) => (prev ? ({ ...prev, content } as User_Note) : prev));
         setEditorKey((k) => k + 1);
       } catch (err) {
-        console.error('note:updated handler error', err);
+        console.error("note:updated handler error", err);
       }
     };
 
-    window.addEventListener('note:updated', handler as EventListener);
-    return () => window.removeEventListener('note:updated', handler as EventListener);
+    window.addEventListener("note:updated", handler as EventListener);
+    return () =>
+      window.removeEventListener("note:updated", handler as EventListener);
   }, [note]);
   const handleUpdateNote = async (newContent: string) => {
     if (!note) return;
@@ -100,10 +102,10 @@ export default function LessonTakeNotes({
   };
 
   // Debounce the 'updated' status back to 'idle' so UI shows a short "Saved" state
-  const debouncedUpdated = useDebounce(status === 'updated', 1500);
+  const debouncedUpdated = useDebounce(status === "updated", 1500);
   useEffect(() => {
     if (debouncedUpdated) {
-      setStatus('idle');
+      setStatus("idle");
     }
   }, [debouncedUpdated]);
 
@@ -113,36 +115,60 @@ export default function LessonTakeNotes({
         sx={{
           border: "1px solid #e0e0e0",
           borderRadius: "12px",
-          position: 'relative'
+          position: "relative",
         }}
       >
         {/* Status indicator */}
-        <Box sx={{ position: 'absolute', top: 10, right: 12, display: 'flex', alignItems: 'center', gap: 1, zIndex: 10 }}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: 10,
+            right: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            zIndex: 10,
+          }}
+        >
           {isLoading && (
             <>
               <CircularProgress size={18} />
-              <Typography variant="caption" sx={{ ml: 0.5 }}>Loading...</Typography>
+              <Typography variant="caption" sx={{ ml: 0.5 }}>
+                Loading...
+              </Typography>
             </>
           )}
 
-          {!isLoading && status === 'updating' && (
+          {!isLoading && status === "updating" && (
             <>
               <CircularProgress size={18} />
-              <Typography variant="caption" sx={{ ml: 0.5 }}>Updating...</Typography>
+              <Typography variant="caption" sx={{ ml: 0.5 }}>
+                Updating...
+              </Typography>
             </>
           )}
 
-          {!isLoading && status === 'updated' && (
+          {!isLoading && status === "updated" && (
             <>
               <CheckCircleIcon color="success" sx={{ fontSize: 18 }} />
-              <Typography variant="caption" sx={{ ml: 0.5, color: 'success.main' }}>Saved</Typography>
+              <Typography
+                variant="caption"
+                sx={{ ml: 0.5, color: "success.main" }}
+              >
+                Saved
+              </Typography>
             </>
           )}
 
-          {!isLoading && status === 'error' && (
+          {!isLoading && status === "error" && (
             <>
               <ErrorOutlineIcon color="error" sx={{ fontSize: 18 }} />
-              <Typography variant="caption" sx={{ ml: 0.5, color: 'error.main' }}>Error</Typography>
+              <Typography
+                variant="caption"
+                sx={{ ml: 0.5, color: "error.main" }}
+              >
+                Error
+              </Typography>
             </>
           )}
         </Box>

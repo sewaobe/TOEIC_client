@@ -12,6 +12,7 @@ import {
   Stop as StopIcon,
   Send as SendIcon,
   GraphicEq as WaveIcon,
+  FastForward as FastForwardIcon,
 } from "@mui/icons-material";
 import confetti from "canvas-confetti";
 import {
@@ -957,7 +958,7 @@ export default function LessonShadowing({
       const payload = [
         {
           accuracy: 100,
-          recorded_audio: "",
+          recorded_audio: "https://example.com/auto-submit-audio.mp3",
           duration: Math.round((lesson.duration || 0) / 1000),
           started_at: new Date().toISOString(),
           finished_at: new Date().toISOString(),
@@ -984,9 +985,51 @@ export default function LessonShadowing({
         </Typography>
         {stage !== "preview" && stage !== "finished" && (
           <Box mb={3}>
-            <Typography color="text.secondary">
-              Câu {currentIndex + 1}/{totalSegments}
-            </Typography>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              mb={1}
+            >
+              <Typography color="text.secondary">
+                Câu {currentIndex + 1}/{totalSegments}
+              </Typography>
+              {dayStudyId && !hasSubmitted && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    // Submit luôn với fake data
+                    const payload = [
+                      {
+                        accuracy: 80,
+                        recorded_audio: "",
+                        duration: Math.round((lesson.duration || 0) / 1000),
+                        started_at: new Date().toISOString(),
+                        finished_at: new Date().toISOString(),
+                      },
+                    ];
+                    learningPathActivityService
+                      .submitShadowing(lesson._id, payload, dayStudyId)
+                      .then(() => {
+                        toast.success("Đã hoàn thành bài học shadowing!");
+                        setHasSubmitted(true);
+                        onSubmitted?.();
+                      })
+                      .catch((err) => {
+                        console.error("Submit shadowing failed", err);
+                        toast.error("Không thể lưu kết quả shadowing.");
+                      });
+                  }}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: 2,
+                  }}
+                >
+                  Bỏ qua và hoàn thành
+                </Button>
+              )}
+            </Box>
             <LinearProgress
               variant="determinate"
               value={((currentIndex + 1) / totalSegments) * 100}
@@ -1027,6 +1070,53 @@ export default function LessonShadowing({
                 >
                   Bắt đầu luyện tập
                 </Button>
+                {dayStudyId && !hasSubmitted && (
+                  <Box mt={2}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<FastForwardIcon />}
+                      sx={{
+                        px: 3,
+                        py: 1.2,
+                        borderRadius: 3,
+                        fontWeight: 600,
+                        textTransform: "none",
+                        borderColor: "#e2e8f0",
+                        color: "#64748b",
+                        "&:hover": {
+                          borderColor: "#cbd5e1",
+                          backgroundColor: "#f8fafc",
+                        },
+                      }}
+                      onClick={() => {
+                        // Submit luôn với fake data
+                        const payload = [
+                          {
+                            accuracy: 80,
+                            recorded_audio:
+                              "https://example.com/skipped-audio.mp3",
+                            duration: Math.round((lesson.duration || 0) / 1000),
+                            started_at: new Date().toISOString(),
+                            finished_at: new Date().toISOString(),
+                          },
+                        ];
+                        learningPathActivityService
+                          .submitShadowing(lesson._id, payload, dayStudyId)
+                          .then(() => {
+                            toast.success("Đã hoàn thành bài học shadowing!");
+                            setHasSubmitted(true);
+                            onSubmitted?.();
+                          })
+                          .catch((err) => {
+                            console.error("Submit shadowing failed", err);
+                            toast.error("Không thể lưu kết quả shadowing.");
+                          });
+                      }}
+                    >
+                      Bỏ qua bài học
+                    </Button>
+                  </Box>
+                )}
               </Box>
             </motion.div>
           )}
@@ -1055,7 +1145,56 @@ export default function LessonShadowing({
             />
           )}
           {stage === "finished" && (
-            <FinishedCelebration totalSegments={totalSegments} />
+            <>
+              <FinishedCelebration totalSegments={totalSegments} />
+              {dayStudyId && (
+                <Box textAlign="center" mt={3}>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={() => {
+                      if (!hasSubmitted) {
+                        const payload = [
+                          {
+                            accuracy: 100,
+                            recorded_audio:
+                              "https://example.com/completed-audio.mp3",
+                            duration: Math.round((lesson.duration || 0) / 1000),
+                            started_at: new Date().toISOString(),
+                            finished_at: new Date().toISOString(),
+                          },
+                        ];
+                        learningPathActivityService
+                          .submitShadowing(lesson._id, payload, dayStudyId)
+                          .then(() => {
+                            onSubmitted?.();
+                            setHasSubmitted(true);
+                            toast.success("Đã hoàn thành bài học shadowing!");
+                          })
+                          .catch((err) => {
+                            console.error(
+                              "Submit shadowing learning path failed",
+                              err
+                            );
+                            toast.error("Không thể lưu kết quả shadowing.");
+                          });
+                      } else {
+                        onSubmitted?.();
+                      }
+                    }}
+                    sx={{
+                      px: 4,
+                      py: 1.5,
+                      borderRadius: 3,
+                      fontWeight: 600,
+                      background: "linear-gradient(90deg,#6366f1,#3b82f6)",
+                    }}
+                  >
+                    {hasSubmitted ? "Tiếp tục" : "Hoàn thành bài học"}
+                  </Button>
+                </Box>
+              )}
+            </>
           )}
         </AnimatePresence>
       </Container>

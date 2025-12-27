@@ -76,6 +76,10 @@ export default function LessonPage() {
   // Assessment modal state for mini test
   const [isAssessmentOpen, setIsAssessmentOpen] = React.useState(false);
 
+  // Track if user has closed the assessment modal (to show result card)
+  const [showMiniTestResultInContent, setShowMiniTestResultInContent] =
+    React.useState(false);
+
   // sử dụng hook custom cho state
   const {
     loading,
@@ -190,7 +194,9 @@ export default function LessonPage() {
                             <TableCell>{w.vocabText}</TableCell>
                             <TableCell>{w.eval_type}</TableCell>
                             <TableCell align="right">
-                              {w.response_time.toFixed(1)}
+                              {typeof w.response_time === "number"
+                                ? w.response_time.toFixed(1)
+                                : "-"}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -340,9 +346,9 @@ export default function LessonPage() {
             {meta.scores && (
               <Box sx={{ mt: 1 }}>
                 <Typography variant="body2">
-                  Accuracy: {meta.scores.accuracy}% â€“ Fluency:{" "}
-                  {meta.scores.fluency}% â€“ Intonation:{" "}
-                  {meta.scores.intonation}%
+                  Accuracy: {meta.scores.accuracy ?? "-"}% - Fluency:{" "}
+                  {meta.scores.fluency ?? "-"}% - Intonation:{" "}
+                  {meta.scores.intonation ?? "-"}%
                 </Typography>
               </Box>
             )}
@@ -390,6 +396,9 @@ export default function LessonPage() {
       }
 
       if (attempt.type === "mini_test") {
+        const historyId = attempt.id;
+        const testId = currentLesson?.id;
+
         return (
           <Box>
             <Typography variant="subtitle1" fontWeight={700} gutterBottom>
@@ -436,6 +445,25 @@ export default function LessonPage() {
                     </TableBody>
                   </Table>
                 </TableContainer>
+              </Box>
+            )}
+            {historyId && testId && (
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  onClick={() =>
+                    navigate(`/tests/${testId}/result/${historyId}/answers`, {
+                      state: {
+                        from: window.location.pathname + window.location.search,
+                      },
+                    })
+                  }
+                  sx={{ textTransform: "none" }}
+                >
+                  Xem chi tiết đáp án
+                </Button>
               </Box>
             )}
           </Box>
@@ -566,12 +594,51 @@ export default function LessonPage() {
       const shouldShow = localStorage.getItem("mini_test_show_assessment");
       if (shouldShow === "true") {
         setIsAssessmentOpen(true);
+        setShowMiniTestResultInContent(false); // Reset để hiển thị result card sau
         localStorage.removeItem("mini_test_show_assessment");
       }
     } catch (e) {
       console.warn("Không đọc được flag mini_test_show_assessment", e);
     }
   }, []);
+
+  // Fetch mini test result khi vào bài mini_test đã completed
+  React.useEffect(() => {
+    const fetchCompletedMiniTestResult = async () => {
+      if (!currentLesson) return;
+      if (currentLesson.type !== "mini_test") return;
+      if (currentLesson.status !== "completed") return;
+
+      try {
+        const historyData = await userTestService.getUserTestHistories(
+          1,
+          1,
+          currentLesson.id
+        );
+        if (historyData && historyData.data && historyData.data.length > 0) {
+          const latest = historyData.data[0];
+          const result: MiniTestResult = {
+            testId: currentLesson.id,
+            userId: latest.user_id || "",
+            userTestId: latest._id || "",
+            score: latest.score,
+            parts:
+              latest.parts?.map((p: any) => ({
+                part_name: p.part_name,
+                accuracy: p.accuracy,
+              })) || [],
+            submit_at: latest.submit_at || new Date().toISOString(),
+          };
+          setMiniTestResult(result);
+          setShowMiniTestResultInContent(true); // Hiển thị result card luôn
+        }
+      } catch (err) {
+        console.error("Lỗi fetch completed mini test result:", err);
+      }
+    };
+
+    fetchCompletedMiniTestResult();
+  }, [currentLesson]);
 
   // Calculate progress
   const completedCount = lessons.filter((l) => l.status === "completed").length;
@@ -584,19 +651,24 @@ export default function LessonPage() {
 
   // Load lesson detail when currentLesson is a lesson (for media + insight tab)
   const [lessonDetail, setLessonDetail] = React.useState<any>(null);
+  const [lessonDetailLoading, setLessonDetailLoading] = React.useState(false);
   React.useEffect(() => {
     let mounted = true;
     const load = async () => {
       if (!currentLesson || currentLesson.type !== "lesson") {
         setLessonDetail(null);
+        setLessonDetailLoading(false);
         return;
       }
+      setLessonDetailLoading(true);
       try {
         const d = await lessonService.getLessonById(currentLesson.id, dayId);
         if (mounted) setLessonDetail(d);
       } catch (err) {
         console.error("Lỗi khi load lesson detail:", err);
         if (mounted) setLessonDetail(null);
+      } finally {
+        if (mounted) setLessonDetailLoading(false);
       }
     };
     load();
@@ -613,6 +685,12 @@ export default function LessonPage() {
 
   const handleOpenHistoryFromHeader = async () => {
     if (!currentLesson) return;
+
+    // Type lesson không có lịch sử
+    if (currentLesson.type === "lesson") {
+      return;
+    }
+
     setHistoryOpen(true);
     setHistoryLoading(true);
     try {
@@ -767,6 +845,18 @@ export default function LessonPage() {
           </>
         );
       case "lesson":
+        // Hiển thị loading khi đang load lessonDetail
+        if (lessonDetailLoading || !lessonDetail) {
+          return (
+            <Box textAlign="center" mt={4}>
+              <CircularProgress />
+              <Typography mt={2} color="text.secondary">
+                Đang tải bài học...
+              </Typography>
+            </Box>
+          );
+        }
+
         // If we have lessonDetail from API, prefer its first media for LessonMedia and pass detail to LessonNotes
         const mediaSection = lessonDetail?.sections_id?.find(
           (s: any) => s.type === "media" && s.medias_id?.length
@@ -886,8 +976,10 @@ export default function LessonPage() {
               testId: currentLesson.id, // testId để fetch history sau
             })
           );
-          // Navigate directly to test page (skip overview)
-          navigate(`/test?testId=${currentLesson.id}&fromLesson=true`);
+          // Navigate directly to test page (skip overview) với timeLimit 60 phút (1 tiếng)
+          navigate(
+            `/test?testId=${currentLesson.id}&fromLesson=true&timeLimit=60`
+          );
         };
 
         return (
@@ -1015,40 +1107,54 @@ export default function LessonPage() {
   const renderLessonContent = () => {
     if (!currentLesson) return <Box>Chọn một bài học để bắt đầu.</Box>;
 
-    // Show mini test result if available
-    if (miniTestResult && currentLesson.type === "mini_test") {
+    // Show mini test result in content area (not modal) after assessment modal is closed
+    if (
+      miniTestResult &&
+      currentLesson.type === "mini_test" &&
+      showMiniTestResultInContent
+    ) {
       return (
-        <MiniTestResultCard
-          score={miniTestResult.score}
-          parts={miniTestResult.parts}
-          onNext={async () => {
-            // Complete mini test activity trước khi chuyển tiếp
-            try {
-              await learningPathActivityService.completeMiniTest(
-                currentLesson.id,
-                dayId,
-                miniTestResult.userTestId // Dùng userTestId (ID của UserTest record)
+        <Box sx={{ maxWidth: 900, mx: "auto", mt: 4 }}>
+          <MiniTestResultCard
+            score={miniTestResult.score}
+            parts={miniTestResult.parts}
+            testId={miniTestResult.testId}
+            historyId={miniTestResult.userTestId}
+            onNext={async () => {
+              // Complete mini test activity trước khi chuyển tiếp
+              try {
+                await learningPathActivityService.completeMiniTest(
+                  currentLesson.id,
+                  dayId,
+                  miniTestResult.userTestId // Dùng userTestId (ID của UserTest record)
+                );
+                console.log("✅ Mini test completed successfully");
+              } catch (err) {
+                console.error("⚠️ Failed to complete mini test:", err);
+              }
+              setMiniTestResult(null);
+              setShowMiniTestResultInContent(false);
+              completeAndGoToNext();
+            }}
+            onRetry={() => {
+              // Retry the mini test: navigate back to test page with fromLesson
+              setMiniTestResult(null);
+              setShowMiniTestResultInContent(false);
+              navigate(
+                `/test?testId=${miniTestResult.testId}&fromLesson=true&timeLimit=60`
               );
-              console.log("✅ Mini test completed successfully");
-            } catch (err) {
-              console.error("⚠️ Failed to complete mini test:", err);
-            }
-            setMiniTestResult(null);
-            completeAndGoToNext();
-          }}
-          onViewDetail={() => {
-            // TODO: Navigate to detailed result page if needed
-            // View detail clicked for test: (silent)
-          }}
-          onRetry={() => {
-            // Retry the mini test: navigate back to test page with fromLesson
-            navigate(`/test?testId=${miniTestResult.testId}&fromLesson=true`);
-          }}
-        />
+            }}
+          />
+        </Box>
       );
     }
 
     if (currentLesson.status === "completed" && activityStatus === "intro") {
+      // Mini test hiển thị result card riêng
+      if (currentLesson.type === "mini_test") {
+        return null; // MiniTestResultCard đã được render ở trên
+      }
+
       return (
         <LessonFinishCard
           title={"Bài học đã được hoàn thành"}
@@ -1269,7 +1375,13 @@ export default function LessonPage() {
           {/* Assessment modal for mini test, shown when returning from TestDemoPage */}
           <AssessmentModal
             open={isAssessmentOpen}
-            onClose={() => setIsAssessmentOpen(false)}
+            onClose={() => {
+              setIsAssessmentOpen(false);
+              // Khi đóng modal, hiển thị result card trong content area
+              if (miniTestResult && currentLesson?.type === "mini_test") {
+                setShowMiniTestResultInContent(true);
+              }
+            }}
           />
         </Container>
       </Box>

@@ -7,9 +7,12 @@ import {
   Button,
   Box,
   Chip,
+  Modal,
+  Backdrop,
 } from "@mui/material";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 interface PartAccuracy {
   part_name: string;
@@ -22,6 +25,8 @@ interface MiniTestResultCardProps {
   onNext: () => void;
   onViewDetail?: () => void;
   onRetry?: () => void;
+  testId?: string;
+  historyId?: string;
 }
 
 export const MiniTestResultCard: React.FC<MiniTestResultCardProps> = ({
@@ -30,12 +35,26 @@ export const MiniTestResultCard: React.FC<MiniTestResultCardProps> = ({
   onNext,
   onViewDetail,
   onRetry,
+  testId,
+  historyId,
 }) => {
+  const navigate = useNavigate();
+
   // Tính accuracy trung bình
   const avgAccuracy =
     parts.length > 0
       ? parts.reduce((sum, p) => sum + p.accuracy, 0) / parts.length
       : 0;
+
+  const handleViewDetail = () => {
+    if (testId && historyId) {
+      navigate(`/tests/${testId}/result/${historyId}/answers`, {
+        state: { from: window.location.pathname + window.location.search },
+      });
+    } else if (onViewDetail) {
+      onViewDetail();
+    }
+  };
 
   return (
     <motion.div
@@ -190,16 +209,16 @@ export const MiniTestResultCard: React.FC<MiniTestResultCardProps> = ({
               spacing={2}
               justifyContent="center"
             >
-              {onViewDetail && (
+              {(testId && historyId) || onViewDetail ? (
                 <Button
                   variant="outlined"
                   color="primary"
-                  onClick={onViewDetail}
+                  onClick={handleViewDetail}
                   sx={{ borderRadius: "12px" }}
                 >
-                  Xem chi tiết
+                  Xem chi tiết đáp án
                 </Button>
-              )}
+              ) : null}
               {onRetry && (
                 <Button
                   variant="outlined"

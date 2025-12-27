@@ -1,4 +1,5 @@
 ﻿import * as React from "react";
+import { useNavigate } from "react-router-dom";
 import { dayStudyService } from "../services/dayStudy.service";
 import { flashCardService } from "../services/flashCard.service";
 import { getDurationMinutes, grade } from "../constants/questionBank";
@@ -10,6 +11,7 @@ import { learningPathActivityService } from "../services/learningPathActivity.se
 import { toast } from "sonner";
 
 export const useLessonViewModel = (dayId: string, week: string) => {
+  const navigate = useNavigate();
   // =================================================================
   // 1. STATE MANAGEMENT: Toàn bộ state được quản lý tại đây
   // =================================================================
@@ -183,9 +185,16 @@ export const useLessonViewModel = (dayId: string, week: string) => {
     setExamStarted(false);
     setExamStartedAt(null);
     setAnswers({});
-    // For "lesson" type, directly go to studying (no intro needed)
-    // For other types, also go to studying immediately
-    setActivityStatus("studying");
+    // Nếu bài đã completed và type KHÔNG phải "lesson", hiển thị finish card
+    // Type "lesson" không có finish card, chỉ xem lại video
+    if (
+      currentLesson.status === "completed" &&
+      currentLesson.type !== "lesson"
+    ) {
+      setActivityStatus("intro"); // Show finish card
+    } else {
+      setActivityStatus("studying"); // Start directly
+    }
     setQuizQuestions([]);
 
     const fetchLessonSpecificData = async () => {
@@ -282,10 +291,16 @@ export const useLessonViewModel = (dayId: string, week: string) => {
       if (nextLesson) {
         selectLesson(nextLesson);
       } else {
-        alert("Hoàn thành tất cả bài học!");
+        // Hết bài học trong ngày → Tự động chuyển sang ngày tiếp theo
+        toast.success("🎉 Hoàn thành tất cả bài học trong ngày!");
+
+        // Navigate về trang programs để xem dashboard và chọn ngày tiếp theo
+        setTimeout(() => {
+          navigate("/programs");
+        }, 1500);
       }
     },
-    [currentLesson, lessons, setLessons, selectLesson]
+    [currentLesson, lessons, setLessons, selectLesson, navigate]
   );
 
   // Đánh dấu bài học hiện tại hoàn thành nhưng KHÔNG điều hướng sang bài tiếp theo

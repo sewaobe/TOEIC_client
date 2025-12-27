@@ -8,7 +8,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
-import LaunchIcon from '@mui/icons-material/Launch';
+import LaunchIcon from "@mui/icons-material/Launch";
 import MenuIcon from "@mui/icons-material/Menu";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
@@ -121,7 +121,17 @@ const Sidebar: React.FC<{
   onDelete: (lessonId: string) => Promise<void>;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
-}> = ({ lessons, activeId, setActiveId, onAdd, notes, onJumpToHeading, onDelete, isCollapsed, onToggleCollapse }) => {
+}> = ({
+  lessons,
+  activeId,
+  setActiveId,
+  onAdd,
+  notes,
+  onJumpToHeading,
+  onDelete,
+  isCollapsed,
+  onToggleCollapse,
+}) => {
   const [query, setQuery] = useState("");
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -145,7 +155,9 @@ const Sidebar: React.FC<{
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
-    return q ? lessons.filter((l) => l.title.toLowerCase().includes(q)) : lessons;
+    return q
+      ? lessons.filter((l) => l.title.toLowerCase().includes(q))
+      : lessons;
   }, [lessons, query]);
 
   const handleOpenMenu = (
@@ -190,10 +202,11 @@ const Sidebar: React.FC<{
             <button
               key={l._id}
               onClick={() => setActiveId(l._id)}
-              className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${activeId === l._id
-                ? "bg-indigo-600 text-white shadow-md"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
+                activeId === l._id
+                  ? "bg-indigo-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
               title={l.title}
             >
               {l.title.charAt(0).toUpperCase()}
@@ -217,7 +230,6 @@ const Sidebar: React.FC<{
 
   return (
     <aside className="h-full w-full max-w-xs border-r bg-white backdrop-blur-sm flex flex-col min-h-0">
-
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between gap-2 p-4 border-b border-indigo-200/50">
         <div className="flex items-center gap-2 text-sm text-gray-700">
@@ -265,10 +277,11 @@ const Sidebar: React.FC<{
                 <div key={l._id}>
                   {/* Row chính */}
                   <div
-                    className={`flex items-center justify-between px-3 py-2.5 cursor-pointer rounded-lg transition-all ${isActive
-                      ? "bg-indigo-600 text-white shadow-md"
-                      : "hover:bg-indigo-100 text-gray-700"
-                      }`}
+                    className={`flex items-center justify-between px-3 py-2.5 cursor-pointer rounded-lg transition-all ${
+                      isActive
+                        ? "bg-indigo-600 text-white shadow-md"
+                        : "hover:bg-indigo-100 text-gray-700"
+                    }`}
                     onClick={() => setActiveId(l._id)}
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -286,8 +299,14 @@ const Sidebar: React.FC<{
                         )}
                       </button>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium">{l.title}</div>
-                        <div className={`truncate text-xs ${isActive ? "text-indigo-100" : "text-gray-500"}`}>
+                        <div className="truncate text-sm font-medium">
+                          {l.title}
+                        </div>
+                        <div
+                          className={`truncate text-xs ${
+                            isActive ? "text-indigo-100" : "text-gray-500"
+                          }`}
+                        >
                           {fmtDate(l.updated_at)}
                         </div>
                       </div>
@@ -296,7 +315,9 @@ const Sidebar: React.FC<{
                     {/* Nút 3 chấm */}
                     <button
                       onClick={(e) => handleOpenMenu(e, l._id)}
-                      className={`p-1 rounded flex-shrink-0 ${isActive ? "hover:bg-indigo-500" : "hover:bg-gray-200"}`}
+                      className={`p-1 rounded flex-shrink-0 ${
+                        isActive ? "hover:bg-indigo-500" : "hover:bg-gray-200"
+                      }`}
                     >
                       <MoreVertIcon fontSize="small" />
                     </button>
@@ -305,10 +326,13 @@ const Sidebar: React.FC<{
                   {/* mục lục khi expand */}
                   {isExpanded && headingsTree.length > 0 && (
                     <div className="ml-8 mt-1 mb-2 pl-2 border-l-2 border-indigo-300 space-y-1">
-                      <HeadingTree nodes={headingsTree} onJump={(id: string) => {
-                        setActiveId(l._id);
-                        return onJumpToHeading(id);
-                      }} />
+                      <HeadingTree
+                        nodes={headingsTree}
+                        onJump={(id: string) => {
+                          setActiveId(l._id);
+                          return onJumpToHeading(id);
+                        }}
+                      />
                     </div>
                   )}
                 </div>
@@ -344,7 +368,8 @@ const Sidebar: React.FC<{
                 setMenuOpenId(null);
 
                 const markdown = notes[menuOpenId] || "";
-                const title = lessons.find((l) => l._id === menuOpenId)?.title || "note";
+                const title =
+                  lessons.find((l) => l._id === menuOpenId)?.title || "note";
 
                 downloadMarkdownFile(markdown, `${title}.md`);
               }}
@@ -369,7 +394,6 @@ const Sidebar: React.FC<{
   );
 };
 
-
 // ========= Notebook Page =========
 const NotebookPage: React.FC<{
   lesson: LessonEntry;
@@ -378,8 +402,12 @@ const NotebookPage: React.FC<{
   onSaveContent: (content: string) => Promise<void>;
 }> = ({ lesson, onEditTitle, content, onSaveContent }) => {
   const [localTitle, setLocalTitle] = useState(lesson.title);
-  const [titleUpdateStatus, setTitleUpdateStatus] = useState<"idle" | "updating" | "updated">("idle");
-  const [contentUpdateStatus, setContentUpdateStatus] = useState<"idle" | "updating" | "updated">("idle");
+  const [titleUpdateStatus, setTitleUpdateStatus] = useState<
+    "idle" | "updating" | "updated"
+  >("idle");
+  const [contentUpdateStatus, setContentUpdateStatus] = useState<
+    "idle" | "updating" | "updated"
+  >("idle");
   const [prevLessonId, setPrevLessonId] = useState(lesson._id);
   const debouncedTitle = useDebounce(localTitle, 1000);
 
@@ -407,10 +435,18 @@ const NotebookPage: React.FC<{
         }, 2000);
       }, 500);
     }
-  }, [debouncedTitle, lesson.title, localTitle, prevLessonId, lesson._id, onEditTitle]);
+  }, [
+    debouncedTitle,
+    lesson.title,
+    localTitle,
+    prevLessonId,
+    lesson._id,
+    onEditTitle,
+  ]);
 
   // Get the most recent status to display
-  const displayStatus = contentUpdateStatus !== "idle" ? contentUpdateStatus : titleUpdateStatus;
+  const displayStatus =
+    contentUpdateStatus !== "idle" ? contentUpdateStatus : titleUpdateStatus;
 
   const handleSaveContent = async (markdown: string) => {
     setContentUpdateStatus("updating");
@@ -433,29 +469,37 @@ const NotebookPage: React.FC<{
     const noteId = lesson._id;
 
     // If either title or content is being saved, prevent navigation.
-    if (displayStatus === 'updating') {
+    if (displayStatus === "updating") {
       // eslint-disable-next-line no-restricted-globals
-      window.alert('Nội dung đang được lưu — vui lòng chờ lưu xong trước khi điều hướng.');
+      window.alert(
+        "Nội dung đang được lưu — vui lòng chờ lưu xong trước khi điều hướng."
+      );
       return;
     }
 
-    localStorage.setItem("current_lesson", JSON.stringify({
-      id: lesson.related_object?.related_id,
-      week: parseInt(lesson.related_object?.week_no || "0"),
-      title: lesson.title,
-      type: "lesson",
-      status: "in_progress"
-    }));
+    localStorage.setItem(
+      "current_lesson",
+      JSON.stringify({
+        id: lesson.related_object?.related_id,
+        week: parseInt(lesson.related_object?.week_no || "0"),
+        title: lesson.title,
+        type: "lesson",
+        status: "in_progress",
+      })
+    );
 
-    navigate(`/lesson?week=${lesson.related_object?.week_no}&day=${lesson.related_object?.day_id}`);
-
+    navigate(
+      `/lesson?week=${lesson.related_object?.week_no}&day=${lesson.related_object?.day_id}`
+    );
   };
 
   return (
     <div className="flex h-full flex-col bg-white overflow-hidden">
       {/* Header with title and metadata */}
-      <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white px-6 py-4 
-     flex-shrink-0 sticky top-0 z-20 backdrop-blur-md bg-white/80">
+      <div
+        className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white px-6 py-4 
+     flex-shrink-0 sticky top-0 z-20 backdrop-blur-md bg-white/80"
+      >
         <input
           className="w-full text-2xl font-bold text-gray-900 outline-none bg-transparent placeholder-gray-300 mb-2"
           value={localTitle}
@@ -472,8 +516,8 @@ const NotebookPage: React.FC<{
           {lesson.related_object?.related_id && (
             <button
               onClick={handleNavigateToLesson}
-              title="Go to lesson"
-              className="ml-2 p-1 rounded hover:bg-gray-100 text-gray-600"
+              title="Về bài học"
+              className="ml-2 p-1 rounded hover:bg-indigo-100 text-indigo-600 transition-colors"
             >
               <LaunchIcon fontSize="small" />
             </button>
@@ -521,8 +565,10 @@ export default function StudyNotebookFlip3D({
   const [error, setError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [aiMenuOpen, setAiMenuOpen] = useState(false);
-  const [aiMenuPos, setAiMenuPos] = useState<{ top: number; left: number } | null>(null);
-
+  const [aiMenuPos, setAiMenuPos] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
   // Close AI menu when clicking outside
   useEffect(() => {
@@ -561,10 +607,10 @@ export default function StudyNotebookFlip3D({
             created_at: note.created_at,
             related_object: note.related_object
               ? {
-                related_id: note.related_object.related_id,
-                week_no: note.related_object.week_no,
-                day_id: note.related_object.day_id,
-              }
+                  related_id: note.related_object.related_id,
+                  week_no: note.related_object.week_no,
+                  day_id: note.related_object.day_id,
+                }
               : null,
           } as LessonEntry;
         });
@@ -579,7 +625,6 @@ export default function StudyNotebookFlip3D({
       }
     };
     fetchNotes();
-
   }, [isOpen]);
 
   // Hiển thị toast khi có clipboard text
@@ -597,16 +642,15 @@ export default function StudyNotebookFlip3D({
 
     if (isOpen) {
       // Khi modal mở, thêm class
-      htmlElement.classList.add('lock-action');
+      htmlElement.classList.add("lock-action");
     }
 
     // --- Hàm dọn dẹp (Cleanup Function) ---
     // Hàm này sẽ chạy khi modal đóng
     return () => {
       // Xóa class đi để trả lại scroll cho trang
-      htmlElement.classList.remove('lock-action');
+      htmlElement.classList.remove("lock-action");
     };
-
   }, [isOpen]); // useEffect sẽ chạy lại mỗi khi isOpen thay đổi
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -641,17 +685,17 @@ export default function StudyNotebookFlip3D({
 
     try {
       // Update on server
-      const updated = await user_note_service.updateNote(
-        { title },
-        active._id
-      );
+      const updated = await user_note_service.updateNote({ title }, active._id);
 
       // Update local state
       setLessons((prev) =>
-        prev.map((l) => (l._id === active._id ? { ...l, title, updated_at: updated.updated_at } : l))
+        prev.map((l) =>
+          l._id === active._id
+            ? { ...l, title, updated_at: updated.updated_at }
+            : l
+        )
       );
       setError("");
-
     } catch (err) {
       console.error("Error updating title:", err);
       setError("Không thể cập nhật tiêu đề.");
@@ -683,10 +727,7 @@ export default function StudyNotebookFlip3D({
     if (!active) return;
 
     try {
-      const saved = await user_note_service.updateNote(
-        { content },
-        active._id
-      );
+      const saved = await user_note_service.updateNote({ content }, active._id);
 
       // Update local cache
       setNotes((prev) => ({
@@ -694,14 +735,20 @@ export default function StudyNotebookFlip3D({
         [active._id]: content,
       }));
       setLessons((prev) =>
-        prev.map((l) => (l._id === active._id ? { ...l, updated_at: saved.updated_at } : l))
+        prev.map((l) =>
+          l._id === active._id ? { ...l, updated_at: saved.updated_at } : l
+        )
       );
       setError("");
       // Dispatch an event so other components in the same tab can react
       try {
-        window.dispatchEvent(new CustomEvent('note:updated', { detail: { id: active._id, content } }));
+        window.dispatchEvent(
+          new CustomEvent("note:updated", {
+            detail: { id: active._id, content },
+          })
+        );
       } catch (e) {
-        console.error('Failed to dispatch note:updated', e);
+        console.error("Failed to dispatch note:updated", e);
       }
     } catch (err) {
       console.error("Error saving content:", err);
@@ -726,12 +773,20 @@ export default function StudyNotebookFlip3D({
           el.scrollIntoView({ behavior: "smooth", block: "start" });
         } else {
           // Fallback: try to find headings inside the editor container
-          const container = document.querySelector('.markdown-editor');
+          const container = document.querySelector(".markdown-editor");
           if (container) {
-            const headings = container.querySelectorAll('h1,h2,h3,h4,h5,h6');
+            const headings = container.querySelectorAll("h1,h2,h3,h4,h5,h6");
             for (const h of Array.from(headings)) {
-              if ((h.textContent || '').trim().toLowerCase().includes(id.replace(/^heading-/, '').replace(/-/g, ' '))) {
-                (h as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
+              if (
+                (h.textContent || "")
+                  .trim()
+                  .toLowerCase()
+                  .includes(id.replace(/^heading-/, "").replace(/-/g, " "))
+              ) {
+                (h as HTMLElement).scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                });
                 break;
               }
             }
@@ -757,16 +812,15 @@ export default function StudyNotebookFlip3D({
 
     try {
       const timestamp = new Date().toLocaleString();
-      const formattedContent = `\n\n---\n\n> **Highlighted on ${timestamp}**\n> \n> ${clipboardText.split("\n").join("\n> ")}\n\n`;
+      const formattedContent = `\n\n---\n\n> **Highlighted on ${timestamp}**\n> \n> ${clipboardText
+        .split("\n")
+        .join("\n> ")}\n\n`;
 
       const currentContent = notes[active._id] || "";
       const newContent = currentContent + formattedContent;
 
       // Update on server
-      await user_note_service.updateNote(
-        { content: newContent },
-        active._id
-      );
+      await user_note_service.updateNote({ content: newContent }, active._id);
 
       // Update local state
       setNotes({
@@ -832,45 +886,48 @@ export default function StudyNotebookFlip3D({
             </button>
 
             {/* AI Tools Dropdown Menu */}
-            {aiMenuOpen && active && aiMenuPos && createPortal(
-              <div
-                className="absolute z-[9999] w-56 rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden"
-                style={{ top: aiMenuPos.top, left: aiMenuPos.left }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
-                  onClick={() => {
-                    console.log("Create Summary - Note ID:", active._id);
-                    setAiMenuOpen(false);
-                  }}
+            {aiMenuOpen &&
+              active &&
+              aiMenuPos &&
+              createPortal(
+                <div
+                  className="absolute z-[9999] w-56 rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden"
+                  style={{ top: aiMenuPos.top, left: aiMenuPos.left }}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <SummarizeIcon className="!w-5 !h-5 text-blue-500" />
-                  Create Summary
-                </button>
-                <button
-                  className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
-                  onClick={() => {
-                    console.log("Create Flashcard - Note ID:", active._id);
-                    setAiMenuOpen(false);
-                  }}
-                >
-                  <FlashlightOnIcon className="!w-5 !h-5 text-yellow-500" />
-                  Create Flashcard
-                </button>
-                <button
-                  className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 font-medium text-gray-700 flex items-center gap-2"
-                  onClick={() => {
-                    console.log("Create Quiz - Note ID:", active._id);
-                    setAiMenuOpen(false);
-                  }}
-                >
-                  <QuizIcon className="!w-5 !h-5 text-purple-500" />
-                  Create Quiz
-                </button>
-              </div>,
-              document.body
-            )}
+                  <button
+                    className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
+                    onClick={() => {
+                      console.log("Create Summary - Note ID:", active._id);
+                      setAiMenuOpen(false);
+                    }}
+                  >
+                    <SummarizeIcon className="!w-5 !h-5 text-blue-500" />
+                    Create Summary
+                  </button>
+                  <button
+                    className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
+                    onClick={() => {
+                      console.log("Create Flashcard - Note ID:", active._id);
+                      setAiMenuOpen(false);
+                    }}
+                  >
+                    <FlashlightOnIcon className="!w-5 !h-5 text-yellow-500" />
+                    Create Flashcard
+                  </button>
+                  <button
+                    className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 font-medium text-gray-700 flex items-center gap-2"
+                    onClick={() => {
+                      console.log("Create Quiz - Note ID:", active._id);
+                      setAiMenuOpen(false);
+                    }}
+                  >
+                    <QuizIcon className="!w-5 !h-5 text-purple-500" />
+                    Create Quiz
+                  </button>
+                </div>,
+                document.body
+              )}
 
             <button
               onClick={() => setIsMaximized((v) => !v)}
@@ -899,7 +956,11 @@ export default function StudyNotebookFlip3D({
           </div>
         </header>
 
-        <div className={`grid h-full overflow-hidden transition-all duration-300 ${sidebarCollapsed ? "grid-cols-[64px_1fr]" : "grid-cols-[280px_1fr]"}`}>
+        <div
+          className={`grid h-full overflow-hidden transition-all duration-300 ${
+            sidebarCollapsed ? "grid-cols-[64px_1fr]" : "grid-cols-[280px_1fr]"
+          }`}
+        >
           <Sidebar
             lessons={lessons}
             activeId={activeId}
@@ -936,17 +997,39 @@ export default function StudyNotebookFlip3D({
                   {/* Header */}
                   <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-white">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
                       </svg>
-                      <span className="font-semibold text-sm">Nội dung đã sao chép</span>
+                      <span className="font-semibold text-sm">
+                        Nội dung đã sao chép
+                      </span>
                     </div>
                     <button
                       onClick={() => setShowClipboardToast(false)}
                       className="text-white/80 hover:text-white transition-colors"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -966,8 +1049,18 @@ export default function StudyNotebookFlip3D({
                       disabled={!active}
                       className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
                       </svg>
                       {active ? "Paste vào mục này" : "Chọn mục trước"}
                     </button>
@@ -981,4 +1074,3 @@ export default function StudyNotebookFlip3D({
     </div>
   );
 }
-

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
@@ -12,15 +12,25 @@ import LaunchIcon from "@mui/icons-material/Launch";
 import MenuIcon from "@mui/icons-material/Menu";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import SummarizeIcon from "@mui/icons-material/Summarize";
-import FlashlightOnIcon from "@mui/icons-material/FlashlightOn";
-import QuizIcon from "@mui/icons-material/Quiz";
+import ZoomInIcon from "@mui/icons-material/ZoomIn";
+import ZoomOutIcon from "@mui/icons-material/ZoomOut";
+import UnfoldLessIcon from "@mui/icons-material/UnfoldLess";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import { createPortal } from "react-dom";
 import { MarkdownEditor } from "../../components/common/MarkdownEditor";
 import { user_note_service } from "../../services/user_note.service";
 import { User_Note } from "../../types/User_Note";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import DescriptionIcon from "@mui/icons-material/Description";
+import QuizIcon from "@mui/icons-material/Quiz";
+import MindMapVisualization, { MindMapRef } from "../../components/notebook/MindMapVisualization";
+import { MindMapNode, MindMapStorage } from "../../types/MindMap";
+import geminiService from "../../services/gemini.service";
 
 // ========= Types =========
 type LessonEntry = User_Note;
@@ -69,6 +79,45 @@ function extractHeadingsTree(markdown: string): HeadingNode[] {
   }
 
   return root;
+}
+
+// ========= MindMap localStorage Helpers =========
+const MINDMAP_STORAGE_KEY = "notebook_mindmaps";
+
+function getMindMapFromStorage(noteId: string): MindMapNode | null {
+  try {
+    const stored = localStorage.getItem(MINDMAP_STORAGE_KEY);
+    if (!stored) return null;
+    const data: MindMapStorage = JSON.parse(stored);
+    return data[noteId]?.mindMap || null;
+  } catch {
+    return null;
+  }
+}
+
+function saveMindMapToStorage(noteId: string, mindMap: MindMapNode): void {
+  try {
+    const stored = localStorage.getItem(MINDMAP_STORAGE_KEY);
+    const data: MindMapStorage = stored ? JSON.parse(stored) : {};
+    data[noteId] = {
+      mindMap,
+      generatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(MINDMAP_STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.error("Failed to save mindmap to storage:", e);
+  }
+}
+
+function hasMindMapInStorage(noteId: string): boolean {
+  try {
+    const stored = localStorage.getItem(MINDMAP_STORAGE_KEY);
+    if (!stored) return false;
+    const data: MindMapStorage = JSON.parse(stored);
+    return !!data[noteId];
+  } catch {
+    return false;
+  }
 }
 
 const HeadingTree: React.FC<{
@@ -132,267 +181,271 @@ const Sidebar: React.FC<{
   isCollapsed,
   onToggleCollapse,
 }) => {
-  const [query, setQuery] = useState("");
-  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
-    null
-  );
+    const [query, setQuery] = useState("");
+    const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
+    const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+    const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
+      null
+    );
 
-  // Close sidebar menu when clicking outside
-  useEffect(() => {
-    if (!menuOpenId) return;
+    // Close sidebar menu when clicking outside
+    useEffect(() => {
+      if (!menuOpenId) return;
 
-    const handleClickOutside = () => {
-      setMenuOpenId(null);
+      const handleClickOutside = () => {
+        setMenuOpenId(null);
+      };
+
+      document.addEventListener("click", handleClickOutside);
+      return () => {
+        document.removeEventListener("click", handleClickOutside);
+      };
+    }, [menuOpenId]);
+
+    const filtered = useMemo(() => {
+      const q = query.toLowerCase();
+      return q
+        ? lessons.filter((l) => l.title.toLowerCase().includes(q))
+        : lessons;
+    }, [lessons, query]);
+
+    const handleOpenMenu = (
+      e: React.MouseEvent<HTMLButtonElement>,
+      id: string
+    ) => {
+      e.stopPropagation();
+      const rect = e.currentTarget.getBoundingClientRect();
+      setMenuOpenId(id);
+      setMenuPos({ top: rect.bottom + 4, left: rect.left });
     };
 
-    document.addEventListener("click", handleClickOutside);
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
+    const downloadMarkdownFile = (content: string, filename: string) => {
+      const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+
+      URL.revokeObjectURL(url);
     };
-  }, [menuOpenId]);
 
-  const filtered = useMemo(() => {
-    const q = query.toLowerCase();
-    return q
-      ? lessons.filter((l) => l.title.toLowerCase().includes(q))
-      : lessons;
-  }, [lessons, query]);
-
-  const handleOpenMenu = (
-    e: React.MouseEvent<HTMLButtonElement>,
-    id: string
-  ) => {
-    e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMenuOpenId(id);
-    setMenuPos({ top: rect.bottom + 4, left: rect.left });
-  };
-
-  const downloadMarkdownFile = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-
-    URL.revokeObjectURL(url);
-  };
-
-  if (isCollapsed) {
-    return (
-      <div className="h-full w-16 border-r bg-gradient-to-b from-indigo-50 to-white backdrop-blur-sm flex flex-col">
-        {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-center p-3">
-          <button
-            onClick={onToggleCollapse}
-            className="p-2 rounded-lg hover:bg-indigo-100 text-indigo-600"
-            title="Expand sidebar"
-          >
-            <MenuOpenIcon />
-          </button>
-        </div>
-
-        {/* Content - Collapsed lesson list */}
-        <div className="flex-1 !overflow-y-auto w-full flex flex-col items-center gap-1 py-2 px-2">
-          {filtered.map((l) => (
+    if (isCollapsed) {
+      return (
+        <div className="h-full w-16 border-r bg-gradient-to-b from-indigo-50 to-white backdrop-blur-sm flex flex-col">
+          {/* Header */}
+          <div className="flex-shrink-0 flex items-center justify-center p-3">
             <button
-              key={l._id}
-              onClick={() => setActiveId(l._id)}
-              className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
-                activeId === l._id
+              onClick={onToggleCollapse}
+              className="p-2 rounded-lg hover:bg-indigo-100 text-indigo-600"
+              title="Expand sidebar"
+            >
+              <MenuOpenIcon />
+            </button>
+          </div>
+
+          {/* Content - Collapsed lesson list */}
+          <div className="flex-1 !overflow-y-auto w-full flex flex-col items-center gap-1 py-2 px-2">
+            {filtered.map((l) => (
+              <button
+                key={l._id}
+                onClick={() => setActiveId(l._id)}
+                className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${activeId === l._id
                   ? "bg-indigo-600 text-white shadow-md"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-              title={l.title}
-            >
-              {l.title.charAt(0).toUpperCase()}
-            </button>
-          ))}
-        </div>
+                  }`}
+                title={l.title}
+              >
+                {l.title.charAt(0).toUpperCase()}
+              </button>
+            ))}
+          </div>
 
-        {/* Footer */}
-        <div className="flex-shrink-0 flex items-center justify-center p-3 !mt-auto">
+          {/* Footer */}
+          <div className="flex-shrink-0 flex items-center justify-center p-3 !mt-auto">
+            <button
+              onClick={onAdd}
+              className="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+              title="New lesson"
+            >
+              <AddIcon fontSize="small" />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <aside className="h-full w-full max-w-xs border-r bg-white backdrop-blur-sm flex flex-col min-h-0">
+        {/* Header */}
+        <div className="flex-shrink-0 flex items-center justify-between gap-2 p-4 border-b border-indigo-200/50">
+          <div className="flex items-center gap-2 text-sm text-gray-700">
+            <LibraryBooksIcon className="h-5 w-5 text-indigo-600" />
+            <span className="font-bold text-indigo-900">My Lessons</span>
+          </div>
           <button
-            onClick={onAdd}
-            className="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
-            title="New lesson"
+            onClick={onToggleCollapse}
+            className="p-1 rounded-lg hover:bg-indigo-100 text-gray-600"
+            title="Collapse sidebar"
           >
-            <AddIcon fontSize="small" />
+            <MenuIcon fontSize="small" />
           </button>
         </div>
-      </div>
-    );
-  }
 
-  return (
-    <aside className="h-full w-full max-w-xs border-r bg-white backdrop-blur-sm flex flex-col min-h-0">
-      {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between gap-2 p-4 border-b border-indigo-200/50">
-        <div className="flex items-center gap-2 text-sm text-gray-700">
-          <LibraryBooksIcon className="h-5 w-5 text-indigo-600" />
-          <span className="font-bold text-indigo-900">My Lessons</span>
+        {/* Search - part of header section */}
+        <div className="flex-shrink-0 px-4 py-3 border-b border-indigo-200/50">
+          <div className="flex items-center gap-2 rounded-lg border border-indigo-300 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500">
+            <SearchIcon className="h-4 w-4 text-gray-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search..."
+              className="w-full text-sm outline-none bg-transparent"
+            />
+          </div>
         </div>
-        <button
-          onClick={onToggleCollapse}
-          className="p-1 rounded-lg hover:bg-indigo-100 text-gray-600"
-          title="Collapse sidebar"
-        >
-          <MenuIcon fontSize="small" />
-        </button>
-      </div>
 
-      {/* Search - part of header section */}
-      <div className="flex-shrink-0 px-4 py-3 border-b border-indigo-200/50">
-        <div className="flex items-center gap-2 rounded-lg border border-indigo-300 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500">
-          <SearchIcon className="h-4 w-4 text-gray-400" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search..."
-            className="w-full text-sm outline-none bg-transparent"
-          />
-        </div>
-      </div>
+        {/* Content - Scrollable lesson list */}
+        <div className="flex-1 min-h-0 !overflow-y-auto px-3 py-3">
+          <div className="space-y-2">
+            {filtered.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-sm">
+                No lessons found
+              </div>
+            ) : (
+              filtered.map((l) => {
+                const isActive = activeId === l._id;
+                const isExpanded = expandedLessonId === l._id;
 
-      {/* Content - Scrollable lesson list */}
-      <div className="flex-1 min-h-0 !overflow-y-auto px-3 py-3">
-        <div className="space-y-2">
-          {filtered.length === 0 ? (
-            <div className="text-center py-8 text-gray-400 text-sm">
-              No lessons found
-            </div>
-          ) : (
-            filtered.map((l) => {
-              const isActive = activeId === l._id;
-              const isExpanded = expandedLessonId === l._id;
+                const markdown = notes[l._id] || "";
+                const headingsTree = extractHeadingsTree(markdown);
 
-              const markdown = notes[l._id] || "";
-              const headingsTree = extractHeadingsTree(markdown);
-
-              return (
-                <div key={l._id}>
-                  {/* Row chính */}
-                  <div
-                    className={`flex items-center justify-between px-3 py-2.5 cursor-pointer rounded-lg transition-all ${
-                      isActive
+                return (
+                  <div key={l._id}>
+                    {/* Row chính */}
+                    <div
+                      className={`flex items-center justify-between px-3 py-2.5 cursor-pointer rounded-lg transition-all ${isActive
                         ? "bg-indigo-600 text-white shadow-md"
                         : "hover:bg-indigo-100 text-gray-700"
-                    }`}
-                    onClick={() => setActiveId(l._id)}
-                  >
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setExpandedLessonId(isExpanded ? null : l._id);
-                        }}
-                        className="p-0.5 flex-shrink-0"
-                      >
-                        {isExpanded ? (
-                          <ExpandLessIcon fontSize="small" />
-                        ) : (
-                          <ExpandMoreIcon fontSize="small" />
-                        )}
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium">
-                          {l.title}
-                        </div>
-                        <div
-                          className={`truncate text-xs ${
-                            isActive ? "text-indigo-100" : "text-gray-500"
-                          }`}
-                        >
-                          {fmtDate(l.updated_at)}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Nút 3 chấm */}
-                    <button
-                      onClick={(e) => handleOpenMenu(e, l._id)}
-                      className={`p-1 rounded flex-shrink-0 ${
-                        isActive ? "hover:bg-indigo-500" : "hover:bg-gray-200"
-                      }`}
+                        }`}
+                      onClick={() => setActiveId(l._id)}
                     >
-                      <MoreVertIcon fontSize="small" />
-                    </button>
-                  </div>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedLessonId(isExpanded ? null : l._id);
+                          }}
+                          className="p-0.5 flex-shrink-0"
+                        >
+                          {isExpanded ? (
+                            <ExpandLessIcon fontSize="small" />
+                          ) : (
+                            <ExpandMoreIcon fontSize="small" />
+                          )}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium">
+                            {l.title}
+                          </div>
+                          <div
+                            className={`truncate text-xs ${isActive ? "text-indigo-100" : "text-gray-500"
+                              }`}
+                          >
+                            {fmtDate(l.updated_at)}
+                          </div>
+                        </div>
+                        {/* MindMap indicator */}
+                        {hasMindMapInStorage(l._id) && (
+                          <AccountTreeIcon 
+                            fontSize="small"
+                            className={`flex-shrink-0 ${isActive ? "text-indigo-200" : "text-teal-500"}`} 
+                            titleAccess="Has Mind Map"
+                          />
+                        )}
+                      </div>
 
-                  {/* mục lục khi expand */}
-                  {isExpanded && headingsTree.length > 0 && (
-                    <div className="ml-8 mt-1 mb-2 pl-2 border-l-2 border-indigo-300 space-y-1">
-                      <HeadingTree
-                        nodes={headingsTree}
-                        onJump={(id: string) => {
-                          setActiveId(l._id);
-                          return onJumpToHeading(id);
-                        }}
-                      />
+                      {/* Nút 3 chấm */}
+                      <button
+                        onClick={(e) => handleOpenMenu(e, l._id)}
+                        className={`p-1 rounded flex-shrink-0 ${isActive ? "hover:bg-indigo-500" : "hover:bg-gray-200"
+                          }`}
+                      >
+                        <MoreVertIcon fontSize="small" />
+                      </button>
                     </div>
-                  )}
-                </div>
-              );
-            })
-          )}
+
+                    {/* mục lục khi expand */}
+                    {isExpanded && headingsTree.length > 0 && (
+                      <div className="ml-8 mt-1 mb-2 pl-2 border-l-2 border-indigo-300 space-y-1">
+                        <HeadingTree
+                          nodes={headingsTree}
+                          onJump={(id: string) => {
+                            setActiveId(l._id);
+                            return onJumpToHeading(id);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Footer - New Lesson button */}
-      <div className="mt-auto flex-shrink-0 p-3 border-t border-indigo-200/50">
-        <button
-          onClick={onAdd}
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-indigo-600 text-white px-3 py-2.5 font-medium hover:bg-indigo-700 transition-colors"
-        >
-          <AddIcon fontSize="small" />
-          <span>New Lesson</span>
-        </button>
-      </div>
-
-      {/* Portal menu */}
-      {menuOpenId &&
-        menuPos &&
-        createPortal(
-          <div
-            className="absolute z-[9999] w-40 rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden"
-            style={{ top: menuPos.top, left: menuPos.left }}
-            onClick={(e) => e.stopPropagation()}
+        {/* Footer - New Lesson button */}
+        <div className="mt-auto flex-shrink-0 p-3 border-t border-indigo-200/50">
+          <button
+            onClick={onAdd}
+            className="w-full flex items-center justify-center gap-2 rounded-lg bg-indigo-600 text-white px-3 py-2.5 font-medium hover:bg-indigo-700 transition-colors"
           >
-            <button
-              className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
-              onClick={() => {
-                setMenuOpenId(null);
+            <AddIcon fontSize="small" />
+            <span>New Lesson</span>
+          </button>
+        </div>
 
-                const markdown = notes[menuOpenId] || "";
-                const title =
-                  lessons.find((l) => l._id === menuOpenId)?.title || "note";
+        {/* Portal menu */}
+        {menuOpenId &&
+          menuPos &&
+          createPortal(
+            <div
+              className="absolute z-[9999] w-40 rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden"
+              style={{ top: menuPos.top, left: menuPos.left }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
+                onClick={() => {
+                  setMenuOpenId(null);
 
-                downloadMarkdownFile(markdown, `${title}.md`);
-              }}
-            >
-              Export (.md)
-            </button>
-            <button
-              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 font-medium flex items-center gap-2"
-              onClick={async () => {
-                setMenuOpenId(null);
-                if (window.confirm("Bạn có chắc chắn muốn xóa ghi chú này?")) {
-                  await onDelete(menuOpenId);
-                }
-              }}
-            >
-              Delete
-            </button>
-          </div>,
-          document.body
-        )}
-    </aside>
-  );
-};
+                  const markdown = notes[menuOpenId] || "";
+                  const title =
+                    lessons.find((l) => l._id === menuOpenId)?.title || "note";
+
+                  downloadMarkdownFile(markdown, `${title}.md`);
+                }}
+              >
+                Export (.md)
+              </button>
+              <button
+                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 font-medium flex items-center gap-2"
+                onClick={async () => {
+                  setMenuOpenId(null);
+                  if (window.confirm("Bạn có chắc chắn muốn xóa ghi chú này?")) {
+                    await onDelete(menuOpenId);
+                  }
+                }}
+              >
+                Delete
+              </button>
+            </div>,
+            document.body
+          )}
+      </aside>
+    );
+  };
 
 // ========= Notebook Page =========
 const NotebookPage: React.FC<{
@@ -570,6 +623,14 @@ export default function StudyNotebookFlip3D({
     left: number;
   } | null>(null);
 
+  // MindMap states
+  const [showMindMap, setShowMindMap] = useState(false);
+  const [mindMapData, setMindMapData] = useState<MindMapNode | null>(null);
+  const [isGeneratingMap, setIsGeneratingMap] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [mindMapExpanded, setMindMapExpanded] = useState(true);
+  const mindMapRef = useRef<MindMapRef>(null);
+
   // Close AI menu when clicking outside
   useEffect(() => {
     if (!aiMenuOpen) return;
@@ -607,10 +668,10 @@ export default function StudyNotebookFlip3D({
             created_at: note.created_at,
             related_object: note.related_object
               ? {
-                  related_id: note.related_object.related_id,
-                  week_no: note.related_object.week_no,
-                  day_id: note.related_object.day_id,
-                }
+                related_id: note.related_object.related_id,
+                week_no: note.related_object.week_no,
+                day_id: note.related_object.day_id,
+              }
               : null,
           } as LessonEntry;
         });
@@ -662,6 +723,60 @@ export default function StudyNotebookFlip3D({
     () => lessons.find((l) => l._id === activeId) || null,
     [lessons, activeId]
   );
+
+  // activeLesson with mindMap status from localStorage
+  const activeLesson = useMemo(() => {
+    if (!active) return null;
+    return {
+      ...active,
+      mindMap: hasMindMapInStorage(active._id),
+    };
+  }, [active]);
+
+  // Handle MindMap generation/opening
+  const handleOpenMindMap = useCallback(async (forceRegenerate: boolean) => {
+    if (!active) return;
+    setAiMenuOpen(false);
+
+    const noteContent = notes[active._id] || "";
+    if (!noteContent.trim()) {
+      setMapError("Nội dung ghi chú trống. Vui lòng thêm nội dung trước khi tạo mindmap.");
+      setShowMindMap(true);
+      return;
+    }
+
+    // Check localStorage cache first
+    if (!forceRegenerate) {
+      const cachedMap = getMindMapFromStorage(active._id);
+      if (cachedMap) {
+        setMindMapData(cachedMap);
+        setMapError(null);
+        setShowMindMap(true);
+        return;
+      }
+    }
+
+    // Generate new mindmap
+    setShowMindMap(true);
+    setIsGeneratingMap(true);
+    setMapError(null);
+    setMindMapData(null);
+
+    try {
+      const result = await geminiService.generateMindMap(noteContent);
+      if (result) {
+        setMindMapData(result);
+        saveMindMapToStorage(active._id, result);
+      } else {
+        setMapError("Không thể tạo mindmap. Vui lòng thử lại.");
+      }
+    } catch (err) {
+      console.error("Error generating mindmap:", err);
+      setMapError("Có lỗi xảy ra khi tạo mindmap. Vui lòng thử lại.");
+    } finally {
+      setIsGeneratingMap(false);
+    }
+  }, [active, notes]);
 
   const addLesson = async () => {
     try {
@@ -869,7 +984,10 @@ export default function StudyNotebookFlip3D({
           </div>
         )}
         <header className="flex items-center justify-between p-3 border-b bg-gradient-to-b from-indigo-50 to-white backdrop-blur shrink-0">
-          <h1 className="text-lg font-bold">TOEIC Study Notebook</h1>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-indigo-600 rounded-md flex items-center justify-center text-white font-bold font-serif text-xs">N</div>
+            <h1 className="text-lg font-semibold text-slate-700 tracking-tight">Study Notebook</h1>
+          </div>
           <div className="flex gap-2 relative">
             <button
               onClick={(e) => {
@@ -885,49 +1003,46 @@ export default function StudyNotebookFlip3D({
               AI Tools
             </button>
 
-            {/* AI Tools Dropdown Menu */}
-            {aiMenuOpen &&
-              active &&
-              aiMenuPos &&
-              createPortal(
-                <div
-                  className="absolute z-[9999] w-56 rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden"
-                  style={{ top: aiMenuPos.top, left: aiMenuPos.left }}
+            {/* AI Tools Dropdown Menu - Portal to body */}
+            {aiMenuOpen && aiMenuPos && createPortal(
+              <AnimatePresence>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="fixed w-64 bg-white rounded-xl shadow-xl border border-indigo-100 z-[9999] overflow-hidden py-1"
+                  style={{ top: aiMenuPos.top, left: aiMenuPos.left - 200 }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <button
-                    className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
-                    onClick={() => {
-                      console.log("Create Summary - Note ID:", active._id);
-                      setAiMenuOpen(false);
-                    }}
-                  >
-                    <SummarizeIcon className="!w-5 !h-5 text-blue-500" />
-                    Create Summary
+                  <div className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Mind Map</div>
+                  {activeLesson?.mindMap ? (
+                    <>
+                      <button onClick={() => handleOpenMindMap(false)} className="w-full px-4 py-2.5 text-left text-sm hover:bg-indigo-50 text-slate-700 flex items-center gap-2">
+                        <AccountTreeIcon fontSize="small" className="text-teal-500" /> Open Existing Map
+                      </button>
+                      <button onClick={() => handleOpenMindMap(true)} className="w-full px-4 py-2.5 text-left text-sm hover:bg-indigo-50 text-slate-700 flex items-center gap-2">
+                        <RefreshIcon fontSize="small" className="text-orange-500" /> Regenerate Map
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => handleOpenMindMap(true)} className="w-full px-4 py-2.5 text-left text-sm hover:bg-indigo-50 text-slate-700 flex items-center gap-2">
+                      <AutoAwesomeOutlinedIcon fontSize="small" className="text-indigo-500" /> Generate New Map
+                    </button>
+                  )}
+
+                  <div className="my-1 border-t border-slate-100"></div>
+                  <div className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Other</div>
+
+                  <button className="w-full px-4 py-2.5 text-left text-sm hover:bg-indigo-50 text-slate-700 flex items-center gap-2">
+                    <DescriptionIcon fontSize="small" className="text-blue-500" /> Summary
                   </button>
-                  <button
-                    className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 border-b font-medium text-gray-700 flex items-center gap-2"
-                    onClick={() => {
-                      console.log("Create Flashcard - Note ID:", active._id);
-                      setAiMenuOpen(false);
-                    }}
-                  >
-                    <FlashlightOnIcon className="!w-5 !h-5 text-yellow-500" />
-                    Create Flashcard
+                  <button className="w-full px-4 py-2.5 text-left text-sm hover:bg-indigo-50 text-slate-700 flex items-center gap-2">
+                    <QuizIcon fontSize="small" className="text-orange-500" /> Quiz
                   </button>
-                  <button
-                    className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 font-medium text-gray-700 flex items-center gap-2"
-                    onClick={() => {
-                      console.log("Create Quiz - Note ID:", active._id);
-                      setAiMenuOpen(false);
-                    }}
-                  >
-                    <QuizIcon className="!w-5 !h-5 text-purple-500" />
-                    Create Quiz
-                  </button>
-                </div>,
-                document.body
-              )}
+                </motion.div>
+              </AnimatePresence>,
+              document.body
+            )}
 
             <button
               onClick={() => setIsMaximized((v) => !v)}
@@ -957,9 +1072,8 @@ export default function StudyNotebookFlip3D({
         </header>
 
         <div
-          className={`grid h-full overflow-hidden transition-all duration-300 ${
-            sidebarCollapsed ? "grid-cols-[64px_1fr]" : "grid-cols-[280px_1fr]"
-          }`}
+          className={`grid h-full overflow-hidden transition-all duration-300 ${sidebarCollapsed ? "grid-cols-[64px_1fr]" : "grid-cols-[280px_1fr]"
+            }`}
         >
           <Sidebar
             lessons={lessons}
@@ -1070,6 +1184,162 @@ export default function StudyNotebookFlip3D({
             )}
           </main>
         </div>
+
+        {/* MindMap Modal Overlay */}
+        <AnimatePresence>
+          {showMindMap && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowMindMap(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="relative bg-white rounded-2xl shadow-2xl w-[95vw] h-full max-w-[1600px]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200/80 bg-white rounded-t-2xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-200">
+                      <AccountTreeIcon className="text-white" fontSize="small" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-800 leading-tight">Mind Map</h2>
+                      {active && (
+                        <span className="text-xs text-slate-400 font-medium">{active.title}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!isGeneratingMap && mindMapData && (
+                      <button
+                        onClick={() => handleOpenMindMap(true)}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 transition-all text-sm font-medium shadow-md shadow-orange-200 active:scale-95"
+                      >
+                        <RefreshIcon fontSize="small" />
+                        Regenerate
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowMindMap(false)}
+                      className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Modal Content */}
+                <div className="h-[calc(100%-57px)] w-full rounded-b-2xl">
+                  {isGeneratingMap ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-4">
+                      <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+                      <p className="text-lg font-medium text-slate-600">Đang tạo Mind Map...</p>
+                      <p className="text-sm text-slate-400">Quá trình này có thể mất vài giây</p>
+                    </div>
+                  ) : mapError ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-4">
+                      <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <p className="text-lg font-medium text-red-600">{mapError}</p>
+                      <button
+                        onClick={() => handleOpenMindMap(true)}
+                        className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-medium"
+                      >
+                        Thử lại
+                      </button>
+                    </div>
+                  ) : mindMapData ? (
+                    <MindMapVisualization 
+                      ref={mindMapRef} 
+                      data={mindMapData} 
+                      showControls={false}
+                    />
+                  ) : null}
+                </div>
+
+                {/* Controls - Outside overflow-hidden container */}
+                {!isGeneratingMap && !mapError && mindMapData && (
+                  <>
+                    {/* Bottom Left: Zoom & Expand Controls */}
+                    <div className="absolute bottom-4 left-4 flex items-center gap-2 z-10">
+                      <div className="flex items-center bg-white shadow-lg rounded-xl border border-slate-200 p-1 gap-0.5">
+                        <button 
+                          onClick={() => mindMapRef.current?.zoomOut()}
+                          className="p-2 hover:bg-indigo-50 rounded-lg text-slate-500 hover:text-indigo-600 transition-all duration-200 active:scale-95"
+                          title="Zoom Out"
+                        >
+                          <ZoomOutIcon fontSize="small" />
+                        </button>
+                        <div className="w-px h-5 bg-slate-200"></div>
+                        <button 
+                          onClick={() => mindMapRef.current?.resetView()}
+                          className="p-2 hover:bg-indigo-50 rounded-lg text-slate-500 hover:text-indigo-600 transition-all duration-200 active:scale-95"
+                          title="Reset View"
+                        >
+                          <RefreshIcon fontSize="small" />
+                        </button>
+                        <div className="w-px h-5 bg-slate-200"></div>
+                        <button 
+                          onClick={() => mindMapRef.current?.zoomIn()}
+                          className="p-2 hover:bg-indigo-50 rounded-lg text-slate-500 hover:text-indigo-600 transition-all duration-200 active:scale-95"
+                          title="Zoom In"
+                        >
+                          <ZoomInIcon fontSize="small" />
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          mindMapRef.current?.toggleExpandAll();
+                          setMindMapExpanded(!mindMapExpanded);
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-xl shadow-lg border transition-all duration-200 text-sm font-medium active:scale-95 ${
+                          mindMapExpanded 
+                            ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300' 
+                            : 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700'
+                        }`}
+                      >
+                        {mindMapExpanded ? (
+                          <>
+                            <UnfoldLessIcon fontSize="small" />
+                            <span>Collapse</span>
+                          </>
+                        ) : (
+                          <>
+                            <UnfoldMoreIcon fontSize="small" />
+                            <span>Expand All</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Bottom Right: Hint */}
+                    <div className="absolute bottom-4 right-4 z-10">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-white/90 rounded-lg text-xs text-slate-400 border border-slate-200/60 shadow-sm">
+                        <span>🖱️ Drag to pan</span>
+                        <span className="text-slate-300">•</span>
+                        <span>🔍 Scroll to zoom</span>
+                        <span className="text-slate-300">•</span>
+                        <span>👆 Click node to expand/collapse</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

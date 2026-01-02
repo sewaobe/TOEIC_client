@@ -1,4 +1,5 @@
 import axiosClient from "./axiosClient";
+import { MindMapNode } from "../types/MindMap";
 
 const geminiService = {
   // Gọi BE để sinh lộ trình học TOEIC bằng Gemini
@@ -36,8 +37,13 @@ const geminiService = {
     });
 
     return res.data.json;
-  }
+  },
 
+  // Generate Mind Map from text content
+  async generateMindMap(content: string): Promise<MindMapNode> {
+    const res = await axiosClient.post("/gemini/generate-mindmap", { content });
+    return res.data.data;
+  }
 };
 
 export default geminiService;

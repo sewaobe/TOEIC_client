@@ -112,12 +112,22 @@ const privateRoutes: AppRoute[] = [
     guard: ProtectedRoute,
   },
   {
+    path: "/practice-skill/dictation/:id",
+    element: PracticeDictationPage,
+    guard: ProtectedRoute,
+  },
+  {
     path: "/practice-skill/challenge",
     element: PracticeChallengePage,
     guard: ProtectedRoute,
   },
   {
     path: "/practice-skill/shadowing",
+    element: PracticeShadowingPage,
+    guard: ProtectedRoute,
+  },
+  {
+    path: "/practice-skill/shadowing/:id",
     element: PracticeShadowingPage,
     guard: ProtectedRoute,
   },
@@ -133,6 +143,11 @@ const privateRoutes: AppRoute[] = [
   },
   {
     path: "/practice-skill/quiz",
+    element: PracticeQuizPage,
+    guard: ProtectedRoute,
+  },
+  {
+    path: "/practice-skill/quiz/:id",
     element: PracticeQuizPage,
     guard: ProtectedRoute,
   },

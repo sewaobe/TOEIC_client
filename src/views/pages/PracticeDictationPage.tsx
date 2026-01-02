@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import PracticeLayout from "../layouts/PracticeLayout";
 import { Box, CircularProgress, Typography } from "@mui/material";
 import SidebarPractice from "../../components/practices/SidebarPractice";
@@ -8,12 +9,20 @@ import { Dictation } from "../../types/Dictation";
 import { dictationService } from "../../services/dictation.service";
 
 const PracticeDictationPage = () => {
+  const { id: urlId } = useParams<{ id?: string }>();
   const [selectedLesson, setSelectedLesson] = useState<Dictation | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [filters, setFilters] = useState<{
     part_type?: number;
     tags?: string;
   } | null>(null);
+
+  // Auto-load dictation if URL has :id param
+  useEffect(() => {
+    if (urlId) {
+      handleSelectLesson(urlId);
+    }
+  }, [urlId]);
 
   const handleSelectPart = (partNumber: number) => {
     // Click vào Part → hiện danh sách tất cả bài của Part đó

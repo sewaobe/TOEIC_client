@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react"
+import { useParams } from "react-router-dom"
 import PracticeLayout from "../layouts/PracticeLayout"
 import { Box, CircularProgress, Typography } from "@mui/material"
 import SidebarPractice, { Section } from "../../components/practices/SidebarPractice"
@@ -31,9 +32,17 @@ const mapLevelToDifficulty = (level?: string) => {
 }
 
 const PracticeShadowingPage = () => {
+    const { id: urlId } = useParams<{ id?: string }>()
     const [selectedLesson, setSelectedLesson] = useState<Dictation | null>(null)
     const [shadowings, setShadowings] = useState<Dictation[]>([])
     const [loading, setLoading] = useState<boolean>(false)
+
+    // Auto-load shadowing if URL has :id param
+    useEffect(() => {
+        if (urlId) {
+            handleSelectLesson(urlId)
+        }
+    }, [urlId])
 
     /** Fetch danh sách shadowing từ service */
     const fetchShadowings = async () => {

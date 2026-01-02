@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Button, Stack, Typography } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import PracticeLayout from '../layouts/PracticeLayout';
 import QuizList from '../../components/practices/QuizList';
@@ -11,8 +11,17 @@ type ViewState = 'list' | 'practicing';
 
 export default function PracticeQuizPage() {
   const navigate = useNavigate();
+  const { id: urlId } = useParams<{ id?: string }>();
   const [viewState, setViewState] = useState<ViewState>('list');
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
+
+  // Auto-load quiz if URL has :id param
+  useEffect(() => {
+    if (urlId) {
+      setSelectedQuizId(urlId);
+      setViewState('practicing');
+    }
+  }, [urlId]);
 
   const handleSelectQuiz = (quizId: string) => {
     setSelectedQuizId(quizId);

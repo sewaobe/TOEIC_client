@@ -4,6 +4,7 @@ import { blobToBase64, playAudio } from '../utils/audio.util';
 import { RECORDING_TIMEOUT_MS } from '../constants/PracticeSpeaking';
 import { speakingService } from '../services/speaking.service';
 import { speakText } from '../utils/tts.util';
+import { evaluatePronunciation, createSpeechRecognition } from '../utils/stt.util';
 
 // Add type definitions for Web Speech API
 interface IWindow extends Window {
@@ -471,8 +472,17 @@ export const useConversationViewModel = (
         setPracticeResult(null);
     };
 
+    // Practice mode refs
+    const practiceRecognitionRef = useRef<any>(null);
+    const practiceTranscriptRef = useRef<string>("");
+    const practiceInterimTranscriptRef = useRef<string>("");
+
     const startPracticeRecording = async () => {
         if (isPracticeRecording) return;
+
+        // Reset practice transcript
+        practiceTranscriptRef.current = "";
+        practiceInterimTranscriptRef.current = "";
 
         try {
             const stream = await setupAudioStream();
@@ -481,25 +491,98 @@ export const useConversationViewModel = (
             mediaRecorderRef.current = mediaRecorder;
             chunksRef.current = [];
 
+            // Setup Speech Recognition for practice mode
+            const recognition = createSpeechRecognition();
+            if (recognition) {
+                practiceRecognitionRef.current = recognition;
+                recognition.continuous = true;
+                // Enable interim results to capture speech as it happens
+                recognition.interimResults = true;
+
+                recognition.onresult = (event: any) => {
+                    let interimTranscript = '';
+                    let finalTranscript = '';
+                    
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript + " ";
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+                    
+                    if (finalTranscript) {
+                        practiceTranscriptRef.current += finalTranscript;
+                    }
+                    // Keep track of interim for fallback
+                    practiceInterimTranscriptRef.current = interimTranscript;
+                    
+                    console.log("[Practice STT] Final:", practiceTranscriptRef.current, "Interim:", interimTranscript);
+                };
+
+                recognition.onerror = (event: any) => {
+                    console.warn("[Practice STT] Error:", event.error);
+                };
+
+                recognition.onend = () => {
+                    console.log("[Practice STT] Recognition ended");
+                };
+
+                try {
+                    recognition.start();
+                    console.log("[Practice STT] Started");
+                } catch (e) {
+                    console.warn("Practice recognition start error:", e);
+                }
+            } else {
+                console.warn("[Practice STT] Speech Recognition not supported");
+            }
+
             mediaRecorder.ondataavailable = (e) => {
                 if (e.data.size > 0) chunksRef.current.push(e.data);
             };
 
             mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
                 setIsPracticeProcessing(true);
+                
+                // Give speech recognition a moment to finalize any pending results
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                // Stop speech recognition after the delay
+                if (practiceRecognitionRef.current) {
+                    try {
+                        practiceRecognitionRef.current.stop();
+                    } catch (e) { }
+                    practiceRecognitionRef.current = null;
+                }
+                
+                // Wait a bit more for final results to come through
+                await new Promise(resolve => setTimeout(resolve, 200));
+
                 try {
-                    const base64 = await blobToBase64(audioBlob);
-                    // const result = await evaluatePronunciation(base64, practiceTarget);
-                    const result: PracticeResult = {
-                        score: 88,
-                        feedback: "Good job! Focus on your intonation for better clarity.",
-                        detectedText: "Hello, how are you?"
-                    };
+                    // Get the transcript - use final transcript, or fallback to interim
+                    let detectedText = practiceTranscriptRef.current.trim();
+                    
+                    // If no final transcript, use interim as fallback
+                    if (!detectedText && practiceInterimTranscriptRef.current) {
+                        detectedText = practiceInterimTranscriptRef.current.trim();
+                        console.log("[Practice] Using interim transcript as fallback:", detectedText);
+                    }
+                    
+                    console.log("[Practice] Final detected text:", detectedText);
+                    
+                    // Evaluate pronunciation using local STT comparison
+                    const result = evaluatePronunciation(detectedText, practiceTarget);
 
                     setPracticeResult(result);
                 } catch (e) {
-                    console.error(e);
+                    console.error("Practice evaluation error:", e);
+                    setPracticeResult({
+                        score: 0,
+                        feedback: "Could not evaluate. Please try again.",
+                        detectedText: "(Error during evaluation)",
+                    });
                 } finally {
                     setIsPracticeProcessing(false);
                 }
@@ -515,6 +598,14 @@ export const useConversationViewModel = (
     };
 
     const stopPracticeRecording = () => {
+        // Stop speech recognition first
+        if (practiceRecognitionRef.current) {
+            try {
+                practiceRecognitionRef.current.stop();
+            } catch (e) { }
+            practiceRecognitionRef.current = null;
+        }
+
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
             mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());

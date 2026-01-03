@@ -55,34 +55,9 @@ const SessionDetailModal: React.FC<Props> = ({ session, onClose }) => {
 
   const report = session.report;
 
-  // Mock data for Tab 3 (only used when BE chưa trả thật)
-  const vocabSuggestions = report?.vocabularySuggestions ?? [
-    {
-      word: 'very good',
-      context: 'You often used "very good" to describe things.',
-      alternatives: ['excellent', 'fantastic', 'really good', 'great'],
-    },
-    {
-      word: 'a lot of',
-      context: 'You used "a lot of" many times when describing quantities.',
-      alternatives: ['plenty of', 'a large number of', 'numerous'],
-    },
-  ];
-
-  const grammarBreakdown = report?.grammarBreakdown ?? [
-    {
-      structure: 'Present Perfect',
-      example: "I have visit Paris last year.",
-      advice: 'Use past simple with finished time: "I visited Paris last year."',
-      status: 'Needs Improvement' as const,
-    },
-    {
-      structure: 'Linking Words',
-      example: "I like traveling and I learn a lot.",
-      advice: 'Try using connectors: "I like traveling because I can learn a lot."',
-      status: 'Correct' as const,
-    },
-  ];
+  // Use real data from report, fallback to empty arrays if not available
+  const vocabSuggestions = report?.vocabularySuggestions ?? [];
+  const grammarBreakdown = report?.grammarBreakdown ?? [];
 
   // Luôn dùng dữ liệu thật từ report tổng hợp BE
   const fluency = report?.fluency ?? 0;
@@ -324,6 +299,12 @@ const SessionDetailModal: React.FC<Props> = ({ session, onClose }) => {
               <Box textAlign="center" py={4}>
                 <Typography color="text.secondary">Report unavailable.</Typography>
               </Box>
+            ) : vocabSuggestions.length === 0 && grammarBreakdown.length === 0 ? (
+              <Box textAlign="center" py={4}>
+                <Typography color="text.secondary">
+                  No vocabulary or grammar suggestions yet. Keep practicing to get personalized insights!
+                </Typography>
+              </Box>
             ) : (
               <Grid container spacing={3}>
                 {/* Vocabulary Section */}
@@ -332,6 +313,11 @@ const SessionDetailModal: React.FC<Props> = ({ session, onClose }) => {
                     <Typography variant="h6" fontWeight="bold" color="primary.main" mb={2}>
                       Vocabulary Builder
                     </Typography>
+                    {vocabSuggestions.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                        No vocabulary suggestions for this session.
+                      </Typography>
+                    ) : (
                     <Stack spacing={2}>
                       {vocabSuggestions.map((vocab, i) => (
                         <Box
@@ -353,14 +339,15 @@ const SessionDetailModal: React.FC<Props> = ({ session, onClose }) => {
                           <Typography variant="caption" fontWeight="bold" color="text.secondary">
                             ALTERNATIVES:
                           </Typography>
-                          <Stack direction="row" spacing={1} mt={0.5} flexWrap="wrap">
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
                             {vocab.alternatives.map((alt, j) => (
                               <Chip key={j} label={alt} size="small" color="primary" variant="filled" />
                             ))}
-                          </Stack>
+                          </Box>
                         </Box>
                       ))}
                     </Stack>
+                    )}
                   </Paper>
                 </Grid>
 
@@ -370,6 +357,11 @@ const SessionDetailModal: React.FC<Props> = ({ session, onClose }) => {
                     <Typography variant="h6" fontWeight="bold" color="secondary.main" mb={2}>
                       Grammar Structures
                     </Typography>
+                    {grammarBreakdown.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                        No grammar analysis for this session.
+                      </Typography>
+                    ) : (
                     <Stack spacing={2}>
                       {grammarBreakdown.map((gram, i) => (
                         <Box
@@ -401,6 +393,7 @@ const SessionDetailModal: React.FC<Props> = ({ session, onClose }) => {
                         </Box>
                       ))}
                     </Stack>
+                    )}
                   </Paper>
                 </Grid>
               </Grid>

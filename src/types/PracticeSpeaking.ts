@@ -28,6 +28,9 @@ export interface Feedback {
     mistakes: Mistake[];
     improvementTip: string;
     totalScore: number;
+    // New fields for vocabulary and grammar suggestions (from LLM)
+    vocabSuggestions?: VocabSuggestion[];
+    grammarBreakdown?: GrammarBreakdownItem[];
 }
 
 export interface Message {

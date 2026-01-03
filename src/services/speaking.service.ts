@@ -1,5 +1,5 @@
 import axiosClient from "./axiosClient";
-import { UserConfig, TurnResponse, SessionWithDetail, Message, SpeakerRole } from "../types/PracticeSpeaking";
+import { UserConfig, TurnResponse, SessionWithDetail, Message, SpeakerRole, VocabSuggestion, GrammarBreakdownItem } from "../types/PracticeSpeaking";
 
 const BASE_URL = "/chat/speaking";
 
@@ -87,6 +87,35 @@ export const speakingService = {
         .filter((m) => m.role === SpeakerRole.USER && m.feedback?.mistakes?.length)
         .flatMap((m) => m.feedback!.mistakes);
 
+      // Aggregate vocab suggestions from all user messages
+      const vocabSuggestionsMap = new Map<string, VocabSuggestion>();
+      messages
+        .filter((m) => m.role === SpeakerRole.USER && m.feedback?.vocabSuggestions?.length)
+        .forEach((m) => {
+          m.feedback!.vocabSuggestions!.forEach((v) => {
+            // Use word as key to deduplicate
+            if (!vocabSuggestionsMap.has(v.word)) {
+              vocabSuggestionsMap.set(v.word, v);
+            }
+          });
+        });
+      const vocabularySuggestions = Array.from(vocabSuggestionsMap.values());
+
+      // Aggregate grammar breakdown from all user messages
+      const grammarBreakdownMap = new Map<string, GrammarBreakdownItem>();
+      messages
+        .filter((m) => m.role === SpeakerRole.USER && m.feedback?.grammarBreakdown?.length)
+        .forEach((m) => {
+          m.feedback!.grammarBreakdown!.forEach((g) => {
+            // Use structure as key, prefer "Needs Improvement" status if duplicated
+            const existing = grammarBreakdownMap.get(g.structure);
+            if (!existing || (existing.status === 'Correct' && g.status === 'Needs Improvement')) {
+              grammarBreakdownMap.set(g.structure, g);
+            }
+          });
+        });
+      const grammarBreakdown = Array.from(grammarBreakdownMap.values());
+
       // BE vẫn trả field report_overall, nhưng FE chỉ xài generalFeedback
       const beAny: any = report;
 
@@ -94,6 +123,8 @@ export const speakingService = {
         ...mappedReport,
         generalFeedback: beAny.report_overall || mappedReport.generalFeedback || "",
         paraphrasedLines,
+        vocabularySuggestions: vocabularySuggestions.length > 0 ? vocabularySuggestions : mappedReport.vocabularySuggestions,
+        grammarBreakdown: grammarBreakdown.length > 0 ? grammarBreakdown : mappedReport.grammarBreakdown,
       };
     }
 

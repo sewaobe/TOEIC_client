@@ -10,13 +10,14 @@ import {
   Paper,
   Popper,
   ClickAwayListener,
+  Grid,
+  Pagination,
 } from "@mui/material";
 import MainLayout from "../layouts/MainLayout";
 import { styled, useTheme } from "@mui/material/styles";
 import { useReducer, useEffect } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import TestCard from "../../components/Home/TestCard";
-import PaginationContainer from "../../components/common/PaginationContainer";
 import testService from "../../services/test.service";
 import { useThrottledCallback } from "../../hooks/useThrottledCallback";
 import { SecondLayout } from "../layouts/SecondLayout";
@@ -88,21 +89,15 @@ const ExamPage = () => {
   }));
 
   const [state, dispatch] = useReducer(reducer, initialState);
-  const limit = 3;
+  const limit = 6;
 
   // --- Fetch tests chính ---
   const fetchTests = async (p: number = 1, search?: string) => {
     try {
-      if (p > state.pageLoaded || search || state.pageLoaded === 1) {
-        const res = await testService.getTests(p, limit, search);
-        if (p === 1) {
-          dispatch({ type: "SET_TESTS", payload: res.tests });
-        } else {
-          dispatch({ type: "APPEND_TESTS", payload: res.tests });
-        }
-        dispatch({ type: "SET_TOTAL_PAGES", payload: res.totalPages });
-        dispatch({ type: "SET_PAGE_LOADED", payload: res.page });
-      }
+      const res = await testService.getTests(p, limit, search);
+      dispatch({ type: "SET_TESTS", payload: res.tests });
+      dispatch({ type: "SET_TOTAL_PAGES", payload: res.totalPages });
+      dispatch({ type: "SET_PAGE_LOADED", payload: res.page });
       dispatch({ type: "SET_PAGE", payload: p });
     } catch (err) {
       console.error(err);
@@ -261,30 +256,34 @@ const ExamPage = () => {
               Không tìm thấy kết quả phù hợp.
             </Typography>
           ) : (
-            <PaginationContainer
-              items={state.tests}
-              pageCount={Number(state.totalPages)}
-              page={state.page}
-              onPageChange={(p) => fetchTests(p, state.searchValue)}
-              contentSx={{
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "center", // căn giữa cả hàng
-                gap: 2
-              }}
-              renderItem={(t) => (
-                <TestCard
-                  key={t.id}
-                  _id={t.id}
-                  title={t.title}
-                  score={t.score}
-                  topic={t.details}
-                  countComment={t.totalComments}
-                  countSubmit={t.totalUsers}
-                  isNew={true}
+            <>
+              <Grid container spacing={2}>
+                {state.tests.map((t) => (
+                  <Grid size={{xs:12, sm:6, md:4}}  key={t.id}>
+                    <Stack sx={{ width: "100%", alignItems: "stretch", '& > *': { width: "100%" } }}>
+                      <TestCard
+                        _id={t.id}
+                        title={t.title}
+                        score={t.score}
+                        topic={t.details}
+                        countComment={t.totalComments}
+                        countSubmit={t.totalUsers}
+                        isNew={true}
+                      />
+                    </Stack>
+                  </Grid>
+                ))}
+              </Grid>
+
+              <Box display="flex" justifyContent="center" mt={2}>
+                <Pagination
+                  count={Number(state.totalPages)}
+                  page={state.page}
+                  onChange={(e, value) => fetchTests(value, state.searchValue)}
+                  color="primary"
                 />
-              )}
-            />
+              </Box>
+            </>
           )}
         </Box>
       </Box>

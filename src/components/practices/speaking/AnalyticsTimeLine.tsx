@@ -22,6 +22,7 @@ import {
 import { SessionResult, TrendPoint } from '../../../types/PracticeSpeaking';
 import { useAnalyticsTimeLineViewModel } from '../../../viewmodels/useAnalyticsTimeLineViewModel';
 import { LineChart } from '@mui/x-charts/LineChart';
+import { RadarChart } from '@mui/x-charts/RadarChart';
 
 interface Props {
     onBack: () => void;
@@ -127,19 +128,59 @@ const AnalyticsTimeLine: React.FC<Props> = ({ onBack }) => {
 
                         {/* 1. SKILL PROGRESS TRACKER (4 CHARTS) */}
                         <Grid size={{ xs: 12, md: 8 }}>
-                            <Paper sx={{ p: 3, borderRadius: 3, height: '100%' }}>
+                            <Paper 
+                                sx={{ 
+                                    p: 3, 
+                                    borderRadius: 3, 
+                                    height: '100%',
+                                    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                                    border: '1px solid #e2e8f0',
+                                }}
+                            >
                                 <Stack direction="row" alignItems="center" spacing={1} mb={3}>
-                                    <TimelineIcon color="primary" />
+                                    <Box sx={{ 
+                                        p: 1, 
+                                        borderRadius: 2, 
+                                        bgcolor: 'primary.main',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}>
+                                        <TimelineIcon sx={{ color: 'white', fontSize: 20 }} />
+                                    </Box>
                                     <Typography variant="h6" fontWeight="bold">Skill Progress Tracker</Typography>
                                 </Stack>
 
                                 <Grid container spacing={2}>
                                     {/* Fluency */}
                                     <Grid size={{ xs: 12, sm: 6 }}>
-                                        <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                                        <Box sx={{ 
+                                            p: 2, 
+                                            bgcolor: 'white', 
+                                            borderRadius: 2, 
+                                            border: '1px solid #e2e8f0',
+                                            transition: 'all 0.2s',
+                                            '&:hover': {
+                                                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.15)',
+                                                borderColor: '#6366f1',
+                                            }
+                                        }}>
                                             <Stack direction="row" alignItems="center" spacing={1} mb={1}>
-                                                <SpeedIcon fontSize="small" color="primary" />
+                                                <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: '#eef2ff' }}>
+                                                    <SpeedIcon fontSize="small" sx={{ color: '#6366f1' }} />
+                                                </Box>
                                                 <Typography variant="subtitle2" fontWeight="bold">Fluency</Typography>
+                                                <Chip 
+                                                    label={profile.skillMastery.fluency} 
+                                                    size="small" 
+                                                    sx={{ 
+                                                        ml: 'auto', 
+                                                        bgcolor: '#6366f1', 
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        minWidth: 40,
+                                                    }} 
+                                                />
                                             </Stack>
                                             <Box sx={{ height: 80 }}>
                                                 <SimpleLineChart data={profile.progressTrends.fluency} color="#6366f1" />
@@ -148,10 +189,33 @@ const AnalyticsTimeLine: React.FC<Props> = ({ onBack }) => {
                                     </Grid>
                                     {/* Grammar */}
                                     <Grid size={{ xs: 12, sm: 6 }}>
-                                        <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                                        <Box sx={{ 
+                                            p: 2, 
+                                            bgcolor: 'white', 
+                                            borderRadius: 2, 
+                                            border: '1px solid #e2e8f0',
+                                            transition: 'all 0.2s',
+                                            '&:hover': {
+                                                boxShadow: '0 4px 12px rgba(236, 72, 153, 0.15)',
+                                                borderColor: '#ec4899',
+                                            }
+                                        }}>
                                             <Stack direction="row" alignItems="center" spacing={1} mb={1}>
-                                                <GavelIcon fontSize="small" color="secondary" />
+                                                <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: '#fdf2f8' }}>
+                                                    <GavelIcon fontSize="small" sx={{ color: '#ec4899' }} />
+                                                </Box>
                                                 <Typography variant="subtitle2" fontWeight="bold">Grammar</Typography>
+                                                <Chip 
+                                                    label={profile.skillMastery.grammar} 
+                                                    size="small" 
+                                                    sx={{ 
+                                                        ml: 'auto', 
+                                                        bgcolor: '#ec4899', 
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        minWidth: 40,
+                                                    }} 
+                                                />
                                             </Stack>
                                             <Box sx={{ height: 80 }}>
                                                 <SimpleLineChart data={profile.progressTrends.grammar} color="#ec4899" />
@@ -160,10 +224,33 @@ const AnalyticsTimeLine: React.FC<Props> = ({ onBack }) => {
                                     </Grid>
                                     {/* Intonation Range */}
                                     <Grid size={{ xs: 12, sm: 6 }}>
-                                        <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                                        <Box sx={{ 
+                                            p: 2, 
+                                            bgcolor: 'white', 
+                                            borderRadius: 2, 
+                                            border: '1px solid #e2e8f0',
+                                            transition: 'all 0.2s',
+                                            '&:hover': {
+                                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)',
+                                                borderColor: '#10b981',
+                                            }
+                                        }}>
                                             <Stack direction="row" alignItems="center" spacing={1} mb={1}>
-                                                <MenuBookIcon fontSize="small" color="success" />
-                                                <Typography variant="subtitle2" fontWeight="bold">Intonation Range</Typography>
+                                                <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: '#ecfdf5' }}>
+                                                    <MenuBookIcon fontSize="small" sx={{ color: '#10b981' }} />
+                                                </Box>
+                                                <Typography variant="subtitle2" fontWeight="bold">Intonation</Typography>
+                                                <Chip 
+                                                    label={profile.skillMastery.intonation} 
+                                                    size="small" 
+                                                    sx={{ 
+                                                        ml: 'auto', 
+                                                        bgcolor: '#10b981', 
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        minWidth: 40,
+                                                    }} 
+                                                />
                                             </Stack>
                                             <Box sx={{ height: 80 }}>
                                                 <SimpleLineChart data={profile.progressTrends.intonation} color="#10b981" />
@@ -172,10 +259,33 @@ const AnalyticsTimeLine: React.FC<Props> = ({ onBack }) => {
                                     </Grid>
                                     {/* Pronunciation */}
                                     <Grid size={{ xs: 12, sm: 6 }}>
-                                        <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                                        <Box sx={{ 
+                                            p: 2, 
+                                            bgcolor: 'white', 
+                                            borderRadius: 2, 
+                                            border: '1px solid #e2e8f0',
+                                            transition: 'all 0.2s',
+                                            '&:hover': {
+                                                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.15)',
+                                                borderColor: '#f59e0b',
+                                            }
+                                        }}>
                                             <Stack direction="row" alignItems="center" spacing={1} mb={1}>
-                                                <RecordVoiceOverIcon fontSize="small" color="warning" />
+                                                <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: '#fffbeb' }}>
+                                                    <RecordVoiceOverIcon fontSize="small" sx={{ color: '#f59e0b' }} />
+                                                </Box>
                                                 <Typography variant="subtitle2" fontWeight="bold">Pronunciation</Typography>
+                                                <Chip 
+                                                    label={profile.skillMastery.pronunciation} 
+                                                    size="small" 
+                                                    sx={{ 
+                                                        ml: 'auto', 
+                                                        bgcolor: '#f59e0b', 
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        minWidth: 40,
+                                                    }} 
+                                                />
                                             </Stack>
                                             <Box sx={{ height: 80 }}>
                                                 <SimpleLineChart data={profile.progressTrends.pronunciation} color="#f59e0b" />
@@ -184,50 +294,157 @@ const AnalyticsTimeLine: React.FC<Props> = ({ onBack }) => {
                                     </Grid>
                                 </Grid>
 
-                                <Divider sx={{ my: 3 }} />
+                                <Divider sx={{ my: 2 }} />
 
-                                <Stack direction="row" spacing={4} flexWrap="wrap">
-                                    <Box sx={{ mb: 1 }}>
-                                        <Typography variant="caption" display="block" color="text.secondary">STRONGEST SKILL</Typography>
-                                        <Stack direction="row" alignItems="center" spacing={1}>
+                                <Stack direction="row" spacing={3} flexWrap="wrap">
+                                    <Box sx={{ 
+                                        flex: 1, 
+                                        minWidth: 140,
+                                        p: 2, 
+                                        bgcolor: '#f0fdf4', 
+                                        borderRadius: 2,
+                                        border: '1px solid #bbf7d0',
+                                    }}>
+                                        <Typography variant="caption" display="block" color="text.secondary" fontWeight="bold">
+                                            STRONGEST SKILL
+                                        </Typography>
+                                        <Stack direction="row" alignItems="center" spacing={1} mt={0.5}>
                                             <TrendingUpIcon color="success" fontSize="small" />
-                                            <Typography fontWeight="bold">{profile.strongestSkill}</Typography>
+                                            <Typography fontWeight="bold" color="success.dark">{profile.strongestSkill}</Typography>
                                         </Stack>
                                     </Box>
-                                    <Box sx={{ mb: 1 }}>
-                                        <Typography variant="caption" display="block" color="text.secondary">NEEDS FOCUS</Typography>
-                                        <Stack direction="row" alignItems="center" spacing={1}>
+                                    <Box sx={{ 
+                                        flex: 1,
+                                        minWidth: 140,
+                                        p: 2, 
+                                        bgcolor: '#fef2f2', 
+                                        borderRadius: 2,
+                                        border: '1px solid #fecaca',
+                                    }}>
+                                        <Typography variant="caption" display="block" color="text.secondary" fontWeight="bold">
+                                            NEEDS FOCUS
+                                        </Typography>
+                                        <Stack direction="row" alignItems="center" spacing={1} mt={0.5}>
                                             <TrendingDownIcon color="error" fontSize="small" />
-                                            <Typography fontWeight="bold">{profile.weakestSkill}</Typography>
+                                            <Typography fontWeight="bold" color="error.dark">{profile.weakestSkill}</Typography>
                                         </Stack>
                                     </Box>
                                 </Stack>
                             </Paper>
                         </Grid>
 
-                        {/* 2. READINESS SCORE */}
+                        {/* 2. SKILL OVERVIEW with Radar Chart */}
                         <Grid size={{ xs: 12, md: 4 }}>
-                            <Paper sx={{ p: 3, borderRadius: 3, height: '100%', bgcolor: 'primary.main', color: 'white' }}>
-                                <Typography variant="h6" fontWeight="bold" gutterBottom>Level Readiness</Typography>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4 }}>
-                                    <Box sx={{ position: 'relative', display: 'inline-flex', mb: 3 }}>
+                            <Paper 
+                                sx={{ 
+                                    borderRadius: 3, 
+                                    height: '100%',
+                                    overflow: 'hidden',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                }}
+                            >
+                                {/* Header with gradient */}
+                                <Box sx={{
+                                    p: 2,
+                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    color: 'white',
+                                }}>
+                                    <Typography variant="h6" fontWeight="bold">
+                                        Skill Overview
+                                    </Typography>
+                                </Box>
+                                
+                                {/* Radar Chart */}
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    justifyContent: 'center',
+                                    p: 2,
+                                    bgcolor: '#fafaff',
+                                }}>
+                                    <RadarChart
+                                        height={200}
+                                        series={[
+                                            {
+                                                data: [
+                                                    profile.skillMastery.fluency,
+                                                    profile.skillMastery.grammar,
+                                                    profile.skillMastery.pronunciation,
+                                                    profile.skillMastery.intonation,
+                                                ],
+                                                color: '#667eea',
+                                            },
+                                        ]}
+                                        radar={{
+                                            metrics: [
+                                                { name: 'Fluency' },
+                                                { name: 'Grammar' },
+                                                { name: 'Pronunciation' },
+                                                { name: 'Intonation' },
+                                            ],
+                                            max: 100,
+                                        }}
+                                    />
+                                </Box>
+
+                                {/* Readiness Score */}
+                                <Box sx={{ 
+                                    p: 3, 
+                                    textAlign: 'center',
+                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    color: 'white',
+                                    flex: 1,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                }}>
+                                    <Box sx={{ position: 'relative', display: 'inline-flex', mx: 'auto', mb: 2 }}>
+                                        {/* Background track */}
+                                        <CircularProgress
+                                            variant="determinate"
+                                            value={100}
+                                            size={100}
+                                            thickness={5}
+                                            sx={{ color: 'rgba(255,255,255,0.2)', position: 'absolute' }}
+                                        />
+                                        {/* Actual progress */}
                                         <CircularProgress
                                             variant="determinate"
                                             value={profile.readinessScore}
-                                            size={140}
-                                            thickness={4}
-                                            sx={{ color: 'white' }}
+                                            size={100}
+                                            thickness={5}
+                                            sx={{ 
+                                                color: profile.readinessScore >= 80 ? '#4ade80' : profile.readinessScore >= 50 ? '#fbbf24' : '#f87171',
+                                            }}
                                         />
-                                        <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                                            <Typography variant="h2" fontWeight="bold">{profile.readinessScore}%</Typography>
+                                        <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Typography variant="h4" fontWeight="bold">
+                                                {profile.readinessScore}%
+                                            </Typography>
                                         </Box>
                                     </Box>
-                                    <Typography variant="body1" align="center" sx={{ opacity: 0.9, px: 2 }}>
+                                    <Typography variant="caption" fontWeight="bold" sx={{ opacity: 0.9, letterSpacing: 1, mb: 1 }}>
+                                        🎯 LEVEL READINESS
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
                                         {profile.readinessMessage}
                                     </Typography>
                                     {profile.readinessScore >= 80 && (
-                                        <Button variant="contained" color="secondary" sx={{ mt: 4, borderRadius: 4, width: '100%' }}>
-                                            Try Next Level
+                                        <Button 
+                                            variant="contained" 
+                                            size="small"
+                                            sx={{ 
+                                                mt: 2, 
+                                                borderRadius: 3,
+                                                bgcolor: 'white',
+                                                color: '#667eea',
+                                                fontWeight: 'bold',
+                                                '&:hover': {
+                                                    bgcolor: 'rgba(255,255,255,0.9)',
+                                                },
+                                            }}
+                                        >
+                                            🚀 Try Next Level
                                         </Button>
                                     )}
                                 </Box>

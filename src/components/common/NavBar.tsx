@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { motion } from "framer-motion"
+import { useState } from "react";
+import { motion } from "framer-motion";
 import {
   AppBar,
   Toolbar,
@@ -13,16 +13,16 @@ import {
   MenuItem,
   useTheme,
   Stack,
-} from '@mui/material';
-import DiamondIcon from '@mui/icons-material/Diamond';
-import MenuIcon from '@mui/icons-material/Menu';
-import SchoolIcon from '@mui/icons-material/School';
-import { useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../stores/store';
-import { logout } from '../../stores/userSlice';
-import authService from '../../services/authService';
-import NotificationDropdown from './NotificationDropdown';
+} from "@mui/material";
+import DiamondIcon from "@mui/icons-material/Diamond";
+import MenuIcon from "@mui/icons-material/Menu";
+import SchoolIcon from "@mui/icons-material/School";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "../../stores/store";
+import { logout } from "../../stores/userSlice";
+import authService from "../../services/authService";
+import NotificationDropdown from "./NotificationDropdown";
 
 interface NavLink {
   label: string;
@@ -30,21 +30,21 @@ interface NavLink {
 }
 
 const navLinks: NavLink[] = [
-  { label: 'Trang chủ', href: '/' },
-  { label: 'Chương trình học', href: '/programs' },
-  { label: 'Đề thi online', href: '/tests' },
-  { label: 'Flash Card', href: '/flash-cards' },
-  { label: 'Luyện kỹ năng', href: '/practice-skill' },
+  { label: "Trang chủ", href: "/" },
+  { label: "Chương trình học", href: "/programs" },
+  { label: "Đề thi online", href: "/tests" },
+  { label: "Flash Card", href: "/flash-cards" },
+  { label: "Luyện kỹ năng", href: "/practice-skill" },
 ];
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [openWallet, setOpenWallet] = useState(false);
 
   const user = useSelector((state: RootState) => state.user.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
 
   const handleDrawerToggle = () => {
@@ -63,28 +63,38 @@ export default function Navbar() {
     await authService.logout();
     dispatch(logout());
     handleMenuClose();
-    navigate('/login');
+    navigate("/login");
   };
 
   const handleNavigate = (href: string, label: string) => {
     // Nếu là Trang chủ, tùy trạng thái login
-    if (label === 'Trang chủ') {
-      navigate(user ? '/home' : '/');
+    if (label === "Trang chủ") {
+      navigate(user ? "/home" : "/");
     } else {
       navigate(href);
     }
   };
+
+  // Kiểm tra xem có đang ở trang này không
+  const isActive = (href: string, label: string) => {
+    if (label === "Trang chủ") {
+      // Trang chủ chỉ highlight khi ở /home, không highlight ở landing page (/)
+      return location.pathname === "/home";
+    }
+    return location.pathname.startsWith(href);
+  };
+
   return (
     <>
       <AppBar
-        position='fixed'
+        position="fixed"
         elevation={1}
         sx={{
           backgroundColor: theme.palette.background.paper,
           color: theme.palette.text.primary,
         }}
       >
-        <Toolbar className='flex justify-between'>
+        <Toolbar className="flex justify-between">
           {/* Logo + tên website */}
           <div className="flex items-center gap-2 select-none">
             {/* 🎓 Icon động */}
@@ -120,29 +130,49 @@ export default function Navbar() {
           </div>
 
           {/* Nav links (Desktop) */}
-          <div className='hidden md:flex items-center gap-6'>
-            {navLinks.map((item) => (
-              <Button
-                key={item.label}
-                onClick={() => handleNavigate(item.href, item.label)}
-                sx={{
-                  color: theme.palette.text.primary,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  '&:hover': {
-                    color: theme.palette.primary.main,
-                  },
-                }}
-              >
-                {item.label}
-              </Button>
-            ))}
+          <div className="hidden md:flex items-center gap-6">
+            {navLinks.map((item) => {
+              const active = isActive(item.href, item.label);
+              return (
+                <Button
+                  key={item.label}
+                  onClick={() => handleNavigate(item.href, item.label)}
+                  sx={{
+                    color: active
+                      ? theme.palette.primary.main
+                      : theme.palette.text.primary,
+                    textTransform: "none",
+                    fontWeight: active ? 700 : 600,
+                    position: "relative",
+                    "&:hover": {
+                      color: theme.palette.primary.main,
+                    },
+                    "&::after": active
+                      ? {
+                          content: '""',
+                          position: "absolute",
+                          bottom: 0,
+                          left: "10%",
+                          width: "80%",
+                          height: "3px",
+                          borderRadius: "3px 3px 0 0",
+                          background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                        }
+                      : {},
+                  }}
+                >
+                  {item.label}
+                </Button>
+              );
+            })}
 
             {user && <NotificationDropdown />}
             {user ? (
               <Stack direction="row" alignItems="center">
                 <Button
-                  onClick={() => {navigate("/credit")}}
+                  onClick={() => {
+                    navigate("/credit");
+                  }}
                   endIcon={<DiamondIcon />}
                   sx={{
                     borderRadius: 3,
@@ -160,7 +190,8 @@ export default function Navbar() {
                     alt={user.profile.fullname}
                     sx={{ bgcolor: theme.palette.primary.main }}
                   >
-                    {!user.profile.avatar && user.profile.fullname?.charAt(0).toUpperCase()}
+                    {!user.profile.avatar &&
+                      user.profile.fullname?.charAt(0).toUpperCase()}
                   </Avatar>
                 </IconButton>
                 <Menu
@@ -169,40 +200,44 @@ export default function Navbar() {
                   onClose={handleMenuClose}
                   disableScrollLock
                   anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'right', // canh trái avatar
+                    vertical: "bottom",
+                    horizontal: "right", // canh trái avatar
                   }}
                   transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right', // bung từ góc trái
+                    vertical: "top",
+                    horizontal: "right", // bung từ góc trái
                   }}
                 >
                   <MenuItem
                     onClick={() => {
-                      navigate('/profile');
+                      navigate("/profile");
                       handleMenuClose();
                     }}
                   >
                     Trang cá nhân
                   </MenuItem>
-                  <MenuItem onClick={() => {
-                    navigate('/result-statistic');
-                    handleMenuClose();
-                  }}>Thống kê kết quả</MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      navigate("/result-statistic");
+                      handleMenuClose();
+                    }}
+                  >
+                    Thống kê kết quả
+                  </MenuItem>
                   <MenuItem onClick={handleLogout}>Đăng xuất</MenuItem>
                 </Menu>
               </Stack>
             ) : (
               <Button
-                variant='contained'
-                color='primary'
+                variant="contained"
+                color="primary"
                 sx={{
-                  textTransform: 'none',
-                  fontWeight: 'bold',
-                  borderRadius: '20px',
+                  textTransform: "none",
+                  fontWeight: "bold",
+                  borderRadius: "20px",
                   px: 3,
                 }}
-                onClick={() => navigate('/login')}
+                onClick={() => navigate("/login")}
               >
                 Đăng nhập
               </Button>
@@ -210,7 +245,7 @@ export default function Navbar() {
           </div>
 
           {/* Mobile menu icon */}
-          <div className='md:hidden'>
+          <div className="md:hidden">
             <IconButton onClick={handleDrawerToggle}>
               <MenuIcon sx={{ color: theme.palette.text.primary }} />
             </IconButton>
@@ -220,70 +255,87 @@ export default function Navbar() {
 
       {/* Drawer (Mobile) */}
       <Drawer
-        anchor='right'
+        anchor="right"
         open={mobileOpen}
         onClose={handleDrawerToggle}
         ModalProps={{ keepMounted: true }}
       >
         <Box
-          className='flex flex-col gap-4 p-6 w-64'
-          role='presentation'
+          className="flex flex-col gap-4 p-6 w-64"
+          role="presentation"
           onClick={handleDrawerToggle}
           sx={{ backgroundColor: theme.palette.background.paper }}
         >
           {user ? (
-            <Box className='flex items-center gap-3 px-2'>
-
+            <Box className="flex items-center gap-3 px-2">
               <Avatar
                 src={user.profile.avatar}
                 alt={user.profile.fullname}
                 sx={{ bgcolor: theme.palette.primary.main }}
               >
-                {!user.profile.avatar && user.profile.fullname?.charAt(0).toUpperCase()}
+                {!user.profile.avatar &&
+                  user.profile.fullname?.charAt(0).toUpperCase()}
               </Avatar>
               <Typography>{user.profile.fullname}</Typography>
             </Box>
           ) : (
             <Button
-              variant='contained'
-              color='primary'
+              variant="contained"
+              color="primary"
               fullWidth
               sx={{
-                textTransform: 'none',
-                fontWeight: 'bold',
-                borderRadius: '20px',
+                textTransform: "none",
+                fontWeight: "bold",
+                borderRadius: "20px",
               }}
-              onClick={() => navigate('/login')}
+              onClick={() => navigate("/login")}
             >
               Đăng nhập
             </Button>
           )}
           {user && (
             <Box sx={{ pl: 1 }}>
-              <Typography variant='subtitle2' color='text.secondary' sx={{ mb: 0.5 }}>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                sx={{ mb: 0.5 }}
+              >
                 Thông báo
               </Typography>
               <NotificationDropdown />
             </Box>
           )}
 
-          {navLinks.map((item) => (
-            <Button
-              key={item.label}
-              onClick={() => handleNavigate(item.href, item.label)}
-              fullWidth
-              sx={{
-                justifyContent: 'flex-start',
-                color: theme.palette.text.primary,
-                textTransform: 'none',
-                '&:hover': {
-                  color: theme.palette.primary.main,
-                },
-              }}
-            >
-              {item.label}
-            </Button>
-          ))}
+          {navLinks.map((item) => {
+            const active = isActive(item.href, item.label);
+            return (
+              <Button
+                key={item.label}
+                onClick={() => handleNavigate(item.href, item.label)}
+                fullWidth
+                sx={{
+                  justifyContent: "flex-start",
+                  color: active
+                    ? theme.palette.primary.main
+                    : theme.palette.text.primary,
+                  textTransform: "none",
+                  fontWeight: active ? 700 : 600,
+                  bgcolor: active
+                    ? `${theme.palette.primary.main}15`
+                    : "transparent",
+                  borderLeft: active
+                    ? `4px solid ${theme.palette.primary.main}`
+                    : "none",
+                  "&:hover": {
+                    color: theme.palette.primary.main,
+                    bgcolor: `${theme.palette.primary.main}10`,
+                  },
+                }}
+              >
+                {item.label}
+              </Button>
+            );
+          })}
         </Box>
       </Drawer>
     </>

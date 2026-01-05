@@ -36,7 +36,7 @@ export const OverviewCard: FC<OverviewCardProps> = ({
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen px-4 bg-gray-50 dark:bg-gray-900">
+    <div className="w-full flex justify-center items-start py-8">
       <Card
         sx={{
           maxWidth: isFullTest ? 600 : 800,

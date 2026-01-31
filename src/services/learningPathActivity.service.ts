@@ -13,7 +13,10 @@ export const learningPathActivityService = {
     })
 
     if (res.data.day_completed) {
-      localStorage.setItem('day_study_completed', 'true');
+      localStorage.setItem('day_study_completed', JSON.stringify({
+        status: 'true',
+        day_id: res.data.day_id,
+      }));
     }
   },
 
@@ -37,7 +40,10 @@ export const learningPathActivityService = {
     });
 
     if (res.data.day_completed) {
-      localStorage.setItem('day_study_completed', 'true');
+      localStorage.setItem('day_study_completed', JSON.stringify({
+        status: 'true',
+        day_id: res.data.day_id,
+      }));
     }
   },
 
@@ -62,7 +68,10 @@ export const learningPathActivityService = {
     });
 
     if (res.data.day_completed) {
-      localStorage.setItem('day_study_completed', 'true');
+      localStorage.setItem('day_study_completed', JSON.stringify({
+        status: 'true',
+        day_id: res.data.day_id,
+      }));
     }
   },
   // Shadowing
@@ -86,7 +95,10 @@ export const learningPathActivityService = {
     });
 
     if (res.data.day_completed) {
-      localStorage.setItem('day_study_completed', 'true');
+      localStorage.setItem('day_study_completed', JSON.stringify({
+        status: 'true',
+        day_id: res.data.day_id,
+      }));
     }
   },
   // Flashcard
@@ -107,7 +119,10 @@ export const learningPathActivityService = {
   ) => {
     const res = await axiosClient.post(`/flashcards-learningpath/${topicId}/submit`, payload);
     if (res.data.day_completed) {
-      localStorage.setItem('day_study_completed', 'true');
+      localStorage.setItem('day_study_completed', JSON.stringify({
+        status: 'true',
+        day_id: res.data.day_id,
+      }));
     }
   },
 

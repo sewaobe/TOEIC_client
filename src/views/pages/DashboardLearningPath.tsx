@@ -346,8 +346,9 @@ export default function DashboardLearningPath({
       setLastVisitDate(todayStr);
     }
 
-    const dayCompleted = localStorage.getItem('day_study_completed');
-    if (dayCompleted === 'true') {
+    const dayCompletedLocalStorage = localStorage.getItem('day_study_completed');
+    const dayCompleted = dayCompletedLocalStorage ? JSON.parse(dayCompletedLocalStorage) : undefined;
+    if (dayCompleted && dayCompleted.status === 'true') {
       // Delay showing the feedback modal to avoid abrupt popup
       // Schedule after 5 seconds, then clear the localStorage flag
       if (feedbackTimerRef.current) {
@@ -592,6 +593,7 @@ export default function DashboardLearningPath({
           setIsDayComplete(false);
           localStorage.removeItem('day_study_completed');
         }}
+        dayId={isDayComplete ? JSON.parse(localStorage.getItem('day_study_completed') || '{}').day_id : ''}
       />
     </MainLayout>
   );

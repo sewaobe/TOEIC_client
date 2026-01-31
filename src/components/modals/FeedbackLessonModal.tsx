@@ -1,6 +1,8 @@
 
 import { Check, ChevronRight, Star, X } from "@mui/icons-material";
 import { FC, useEffect, useState } from "react";
+import { dayStudyService } from "../../services/dayStudy.service";
+import { toast } from "sonner";
 
 // Lý do cho đánh giá thấp/trung bình (1-3 sao)
 const REASONS_NEGATIVE = [
@@ -27,11 +29,13 @@ const REASONS_POSITIVE = [
 interface FeedbackLessonModalProps {
     open: boolean;
     onClose: () => void;
+    dayId?: string;
 }
 
 export const FeedbackLessonModal: FC<FeedbackLessonModalProps> = ({
     open = false,
-    onClose
+    onClose,
+    dayId
 }) => {
     const [hoverRating, setHoverRating] = useState(0);
     const [rating, setRating] = useState(0);
@@ -59,35 +63,38 @@ export const FeedbackLessonModal: FC<FeedbackLessonModalProps> = ({
     };
 
     const handleSubmit = async () => {
-        if (rating === 0) return;
+        if (rating === 0 || !dayId) return;
 
         setIsSubmitting(true);
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+            await dayStudyService.submitFeedback(dayId, {
+                rating,
+                reasons: selectedReasons,
+                comment: comment.trim() || undefined,
+            });
 
-        // TODO: Send feedback to backend
-        console.log({
-            rating,
-            reasons: selectedReasons,
-            comment,
-            timestamp: new Date().toISOString()
-        });
+            setIsSubmitted(true);
 
-        setIsSubmitting(false);
-        setIsSubmitted(true);
-
-        // Auto close after 3 seconds on success
-        setTimeout(() => {
-            onClose();
-            // Reset state
+            // Auto close after 3 seconds on success
             setTimeout(() => {
-                setRating(0);
-                setSelectedReasons([]);
-                setComment("");
-                setIsSubmitted(false);
-            }, 300);
-        }, 3000);
+                onClose();
+                // Reset state
+                setTimeout(() => {
+                    setRating(0);
+                    setSelectedReasons([]);
+                    setComment("");
+                    setIsSubmitted(false);
+                }, 300);
+            }, 3000);
+        } catch (error: any) {
+            console.error("Error submitting feedback:", error);
+            toast.error(
+                error?.response?.data?.message || "Không thể gửi đánh giá. Vui lòng thử lại!"
+            );
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleClose = () => {

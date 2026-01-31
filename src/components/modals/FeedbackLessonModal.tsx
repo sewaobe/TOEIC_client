@@ -1,6 +1,6 @@
 
 import { Check, ChevronRight, Star, X } from "@mui/icons-material";
-import { FC, useState } from "react";
+import { FC, useEffect, useState } from "react";
 
 // Lý do cho đánh giá thấp/trung bình (1-3 sao)
 const REASONS_NEGATIVE = [
@@ -39,6 +39,7 @@ export const FeedbackLessonModal: FC<FeedbackLessonModalProps> = ({
     const [comment, setComment] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [entered, setEntered] = useState(false);
 
     const isPositiveRating = rating >= 4;
     const currentReasons = isPositiveRating ? REASONS_POSITIVE : REASONS_NEGATIVE;
@@ -100,11 +101,26 @@ export const FeedbackLessonModal: FC<FeedbackLessonModalProps> = ({
         }, 300);
     };
 
+    useEffect(() => {
+        let enterTimer: any;
+        if (open) {
+            // small delay so transition runs after mount
+            setEntered(false);
+            enterTimer = setTimeout(() => setEntered(true), 50);
+        } else {
+            setEntered(false);
+        }
+
+        return () => clearTimeout(enterTimer);
+    }, [open]);
+
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-gray-900/50 backdrop-blur-sm transition-opacity duration-300">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md sm:max-w-lg md:max-w-xl overflow-hidden relative animate-pop-in flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center px-4 bg-gray-900/50 backdrop-blur-sm transition-opacity duration-300">
+            <div
+                className={`bg-white rounded-2xl shadow-2xl w-full max-w-md sm:max-w-lg md:max-w-xl overflow-hidden relative flex flex-col max-h-[90vh] transition-transform duration-500 ease-out ${entered ? 'translate-y-0 opacity-100' : '-translate-y-6 opacity-0'}`}
+            >
 
                 {/* Header - Minimalist & Direct */}
                 {!isSubmitted && (

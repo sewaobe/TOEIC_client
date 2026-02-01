@@ -41,12 +41,152 @@ export interface ToeicCertificateData {
     };
 }
 
+import { useReactToPrint } from 'react-to-print';
+
+// printable component (render ẩn, không scale)
+const CertificatePrintable = React.forwardRef<HTMLDivElement, { data: ToeicCertificateData }>(
+    ({ data }, ref) => {
+        // A4 landscape ~ 1123x794 @ 96dpi (thực dụng cho print)
+        const W = 1123;
+        const H = 794;
+        const isPortrait = false;
+
+        return (
+            <div
+                ref={ref}
+                style={{
+                    width: `${W}px`,
+                    height: `${H}px`,
+                    background: 'white',
+                    overflow: 'hidden',
+                }}
+            >
+                <div
+                    className="relative bg-white text-slate-900 overflow-hidden"
+                    style={{ width: `${W}px`, height: `${H}px` }}
+                >
+                    {/* --- Background Geometric Shapes --- */}
+                    <div className="absolute top-0 left-0 w-[40%] h-[35%] bg-[#8FD6E8]" style={{ clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
+                    <div className="absolute top-0 right-0 w-[60%] h-[35%] bg-[#F29C8E]" style={{ clipPath: 'polygon(20% 0, 100% 0, 100% 100%)' }} />
+                    <div className="absolute bottom-0 left-0 w-[60%] h-[25%] bg-[#F29C8E]" style={{ clipPath: 'polygon(0 100%, 0 0, 80% 100%)' }} />
+                    <div className="absolute bottom-0 right-0 w-[40%] h-[25%] bg-[#8FD6E8]" style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 100%)' }} />
+
+                    {/* --- Internal Content --- */}
+                    {/* Giữ đúng layout desktop (isPortrait=false), dùng padding desktop */}
+                    <div className="relative z-10 flex flex-col h-full w-full py-10 px-14">
+
+                        {/* 1. Header Section */}
+                        <div className="text-center">
+                            <div className="text-xs font-bold text-gray-500 tracking-[0.3em] uppercase mb-2">
+                                {data.issuer.platformName}
+                            </div>
+                            <h1 className="text-7xl font-sans font-bold text-gray-900 tracking-tight leading-none">
+                                CERTIFICATE
+                            </h1>
+                            <div className="text-base font-sans text-gray-600 tracking-[0.4em] uppercase font-medium mt-2">
+                                of Completion
+                            </div>
+                        </div>
+
+                        {/* 2. Banner */}
+                        <div className="bg-[#F29C8E] text-white py-2 mx-auto shadow-sm transform -skew-x-12 inline-block my-5 px-20">
+                            <span className="block font-medium text-base tracking-wide transform skew-x-12 px-2 uppercase">
+                                Presented To
+                            </span>
+                        </div>
+
+                        {/* 3. Student Name */}
+                        <div className="text-center -mt-1 mb-4">
+                            <div className="font-signature text-gray-900 leading-none py-2 px-4 text-[6.5rem]">
+                                {data.student.fullName}
+                            </div>
+                        </div>
+
+                        {/* 4. Layout: Course & Score (desktop grid) */}
+                        <div className="flex-1 border-t border-b border-gray-100/50 my-2 py-4 grid grid-cols-2 gap-0 items-center">
+                            {/* Course Info */}
+                            <div className="pr-12 text-right border-r border-gray-200 h-full flex flex-col justify-center">
+                                <p className="text-slate-500 text-base mb-2 font-medium">Successfully completed the program</p>
+                                <h3 className="text-3xl font-bold text-slate-800 leading-tight mb-3">
+                                    {data.course.name}
+                                </h3>
+                                <div className="text-sm text-slate-400 font-mono space-y-1.5 mt-2">
+                                    <p>ID: {data.certificateNo}</p>
+                                    <p>Issued: {data.issuedAt}</p>
+                                </div>
+                            </div>
+
+                            {/* Assessment Results */}
+                            <div className="pl-12 text-left h-full flex flex-col justify-center">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <CheckCircle className="text-indigo-500" style={{ fontSize: 20 }} />
+                                    <span className="text-sm font-bold text-indigo-900 uppercase tracking-wider">
+                                        Assessment Result
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-5">
+                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-center">
+                                        <div className="text-[11px] font-bold text-slate-400 uppercase">Listening</div>
+                                        <div className="text-xl font-bold text-slate-700">{data.assessment.score.listening}</div>
+                                    </div>
+                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-center">
+                                        <div className="text-[11px] font-bold text-slate-400 uppercase">Reading</div>
+                                        <div className="text-xl font-bold text-slate-700">{data.assessment.score.reading}</div>
+                                    </div>
+                                    <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100 text-center shadow-sm">
+                                        <div className="text-[11px] font-bold text-indigo-400 uppercase">Total</div>
+                                        <div className="text-2xl font-black text-indigo-600 leading-none mt-1">{data.assessment.score.total}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 5. Footer (desktop) */}
+                        <div className="flex justify-between items-end mt-auto pt-6 px-6">
+                            <div className="flex flex-col items-center w-56">
+                                <div className="font-signature text-gray-800 border-b border-gray-300 w-full text-center pb-2 text-4xl">
+                                    {data.issuer.instructorName}
+                                </div>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                                    Instructor
+                                </div>
+                            </div>
+
+                            <div className="relative flex flex-col items-center -mb-8 mx-6">
+                                <div className="w-24 h-24 border-4 bg-[#5BB4E5] text-white rounded-full flex items-center justify-center shadow-lg border-white">
+                                    <div className="text-center">
+                                        <div className="text-3xl font-extrabold">{data.assessment.score.total}</div>
+                                        <div className="text-[0.6rem] font-bold uppercase tracking-wider">Score</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col items-center w-56">
+                                <div className="font-signature text-gray-800 border-b border-gray-300 w-full text-center pb-2 text-4xl">
+                                    {data.issuer.headName}
+                                </div>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                                    Director
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        );
+    }
+);
+
 // --- Main Certificate Component ---
 const CertificatePage: React.FC = () => {
     const [scale, setScale] = useState(1);
     const [isPortrait, setIsPortrait] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const printRef = useRef<HTMLDivElement>(null);
+
     // Sample Data (for demo purposes)
     const data: ToeicCertificateData = {
         certificateNo: "TOEIC-2026-000128",
@@ -125,9 +265,20 @@ const CertificatePage: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    const reactToPrintFn = useReactToPrint({
+        contentRef: printRef,
+        documentTitle: `${data.certificateNo}-${data.student.fullName}`,
+        pageStyle: `
+      @page { size: A4 landscape; margin: 0; }
+      html, body { margin: 0 !important; padding: 0 !important; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    `,
+    });
+
     const handlePrint = () => {
         setMenuOpen(false);
-        window.print();
+
+        reactToPrintFn && reactToPrintFn();
     };
 
     const handleGenerateQR = () => {
@@ -300,7 +451,10 @@ const CertificatePage: React.FC = () => {
                     {menuOpen ? <Close fontSize="small" /> : <MoreVert fontSize="medium" />}
                 </button>
             </div>
-
+            {/* Hidden printable area (không ảnh hưởng UI) */}
+            <div style={{ position: 'fixed', left: -99999, top: 0 }}>
+                <CertificatePrintable ref={printRef} data={data} />
+            </div>
         </div>
     );
 };

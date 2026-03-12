@@ -118,15 +118,17 @@ const OverviewPage: FC = () => {
     }, [partsQuery, timeLimit]);
 
   return (
-    <>
-      <OverviewCard
-        totalScore={totalScore}
-        totalTimeMinutes={totalTime}
-        skills={skills}
-        description={description}
-        isFullTest={isFullTest}
-      />
-    </>
+    <div className="flex justify-center items-start h-screen px-4 bg-gray-50 dark:bg-gray-900">
+      <div className="no-scrollbar w-full max-w-4xl h-full overflow-y-auto py-8">
+        <OverviewCard
+          totalScore={totalScore}
+          totalTimeMinutes={totalTime}
+          skills={skills}
+          description={description}
+          isFullTest={isFullTest}
+        />
+      </div>
+    </div>
   );
 };
 export default OverviewPage;

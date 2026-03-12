@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { WelcomeModal } from "../../components/welcome/WelcomeModal";
+import CertificatePage, { ToeicCertificateData } from "./CertificatePage";
 
 export default function DemoPage() {
     const [open, setOpen] = useState(true);
-    return <WelcomeModal open={open} onClose={() => setOpen(false)} />
+    
+
+    return <CertificatePage />
 }

@@ -6,11 +6,19 @@ export const learningPathActivityService = {
     lessonId: string,
     dayStudyId: string,
     timeSpentSec: number
-  ) =>
-    axiosClient.post(`/lessons-learningpath/${lessonId}/complete`, {
+  ) => {
+    const res = await axiosClient.post(`/lessons-learningpath/${lessonId}/complete`, {
       day_study_id: dayStudyId,
       time_spent: timeSpentSec,
-    }),
+    })
+
+    if (res.data.day_completed) {
+      localStorage.setItem('day_study_completed', JSON.stringify({
+        status: 'true',
+        day_id: res.data.day_id,
+      }));
+    }
+  },
 
   // Quiz
   getQuiz: async (quizId: string, dayStudyId?: string) => {
@@ -24,12 +32,20 @@ export const learningPathActivityService = {
     answers: { question_id: string; user_answer: string }[],
     dayStudyId: string,
     timeSpentSec: number
-  ) =>
-    axiosClient.post(`/quiz-learningpath/${quizId}/submit`, {
+  ) => {
+    const res = await axiosClient.post(`/quiz-learningpath/${quizId}/submit`, {
       answers,
       time_spent: timeSpentSec,
       day_study_id: dayStudyId,
-    }),
+    });
+
+    if (res.data.day_completed) {
+      localStorage.setItem('day_study_completed', JSON.stringify({
+        status: 'true',
+        day_id: res.data.day_id,
+      }));
+    }
+  },
 
   // Dictation
   getDictation: async (dictationId: string, dayStudyId?: string) => {
@@ -45,12 +61,19 @@ export const learningPathActivityService = {
     dictationId: string,
     data: any[],
     dayStudyId: string
-  ) =>
-    axiosClient.post(`/dictation-learningpath/${dictationId}/submit`, {
+  ) => {
+    const res = await axiosClient.post(`/dictation-learningpath/${dictationId}/submit`, {
       data,
       day_study_id: dayStudyId,
-    }),
+    });
 
+    if (res.data.day_completed) {
+      localStorage.setItem('day_study_completed', JSON.stringify({
+        status: 'true',
+        day_id: res.data.day_id,
+      }));
+    }
+  },
   // Shadowing
   getShadowing: async (shadowingId: string, dayStudyId?: string) => {
     const res = await axiosClient.get(
@@ -65,12 +88,19 @@ export const learningPathActivityService = {
     shadowingId: string,
     data: any[],
     dayStudyId: string
-  ) =>
-    axiosClient.post(`/shadowing-learningpath/${shadowingId}/submit`, {
+  ) => {
+    const res = await axiosClient.post(`/shadowing-learningpath/${shadowingId}/submit`, {
       data,
       day_study_id: dayStudyId,
-    }),
+    });
 
+    if (res.data.day_completed) {
+      localStorage.setItem('day_study_completed', JSON.stringify({
+        status: 'true',
+        day_id: res.data.day_id,
+      }));
+    }
+  },
   // Flashcard
   getFlashcard: async (topicId: string, dayStudyId?: string) => {
     const res = await axiosClient.get(`/flashcards-learningpath/${topicId}`, {
@@ -86,7 +116,15 @@ export const learningPathActivityService = {
       time_spent?: number;
       day_study_id: string;
     }
-  ) => axiosClient.post(`/flashcards-learningpath/${topicId}/submit`, payload),
+  ) => {
+    const res = await axiosClient.post(`/flashcards-learningpath/${topicId}/submit`, payload);
+    if (res.data.day_completed) {
+      localStorage.setItem('day_study_completed', JSON.stringify({
+        status: 'true',
+        day_id: res.data.day_id,
+      }));
+    }
+  },
 
   // Mini Test - chỉ cần complete activity (submit đã xử lý ở TestHeader)
   completeMiniTest: async (

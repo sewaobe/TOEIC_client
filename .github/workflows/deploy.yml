@@ -47,7 +47,6 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-
     steps:
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
@@ -56,34 +55,29 @@ jobs:
           username: root
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-
-            cd ~/app
-
-            echo "Pull latest client image"
+            echo "1. Pull latest client image from DockerHub"
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/toeic-client:latest
 
-            echo "Detect active client"
-            ACTIVE=$(grep -o 'localhost:300[12]' /etc/nginx/sites-available/toeic)
+            echo "2. Setup directory for new version"
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            RELEASE_DIR="/var/www/toeic-client/releases/$TIMESTAMP"
+            mkdir -p $RELEASE_DIR
 
-            if [[ "$ACTIVE" == "localhost:3001" ]]; then
-                NEW_COLOR="green"
-                NEW_PORT="3002"
-                OLD_COLOR="blue"
-                OLD_PORT="3001"
-            else
-                NEW_COLOR="blue"
-                NEW_PORT="3001"
-                OLD_COLOR="green"
-                OLD_PORT="3002"
-            fi
+            echo "3. Extract static files from Docker image to VPS"
+            # Tạo 1 container tạm thời (không chạy lên)
+            docker create --name temp_client ${{ secrets.DOCKERHUB_USERNAME }}/toeic-client:latest
+            # Copy thư mục dist từ trong container ra ngoài ổ cứng VPS
+            docker cp temp_client:/app/dist/. $RELEASE_DIR/
+            # Xóa container tạm
+            docker rm temp_client
 
-            echo "Deploy client $NEW_COLOR"
-            docker compose up -d client_$NEW_COLOR
+            echo "4. Switch Symlink (Zero-downtime)"
+            ln -sfn $RELEASE_DIR /var/www/toeic-client/current
 
-            echo "Switch nginx client"
-            sed -i "s/localhost:$OLD_PORT/localhost:$NEW_PORT/g" /etc/nginx/sites-available/toeic
+            echo "5. Reload Nginx to serve new files"
+            systemctl reload nginx
 
-            nginx -s reload
-
-            echo "Stop old client"
-            docker compose stop client_$OLD_COLOR
+            echo "6. Cleanup old versions (Keep last 5)"
+            cd /var/www/toeic-client/releases
+            # Lấy danh sách thư mục sắp xếp theo thời gian mới nhất, bỏ qua 5 cái đầu tiên, còn lại xóa hết
+            ls -dt */ | tail -n +6 | xargs -r rm -rf

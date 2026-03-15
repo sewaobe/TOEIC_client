@@ -33,13 +33,12 @@ ENV VITE_FIREBASE_MEASUREMENT_ID=$VITE_FIREBASE_MEASUREMENT_ID
 
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Production stage - Tối giản tối đa
+FROM alpine:latest
+WORKDIR /app
 
-# Simple SPA nginx config
-RUN rm /etc/nginx/conf.d/default.conf
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Chỉ copy thư mục dist vào image, không cài đặt gì thêm
+COPY --from=builder /app/dist ./dist
 
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Image này không chạy gì cả, nó chỉ đóng vai trò như file zip chở hàng
+CMD ["echo", "Static files container - Please extract /app/dist"]

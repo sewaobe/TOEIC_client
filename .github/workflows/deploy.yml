@@ -74,6 +74,10 @@ jobs:
             echo "4. Switch Symlink (Zero-downtime)"
             ln -sfn $RELEASE_DIR /var/www/toeic-client/current
 
+            echo "4.1 Fix permissions for Nginx to read files"
+            chown -R www-data:www-data /var/www/toeic-client/
+            chmod -R 755 /var/www/toeic-client/
+
             echo "5. Reload Nginx to serve new files"
             systemctl reload nginx
 

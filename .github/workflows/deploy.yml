@@ -31,7 +31,9 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/toeic-client:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/toeic-client:${{ github.sha }}
-
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          
           build-args: |
             VITE_API_URL=${{ secrets.VITE_API_URL }}
             VITE_CLOUDINARY_CLOUD_NAME=${{ secrets.VITE_CLOUDINARY_CLOUD_NAME }}

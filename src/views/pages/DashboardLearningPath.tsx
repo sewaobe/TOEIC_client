@@ -42,6 +42,7 @@ import SyncIcon from "@mui/icons-material/Sync";
 import FlagIcon from "@mui/icons-material/Flag";
 import BookIcon from "@mui/icons-material/Book";
 import useLocalStorage from "../../hooks/useLocalStorage";
+import { FeedbackLessonModal } from "../../components/modals/FeedbackLessonModal";
 
 // Tạo một đối tượng chứa màu sắc để dễ dàng thay đổi và quản lý
 const studyDayColors = {
@@ -329,6 +330,8 @@ export default function DashboardLearningPath({
     ""
   );
   const [isFirstVisitToday, setIsFirstVisitToday] = React.useState(false);
+  const [isDayComplete, setIsDayComplete] = React.useState(false);
+  const feedbackTimerRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     // Lấy ngày hôm nay theo định dạng 'YYYY-MM-DD'
@@ -342,6 +345,26 @@ export default function DashboardLearningPath({
       // QUAN TRỌNG: Cập nhật lại localStorage với ngày hôm nay
       setLastVisitDate(todayStr);
     }
+
+    const dayCompletedLocalStorage = localStorage.getItem('day_study_completed');
+    const dayCompleted = dayCompletedLocalStorage ? JSON.parse(dayCompletedLocalStorage) : undefined;
+    if (dayCompleted && dayCompleted.status === 'true') {
+      // Delay showing the feedback modal to avoid abrupt popup
+      // Schedule after 5 seconds, then clear the localStorage flag
+      if (feedbackTimerRef.current) {
+        window.clearTimeout(feedbackTimerRef.current);
+      }
+      feedbackTimerRef.current = window.setTimeout(() => {
+        setIsDayComplete(true);
+      }, 2000);
+    }
+
+    return () => {
+      if (feedbackTimerRef.current) {
+        window.clearTimeout(feedbackTimerRef.current);
+        feedbackTimerRef.current = null;
+      }
+    };
   }, []);
 
   // Keep activeWeek in sync if plan/current_week changes
@@ -564,6 +587,14 @@ export default function DashboardLearningPath({
           </Box>
         </Dialog>
       </Box>
+      <FeedbackLessonModal
+        open={isDayComplete}
+        onClose={() => {
+          setIsDayComplete(false);
+          localStorage.removeItem('day_study_completed');
+        }}
+        dayId={isDayComplete ? JSON.parse(localStorage.getItem('day_study_completed') || '{}').day_id : ''}
+      />
     </MainLayout>
   );
 }

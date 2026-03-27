@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import { FC, useState } from 'react';
 import { useLandingViewModel } from '../../viewmodels/useLandingViewModel';
 import Hero from '../../components/sections/Hero';
 import Benefits from '../../components/sections/Benefits';
@@ -8,9 +8,11 @@ import Testimonials from '../../components/sections/Testimonials';
 import { Box } from '@mui/material';
 import ScrollToTopButton from '../../components/common/ScrollToTopButton';
 import MainLayout from '../layouts/MainLayout';
+import AnnouncementModal from '../../components/modals/AnnouncementModal';
 
 const LandingPage: FC = () => {
   const vm = useLandingViewModel();
+  const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(true);
 
   return (
     <MainLayout>
@@ -22,6 +24,10 @@ const LandingPage: FC = () => {
         <CTA />
         <ScrollToTopButton scrollThreshold={1000} />
       </Box>
+      <AnnouncementModal 
+        open={isAnnouncementOpen} 
+        onClose={() => setIsAnnouncementOpen(false)} 
+      />
     </MainLayout>
   );
 };

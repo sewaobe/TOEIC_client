@@ -379,7 +379,6 @@ export default function ToeicQuickResultModal({
                     label={`Ước tính TOEIC: ${score}/990`}
                     tone="primary"
                   />
-                  <StatChip label={`CEFR ~ ${stats.cefr}`} tone="secondary" />
                   {typeof score === "number" && (
                     <StatChip label={`Điểm hệ thống: ${round(score, 2)}`} />
                   )}
@@ -403,7 +402,6 @@ export default function ToeicQuickResultModal({
               {stats.displayParts.map((p) => {
                 const item = stats.byPart[p as 1 | 2 | 3 | 4 | 5 | 6 | 7];
                 // Chỉ hiển thị part có câu hỏi
-                if (item.total === 0) return null;
                 return (
                   <Grid size={{ xs: 12, sm: 6, md: 4 }} key={p}>
                     <PartMiniCard

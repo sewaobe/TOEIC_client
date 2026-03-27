@@ -3,7 +3,7 @@ name: Build & Push Client Image
 on:
   push:
     branches:
-      - master # chạy khi merge PR vào master
+      - master
 
 jobs:
   build:
@@ -13,17 +13,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Debug username
-        run: echo "USERNAME=(${{ secrets.DOCKERHUB_USERNAME }})"
-
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Build & Push Image
         uses: docker/build-push-action@v5
@@ -34,3 +31,60 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/toeic-client:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/toeic-client:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
+            VITE_CLOUDINARY_CLOUD_NAME=${{ secrets.VITE_CLOUDINARY_CLOUD_NAME }}
+            VITE_CLOUDINARY_UPLOAD_PRESET=${{ secrets.VITE_CLOUDINARY_UPLOAD_PRESET }}
+            VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}
+            VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+            VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+            VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+            VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+            VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}
+            VITE_FIREBASE_MEASUREMENT_ID=${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+            VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: root
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            echo "1. Pull latest client image from DockerHub"
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/toeic-client:${{ github.sha }}
+
+            echo "2. Setup directory for new version"
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            RELEASE_DIR="/var/www/toeic-client/releases/$TIMESTAMP"
+            mkdir -p $RELEASE_DIR
+
+            echo "3. Extract static files from Docker image to VPS"
+            # Tạo 1 container tạm thời (không chạy lên)
+            docker create --name temp_client ${{ secrets.DOCKERHUB_USERNAME }}/toeic-client:${{ github.sha }}
+            # Copy thư mục dist từ trong container ra ngoài ổ cứng VPS
+            docker cp temp_client:/app/dist/. $RELEASE_DIR/
+            # Xóa container tạm
+            docker rm temp_client
+
+            echo "4. Switch Symlink (Zero-downtime)"
+            ln -sfn $RELEASE_DIR /var/www/toeic-client/current
+
+            echo "4.1 Fix permissions for Nginx to read files"
+            chown -R www-data:www-data /var/www/toeic-client/
+            chmod -R 755 /var/www/toeic-client/
+
+            echo "5. Reload Nginx to serve new files"
+            systemctl reload nginx
+
+            echo "6. Cleanup old versions (Keep last 5)"
+            cd /var/www/toeic-client/releases
+            # Lấy danh sách thư mục sắp xếp theo thời gian mới nhất, bỏ qua 5 cái đầu tiên, còn lại xóa hết
+            ls -dt */ | tail -n +6 | xargs -r rm -rf

@@ -81,6 +81,14 @@ module.exports = {
         'cta-main': 'linear-gradient(270deg, #06B6D4, #8B5CF6, #06B6D4)',
         'cta-outline': 'linear-gradient(90deg, #10B981, #F59E0B)',
       },
+
+      // ========================
+      // 📐 Custom Font Families
+      // ========================
+      fontFamily: {
+        sans: ['Montserrat', 'sans-serif'],
+        signature: ['Great Vibes', 'cursive'],
+      },
     },
   },
 

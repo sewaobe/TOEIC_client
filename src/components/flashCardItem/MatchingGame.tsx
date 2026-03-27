@@ -21,7 +21,7 @@ interface MatchingGameProps {
   onFinish: (
     result: MatchingGameResult,
     startedAt: string,
-    finishedAt: string
+    finishedAt: string,
   ) => void;
   onBack: () => void;
 }
@@ -33,6 +33,10 @@ export interface MatchingGameResult {
   timeSpent: number;
   accuracy: number;
   score: number;
+  // HLR data
+  vocabularyIds: string[]; // Tất cả vocabulary IDs trong game
+  correctPairIds: string[]; // IDs của các từ ghép đúng
+  wrongAttemptCounts: Record<string, number>; // Map vocab_id -> số lần click sai
 }
 
 interface GameCard {
@@ -40,6 +44,7 @@ interface GameCard {
   content: string;
   type: "word" | "definition";
   pairId: string;
+  vocabularyId: string; // ID của vocabulary
   isSelected: boolean;
   isMatched: boolean;
   isWrong?: boolean;
@@ -73,6 +78,13 @@ export default function MatchingGame({
   const [gameOver, setGameOver] = useState(false);
   const [gameWon, setGameWon] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [gameVocabularyIds, setGameVocabularyIds] = useState<string[]>([]); // Track vocabulary IDs
+  const [matchedVocabularyIds, setMatchedVocabularyIds] = useState<string[]>(
+    [],
+  ); // Track matched IDs
+  const [wrongAttemptCounts, setWrongAttemptCounts] = useState<
+    Record<string, number>
+  >({}); // Track số lần sai cho mỗi từ
 
   const maxPairs = Math.min(Math.floor(words.length), 10); // Max 10 cặp
   const availableOptions = PAIR_MILESTONES.filter((p) => p <= maxPairs);
@@ -86,14 +98,22 @@ export default function MatchingGame({
       .sort(() => Math.random() - 0.5)
       .slice(0, pairsNeeded);
 
+    // Lưu vocabulary IDs cho HLR
+    const vocabIds = shuffledWords.map((w) => w._id || "").filter(Boolean);
+    setGameVocabularyIds(vocabIds);
+    setMatchedVocabularyIds([]);
+    setWrongAttemptCounts({}); // Reset wrong counts
+
     // Tạo các card (mỗi từ tạo 2 card: word và definition)
     const gameCards: GameCard[] = [];
     shuffledWords.forEach((word, index) => {
+      const vocabId = word._id || `unknown-${index}`;
       gameCards.push({
         id: `word-${index}`,
         content: word.word,
         type: "word",
         pairId: `pair-${index}`,
+        vocabularyId: vocabId,
         isSelected: false,
         isMatched: false,
         isWrong: false,
@@ -104,6 +124,7 @@ export default function MatchingGame({
         content: word.definition || "Chưa có nghĩa",
         type: "definition",
         pairId: `pair-${index}`,
+        vocabularyId: vocabId,
         isSelected: false,
         isMatched: false,
         isWrong: false,
@@ -140,7 +161,7 @@ export default function MatchingGame({
 
       // Đánh dấu card được chọn
       const newCards = cards.map((c) =>
-        c.id === card.id ? { ...c, isSelected: true, isWrong: false } : c
+        c.id === card.id ? { ...c, isSelected: true, isWrong: false } : c,
       );
       setCards(newCards);
 
@@ -160,13 +181,16 @@ export default function MatchingGame({
             const pairScore = 100 + speedBonus;
             setScore((prev) => prev + pairScore);
 
+            // Track matched vocabulary ID cho HLR
+            setMatchedVocabularyIds((prev) => [...prev, first.vocabularyId]);
+
             // Hiển màu xanh lá trước
             setCards((prev) =>
               prev.map((c) =>
                 c.pairId === first.pairId
                   ? { ...c, isCorrect: true, isSelected: false, isWrong: false }
-                  : c
-              )
+                  : c,
+              ),
             );
 
             // Sau 600ms mới biến mất
@@ -175,8 +199,8 @@ export default function MatchingGame({
                 prev.map((c) =>
                   c.pairId === first.pairId
                     ? { ...c, isMatched: true, isCorrect: false }
-                    : c
-                )
+                    : c,
+                ),
               );
             }, 600);
 
@@ -195,10 +219,17 @@ export default function MatchingGame({
               prev.map((c) =>
                 c.id === first.id || c.id === second.id
                   ? { ...c, isSelected: false, isWrong: true }
-                  : c
-              )
+                  : c,
+              ),
             );
             setWrongAttempts((prev) => prev + 1);
+
+            // Track số lần sai cho từng từ (cả 2 từ đều bị tính sai)
+            setWrongAttemptCounts((prev) => ({
+              ...prev,
+              [first.vocabularyId]: (prev[first.vocabularyId] || 0) + 1,
+              [second.vocabularyId]: (prev[second.vocabularyId] || 0) + 1,
+            }));
 
             // Bỏ đánh dấu sai sau 300ms
             setTimeout(() => {
@@ -206,8 +237,8 @@ export default function MatchingGame({
                 prev.map((c) =>
                   c.id === first.id || c.id === second.id
                     ? { ...c, isWrong: false }
-                    : c
-                )
+                    : c,
+                ),
               );
             }, 300);
           }
@@ -217,7 +248,7 @@ export default function MatchingGame({
         }, 500);
       }
     },
-    [cards, selectedCards, isChecking]
+    [cards, selectedCards, isChecking],
   );
 
   // Timer đếm lên
@@ -285,9 +316,13 @@ export default function MatchingGame({
         timeSpent,
         accuracy,
         score,
+        // HLR data
+        vocabularyIds: gameVocabularyIds,
+        correctPairIds: matchedVocabularyIds,
+        wrongAttemptCounts, // Gửi số lần sai cho từng từ
       },
       gameStartedAt,
-      finishedAt
+      finishedAt,
     );
   };
 
@@ -464,49 +499,49 @@ export default function MatchingGame({
                   bgcolor: card.isMatched
                     ? "transparent"
                     : card.isCorrect
-                    ? "#A5D6A7"
-                    : card.isSelected
-                    ? "#BBDEFB"
-                    : card.isWrong
-                    ? "#FFCCBC"
-                    : "#FAFAFA",
+                      ? "#A5D6A7"
+                      : card.isSelected
+                        ? "#BBDEFB"
+                        : card.isWrong
+                          ? "#FFCCBC"
+                          : "#FAFAFA",
                   color: card.isCorrect
                     ? "#1B5E20"
                     : card.isSelected
-                    ? "#1565C0"
-                    : card.isWrong
-                    ? "#D84315"
-                    : "text.primary",
+                      ? "#1565C0"
+                      : card.isWrong
+                        ? "#D84315"
+                        : "text.primary",
                   border: card.isMatched
                     ? "2px solid transparent"
                     : card.isCorrect
-                    ? "2px solid #4CAF50"
-                    : card.isSelected
-                    ? "2px solid #1976D2"
-                    : card.isWrong
-                    ? "2px solid #FF7043"
-                    : "1px solid #E0E0E0",
+                      ? "2px solid #4CAF50"
+                      : card.isSelected
+                        ? "2px solid #1976D2"
+                        : card.isWrong
+                          ? "2px solid #FF7043"
+                          : "1px solid #E0E0E0",
                   transition: "all 0.2s ease",
                   "&:hover": {
                     bgcolor: card.isMatched
                       ? "transparent"
                       : card.isCorrect
-                      ? "#A5D6A7"
-                      : card.isSelected
-                      ? "#BBDEFB"
-                      : card.isWrong
-                      ? "#FFCCBC"
-                      : "#E8E8E8",
+                        ? "#A5D6A7"
+                        : card.isSelected
+                          ? "#BBDEFB"
+                          : card.isWrong
+                            ? "#FFCCBC"
+                            : "#E8E8E8",
                     transform: card.isMatched ? "none" : "scale(1.05)",
                     borderColor: card.isMatched
                       ? "transparent"
                       : card.isCorrect
-                      ? "#4CAF50"
-                      : card.isSelected
-                      ? "#1976D2"
-                      : card.isWrong
-                      ? "#FF7043"
-                      : "#BDBDBD",
+                        ? "#4CAF50"
+                        : card.isSelected
+                          ? "#1976D2"
+                          : card.isWrong
+                            ? "#FF7043"
+                            : "#BDBDBD",
                   },
                   p: 1,
                   textAlign: "center",
@@ -514,10 +549,10 @@ export default function MatchingGame({
                   boxShadow: card.isMatched
                     ? 0
                     : card.isSelected
-                    ? 3
-                    : card.isWrong
-                    ? 2
-                    : 1,
+                      ? 3
+                      : card.isWrong
+                        ? 2
+                        : 1,
                   animation: card.isWrong ? "shake 0.3s ease-in-out" : "none",
                   "@keyframes shake": {
                     "0%, 100%": { transform: "rotate(0deg)" },

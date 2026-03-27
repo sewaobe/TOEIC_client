@@ -38,7 +38,7 @@ interface WordRecallGameProps {
   onFinish: (
     result: WordRecallResult,
     startedAt: string,
-    finishedAt: string
+    finishedAt: string,
   ) => void;
   onBack: () => void;
 }
@@ -51,6 +51,9 @@ export interface WordRecallResult {
   accuracy: number;
   timeSpent: number;
   wrongList: { word: string; definition: string }[];
+  // HLR data
+  correctWordIds: string[]; // IDs từ gõ đúng
+  wrongWordIds: string[]; // IDs từ gõ sai hoặc hết giờ
 }
 
 interface WordState {
@@ -189,7 +192,7 @@ export default function WordRecallGame({
         const canReveal = Math.min(
           charsToReveal,
           hiddenPositions.length,
-          maxRevealable - currentRevealed
+          maxRevealable - currentRevealed,
         );
         const shuffled = [...hiddenPositions].sort(() => Math.random() - 0.5);
         const revealPositions = shuffled.slice(0, canReveal);
@@ -342,14 +345,24 @@ export default function WordRecallGame({
 
   // Hoàn thành và gửi kết quả
   const handleFinish = () => {
-    const correctWords = results.filter((r) => r.isCorrect).length;
-    const wrongWords = results.filter((r) => !r.isCorrect).length;
+    const correctResults = results.filter((r) => r.isCorrect);
+    const wrongResults = results.filter((r) => !r.isCorrect);
+    const correctWords = correctResults.length;
+    const wrongWords = wrongResults.length;
     const accuracy =
       results.length > 0
         ? Math.round((correctWords / results.length) * 100)
         : 0;
     const timeSpent = Math.round((Date.now() - startTimeRef.current) / 1000);
     const finishedAt = new Date().toISOString();
+
+    // HLR data - lấy vocabulary IDs
+    const correctWordIds = correctResults
+      .map((r) => r.word._id)
+      .filter((id): id is string => Boolean(id));
+    const wrongWordIds = wrongResults
+      .map((r) => r.word._id)
+      .filter((id): id is string => Boolean(id));
 
     onFinish(
       {
@@ -359,15 +372,16 @@ export default function WordRecallGame({
         totalScore: score,
         accuracy,
         timeSpent,
-        wrongList: results
-          .filter((r) => !r.isCorrect)
-          .map((r) => ({
-            word: r.word.word,
-            definition: r.word.definition || "",
-          })),
+        wrongList: wrongResults.map((r) => ({
+          word: r.word.word,
+          definition: r.word.definition || "",
+        })),
+        // HLR data
+        correctWordIds,
+        wrongWordIds,
       },
       gameStartedAt,
-      finishedAt
+      finishedAt,
     );
   };
 
@@ -536,8 +550,8 @@ export default function WordRecallGame({
                 feedback === "correct"
                   ? "success.light"
                   : feedback === "wrong"
-                  ? "error.light"
-                  : "background.paper",
+                    ? "error.light"
+                    : "background.paper",
               transition: "background-color 0.3s ease",
             }}
           >
@@ -734,7 +748,7 @@ export default function WordRecallGame({
                   {Math.round(
                     (results.filter((r) => r.isCorrect).length /
                       results.length) *
-                      100
+                      100,
                   )}
                   %
                 </Typography>

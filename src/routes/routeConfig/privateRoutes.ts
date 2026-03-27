@@ -3,57 +3,63 @@ import ProtectedRoute from "../guards/ProtectedRoute";
 const HomePage = lazy(() => import("../../views/pages/HomePage"));
 const ProfilePage = lazy(() => import("../../views/pages/ProfilePage"));
 const PracticeFlashCardPage = lazy(
-  () => import("../../views/pages/PracticeFlashCardPage")
+  () => import("../../views/pages/PracticeFlashCardPage"),
+);
+const SmartReviewPage = lazy(() => import("../../views/pages/SmartReviewPage"));
+const MemoryLibraryPage = lazy(
+  () => import("../../views/pages/MemoryLibraryPage"),
 );
 const FlashCardPage = lazy(() => import("../../views/pages/FlashCardPage"));
 const FlashCardDetailPage = lazy(
-  () => import("../../views/pages/FlashcardDetailPage")
+  () => import("../../views/pages/FlashcardDetailPage"),
 );
 const ResultTestPage = lazy(() => import("../../views/pages/ResultTestPage"));
 const StudyCalendarPage = lazy(
-  () => import("../../views/pages/StudyCalendarPage")
+  () => import("../../views/pages/StudyCalendarPage"),
 );
 const PracticeSkillPage = lazy(
-  () => import("../../views/pages/PracticeSkillPage")
+  () => import("../../views/pages/PracticeSkillPage"),
 );
 const PracticeMiniTestPage = lazy(
-  () => import("../../views/pages/PracticeMiniTestPage")
+  () => import("../../views/pages/PracticeMiniTestPage"),
 );
 const PracticeDictationPage = lazy(
-  () => import("../../views/pages/PracticeDictationPage")
+  () => import("../../views/pages/PracticeDictationPage"),
 );
 const PracticeChallengePage = lazy(
-  () => import("../../views/pages/PracticeChallengePage")
+  () => import("../../views/pages/PracticeChallengePage"),
 );
 const PracticeShadowingPage = lazy(
-  () => import("../../views/pages/PracticeShadowingPage")
+  () => import("../../views/pages/PracticeShadowingPage"),
 );
 const PracticeQuizPage = lazy(
-  () => import("../../views/pages/PracticeQuizPage")
+  () => import("../../views/pages/PracticeQuizPage"),
 );
 const ResultStatisticPage = lazy(
-  () => import("../../views/pages/ResultStatisticPage")
+  () => import("../../views/pages/ResultStatisticPage"),
 );
 const AnswerDetailPage = lazy(
-  () => import("../../views/pages/AnswerDetailPage")
+  () => import("../../views/pages/AnswerDetailPage"),
 );
 const RetryWrongAnswersPage = lazy(
-  () => import("../../views/pages/RetryWrongAnswersPage")
+  () => import("../../views/pages/RetryWrongAnswersPage"),
 );
 const LearningCompletion = lazy(
-  () => import("../../components/learningPath/LearningPathCompletion")
+  () => import("../../components/learningPath/LearningPathCompletion"),
 );
 const PracticeDefinitionBasedPage = lazy(
-  () => import("../../views/pages/PracticeDefinitionBasedPage")
+  () => import("../../views/pages/PracticeDefinitionBasedPage"),
 );
 const PracticeDefinitionBasedDetailPage = lazy(
-  () => import("../../views/pages/PracticeDefinitionBasedDetailPage")
+  () => import("../../views/pages/PracticeDefinitionBasedDetailPage"),
 );
 
 const PracticeSpeakingPage = lazy(
-  () => import("../../views/pages/PracticeSpeakingPage")
+  () => import("../../views/pages/PracticeSpeakingPage"),
 );
-const NativeHumanHomePage = lazy(() => import("../../views/pages/NativeHumanHomePage"));
+const NativeHumanHomePage = lazy(
+  () => import("../../views/pages/NativeHumanHomePage"),
+);
 
 export interface AppRoute {
   path: string;
@@ -74,6 +80,16 @@ const privateRoutes: AppRoute[] = [
   {
     path: "/flash-cards/:id/practice",
     element: PracticeFlashCardPage,
+    guard: ProtectedRoute,
+  },
+  {
+    path: "/flash-cards/smart-review",
+    element: SmartReviewPage,
+    guard: ProtectedRoute,
+  },
+  {
+    path: "/flash-cards/memory-library",
+    element: MemoryLibraryPage,
     guard: ProtectedRoute,
   },
   {

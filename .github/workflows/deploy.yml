@@ -59,7 +59,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             echo "1. Pull latest client image from DockerHub"
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/toeic-client:${{ github:sha }}
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/toeic-client:${{ github.sha }}
 
             echo "2. Setup directory for new version"
             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -68,7 +68,7 @@ jobs:
 
             echo "3. Extract static files from Docker image to VPS"
             # Tạo 1 container tạm thời (không chạy lên)
-            docker create --name temp_client ${{ secrets.DOCKERHUB_USERNAME }}/toeic-client:${{ github:sha }}
+            docker create --name temp_client ${{ secrets.DOCKERHUB_USERNAME }}/toeic-client:${{ github.sha }}
             # Copy thư mục dist từ trong container ra ngoài ổ cứng VPS
             docker cp temp_client:/app/dist/. $RELEASE_DIR/
             # Xóa container tạm

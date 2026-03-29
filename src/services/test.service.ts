@@ -2,9 +2,22 @@ import { ITestCard } from "../types/Test";
 import axiosClient from "./axiosClient";
 
 const testService = {
-  getTests: async (page = 1, limit = 6, search?: string) => {
+  getTests: async (
+    page = 1,
+    limit = 6,
+    filters?: string | { search?: string; keywords?: string; year?: string }
+  ) => {
+    const normalizedFilters =
+      typeof filters === "string" ? { search: filters } : filters;
+
     const res = await axiosClient.get("/tests", {
-      params: { page, limit, search },
+      params: {
+        page,
+        limit,
+        search: normalizedFilters?.search,
+        keywords: normalizedFilters?.keywords,
+        year: normalizedFilters?.year,
+      },
     });
     return res.data;
   },

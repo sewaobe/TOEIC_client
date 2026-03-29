@@ -21,6 +21,7 @@ import TestCard from "../../components/Home/TestCard";
 import testService from "../../services/test.service";
 import { useThrottledCallback } from "../../hooks/useThrottledCallback";
 import { SecondLayout } from "../layouts/SecondLayout";
+import { useSearchParams } from "react-router-dom";
 
 const initialState = {
   searchValue: "",
@@ -31,6 +32,7 @@ const initialState = {
   suggestions: [] as any[],
   anchorEl: null as null | HTMLElement,
   loadingSuggest: false,
+  loadingTests: false,
 };
 
 type State = typeof initialState;
@@ -44,7 +46,8 @@ type Action =
   | { type: "SET_TOTAL_PAGES"; payload: number }
   | { type: "SET_SUGGESTIONS"; payload: any[] }
   | { type: "SET_ANCHOR"; payload: HTMLElement | null }
-  | { type: "SET_LOADING_SUGGEST"; payload: boolean };
+  | { type: "SET_LOADING_SUGGEST"; payload: boolean }
+  | { type: "SET_LOADING_TESTS"; payload: boolean };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -66,6 +69,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, anchorEl: action.payload };
     case "SET_LOADING_SUGGEST":
       return { ...state, loadingSuggest: action.payload };
+    case "SET_LOADING_TESTS":
+      return { ...state, loadingTests: action.payload };
     default:
       return state;
   }
@@ -73,6 +78,7 @@ function reducer(state: State, action: Action): State {
 
 const ExamPage = () => {
   const theme = useTheme();
+  const [searchParams, setSearchParams] = useSearchParams();
   const Item = styled(Paper)(({ theme }) => ({
     backgroundColor: "#fff",
     ...theme.typography.body2,
@@ -91,22 +97,76 @@ const ExamPage = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
   const limit = 6;
 
+  const updateQueryParams = ({
+    page,
+    keywords,
+    year,
+  }: {
+    page?: number;
+    keywords?: string | null;
+    year?: string | null;
+  }) => {
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (page !== undefined) {
+      if (page > 1) {
+        nextParams.set("page", String(page));
+      } else {
+        nextParams.delete("page");
+      }
+    }
+
+    if (keywords !== undefined) {
+      if (keywords && keywords.trim()) {
+        nextParams.set("keywords", keywords.trim());
+      } else {
+        nextParams.delete("keywords");
+      }
+    }
+
+    if (year !== undefined) {
+      if (year && year.trim()) {
+        nextParams.set("year", year.trim());
+      } else {
+        nextParams.delete("year");
+      }
+    }
+
+    setSearchParams(nextParams);
+  };
+
   // --- Fetch tests chính ---
-  const fetchTests = async (p: number = 1, search?: string) => {
+  const fetchTests = async (
+    p: number = 1,
+    filters?: { keywords?: string; year?: string }
+  ) => {
+    dispatch({ type: "SET_LOADING_TESTS", payload: true });
     try {
-      const res = await testService.getTests(p, limit, search);
+      const res = await testService.getTests(p, limit, filters);
       dispatch({ type: "SET_TESTS", payload: res.tests });
-      dispatch({ type: "SET_TOTAL_PAGES", payload: res.totalPages });
-      dispatch({ type: "SET_PAGE_LOADED", payload: res.page });
-      dispatch({ type: "SET_PAGE", payload: p });
+      dispatch({ type: "SET_TOTAL_PAGES", payload: Number(res.totalPages) || 1 });
+      dispatch({ type: "SET_PAGE_LOADED", payload: Number(res.page) || 1 });
+      dispatch({ type: "SET_PAGE", payload: Number(res.page) || 1 });
     } catch (err) {
       console.error(err);
+    } finally {
+      dispatch({ type: "SET_LOADING_TESTS", payload: false });
     }
   };
 
+  const queryKey = searchParams.toString();
+
   useEffect(() => {
-    fetchTests();
-  }, []);
+    const pageFromQuery = Number(searchParams.get("page") || "1");
+    const page = Number.isFinite(pageFromQuery) && pageFromQuery > 0 ? pageFromQuery : 1;
+    const keywords = searchParams.get("keywords")?.trim() || "";
+    const year = searchParams.get("year")?.trim() || "";
+
+    dispatch({ type: "SET_SEARCH", payload: keywords });
+    dispatch({ type: "SET_ANCHOR", payload: null });
+
+    fetchTests(page, { keywords, year });
+  }, [queryKey]);
 
   // --- Throttled suggestion fetch ---
   const throttledFetchSuggestions = useThrottledCallback(
@@ -114,12 +174,11 @@ const ExamPage = () => {
       if (value.trim() === "") {
         dispatch({ type: "SET_SUGGESTIONS", payload: [] });
         dispatch({ type: "SET_ANCHOR", payload: null });
-        fetchTests(1);
         return;
       }
       dispatch({ type: "SET_LOADING_SUGGEST", payload: true });
       try {
-        const res = await testService.getTests(1, 5, value);
+        const res = await testService.getTests(1, 5, { keywords: value.trim() });
         dispatch({ type: "SET_SUGGESTIONS", payload: res.tests });
         dispatch({ type: "SET_ANCHOR", payload: target });
       } catch (err) {
@@ -140,11 +199,29 @@ const ExamPage = () => {
   const handleSelectSuggestion = (title: string) => {
     dispatch({ type: "SET_SEARCH", payload: title });
     dispatch({ type: "SET_ANCHOR", payload: null });
-    fetchTests(1, title);
+    updateQueryParams({ keywords: title, year: null, page: 1 });
   };
 
   const handleSearchClick = () => {
-    fetchTests(1, state.searchValue);
+    updateQueryParams({
+      keywords: state.searchValue.trim() || null,
+      year: null,
+      page: 1,
+    });
+  };
+
+  const handleCategoryFilter = (value: string) => {
+    dispatch({ type: "SET_SUGGESTIONS", payload: [] });
+    dispatch({ type: "SET_ANCHOR", payload: null });
+
+    if (/^\d{4}$/.test(value)) {
+      dispatch({ type: "SET_SEARCH", payload: "" });
+      updateQueryParams({ year: value, keywords: null, page: 1 });
+      return;
+    }
+
+    dispatch({ type: "SET_SEARCH", payload: value });
+    updateQueryParams({ keywords: value, year: null, page: 1 });
   };
 
   return (
@@ -169,7 +246,7 @@ const ExamPage = () => {
                 spacing={{ xs: 1, md: 4 }}
               >
                 {["New economy", "2024", "2023", "2022", "2021"].map((item) => (
-                  <Item key={item} onClick={() => fetchTests(1, item)}>
+                  <Item key={item} onClick={() => handleCategoryFilter(item)}>
                     {item}
                   </Item>
                 ))}
@@ -251,7 +328,14 @@ const ExamPage = () => {
             Kết quả tìm kiếm
           </Typography>
 
-          {state.tests.length === 0 ? (
+          {state.loadingTests ? (
+            <Box className="w-full flex items-center justify-center py-10 gap-3">
+              <CircularProgress size={28} />
+              <Typography variant="body1" color="text.secondary">
+                Đang tải đề thi...
+              </Typography>
+            </Box>
+          ) : state.tests.length === 0 ? (
             <Typography variant="body1" color="text.secondary">
               Không tìm thấy kết quả phù hợp.
             </Typography>
@@ -279,7 +363,7 @@ const ExamPage = () => {
                 <Pagination
                   count={Number(state.totalPages)}
                   page={state.page}
-                  onChange={(e, value) => fetchTests(value, state.searchValue)}
+                  onChange={(e, value) => updateQueryParams({ page: value })}
                   color="primary"
                 />
               </Box>

@@ -138,13 +138,16 @@ const ExamPage = () => {
   // --- Fetch tests chính ---
   const fetchTests = async (
     p: number = 1,
-    filters?: { keywords?: string; year?: string }
+    filters?: { keywords?: string; year?: string },
   ) => {
     dispatch({ type: "SET_LOADING_TESTS", payload: true });
     try {
       const res = await testService.getTests(p, limit, filters);
       dispatch({ type: "SET_TESTS", payload: res.tests });
-      dispatch({ type: "SET_TOTAL_PAGES", payload: Number(res.totalPages) || 1 });
+      dispatch({
+        type: "SET_TOTAL_PAGES",
+        payload: Number(res.totalPages) || 1,
+      });
       dispatch({ type: "SET_PAGE_LOADED", payload: Number(res.page) || 1 });
       dispatch({ type: "SET_PAGE", payload: Number(res.page) || 1 });
     } catch (err) {
@@ -158,7 +161,8 @@ const ExamPage = () => {
 
   useEffect(() => {
     const pageFromQuery = Number(searchParams.get("page") || "1");
-    const page = Number.isFinite(pageFromQuery) && pageFromQuery > 0 ? pageFromQuery : 1;
+    const page =
+      Number.isFinite(pageFromQuery) && pageFromQuery > 0 ? pageFromQuery : 1;
     const keywords = searchParams.get("keywords")?.trim() || "";
     const year = searchParams.get("year")?.trim() || "";
 
@@ -178,7 +182,9 @@ const ExamPage = () => {
       }
       dispatch({ type: "SET_LOADING_SUGGEST", payload: true });
       try {
-        const res = await testService.getTests(1, 5, { keywords: value.trim() });
+        const res = await testService.getTests(1, 5, {
+          keywords: value.trim(),
+        });
         dispatch({ type: "SET_SUGGESTIONS", payload: res.tests });
         dispatch({ type: "SET_ANCHOR", payload: target });
       } catch (err) {
@@ -187,7 +193,7 @@ const ExamPage = () => {
         dispatch({ type: "SET_LOADING_SUGGEST", payload: false });
       }
     },
-    700
+    700,
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -275,12 +281,18 @@ const ExamPage = () => {
                 placement="bottom-start"
                 style={{ zIndex: 1300 }}
               >
-                <ClickAwayListener onClickAway={() => dispatch({ type: "SET_ANCHOR", payload: null })}>
+                <ClickAwayListener
+                  onClickAway={() =>
+                    dispatch({ type: "SET_ANCHOR", payload: null })
+                  }
+                >
                   <Paper
                     elevation={3}
                     sx={{
                       mt: 0.5,
-                      width: state.anchorEl ? state.anchorEl.offsetWidth + 48 : 348,
+                      width: state.anchorEl
+                        ? state.anchorEl.offsetWidth + 48
+                        : 348,
                       maxHeight: 250,
                       overflowY: "auto",
                       borderRadius: 2,
@@ -297,7 +309,11 @@ const ExamPage = () => {
                         <MenuItem
                           key={t.id}
                           onClick={() => handleSelectSuggestion(t.title)}
-                          sx={{ "&:hover": { backgroundColor: theme.palette.action.hover } }}
+                          sx={{
+                            "&:hover": {
+                              backgroundColor: theme.palette.action.hover,
+                            },
+                          }}
                         >
                           {t.title}
                         </MenuItem>
@@ -343,8 +359,14 @@ const ExamPage = () => {
             <>
               <Grid container spacing={2}>
                 {state.tests.map((t) => (
-                  <Grid size={{xs:12, sm:6, md:4}}  key={t.id}>
-                    <Stack sx={{ width: "100%", alignItems: "stretch", '& > *': { width: "100%" } }}>
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={t.id}>
+                    <Stack
+                      sx={{
+                        width: "100%",
+                        alignItems: "stretch",
+                        "& > *": { width: "100%" },
+                      }}
+                    >
                       <TestCard
                         _id={t.id}
                         title={t.title}

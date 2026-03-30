@@ -4,20 +4,58 @@ import { motion } from "framer-motion";
 import TestCard from "./TestCard";
 import { ITestCard } from "../../types/Test";
 import { useNavigate } from "react-router-dom";
+import { EmptyIcons, EmptySection } from "../common/EmptySection";
 
 interface TestSectionProps {
   title: string;
   tests: any[];
   showViewMoreButton?: boolean;
+  no: number;
 }
 
 const TestSection: React.FC<TestSectionProps> = ({
   title,
   tests,
   showViewMoreButton = false,
+  no
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
+
+  const handleGoToExams = () => {
+    // Navigate to exam list
+    navigate("/tests");
+  };
+
+  const emptyStateMap: Record<number, React.ReactNode> = {
+    0: (
+      <EmptySection
+        isCard
+        icon={EmptyIcons.assignment}
+        title="Bạn chưa làm bài thi nào"
+        description="Luyện tập giúp bạn làm quen với cấu trúc đề thi TOEIC và cải thiện điểm số nhanh chóng. Hãy bắt đầu bài thi đầu tiên ngay!"
+        actionLabel="Bắt đầu thi ngay"
+        onAction={handleGoToExams}
+      />
+    ),
+    1: (
+      <EmptySection
+        isCard
+        icon={EmptyIcons.quiz}
+        title="Hiện tại hệ thống chưa có đề thi nào"
+      />
+    ),
+  };
+
+  const EmptyStateUI =
+    emptyStateMap[no] ?? (
+      <EmptySection
+        isCard
+        icon={EmptyIcons.quiz}
+        title="Hiện tại hệ thống chưa có đề thi nào"
+      />
+    );
+
   return (
     <Box
       component={motion.div}
@@ -47,9 +85,11 @@ const TestSection: React.FC<TestSectionProps> = ({
       </Box>
 
       <Box className="flex flex-wrap justify-start gap-4">
-        {tests.map((test: ITestCard, index) => (
-          <TestCard key={index} {...test} />
-        ))}
+        {tests.length === 0
+          ? EmptyStateUI
+          : tests.map((test: ITestCard, index) => (
+            <TestCard key={index} {...test} />
+          ))}
       </Box>
     </Box>
   );

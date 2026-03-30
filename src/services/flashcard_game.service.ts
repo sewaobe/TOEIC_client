@@ -8,6 +8,10 @@ export interface MatchingGameResult {
   wrongAttempts: number;
   score: number;
   timeSpent: number; // seconds
+  // HLR data
+  vocabularyIds?: string[];
+  correctPairIds?: string[];
+  wrongAttemptCounts?: Record<string, number>; // Map vocab_id -> số lần click sai
 }
 
 export interface WordRecallGameResult {
@@ -18,6 +22,9 @@ export interface WordRecallGameResult {
   combo: number;
   wrongList: string[]; // danh sách từ sai
   timeSpent: number; // seconds
+  // HLR data
+  correctWordIds?: string[];
+  wrongWordIds?: string[];
 }
 
 export const flashCardGameService = {
@@ -26,7 +33,7 @@ export const flashCardGameService = {
     topicId: string,
     result: MatchingGameResult,
     startedAt: string,
-    finishedAt: string
+    finishedAt: string,
   ) => {
     const accuracy =
       result.totalPairs > 0
@@ -45,6 +52,10 @@ export const flashCardGameService = {
         timeSpent: result.timeSpent,
         started_at: startedAt,
         finished_at: finishedAt,
+        // HLR data
+        vocabularyIds: result.vocabularyIds || [],
+        correctPairIds: result.correctPairIds || [],
+        wrongAttemptCounts: result.wrongAttemptCounts || {}, // Số lần sai cho từng từ
       },
     });
     return res.data;
@@ -55,7 +66,7 @@ export const flashCardGameService = {
     topicId: string,
     result: WordRecallGameResult,
     startedAt: string,
-    finishedAt: string
+    finishedAt: string,
   ) => {
     const accuracy =
       result.totalWords > 0
@@ -76,6 +87,9 @@ export const flashCardGameService = {
         timeSpent: result.timeSpent,
         started_at: startedAt,
         finished_at: finishedAt,
+        // HLR data
+        correctWordIds: result.correctWordIds || [],
+        wrongWordIds: result.wrongWordIds || [],
       },
     });
     return res.data;

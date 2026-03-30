@@ -2,16 +2,29 @@ import { ITestCard } from "../types/Test";
 import axiosClient from "./axiosClient";
 
 const testService = {
-  getTests: async (page = 1, limit = 6, search?: string) => {
+  getTests: async (
+    page = 1,
+    limit = 6,
+    filters?: string | { search?: string; keywords?: string; year?: string },
+  ) => {
+    const normalizedFilters =
+      typeof filters === "string" ? { search: filters } : filters;
+
     const res = await axiosClient.get("/tests", {
-      params: { page, limit, search },
+      params: {
+        page,
+        limit,
+        search: normalizedFilters?.search,
+        keywords: normalizedFilters?.keywords,
+        year: normalizedFilters?.year,
+      },
     });
     return res.data;
   },
   // Lấy test theo id với query tùy chọn
   getTestById: async (
     id: string,
-    options?: { full?: boolean; part?: string; parts?: string[] }
+    options?: { full?: boolean; part?: string; parts?: string[] },
   ): Promise<{ test: any }> => {
     const res = await axiosClient.get(`/tests/${id}`, {
       params: {
@@ -24,9 +37,11 @@ const testService = {
     return { test };
   },
   getTestDetail: async (testId: string, page = 1, limit = 5) => {
-    const res = await axiosClient.get(`/tests/${testId}/detail`, { params: { page, limit } });
-    console.log("testService", res.data)
-    return res.data
+    const res = await axiosClient.get(`/tests/${testId}/detail`, {
+      params: { page, limit },
+    });
+    console.log("testService", res.data);
+    return res.data;
   },
 
   submitTest: async (
@@ -46,20 +61,21 @@ const testService = {
     return res.data;
   },
   getLatestTests: async (): Promise<ITestCard[]> => {
-    const res = await axiosClient.get('/tests/latest?limit=3');
-    const data: ITestCard[] = res.data.map((test: any) => (
-      { ...test, isNew: true }
-    ))
-    return data
-  },
-  getUserRecentTest: async (): Promise<ITestCard[]> => {
-    const res = await axiosClient.get('/tests/recent?limit=3');
+    const res = await axiosClient.get("/tests/latest?limit=3");
     const data: ITestCard[] = res.data.map((test: any) => ({
       ...test,
-      _id: test.test_id
-    }))
+      isNew: true,
+    }));
     return data;
-  }
+  },
+  getUserRecentTest: async (): Promise<ITestCard[]> => {
+    const res = await axiosClient.get("/tests/recent?limit=3");
+    const data: ITestCard[] = res.data.map((test: any) => ({
+      ...test,
+      _id: test.test_id,
+    }));
+    return data;
+  },
 };
 
 export default testService;

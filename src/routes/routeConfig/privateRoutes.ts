@@ -60,6 +60,10 @@ const PracticeSpeakingPage = lazy(
 const NativeHumanHomePage = lazy(
   () => import("../../views/pages/NativeHumanHomePage"),
 );
+const DashboardDemo = lazy(() => import("../../views/pages/DashboardDemo"));
+const LessonPage = lazy(() => import("../../views/pages/LessonPage"));
+const CreditPage = lazy(() => import("../../views/pages/CreditPage"));
+
 
 export interface AppRoute {
   path: string;
@@ -182,6 +186,9 @@ const privateRoutes: AppRoute[] = [
     element: LearningCompletion,
     guard: ProtectedRoute,
   },
+  { path: "/programs", element: DashboardDemo, guard: ProtectedRoute },
+  { path: "/lesson", element: LessonPage, guard: ProtectedRoute },
+  { path: "/credit", element: CreditPage, guard: ProtectedRoute },
 ];
 
 export default privateRoutes;

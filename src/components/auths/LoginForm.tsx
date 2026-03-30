@@ -14,7 +14,6 @@ import {
 } from "@mui/material";
 import {
   Google,
-  Facebook,
   Visibility,
   VisibilityOff,
 } from "@mui/icons-material";
@@ -22,7 +21,8 @@ import { Controller } from "react-hook-form";
 import { useAuthViewModel } from "../../viewmodels/useAuthViewModel.ts";
 import { signInWithGoogle } from "../../hooks/useFirebaseAuth.ts";
 import BannedAccountModal from "../BannedAccountModal";
-
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useNavigate } from "react-router-dom";
 interface LoginFormProps {
   onSwitch: () => void; // chuyển sang Register
 }
@@ -68,6 +68,8 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
     authViewModel.login(data, rememberMe);
   });
 
+  const navigate = useNavigate();
+
   return (
     <Box
       component="form"
@@ -80,7 +82,16 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
       }}
     >
       {/* Title */}
-      <Box sx={{ mb: 4, textAlign: "center" }}>
+      <Box sx={{ position: "relative", mb: 4, textAlign: "center", width: "100%" }}>
+        {/* Nút Back được neo ở góc trên cùng bên trái */}
+        <IconButton
+          color="primary"
+          sx={{ position: "absolute", left: -8, top: 0 }}
+          onClick={() => navigate("/")}
+        >
+          <ArrowBackIcon />
+        </IconButton>
+
         <Typography
           component="h1"
           variant="h4"
@@ -176,7 +187,7 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
       </Button>
 
       {/* Divider */}
-      <Divider sx={{ my: 3 }}>
+      <Divider sx={{ my: 2 }}>
         <Typography variant="body2" color="text.secondary">
           OR
         </Typography>
@@ -212,22 +223,6 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
           }}
         >
           {googleLoading ? "Signing in..." : "Google"}
-        </Button>
-
-        <Button
-          variant="outlined"
-          fullWidth
-          startIcon={<Facebook />}
-          sx={{
-            color: "#1877F2",
-            borderColor: "#1877F2",
-            "&:hover": {
-              backgroundColor: "rgba(24, 119, 242, 0.04)",
-              borderColor: "#1877F2",
-            },
-          }}
-        >
-          Facebook
         </Button>
       </Box>
 

@@ -53,12 +53,12 @@ const PROJECT_FEATURES: RoleFeatures[] = [
         features: [
             { name: 'Xem và cập nhật thông tin cá nhân', status: 'integrated' },
             { name: 'Gợi ý lộ trình học dựa trên kết quả đầu vào', status: 'pending' },
-            { name: 'Làm bài thi TOEIC (Full Test, Part, Mini Test)', status: 'pending' },
-            { name: 'Xem điểm, đáp án và lời giải chi tiết', status: 'pending' },
+            { name: 'Làm bài thi TOEIC (Full Test, Part, Mini Test)', status: 'integrated' },
+            { name: 'Xem điểm, đáp án và lời giải chi tiết', status: 'integrated' },
             { name: 'Tìm kiếm và lọc đề thi', status: 'integrated' },
-            { name: 'Học từ vựng qua Flashcard', status: 'pending' },
-            { name: 'Bình luận và thảo luận dưới mỗi đề thi', status: 'pending' },
-            { name: 'Luyện tập cải thiện kỹ năng (Dictation, Shadowing, Quiz, Speaking conversation)', status: 'pending' },
+            { name: 'Học từ vựng qua Flashcard', status: 'integrated' },
+            { name: 'Bình luận và thảo luận dưới mỗi đề thi', status: 'integrated' },
+            { name: 'Luyện tập cải thiện kỹ năng (Dictation, Shadowing, Quiz, Speaking conversation)', status: 'pending' }
         ],
     },
     {

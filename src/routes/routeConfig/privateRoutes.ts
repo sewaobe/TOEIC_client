@@ -1,3 +1,5 @@
+const isProd = import.meta.env.PROD;
+
 import { ComponentType, lazy } from "react";
 import ProtectedRoute from "../guards/ProtectedRoute";
 const HomePage = lazy(() => import("../../views/pages/HomePage"));
@@ -69,6 +71,7 @@ export interface AppRoute {
   path: string;
   element: ComponentType;
   guard?: ComponentType<{ children: JSX.Element }>;
+  hidden?: boolean;
 }
 
 const privateRoutes: AppRoute[] = [
@@ -185,10 +188,11 @@ const privateRoutes: AppRoute[] = [
     path: "/learning-completion",
     element: LearningCompletion,
     guard: ProtectedRoute,
+    hidden: isProd
   },
-  { path: "/programs", element: DashboardDemo, guard: ProtectedRoute },
-  { path: "/lesson", element: LessonPage, guard: ProtectedRoute },
+  { path: "/programs", element: DashboardDemo, guard: ProtectedRoute, hidden: isProd },
+  { path: "/lesson", element: LessonPage, guard: ProtectedRoute, hidden: isProd },
   { path: "/credit", element: CreditPage, guard: ProtectedRoute },
-];
+].filter(router => !router.hidden);
 
 export default privateRoutes;

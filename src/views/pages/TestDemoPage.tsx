@@ -105,12 +105,13 @@ const TestDemoPage: FC = () => {
         openModal={handleOpen}
         onPlanReady={() => setIsPlanReady(true)}
         setIsSubmitted={setIsSubmitted}
+        isSubmitted={isSubmitted}
       />
 
       {/* Main layout */}
       <div className="flex flex-1 max-h-[calc(100vh-100px)] relative">
         <main className="flex-1 p-3 flex">
-          <ExamContainer isSubmitted={isSubmitted}/>
+          <ExamContainer isSubmitted={isSubmitted} />
         </main>
 
         <AnimatePresence>

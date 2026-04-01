@@ -1,4 +1,3 @@
-// stores/examSlice.ts
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { ExamGroup } from '../types/Exam';
 import testService from '../services/test.service';
@@ -72,6 +71,7 @@ interface ExamState {
   qIdToGroupIndex: Record<string, number>;
   currentGroupIndex: number;
   showIntro: boolean;
+  isLoading: boolean;
 }
 
 function buildIndex(groups: ExamGroup[]) {
@@ -90,6 +90,7 @@ const initialState: ExamState = {
   qIdToGroupIndex: {},
   currentGroupIndex: 0,
   showIntro: true,
+  isLoading: false
 };
 
 // ----------------- Slice -----------------
@@ -141,13 +142,21 @@ const examSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
+    builder.addCase(fetchExamById.pending, (state) => {
+      state.isLoading = true;
+    })
     builder.addCase(fetchExamById.fulfilled, (state, action: PayloadAction<{ testId: string; groups: ExamGroup[] }>) => {
+      state.isLoading = false;
       state.groups = action.payload.groups;
       state.qIdToGroupIndex = buildIndex(action.payload.groups);
       state.currentGroupIndex = 0;
       state.showIntro = true;
       state.currentTestId = action.payload.testId;  // lưu testId
     });
+    builder.addCase(fetchExamById.rejected, (state) => {
+      state.isLoading = false;
+      state.groups = [];
+    })
   },
 });
 

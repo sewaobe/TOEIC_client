@@ -32,7 +32,7 @@ export const OverviewCard: FC<OverviewCardProps> = ({
 
   const handleStart = () => {
     if (searchParams.get("type") === "entry-test") {
-      navigate(`/test?testId=69c515a02441dcae9ff3f172&type=entry-test`)
+      navigate(`/test?testId=68af851b1918226d4c424e7f&type=entry-test&demo_test=true`)
     }
     else {
       const queryString = searchParams.toString(); // giữ nguyên tất cả query hiện tại

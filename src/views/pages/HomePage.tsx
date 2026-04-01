@@ -12,6 +12,7 @@ import ClaimResultModal from "../../components/modals/ClaimResultModal";
 import { useNavigate } from "react-router-dom";
 
 const HomePage: FC = () => {
+  const navigate = useNavigate();
   const [latestTests, setLatestTests] = useState<ITestCard[]>([]);
   const [userRecentTests, setUserRecentTests] = useState<ITestCard[]>([]);
 
@@ -44,37 +45,49 @@ const HomePage: FC = () => {
     fetchRecentTests();
 
     // LOGIC CHECK GUEST RESULT
-    const savedGuestId = localStorage.getItem("guest_result_id");
+    const savedGuestData = localStorage.getItem("guest_result_id");
 
-    if (savedGuestId) {
-      const json = JSON.parse(savedGuestId);
-      setResultId(json.resultId);
-      setTestId(json.testId);
-      setOpenClaimModal(true);
+    if (savedGuestData) {
+      try {
+        const parsed = JSON.parse(savedGuestData);
+        if (parsed.resultId && parsed.testId) {
+          setResultId(parsed.resultId);
+          setTestId(parsed.testId);
+          // Thêm một chút delay để user không bị "ngợp" ngay khi vừa load trang
+          const timer = setTimeout(() => setOpenClaimModal(true), 1000);
+          return () => clearTimeout(timer);
+        }
+      } catch (e) {
+        console.error("Lỗi parse dữ liệu guest từ localStorage");
+        localStorage.removeItem("guest_result_id");
+      }
     }
   }, []);
-
-  const navigate = useNavigate();
 
   const handleConfirmClaim = async () => {
     if (!resultId) return;
     setIsClaiming(true);
     try {
+      // 1. Call API Claim kết quả
       await testService.claimGuestResult(resultId);
-      toast.success("Đã lưu kết quả vào tài khoản của bạn!", {
-        description: "Bạn có muốn xem lại chi tiết bài làm không?",
+
+      // 2. Tạo chương trình học/lộ trình học
+      // const roadmap = await roadmapService.createFromTest(resultId);
+
+      toast.success("Tuyệt vời! Đã lưu kết quả.", {
         action: {
           label: "Xem ngay",
-          onClick: () => navigate(`/tests/${testId}/result/${resultId}`),
+          onClick: () => navigate(`/tests/${testId}/result/${resultId}`), // Hoặc navigate tới trang lộ trình
         },
-        duration: 5000
+        duration: 6000
       });
 
       localStorage.removeItem("guest_result_id");
       setOpenClaimModal(false);
-      fetchRecentTests();
+      fetchRecentTests(); // Load lại danh sách bài làm
     } catch (error) {
-      toast.error("Có lỗi xảy ra khi lưu kết quả.");
+      console.error(error);
+      toast.error("Có lỗi xảy ra khi xử lý dữ liệu.");
     } finally {
       setIsClaiming(false);
     }
@@ -83,7 +96,7 @@ const HomePage: FC = () => {
   const handleCancelClaim = () => {
     localStorage.removeItem("guest_result_id");
     setOpenClaimModal(false);
-    toast.info("Kết quả tạm thời đã bị xóa.");
+    toast.info("Dữ liệu tạm thời đã được xóa.");
   };
 
   return (
@@ -91,7 +104,12 @@ const HomePage: FC = () => {
       <Box sx={{ px: { xs: 2, sm: 4, md: 6 } }}>
         <HeroSection />
         <FeatureSection />
-        <TestSection title="Bài làm gần đây" tests={userRecentTests} no={0} />
+        
+        {/* Chỉ hiện section này nếu có bài làm */}
+        {userRecentTests.length > 0 && (
+          <TestSection title="Bài làm gần đây" tests={userRecentTests} no={0} />
+        )}
+
         <TestSection
           title="Đề thi mới nhất"
           tests={latestTests}
@@ -101,7 +119,6 @@ const HomePage: FC = () => {
         <ScrollToTopButton scrollThreshold={700} />
       </Box>
 
-      {/* Modal xác nhận */}
       <ClaimResultModal
         open={openClaimModal}
         onConfirm={handleConfirmClaim}

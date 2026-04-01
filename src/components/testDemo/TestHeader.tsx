@@ -23,6 +23,7 @@ interface TestHeaderProps {
   openModal?: () => void;
   onPlanReady?: () => void;
   setIsSubmitted: (val: boolean) => void;
+  isSubmitted: boolean;
 }
 
 type State = {
@@ -67,7 +68,8 @@ const TestHeader: FC<TestHeaderProps> = ({
   setIsShowSideBar,
   isTourRunning,
   fromLesson = false,
-  setIsSubmitted
+  setIsSubmitted,
+  isSubmitted
 }) => {
   const [state, dispatchLocal] = useReducer(reducer, initialState);
   const [answerTest, setAnswerTest] = useState<ResultPayload>({
@@ -92,7 +94,9 @@ const TestHeader: FC<TestHeaderProps> = ({
       ? Infinity // practice không giới hạn
       : 120 * 60; // full test mặc định 120 phút
 
-  const { timeLeft, formatTime } = useCountdown(duration, isTourRunning);
+  const shouldPause = isTourRunning || isSubmitted || groups.length === 0;
+  
+  const { timeLeft, formatTime } = useCountdown(duration, shouldPause);
 
   // Format time hiển thị, nếu vô hạn thì hiển thị ∞
   const displayTime = duration === Infinity ? "Vô hạn" : formatTime();
@@ -564,6 +568,7 @@ const TestHeader: FC<TestHeaderProps> = ({
       />
 
       <ToeicQuickResultModal
+        isEntry={isDemoTest}
         isGuest={userId === "guest"}
         open={state.scoreOpen}
         data={answerTest}

@@ -45,6 +45,7 @@ const testService = {
   },
 
   submitTest: async (
+    isGuest: boolean,
     testId: string,
     userId: string,
     answers: { question_id: string; selectedOption: string }[],
@@ -58,7 +59,9 @@ const testService = {
       ...(completedPart ? { completedPart } : {}),
     });
 
-    localStorage.setItem("guest_result_id", res.data.resultId);
+    if (isGuest) {
+      localStorage.setItem("guest_result_id", JSON.stringify({ testId, resultId: res.data.resultId }));
+    }
 
     return res.data;
   },
@@ -78,6 +81,11 @@ const testService = {
     }));
     return data;
   },
+  claimGuestResult: async (resultId: string) => {
+    const res = await axiosClient.patch("/tests/claim-guest-result", { resultId });
+
+    return res.data;
+  }
 };
 
 export default testService;

@@ -175,11 +175,12 @@ const TestHeader: FC<TestHeaderProps> = ({
         })();
       } else {
         result = await testService.submitTest(
+          userId === "guest",
           testId,
           userId,
           answersMap,
           elapsed,
-          completedPart
+          completedPart,
         );
       }
       console.log("Chi tiết từng câu:", result.answers);

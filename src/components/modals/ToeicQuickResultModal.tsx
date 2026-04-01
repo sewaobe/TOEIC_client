@@ -28,6 +28,7 @@ export type ResultPayload = {
 };
 
 interface ToeicQuickResultModalProps {
+  isEntry?: boolean;
   isGuest: boolean;
   open: boolean;
   data: ResultPayload;
@@ -182,6 +183,7 @@ const PartMiniCard = ({
 
 /* ---------- MAIN ---------- */
 export default function ToeicQuickResultModal({
+  isEntry = false,
   isGuest,
   open,
   data,
@@ -235,7 +237,7 @@ export default function ToeicQuickResultModal({
     const fetchLearningPath = async () => {
       try {
         const res = await learningPathService.getUserLearningPath();
-        if (!res.data) {
+        if (!res.data && isEntry) {
           setShowSuggest(true);
         }
       } catch (error) {
@@ -304,7 +306,7 @@ export default function ToeicQuickResultModal({
         <Button
           variant="contained"
           color="primary"
-          onClick={() => { navigate("/login") }} 
+          onClick={() => { navigate("/login") }}
           startIcon={<LockOpenRounded />}
           sx={{
             textTransform: "none",

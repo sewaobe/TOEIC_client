@@ -23,6 +23,7 @@ import { RootState } from "../../stores/store";
 import { logout } from "../../stores/userSlice";
 import authService from "../../services/authService";
 import NotificationDropdown from "./NotificationDropdown";
+import LockIcon from '@mui/icons-material/Lock';
 
 interface NavLink {
   label: string;
@@ -133,10 +134,17 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-6">
             {navLinks.map((item) => {
               const active = isActive(item.href, item.label);
+
+              // Logic kiểm tra xem có phải feature đang bị khóa không
+              const isLocked = item.href === "/programs" && import.meta.env.PROD;
+
               return (
                 <Button
                   key={item.label}
-                  onClick={() => handleNavigate(item.href, item.label)}
+                  // Nếu khóa thì không cho navigate
+                  onClick={() => !isLocked && handleNavigate(item.href, item.label)}
+                  // Vô hiệu hóa hiệu ứng click của Button nếu bị khóa
+                  disabled={isLocked}
                   sx={{
                     color: active
                       ? theme.palette.primary.main
@@ -144,24 +152,40 @@ export default function Navbar() {
                     textTransform: "none",
                     fontWeight: active ? 700 : 600,
                     position: "relative",
+                    // Nếu bị khóa thì làm mờ đi một chút (opacity)
+                    opacity: isLocked ? 0.6 : 1,
+                    cursor: isLocked ? "not-allowed" : "pointer",
                     "&:hover": {
-                      color: theme.palette.primary.main,
+                      color: isLocked ? "inherit" : theme.palette.primary.main,
                     },
-                    "&::after": active
+                    "&::after": active && !isLocked
                       ? {
-                          content: '""',
-                          position: "absolute",
-                          bottom: 0,
-                          left: "10%",
-                          width: "80%",
-                          height: "3px",
-                          borderRadius: "3px 3px 0 0",
-                          background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                        }
+                        content: '""',
+                        position: "absolute",
+                        bottom: 0,
+                        left: "10%",
+                        width: "80%",
+                        height: "3px",
+                        borderRadius: "3px 3px 0 0",
+                        background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                      }
                       : {},
                   }}
                 >
                   {item.label}
+
+                  {/* Hiển thị Icon ổ khóa nếu bị khóa */}
+                  {isLocked && (
+                    <LockIcon
+                      sx={{
+                        fontSize: '14px',
+                        position: 'absolute',
+                        top: '4px',
+                        right: '4px',
+                        color: 'gray'
+                      }}
+                    />
+                  )}
                 </Button>
               );
             })}

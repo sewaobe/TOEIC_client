@@ -42,7 +42,7 @@ const FeatureSection: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
-  
+
   const [hasLearningPath, setHasLearningPath] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [openOnboarding, setOpenOnboarding] = useState(false);
@@ -70,16 +70,58 @@ const FeatureSection: React.FC = () => {
     checkLearningPath();
   }, [isAuthenticated]);
 
+  const ComingSoonRibbon = () => {
+    const theme = useTheme();
+    return (
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          width: '180px',
+          height: '150px',
+          overflow: 'hidden',
+          pointerEvents: 'none', // Không chặn click vào các phần tử bên dưới
+          zIndex: 10,
+        }}
+      >
+        <Box
+          sx={{
+            backgroundColor: theme.palette.secondary.main, // Hoặc màu cam/đỏ tùy bạn
+            color: '#fff',
+            textAlign: 'center',
+            fontWeight: 'bold',
+            fontSize: '12px',
+            py: '4px',
+            width: '200px',
+            transform: 'rotate(45deg) translate(45px, -15px)',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+          }}
+        >
+          Coming Soon
+        </Box>
+      </Box>
+    );
+  };
+
+  const isProd = import.meta.env.PROD;
+
   return (
     <Box
       className='flex flex-col gap-4 items-center justify-center text-center 
       p-8 md:p-16 rounded-3xl max-w-6xl m-auto mt-3 mb-3 overflow-hidden'
       sx={{
+        position: 'relative',
+        overflow: 'hidden',
         background: theme.palette.background.paper,
         boxShadow:
           'rgba(0, 0, 0, 0.12) 0px 2px 4px 0px, rgba(0, 0, 0, 0.12) 0px -2px 4px 0px', // Thêm giá trị bóng đổ âm cho phía trên
       }}
     >
+      {isProd && <ComingSoonRibbon />}
+
       {isLoading ? (
         // Loading state
         <Box className="flex flex-col items-center justify-center py-8">
@@ -137,7 +179,7 @@ const FeatureSection: React.FC = () => {
               className='text-base md:text-base mb-6 max-w-5xl'
               sx={{ color: theme.palette.text.secondary }}
             >
-              Lộ trình học tập cá nhân hóa của bạn đã sẵn sàng! Tiếp tục theo dõi 
+              Lộ trình học tập cá nhân hóa của bạn đã sẵn sàng! Tiếp tục theo dõi
               tiến độ, hoàn thành các bài học và đạt được mục tiêu điểm số TOEIC của bạn.
             </Typography>
           </div>
@@ -236,19 +278,22 @@ const FeatureSection: React.FC = () => {
           {/* Nút */}
           <div>
             <Button
+              disabled={isProd}
               variant='contained'
               size='large'
               className='rounded-full px-8 py-3 normal-case font-bold'
-              onClick={() => setOpenOnboarding(true)}
+              onClick={() => !isProd && setOpenOnboarding(true)}
               sx={{
-                backgroundColor: theme.palette.primary.main,
                 color: '#fff',
                 '&:hover': {
                   boxShadow: '0 3px 5px 2px rgba(255, 105, 135, .3)',
                 },
+                opacity: isProd ? 0.7 : 1, // Làm mờ nhẹ nút nếu chưa sẵn sàng
+                cursor: isProd ? "not-allowed" : "pointer",
+                backgroundColor: isProd ? theme.palette.action.disabledBackground : theme.palette.primary.main,
               }}
             >
-              Bắt đầu ngay!
+              {isProd ? "Sắp ra mắt" : "Bắt đầu ngay!"}
             </Button>
           </div>
         </>

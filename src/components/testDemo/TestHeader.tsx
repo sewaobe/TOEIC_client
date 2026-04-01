@@ -564,6 +564,7 @@ const TestHeader: FC<TestHeaderProps> = ({
       />
 
       <ToeicQuickResultModal
+        isEntry={isDemoTest}
         isGuest={userId === "guest"}
         open={state.scoreOpen}
         data={answerTest}

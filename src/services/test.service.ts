@@ -60,7 +60,7 @@ const testService = {
     });
 
     if (isGuest) {
-      localStorage.setItem("guest_result_id", JSON.stringify({ testId, resultId: res.data.resultId }));
+      localStorage.setItem("guest_result_id", JSON.stringify({ testId, resultId: res.data.resultId, score: res.data.score }));
     }
 
     return res.data;

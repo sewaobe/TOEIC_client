@@ -1,52 +1,56 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => {
+  const isProduction = mode === "production";
 
-  esbuild: {
-    drop: ["console", "debugger"]
-  },
+  return {
+    plugins: [react()],
 
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          react: ["react", "react-dom", "react-router-dom"],
+    esbuild: {
+      drop: isProduction ? ["console", "debugger"] : []
+    },
 
-          mui: [
-            "@mui/material",
-            "@mui/icons-material",
-            "@emotion/react",
-            "@emotion/styled"
-          ],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            react: ["react", "react-dom", "react-router-dom"],
 
-          charts: [
-            "recharts",
-            "d3",
-            "@mui/x-charts"
-          ],
+            mui: [
+              "@mui/material",
+              "@mui/icons-material",
+              "@emotion/react",
+              "@emotion/styled"
+            ],
 
-          editor: [
-            "@milkdown/crepe",
-            "@milkdown/react",
-            "@milkdown/kit",
-            "react-quill",
-            "quill",
-            "@uiw/react-md-editor"
-          ],
+            charts: [
+              "recharts",
+              "d3",
+              "@mui/x-charts"
+            ],
 
-          media: [
-            "video.js",
-            "videojs-youtube",
-            "lottie-web"
-          ],
+            editor: [
+              "@milkdown/crepe",
+              "@milkdown/react",
+              "@milkdown/kit",
+              "react-quill",
+              "quill",
+              "@uiw/react-md-editor"
+            ],
 
-          utils: [
-            "axios",
-            "zod",
-            "socket.io-client"
-          ]
+            media: [
+              "video.js",
+              "videojs-youtube",
+              "lottie-web"
+            ],
+
+            utils: [
+              "axios",
+              "zod",
+              "socket.io-client"
+            ]
+          }
         }
       }
     }

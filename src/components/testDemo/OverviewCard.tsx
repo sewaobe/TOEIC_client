@@ -31,8 +31,13 @@ export const OverviewCard: FC<OverviewCardProps> = ({
   const navigate = useNavigate();
 
   const handleStart = () => {
-    const queryString = searchParams.toString(); // giữ nguyên tất cả query hiện tại
-    navigate(`/test?${queryString}`);
+    if (searchParams.get("type") === "entry-test") {
+      navigate(`/test?testId=69c515a02441dcae9ff3f172&type=entry-test`)
+    }
+    else {
+      const queryString = searchParams.toString(); // giữ nguyên tất cả query hiện tại
+      navigate(`/test?${queryString}`);
+    }
   };
 
   return (
@@ -67,9 +72,8 @@ export const OverviewCard: FC<OverviewCardProps> = ({
           </div>
 
           <div
-            className={`grid ${
-              isFullTest ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"
-            } gap-4`}
+            className={`grid ${isFullTest ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"
+              } gap-4`}
           >
             {skills.map((skill, index) => (
               <div

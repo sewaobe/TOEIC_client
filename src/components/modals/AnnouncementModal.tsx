@@ -187,7 +187,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ open, onClose }) 
             }}
         >
             {/* === 1. HEADER === */}
-            <DialogTitle id="announcement-dialog-title" className="flex justify-between items-center pb-2">
+            <DialogTitle id="announcement-dialog-title" className="flex justify-between items-center pb-2" component="div">
                 <Typography variant="h6" className="font-bold text-gray-800">
                     Thông Báo Dự Án Demo
                 </Typography>

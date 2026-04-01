@@ -6,7 +6,11 @@ import QuestionContent from "./QuestionContent";
 import { setShowIntro, setCurrentGroupIndex } from "../../stores/examSlice";
 import { partIntros } from "../../models/QuestionType";
 
-const ExamContainer: React.FC = () => {
+interface ExamContainerProps {
+  isSubmitted: boolean;
+}
+
+const ExamContainer: React.FC<ExamContainerProps> = ({ isSubmitted }) => {
   const dispatch = useDispatch();
   const { groups, currentGroupIndex, showIntro } = useSelector(
     (s: RootState) => s.exam
@@ -44,6 +48,12 @@ const ExamContainer: React.FC = () => {
   const handleAudioEnded = () => {
     goNext();
   };
+
+  useEffect(() => {
+    if (isSubmitted && audioRef.current) {
+      audioRef.current.pause();
+    }
+  }, [isSubmitted])
 
   if (!groupQuestions) {
     return <div>Không tìm thấy group</div>;

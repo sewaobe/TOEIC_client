@@ -120,7 +120,7 @@ const Hero: FC = () => {
             <Button
               variant='contained'
               size='large'
-              onClick={() => navigate('/overview-test')}
+              onClick={() => navigate('/overview-test?type=entry-test')}
             >
               Bắt đầu ngay
             </Button>

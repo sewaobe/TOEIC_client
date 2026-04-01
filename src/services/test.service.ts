@@ -57,7 +57,9 @@ const testService = {
       duration,
       ...(completedPart ? { completedPart } : {}),
     });
-    console.log(res.data);
+
+    localStorage.setItem("guest_result_id", res.data.resultId);
+
     return res.data;
   },
   getLatestTests: async (): Promise<ITestCard[]> => {

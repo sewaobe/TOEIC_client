@@ -46,6 +46,7 @@ const TestDemoPage: FC = () => {
   const [_, setStepIndex] = useState<number>(0);
   const [isTourRunning, setIsTourRunning] = useState<boolean>(true);
   const [isPlanReady, setIsPlanReady] = useState<boolean>(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const dispatch = useDispatch<AppDispatch>();
   const groups = useSelector((s: RootState) => s.exam.groups);
@@ -103,12 +104,13 @@ const TestDemoPage: FC = () => {
         fromLesson={fromLesson}
         openModal={handleOpen}
         onPlanReady={() => setIsPlanReady(true)}
+        setIsSubmitted={setIsSubmitted}
       />
 
       {/* Main layout */}
       <div className="flex flex-1 max-h-[calc(100vh-100px)] relative">
         <main className="flex-1 p-3 flex">
-          <ExamContainer />
+          <ExamContainer isSubmitted={isSubmitted}/>
         </main>
 
         <AnimatePresence>

@@ -19,12 +19,16 @@ import { RawAnswer } from "../../utils/mapAnswersToParts";
 import learningPathService from "../../services/learningPath.service";
 import userTestService from "../../services/user_test.service";
 
+import { LockOpenRounded } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+
 export type ResultPayload = {
   score?: number; // điểm nội bộ hệ thống (nếu có)
   answers: RawAnswer[]; // chỉ cần đúng shape này
 };
 
 interface ToeicQuickResultModalProps {
+  isGuest: boolean;
   open: boolean;
   data: ResultPayload;
   onClose: () => void;
@@ -178,6 +182,7 @@ const PartMiniCard = ({
 
 /* ---------- MAIN ---------- */
 export default function ToeicQuickResultModal({
+  isGuest,
   open,
   data,
   onClose,
@@ -225,6 +230,8 @@ export default function ToeicQuickResultModal({
   }, [answers, practicedParts]);
 
   useEffect(() => {
+    if (isGuest) return;
+
     const fetchLearningPath = async () => {
       try {
         const res = await learningPathService.getUserLearningPath();
@@ -238,6 +245,9 @@ export default function ToeicQuickResultModal({
     fetchLearningPath();
   }, [stats]);
 
+  const navigate = useNavigate();
+
+  // Giả định bạn có truyền isGuest vào component chứa renderFooter
   const renderFooter = () => (
     <Stack
       direction={{ xs: "column", sm: "row" }}
@@ -247,7 +257,7 @@ export default function ToeicQuickResultModal({
       sx={{ px: 0.5, pt: 1 }}
     >
       {/* LEFT: links (nhẹ thị giác) */}
-      <Stack direction="row" gap={0.5} flexWrap="wrap">
+      {!isGuest && <Stack direction="row" gap={0.5} flexWrap="wrap">
         {onReviewDetails && (
           <Button
             variant="text"
@@ -261,8 +271,13 @@ export default function ToeicQuickResultModal({
                     1,
                     testId
                   );
-                  const resultId = res.data[0]._id;
-                  onReviewDetails(resultId);
+                  // Giả sử API trả về mảng, lấy phần tử đầu tiên
+                  const resultId = res.data?.[0]?._id;
+                  if (resultId) {
+                    onReviewDetails(resultId);
+                  } else {
+                    onReviewDetails("");
+                  }
                 }
               } catch (error) {
                 console.error("Error fetching user test histories:", error);
@@ -280,35 +295,17 @@ export default function ToeicQuickResultModal({
             Xem lại bài làm
           </Button>
         )}
-      </Stack>
+      </Stack>}
 
       {/* RIGHT: Primary CTA duy nhất */}
-      {showSuggest && onSuggestPlan && (
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={onSuggestPlan}
-          startIcon={<TrendingUpRounded />}
-          sx={{
-            textTransform: "none",
-            fontWeight: 700,
-            borderRadius: "999px",
-            px: 2.5,
-            minHeight: 44,
-            width: { xs: "100%", sm: "auto" },
-            boxShadow: "0 10px 24px rgba(37,99,235,0.28)",
-          }}
-        >
-          Gợi ý lộ trình học
-        </Button>
-      )}
 
-      {!showSuggest && (
+      {/* Trường hợp 1: Là Guest -> Thúc đẩy tạo tài khoản */}
+      {isGuest ? (
         <Button
           variant="contained"
           color="primary"
-          onClick={onClose}
-          startIcon={<TrendingUpRounded />}
+          onClick={() => { navigate("/login") }} 
+          startIcon={<LockOpenRounded />}
           sx={{
             textTransform: "none",
             fontWeight: 700,
@@ -319,8 +316,51 @@ export default function ToeicQuickResultModal({
             boxShadow: "0 10px 24px rgba(37,99,235,0.28)",
           }}
         >
-          Luyện tập tiếp
+          Đăng ký lưu kết quả
         </Button>
+      ) : (
+        /* Trường hợp 2: Đã là User -> Hiển thị logic cũ */
+        <>
+          {showSuggest && onSuggestPlan && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={onSuggestPlan}
+              startIcon={<TrendingUpRounded />}
+              sx={{
+                textTransform: "none",
+                fontWeight: 700,
+                borderRadius: "999px",
+                px: 2.5,
+                minHeight: 44,
+                width: { xs: "100%", sm: "auto" },
+                boxShadow: "0 10px 24px rgba(37,99,235,0.28)",
+              }}
+            >
+              Gợi ý lộ trình học
+            </Button>
+          )}
+
+          {!showSuggest && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={onClose}
+              startIcon={<TrendingUpRounded />}
+              sx={{
+                textTransform: "none",
+                fontWeight: 700,
+                borderRadius: "999px",
+                px: 2.5,
+                minHeight: 44,
+                width: { xs: "100%", sm: "auto" },
+                boxShadow: "0 10px 24px rgba(37,99,235,0.28)",
+              }}
+            >
+              Luyện tập tiếp
+            </Button>
+          )}
+        </>
       )}
     </Stack>
   );

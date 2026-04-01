@@ -1,3 +1,4 @@
+import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined';
 import React, { useRef, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../stores/store";
@@ -5,6 +6,8 @@ import PartIntro from "./PartIntro";
 import QuestionContent from "./QuestionContent";
 import { setShowIntro, setCurrentGroupIndex } from "../../stores/examSlice";
 import { partIntros } from "../../models/QuestionType";
+import { Button } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 interface ExamContainerProps {
   isSubmitted: boolean;
@@ -12,9 +15,9 @@ interface ExamContainerProps {
 
 const ExamContainer: React.FC<ExamContainerProps> = ({ isSubmitted }) => {
   const dispatch = useDispatch();
-  const { groups, currentGroupIndex, showIntro } = useSelector(
+  const { groups, currentGroupIndex, showIntro, isLoading } = useSelector(
     (s: RootState) => s.exam
-  );
+  )
 
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -55,8 +58,62 @@ const ExamContainer: React.FC<ExamContainerProps> = ({ isSubmitted }) => {
     }
   }, [isSubmitted])
 
-  if (!groupQuestions) {
-    return <div>Không tìm thấy group</div>;
+  const navigate = useNavigate();
+
+  if (isLoading) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center flex-1 min-h-[400px]">
+        {/* Bạn có thể dùng Spinner của MUI hoặc SVG quay tròn */}
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-gray-600 font-medium">Đang chuẩn bị đề thi...</p>
+      </div>
+    );
+  }
+
+  if (!isLoading && groups.length === 0) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center p-10 text-center min-h-[400px]">
+        <InboxOutlinedIcon 
+          sx={{ 
+            fontSize: 80, 
+            mb: 2 
+          }} 
+        />
+        <h2 className="text-xl font-bold text-gray-800 mb-2">
+          Không tìm thấy dữ liệu bài thi
+        </h2>
+        <p className="text-gray-500 mb-6 max-w-md">
+          Có vẻ như đề thi này hiện không khả dụng hoặc đã xảy ra lỗi trong quá trình tải dữ liệu.
+        </p>
+
+        <div className="flex gap-4">
+          <Button
+            variant="contained"
+            onClick={() => navigate("/")}
+            sx={{
+              borderRadius: "20px",
+              textTransform: "none",
+              px: 4,
+              fontWeight: 600
+            }}
+          >
+            Quay về trang chủ
+          </Button>
+
+          <Button
+            variant="outlined"
+            onClick={() => window.location.reload()} // Thử tải lại trang
+            sx={{
+              borderRadius: "20px",
+              textTransform: "none",
+              px: 4,
+            }}
+          >
+            Thử lại
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (

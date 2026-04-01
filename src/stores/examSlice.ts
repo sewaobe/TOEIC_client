@@ -23,8 +23,12 @@ export const fetchExamById = createAsyncThunk(
       const groups = formatTestToGroups(test);
       console.log(groups)
       return { testId: test._id, groups };
-    } catch (err) {
-      return thunkAPI.rejectWithValue(err);
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue({
+        message: err.message,
+        code: err.code,
+        status: err.response?.status
+      });
     }
   }
 );
@@ -81,7 +85,7 @@ function buildIndex(groups: ExamGroup[]) {
 }
 
 const initialState: ExamState = {
-  currentTestId:'',  // mặc định null
+  currentTestId: '',  // mặc định null
   groups: [],
   qIdToGroupIndex: {},
   currentGroupIndex: 0,

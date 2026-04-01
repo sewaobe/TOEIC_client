@@ -232,8 +232,7 @@ export const partIntros: PartIntroData[] = [
   {
     part: 1,
     termDesc: `
-      <p><strong>Part 1</strong>: Photographs</p>
-      <p>You will look at a picture and listen to four short statements. Choose the statement that best describes the picture.</p>
+      <div ng-bind-html="ctrlFunc.htmlDecode(ctrlVar.currentPart.term_desc)" class="ng-binding"><p style="text-align: center;">LISTENING TEST</p><br>In the Listening test, you will be asked to demonstrate how well you understand spoken English. The entire Listening test will last approximately 45 minutes. There are four parts, and directions are given for each part. You must mark your answers on the separate answer sheet. Do not write your answers in your test book.<br><br>PART 1:<br>Directions: For each question in this part, you will hear four statements about a picture in your test book. When you hear the statements, you must select the one statement that best describes what you see in the picture. Then find the number of the question on your answer sheet and mark your answer. The statements will not be printed in your test book and will be spoken only one time.<br><br><img class="aligncenter wp-image-15871 size-full" src="https://zenlishtoeic.vn/wp-content/uploads/2022/08/4.jpg" alt="" width="1728" height="1188"><br><br>Statement (C), “They’re sitting at a table,” is the bust description of the picture, so you should select answer (C) and mark it on your answer sheet.</div>
     `,
     audioUrl:
       'https://zenlishtoeic.vn/wp-content/uploads/2022/08/DIRECTION-PART-1.mp3',
@@ -241,8 +240,7 @@ export const partIntros: PartIntroData[] = [
   {
     part: 2,
     termDesc: `
-      <p><strong>Part 2</strong>: Question-Response</p>
-      <p>You will listen to a question or statement and three responses. Choose the best response.</p>
+      <div ng-bind-html="ctrlFunc.htmlDecode(ctrlVar.currentPart.term_desc)" class="ng-binding">PART 2:<br><br>Direction: You will hear a question or statement and three responses spoken in English. They will not be printed in your text book and will be spoken only one time. Select the best response to the question or statement and mark the letter (A), (B) or (C) on your answer sheet.</div>
     `,
     audioUrl:
       'https://zenlishtoeic.vn/wp-content/uploads/2022/08/DIRECTION-PART-2.mp3',
@@ -250,8 +248,7 @@ export const partIntros: PartIntroData[] = [
   {
     part: 3,
     termDesc: `
-      <p><strong>Part 3</strong>: Conversations</p>
-      <p>You will listen to a conversation and answer questions about it.</p>
+      <div ng-bind-html="ctrlFunc.htmlDecode(ctrlVar.currentPart.term_desc)" class="ng-binding">PART 3: LISTENING<br><br>Directions: You will hear some conversations between two or more people. You will be asked to answer three questions about what the speakers say in each conversation. Select the best response to each question and mark the letter (A), (B), (C), or (D) on your answer sheet. The conversations will not be printed in your test book and will be spoken only one time.</div>
     `,
     audioUrl:
       'https://zenlishtoeic.vn/wp-content/uploads/2022/08/DIRECTION-PART-3.mp3',
@@ -259,8 +256,7 @@ export const partIntros: PartIntroData[] = [
   {
     part: 4,
     termDesc: `
-      <p><strong>Part 4</strong>: Talks</p>
-      <p>You will listen to a talk and answer questions about it.</p>
+     <div ng-bind-html="ctrlFunc.htmlDecode(ctrlVar.currentPart.term_desc)" class="ng-binding">PART 4<br><br>Directions: You will hear some talks given by a single speaker. You will be asked to answer three<br>questions about what the speaker says in each talk. Select the best response to each question and mark the letter (A), (B), (C), or (D) on your answer sheet. The talks will not be printed in your test book and will be spoken only one time.</div>
     `,
     audioUrl:
       'https://zenlishtoeic.vn/wp-content/uploads/2022/08/DIRECTION-PART-4.mp3',

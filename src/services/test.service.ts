@@ -45,6 +45,7 @@ const testService = {
   },
 
   submitTest: async (
+    isGuest: boolean,
     testId: string,
     userId: string,
     answers: { question_id: string; selectedOption: string }[],
@@ -57,7 +58,11 @@ const testService = {
       duration,
       ...(completedPart ? { completedPart } : {}),
     });
-    console.log(res.data);
+
+    if (isGuest) {
+      localStorage.setItem("guest_result_id", JSON.stringify({ testId, resultId: res.data.resultId }));
+    }
+
     return res.data;
   },
   getLatestTests: async (): Promise<ITestCard[]> => {
@@ -76,6 +81,11 @@ const testService = {
     }));
     return data;
   },
+  claimGuestResult: async (resultId: string) => {
+    const res = await axiosClient.patch("/tests/claim-guest-result", { resultId });
+
+    return res.data;
+  }
 };
 
 export default testService;

@@ -62,7 +62,7 @@ const RetryWrongAnswersPage = () => {
           try {
             const { test } = await testService.getTestById(testId);
             setTestTitle(test?.title || "");
-          } catch {}
+          } catch { }
         }
         const data = await userTestService.getTestHistoryDetail(historyId);
         // only wrong or skipped
@@ -172,11 +172,12 @@ const RetryWrongAnswersPage = () => {
         .map(([qid, v]) => ({ question_id: qid, selectedOption: v }));
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
       const result = await testService.submitTest(
+        false,
         testId!,
         userId!,
         answersMap,
         elapsed,
-        "retry_wrong"
+        "retry_wrong",
       );
       setResultData({
         score: result.score,
@@ -194,7 +195,7 @@ const RetryWrongAnswersPage = () => {
     }
   };
 
-  
+
 
   return (
     <MainLayout>
@@ -366,6 +367,7 @@ const RetryWrongAnswersPage = () => {
 
       {/* Result modal */}
       <ToeicQuickResultModal
+        isGuest={false}
         open={resultOpen}
         data={resultData}
         onClose={() => setResultOpen(false)}

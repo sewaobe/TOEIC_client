@@ -10,7 +10,7 @@ import {
   getPartFromQuestionNo as getPartFromQuestionNumber,
 } from "../../utils/mapAnswersToParts";
 import { ResultPayload } from "../modals/ToeicQuickResultModal";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { replace, useNavigate, useSearchParams } from "react-router-dom";
 import ConfirmModal from "../modals/ConfirmModal";
 import ToeicQuickResultModal from "../modals/ToeicQuickResultModal";
 import { setInitialAnswers } from "../../stores/answerSlice";
@@ -22,6 +22,7 @@ interface TestHeaderProps {
   fromLesson?: boolean;
   openModal?: () => void;
   onPlanReady?: () => void;
+  setIsSubmitted: (val: boolean) => void;
 }
 
 type State = {
@@ -66,6 +67,7 @@ const TestHeader: FC<TestHeaderProps> = ({
   setIsShowSideBar,
   isTourRunning,
   fromLesson = false,
+  setIsSubmitted
 }) => {
   const [state, dispatchLocal] = useReducer(reducer, initialState);
   const [answerTest, setAnswerTest] = useState<ResultPayload>({
@@ -87,8 +89,8 @@ const TestHeader: FC<TestHeaderProps> = ({
   const duration = timeLimitParam
     ? parseInt(timeLimitParam, 10) * 60 // practice có giới hạn
     : parts
-    ? Infinity // practice không giới hạn
-    : 120 * 60; // full test mặc định 120 phút
+      ? Infinity // practice không giới hạn
+      : 120 * 60; // full test mặc định 120 phút
 
   const { timeLeft, formatTime } = useCountdown(duration, isTourRunning);
 
@@ -97,7 +99,7 @@ const TestHeader: FC<TestHeaderProps> = ({
 
   const answeredCount = answers.filter((a) => a.answer !== "").length;
   const totalQuestions = answers.length; // Tổng số câu hỏi (có thể là 200 cho full test hoặc ít hơn cho practice)
-  const userId = useSelector((state: RootState) => state.user.user!._id);
+  const userId = useSelector((state: RootState) => state.user.user?._id) || "guest";
   const testId = useSelector((state: RootState) => state.exam.currentTestId);
 
   const [startTime] = useState(Date.now());
@@ -105,10 +107,12 @@ const TestHeader: FC<TestHeaderProps> = ({
   type AnswerItem = RootState["answer"]["answers"][number];
 
   const submitPreparedAnswers = async (preparedAnswers: AnswerItem[]) => {
-    if (!testId || !userId) {
-      console.warn("Thiếu testId hoặc userId để nộp bài");
+    if (!testId) {
+      console.warn("Thiếu testId để nộp bài");
       return;
     }
+
+    setIsSubmitted(true);
 
     const answersMap = preparedAnswers.map((a) => ({
       question_id: a._id,
@@ -171,11 +175,12 @@ const TestHeader: FC<TestHeaderProps> = ({
         })();
       } else {
         result = await testService.submitTest(
+          userId === "guest",
           testId,
           userId,
           answersMap,
           elapsed,
-          completedPart
+          completedPart,
         );
       }
       console.log("Chi tiết từng câu:", result.answers);
@@ -469,20 +474,25 @@ const TestHeader: FC<TestHeaderProps> = ({
     }
 
     // Nếu là mini test từ lesson, navigate về LessonPage
+    if (userId === "guest") {
+      navigate("/landing-page", { replace: true });
+      return;
+    }
+
     if (fromLesson) {
       const returnInfo = localStorage.getItem("mini_test_return");
       try {
         console.log("mini_test_return:", returnInfo);
-      } catch (e) {}
+      } catch (e) { }
       if (returnInfo) {
         const { dayId, week } = JSON.parse(returnInfo);
         // LessonPage is mounted at `/lesson` route
-        navigate(`/lesson?day=${dayId}&week=${week}`);
+        navigate(`/lesson?day=${dayId}&week=${week}`, { replace: true });
       } else {
-        navigate("/home");
+        navigate("/home", { replace: true });
       }
     } else {
-      navigate("/home");
+      navigate("/home", { replace: true });
     }
   };
 
@@ -554,10 +564,11 @@ const TestHeader: FC<TestHeaderProps> = ({
       />
 
       <ToeicQuickResultModal
+        isGuest={userId === "guest"}
         open={state.scoreOpen}
         data={answerTest}
-        onReviewDetails={(id) => navigate(`/tests/${testId}/result/${id}`)}
-        onSuggestPlan={() => navigate(`/plan?score=${answerTest.score}`)}
+        onReviewDetails={(id) => navigate(`/tests/${testId}/result/${id}`, { replace: true })}
+        onSuggestPlan={() => navigate(`/plan?score=${answerTest.score}`, { replace: true })}
         onClose={handleCloseScoreModal}
         testId={testId}
         practicedParts={parts ? parts.split(",").map(Number) : undefined}

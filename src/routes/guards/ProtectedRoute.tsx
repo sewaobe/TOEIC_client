@@ -12,7 +12,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { isAuthenticated, initialized } = useSelector((state: RootState) => state.user);
   
   if(!initialized) {
-    return <RouteLoadingFallback message='Dang xac thuc phien dang nhap...' />;
+    return <RouteLoadingFallback message='Loading...' />;
   }
   return isAuthenticated ? <>{children}</> : <Navigate to='/login' replace />;
 };

@@ -24,10 +24,10 @@ const LandingPage: FC = () => {
         <CTA />
         <ScrollToTopButton scrollThreshold={1000} />
       </Box>
-      <AnnouncementModal 
-        open={isAnnouncementOpen} 
-        onClose={() => setIsAnnouncementOpen(false)} 
-      />
+      {import.meta.env.PROD && <AnnouncementModal
+        open={isAnnouncementOpen}
+        onClose={() => setIsAnnouncementOpen(false)}
+      />}
     </MainLayout>
   );
 };

@@ -5,6 +5,7 @@ import { RouteWrapper } from './guards/RouteWrapper';
 import { Suspense } from 'react';
 import { Toaster } from 'sonner';
 import { GlobalToastListener } from '../components/common/GlobalToastListener';
+import RouteLoadingFallback from '../components/common/RouteLoadingFallback';
 
 
 export const AppRouter = () => {
@@ -25,7 +26,7 @@ export const AppRouter = () => {
           },
         }} />
       <GlobalToastListener />
-      <Suspense fallback={<div>Loading....</div>}>
+      <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           {publicRoutes.map(({ path, element: Element, guard: Guard }) => (
             <Route

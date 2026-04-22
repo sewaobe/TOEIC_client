@@ -27,7 +27,7 @@ const PartIntro: FC<PartIntroProps> = ({
   }, [audioSrc]);
 
   return (
-    <div className='flex flex-col bg-white min-h-[400px] p-6 rounded-lg shadow-md w-full'>
+    <div className='flex flex-col bg-white h-[100%] px-6 py-4 rounded-lg shadow-md w-full'>
       {/* Header */}
       <div className='flex justify-between items-center mb-4'>
         <Typography variant='h5' fontWeight='bold'>
@@ -53,7 +53,9 @@ const PartIntro: FC<PartIntroProps> = ({
       </div>
 
       {/* Hidden audio */}
-      {audioSrc && <audio ref={audioRef} src={audioSrc} hidden autoPlay />}
+      {audioSrc && (
+        <audio ref={audioRef} src={audioSrc} hidden autoPlay onEnded={onStart} />
+      )}
 
       {/* Start button */}
       <Box className='mt-4 flex justify-center'>

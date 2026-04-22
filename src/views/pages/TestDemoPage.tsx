@@ -109,7 +109,7 @@ const TestDemoPage: FC = () => {
       />
 
       {/* Main layout */}
-      <div className="flex flex-1 max-h-[calc(100vh-100px)] relative">
+      <div className="flex flex-1 max-h-[calc(100vh-70px)] relative">
         <main className="flex-1 p-3 flex">
           <ExamContainer isSubmitted={isSubmitted} />
         </main>

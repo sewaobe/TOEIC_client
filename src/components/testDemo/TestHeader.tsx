@@ -532,7 +532,7 @@ const TestHeader: FC<TestHeaderProps> = ({
         </Button>
 
         {/* Chỉ hiển thị nút Nộp nhanh khi làm full test (không có parts param) */}
-        {!parts && (
+        {!parts && import.meta.env.DEV && (
           <Button
             variant="outlined"
             color="primary"

@@ -1,5 +1,7 @@
 import { FC, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { Button } from "@mui/material";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import {
   OverviewCard,
   SkillInfo,
@@ -60,9 +62,25 @@ const partDetails: Record<
 };
 
 const OverviewPage: FC = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const partsQuery = searchParams.get("parts");
   const timeLimit = searchParams.get("timeLimit");
+  const testId = searchParams.get("testId");
+
+  const handleGoBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    if (testId) {
+      navigate(`/tests/${testId}`);
+      return;
+    }
+
+    navigate("/tests");
+  };
 
   const { skills, totalScore, totalTime, description, isFullTest } =
     useMemo(() => {
@@ -120,6 +138,18 @@ const OverviewPage: FC = () => {
   return (
     <div className="flex justify-center items-start h-screen px-4 bg-gray-50 dark:bg-gray-900">
       <div className="no-scrollbar w-full max-w-4xl h-full overflow-y-auto py-8">
+        <Button
+          variant="text"
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={handleGoBack}
+          sx={{
+            mb: 1,
+            textTransform: "none",
+            fontWeight: 600,
+          }}
+        >
+          Quay về
+        </Button>
         <OverviewCard
           totalScore={totalScore}
           totalTimeMinutes={totalTime}

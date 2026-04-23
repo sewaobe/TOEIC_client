@@ -1,7 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import userService from "../services/user.service";
 import { User } from "../types/user";
-import * as Sentry from '@sentry/react';
 
 interface UserState {
   user: User | null;
@@ -16,13 +15,6 @@ export const getUserThunk = createAsyncThunk<User>(
   async (_, { rejectWithValue }) => {
     try {
       const res = await userService.getProfile();
-
-      // Cấu hình Sentry user context
-      Sentry.setUser({
-        id: res.user._id,
-        email: res.user.email,
-        username: res.user.username,
-      });
       
       return res.user;
     } catch (error: any) {

@@ -15,8 +15,9 @@ import {
 } from "@mui/material";
 import MainLayout from "../layouts/MainLayout";
 import { alpha, useTheme } from "@mui/material/styles";
-import { useReducer, useEffect } from "react";
+import { useReducer, useEffect, useRef } from "react";
 import SearchIcon from "@mui/icons-material/Search";
+import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
 import TestCard from "../../components/Home/TestCard";
 import testService from "../../services/test.service";
 import { useThrottledCallback } from "../../hooks/useThrottledCallback";
@@ -30,6 +31,7 @@ const initialState = {
   pageLoaded: 1,
   totalPages: 1,
   suggestions: [] as any[],
+  hasFetchedSuggestions: false,
   anchorEl: null as null | HTMLElement,
   loadingSuggest: false,
   loadingTests: false,
@@ -45,6 +47,7 @@ type Action =
   | { type: "SET_PAGE_LOADED"; payload: number }
   | { type: "SET_TOTAL_PAGES"; payload: number }
   | { type: "SET_SUGGESTIONS"; payload: any[] }
+  | { type: "SET_HAS_FETCHED_SUGGESTIONS"; payload: boolean }
   | { type: "SET_ANCHOR"; payload: HTMLElement | null }
   | { type: "SET_LOADING_SUGGEST"; payload: boolean }
   | { type: "SET_LOADING_TESTS"; payload: boolean };
@@ -65,6 +68,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, totalPages: action.payload };
     case "SET_SUGGESTIONS":
       return { ...state, suggestions: action.payload };
+    case "SET_HAS_FETCHED_SUGGESTIONS":
+      return { ...state, hasFetchedSuggestions: action.payload };
     case "SET_ANCHOR":
       return { ...state, anchorEl: action.payload };
     case "SET_LOADING_SUGGEST":
@@ -101,6 +106,16 @@ const ExamPage = () => {
 
   const [state, dispatch] = useReducer(reducer, initialState);
   const limit = 6;
+  const testsRequestIdRef = useRef(0);
+  const suggestRequestIdRef = useRef(0);
+
+  const resetSuggestionsState = () => {
+    suggestRequestIdRef.current += 1;
+    dispatch({ type: "SET_LOADING_SUGGEST", payload: false });
+    dispatch({ type: "SET_SUGGESTIONS", payload: [] });
+    dispatch({ type: "SET_HAS_FETCHED_SUGGESTIONS", payload: false });
+    dispatch({ type: "SET_ANCHOR", payload: null });
+  };
 
   const updateQueryParams = ({
     page,
@@ -145,9 +160,22 @@ const ExamPage = () => {
     p: number = 1,
     filters?: { keywords?: string; year?: string },
   ) => {
+    const requestId = ++testsRequestIdRef.current;
+    const normalizedFilters = filters
+      ? {
+          ...(filters.keywords ? { keywords: filters.keywords } : {}),
+          ...(filters.year ? { year: filters.year } : {}),
+        }
+      : undefined;
+
     dispatch({ type: "SET_LOADING_TESTS", payload: true });
     try {
-      const res = await testService.getTests(p, limit, filters);
+      const res = await testService.getTests(p, limit, normalizedFilters);
+
+      if (requestId !== testsRequestIdRef.current) {
+        return;
+      }
+
       dispatch({ type: "SET_TESTS", payload: res.tests });
       dispatch({
         type: "SET_TOTAL_PAGES",
@@ -156,9 +184,14 @@ const ExamPage = () => {
       dispatch({ type: "SET_PAGE_LOADED", payload: Number(res.page) || 1 });
       dispatch({ type: "SET_PAGE", payload: Number(res.page) || 1 });
     } catch (err) {
+      if (requestId !== testsRequestIdRef.current) {
+        return;
+      }
       console.error(err);
     } finally {
-      dispatch({ type: "SET_LOADING_TESTS", payload: false });
+      if (requestId === testsRequestIdRef.current) {
+        dispatch({ type: "SET_LOADING_TESTS", payload: false });
+      }
     }
   };
 
@@ -172,7 +205,7 @@ const ExamPage = () => {
     const year = searchParams.get("year")?.trim() || "";
 
     dispatch({ type: "SET_SEARCH", payload: keywords });
-    dispatch({ type: "SET_ANCHOR", payload: null });
+    resetSuggestionsState();
 
     fetchTests(page, { keywords, year });
   }, [queryKey]);
@@ -180,40 +213,65 @@ const ExamPage = () => {
   // --- Throttled suggestion fetch ---
   const throttledFetchSuggestions = useThrottledCallback(
     async (value: string, target: HTMLElement) => {
-      if (value.trim() === "") {
-        dispatch({ type: "SET_SUGGESTIONS", payload: [] });
-        dispatch({ type: "SET_ANCHOR", payload: null });
+      const normalizedValue = value.trim();
+
+      if (!normalizedValue) {
+        resetSuggestionsState();
         return;
       }
-      dispatch({ type: "SET_LOADING_SUGGEST", payload: true });
+
+      const requestId = ++suggestRequestIdRef.current;
+      dispatch({ type: "SET_ANCHOR", payload: target });
+
       try {
         const res = await testService.getTests(1, 5, {
-          keywords: value.trim(),
+          keywords: normalizedValue,
         });
+
+        if (requestId !== suggestRequestIdRef.current) {
+          return;
+        }
+
         dispatch({ type: "SET_SUGGESTIONS", payload: res.tests });
-        dispatch({ type: "SET_ANCHOR", payload: target });
+        dispatch({ type: "SET_HAS_FETCHED_SUGGESTIONS", payload: true });
       } catch (err) {
+        if (requestId !== suggestRequestIdRef.current) {
+          return;
+        }
         console.error(err);
       } finally {
-        dispatch({ type: "SET_LOADING_SUGGEST", payload: false });
+        if (requestId === suggestRequestIdRef.current) {
+          dispatch({ type: "SET_LOADING_SUGGEST", payload: false });
+        }
       }
     },
-    700,
+    3000,
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     dispatch({ type: "SET_SEARCH", payload: value });
+
+    if (!value.trim()) {
+      resetSuggestionsState();
+    } else {
+      dispatch({ type: "SET_ANCHOR", payload: e.currentTarget });
+      dispatch({ type: "SET_LOADING_SUGGEST", payload: true });
+      dispatch({ type: "SET_SUGGESTIONS", payload: [] });
+      dispatch({ type: "SET_HAS_FETCHED_SUGGESTIONS", payload: false });
+    }
+
     throttledFetchSuggestions(value, e.currentTarget);
   };
 
   const handleSelectSuggestion = (title: string) => {
     dispatch({ type: "SET_SEARCH", payload: title });
-    dispatch({ type: "SET_ANCHOR", payload: null });
+    resetSuggestionsState();
     updateQueryParams({ keywords: title, year: null, page: 1 });
   };
 
   const handleSearchClick = () => {
+    resetSuggestionsState();
     updateQueryParams({
       keywords: state.searchValue.trim() || null,
       year: null,
@@ -222,8 +280,7 @@ const ExamPage = () => {
   };
 
   const handleCategoryFilter = (filter: CategoryFilter) => {
-    dispatch({ type: "SET_SUGGESTIONS", payload: [] });
-    dispatch({ type: "SET_ANCHOR", payload: null });
+    resetSuggestionsState();
 
     if (!filter.keywords && !filter.year) {
       dispatch({ type: "SET_SEARCH", payload: "" });
@@ -271,6 +328,22 @@ const ExamPage = () => {
   const activeCategoryHoverBg = alpha(
     theme.palette.primary.main,
     theme.palette.mode === "dark" ? 0.34 : 0.2,
+  );
+
+  const hasSearchValue = Boolean(state.searchValue.trim());
+
+  const showNoSuggestions = Boolean(
+    hasSearchValue &&
+      state.hasFetchedSuggestions &&
+      !state.loadingSuggest &&
+      state.suggestions.length === 0,
+  );
+
+  const isSuggestionsPopperOpen = Boolean(
+    state.anchorEl &&
+      !state.loadingSuggest &&
+      hasSearchValue &&
+      (state.suggestions.length > 0 || showNoSuggestions),
   );
 
   return (
@@ -362,7 +435,11 @@ const ExamPage = () => {
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <SearchIcon />
+                        {state.loadingSuggest ? (
+                          <CircularProgress size={16} thickness={5} />
+                        ) : (
+                          <SearchIcon fontSize="small" />
+                        )}
                       </InputAdornment>
                     ),
                   }}
@@ -385,7 +462,7 @@ const ExamPage = () => {
               </Stack>
 
               <Popper
-                open={Boolean(state.anchorEl && state.suggestions.length > 0)}
+                open={isSuggestionsPopperOpen}
                 anchorEl={state.anchorEl}
                 placement="bottom-start"
                 style={{ zIndex: 1300 }}
@@ -408,11 +485,24 @@ const ExamPage = () => {
                       ml: -6,
                     }}
                   >
-                    {state.loadingSuggest ? (
-                      <MenuItem sx={{ justifyContent: "center" }}>
-                        <CircularProgress size={24} />
-                        <Typography className="ml-2">Đang tìm...</Typography>
-                      </MenuItem>
+                    {showNoSuggestions ? (
+                      <Box
+                        sx={{
+                          px: 2,
+                          py: 2,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 0.75,
+                          color: "text.secondary",
+                        }}
+                      >
+                        <SearchOffRoundedIcon fontSize="small" />
+                        <Typography variant="body2" align="center">
+                          Không có kết quả nào phù hợp
+                        </Typography>
+                      </Box>
                     ) : (
                       state.suggestions.map((t) => (
                         <MenuItem

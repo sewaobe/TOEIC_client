@@ -14,7 +14,7 @@ import {
   Pagination,
 } from "@mui/material";
 import MainLayout from "../layouts/MainLayout";
-import { styled, useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import { useReducer, useEffect } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import TestCard from "../../components/Home/TestCard";
@@ -76,23 +76,28 @@ function reducer(state: State, action: Action): State {
   }
 }
 
+type CategoryFilter = {
+  label: string;
+  keywords?: string;
+  year?: string;
+};
+
+const CATEGORY_FILTERS: CategoryFilter[] = [
+  { label: "All" },
+  { label: "YBM 2025", keywords: "YBM 2025" },
+  { label: "New economy", keywords: "New economy" },
+  { label: "ETS 2026", year: "2026" },
+  { label: "ETS 2024", year: "2024" },
+  { label: "ETS 2023", year: "2023" },
+  { label: "ETS 2022", year: "2022" },
+  { label: "ETS 2021", year: "2021" },
+  { label: "ETS 2020", year: "2020" },
+  { label: "ETS 2019", year: "2019" },
+];
+
 const ExamPage = () => {
   const theme = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
-  const Item = styled(Paper)(({ theme }) => ({
-    backgroundColor: "#fff",
-    ...theme.typography.body2,
-    padding: theme.spacing(1),
-    textAlign: "center",
-    color: (theme.vars ?? theme).palette.text.primary,
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-    "&:hover": {
-      backgroundColor: theme.palette.action.hover,
-      transform: "scale(1.02)",
-      boxShadow: theme.shadows[4],
-    },
-  }));
 
   const [state, dispatch] = useReducer(reducer, initialState);
   const limit = 6;
@@ -216,19 +221,57 @@ const ExamPage = () => {
     });
   };
 
-  const handleCategoryFilter = (value: string) => {
+  const handleCategoryFilter = (filter: CategoryFilter) => {
     dispatch({ type: "SET_SUGGESTIONS", payload: [] });
     dispatch({ type: "SET_ANCHOR", payload: null });
 
-    if (/^\d{4}$/.test(value)) {
+    if (!filter.keywords && !filter.year) {
       dispatch({ type: "SET_SEARCH", payload: "" });
-      updateQueryParams({ year: value, keywords: null, page: 1 });
+      updateQueryParams({ year: null, keywords: null, page: 1 });
       return;
     }
 
-    dispatch({ type: "SET_SEARCH", payload: value });
-    updateQueryParams({ keywords: value, year: null, page: 1 });
+    if (filter.year) {
+      dispatch({ type: "SET_SEARCH", payload: "" });
+      updateQueryParams({ year: filter.year, keywords: null, page: 1 });
+      return;
+    }
+
+    dispatch({ type: "SET_SEARCH", payload: filter.keywords || "" });
+    updateQueryParams({ keywords: filter.keywords || null, year: null, page: 1 });
   };
+
+  const selectedKeywords = searchParams.get("keywords")?.trim().toLowerCase() || "";
+  const selectedYear = searchParams.get("year")?.trim() || "";
+
+  const isCategoryActive = (filter: CategoryFilter) => {
+    if (!filter.keywords && !filter.year) {
+      return !selectedKeywords && !selectedYear;
+    }
+
+    if (filter.year) {
+      return selectedYear === filter.year;
+    }
+
+    return selectedKeywords === (filter.keywords || "").toLowerCase();
+  };
+
+  const activeCategoryBg = alpha(
+    theme.palette.primary.main,
+    theme.palette.mode === "dark" ? 0.24 : 0.12,
+  );
+  const activeCategoryText =
+    theme.palette.mode === "dark"
+      ? theme.palette.primary.light
+      : theme.palette.primary.main;
+  const activeCategoryBorder = alpha(
+    theme.palette.primary.main,
+    theme.palette.mode === "dark" ? 0.55 : 0.35,
+  );
+  const activeCategoryHoverBg = alpha(
+    theme.palette.primary.main,
+    theme.palette.mode === "dark" ? 0.34 : 0.2,
+  );
 
   return (
     <MainLayout>
@@ -240,40 +283,106 @@ const ExamPage = () => {
                 variant="h2"
                 sx={{
                   color: theme.palette.primary.main,
-                  fontSize: { xs: "3rem", md: "48px" },
+                  fontSize: { xs: "2.25rem", md: "44px" },
+                  lineHeight: 1.1,
                 }}
-                className="font-bold mb-2"
+                className="font-bold"
               >
                 Thư viện đề thi
               </Typography>
 
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 1,
+                }}
+              >
+                {CATEGORY_FILTERS.map((item) => {
+                  const isActive = isCategoryActive(item);
+
+                  return (
+                    <Button
+                      key={item.label}
+                      onClick={() => handleCategoryFilter(item)}
+                      variant="outlined"
+                      color="primary"
+                      sx={{
+                        height: 36,
+                        px: 1.75,
+                        borderRadius: "2px",
+                        textTransform: "none",
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        minWidth: { xs: "auto", sm: 104 },
+                        borderColor: isActive
+                          ? activeCategoryBorder
+                          : theme.palette.divider,
+                        backgroundColor: isActive
+                          ? activeCategoryBg
+                          : theme.palette.background.paper,
+                        color: isActive
+                          ? activeCategoryText
+                          : theme.palette.text.primary,
+                        boxShadow: "none",
+                        "&:hover": {
+                          borderColor: isActive
+                            ? activeCategoryBorder
+                            : theme.palette.text.secondary,
+                          backgroundColor: isActive
+                            ? activeCategoryHoverBg
+                            : theme.palette.action.hover,
+                        },
+                      }}
+                    >
+                      {item.label}
+                    </Button>
+                  );
+                })}
+              </Box>
+
               <Stack
                 direction={{ xs: "column", sm: "row" }}
-                spacing={{ xs: 1, md: 4 }}
+                spacing={1.25}
+                sx={{ width: "100%", maxWidth: 640 }}
               >
-                {["New economy", "2024", "2023", "2022", "2021"].map((item) => (
-                  <Item key={item} onClick={() => handleCategoryFilter(item)}>
-                    {item}
-                  </Item>
-                ))}
-              </Stack>
+                <TextField
+                  placeholder="Tìm kiếm..."
+                  variant="outlined"
+                  value={state.searchValue}
+                  onChange={handleInputChange}
+                  size="small"
+                  fullWidth
+                  sx={{
+                    backgroundColor: theme.palette.background.paper,
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "2px",
+                    },
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
 
-              <TextField
-                placeholder="Tìm kiếm..."
-                variant="outlined"
-                value={state.searchValue}
-                onChange={handleInputChange}
-                size="small"
-                className="w-2/3"
-                sx={{ backgroundColor: theme.palette.background.paper }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleSearchClick}
+                  sx={{
+                    borderRadius: "2px",
+                    px: 2,
+                    minWidth: { xs: 132, sm: 124 },
+                    height: 40,
+                    fontWeight: 700,
+                  }}
+                >
+                  Tìm kiếm
+                </Button>
+              </Stack>
 
               <Popper
                 open={Boolean(state.anchorEl && state.suggestions.length > 0)}
@@ -295,7 +404,7 @@ const ExamPage = () => {
                         : 348,
                       maxHeight: 250,
                       overflowY: "auto",
-                      borderRadius: 2,
+                      borderRadius: "2px",
                       ml: -6,
                     }}
                   >
@@ -323,14 +432,6 @@ const ExamPage = () => {
                 </ClickAwayListener>
               </Popper>
 
-              <Button
-                variant="contained"
-                color="primary"
-                className="rounded-full flex items-center gap-2 w-28"
-                onClick={handleSearchClick}
-              >
-                Tìm kiếm
-              </Button>
             </Box>
           </SecondLayout>
         </Box>
@@ -372,8 +473,8 @@ const ExamPage = () => {
                         title={t.title}
                         score={t.score}
                         topic={t.details}
-                        countComment={t.totalComments}
-                        countSubmit={t.totalUsers}
+                        countComment={t.totalComments || 0}
+                        countSubmit={t.totalUsers || 0}
                         isNew={true}
                       />
                     </Stack>
@@ -385,7 +486,7 @@ const ExamPage = () => {
                 <Pagination
                   count={Number(state.totalPages)}
                   page={state.page}
-                  onChange={(e, value) => updateQueryParams({ page: value })}
+                  onChange={(_, value) => updateQueryParams({ page: value })}
                   color="primary"
                 />
               </Box>

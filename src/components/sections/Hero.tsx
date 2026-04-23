@@ -64,71 +64,65 @@ const Hero: FC = () => {
       }}
     >
       <Container maxWidth='md' sx={{ position: 'relative', zIndex: 1 }}>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+        <Typography
+          variant='h1'
+          component='h1'
+          fontWeight='bold'
+          textAlign='center'
+          sx={{
+            fontSize: { xs: '2.5rem', sm: '3.5rem' },
+            color: 'text.primary',
+          }}
+          className='text-title'
         >
-          <Typography
-            variant='h2'
-            component='h1'
-            fontWeight='bold'
-            textAlign='center'
-            sx={{
-              fontSize: { xs: '2.5rem', sm: '3.5rem' },
-              color: 'text.primary',
-            }}
-            className='text-title'
-          >
-            Chinh phục TOEIC với TOEIC Smart
-          </Typography>
-          {/* 2. Thêm "Thanh Lợi Ích Chính" ở đây */}
-          <Stack
-            component={motion.div}
-            variants={benefitsContainerVariants}
-            initial='hidden'
-            animate='visible'
-            direction='row'
-            spacing={{ xs: 2, sm: 4 }}
-            justifyContent='center'
-            sx={{ mt: 3, mb: 3 }} // Tạo khoảng cách với các nút bấm
-          >
-            {keyBenefits.map((benefit) => (
-              <Stack
-                key={benefit.text}
-                component={motion.div}
-                variants={benefitItemVariants}
-                direction='row'
-                alignItems='center'
-                spacing={1}
-              >
-                <benefit.Icon
-                  sx={{ color: 'success.main', fontSize: '1.25rem' }}
-                />
-                <Typography
-                  variant='body1'
-                  color='text.secondary'
-                  sx={{ fontWeight: 500 }}
-                >
-                  {benefit.text}
-                </Typography>
-              </Stack>
-            ))}
-          </Stack>
-
-          <Stack direction='row' spacing={2} justifyContent='center'>
-            <Button
-              variant='contained'
-              size='large'
-              onClick={() => navigate('/overview-test?type=entry-test')}
+          Chinh phục TOEIC với TOEIC Smart
+        </Typography>
+        {/* Keep motion for non-LCP elements to preserve UX polish without delaying title paint. */}
+        <Stack
+          component={motion.div}
+          variants={benefitsContainerVariants}
+          initial='hidden'
+          animate='visible'
+          direction='row'
+          spacing={{ xs: 2, sm: 4 }}
+          justifyContent='center'
+          sx={{ mt: 3, mb: 3 }} // Tạo khoảng cách với các nút bấm
+        >
+          {keyBenefits.map((benefit) => (
+            <Stack
+              key={benefit.text}
+              component={motion.div}
+              variants={benefitItemVariants}
+              direction='row'
+              alignItems='center'
+              spacing={1}
             >
-              Bắt đầu ngay
-            </Button>
-            <Button variant='outlined' size='large' color='secondary'>
-              Xem chương trình học
-            </Button>
-          </Stack>
-        </motion.div>
+              <benefit.Icon
+                sx={{ color: 'success.main', fontSize: '1.25rem' }}
+              />
+              <Typography
+                variant='body1'
+                color='text.secondary'
+                sx={{ fontWeight: 500 }}
+              >
+                {benefit.text}
+              </Typography>
+            </Stack>
+          ))}
+        </Stack>
+
+        <Stack direction='row' spacing={2} justifyContent='center'>
+          <Button
+            variant='contained'
+            size='large'
+            onClick={() => navigate('/overview-test?type=entry-test')}
+          >
+            Bắt đầu ngay
+          </Button>
+          <Button variant='outlined' size='large' color='secondary'>
+            Xem chương trình học
+          </Button>
+        </Stack>
       </Container>
     </Box>
   );

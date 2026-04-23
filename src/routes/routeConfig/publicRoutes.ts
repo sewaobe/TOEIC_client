@@ -1,22 +1,20 @@
-import { lazy, ComponentType } from "react";
+import { lazy, ComponentType } from 'react';
+import LandingPage from '../../views/pages/LandingPage';
 
 export interface AppRoute {
   path: string;
   element: ComponentType;
   guard?: ComponentType;
 }
-const LandingPage = lazy(() => import("../../views/pages/LandingPage"));
-const AuthPage = lazy(() => import("../../views/pages/AuthPage"));
-const TestDemoPage = lazy(() => import("../../views/pages/TestDemoPage"));
-const OverviewTestPage = lazy(() => import("../../views/pages/OverviewPage"));
+const AuthPage = lazy(() => import('../../views/pages/AuthPage'));
+const TestDemoPage = lazy(() => import('../../views/pages/TestDemoPage'));
+const OverviewTestPage = lazy(() => import('../../views/pages/OverviewPage'));
 
-const ResetPasswordPage = lazy(
-  () => import("../../views/pages/ResetPasswordPage")
-);
-const ExamPage = lazy(() => import("../../views/pages/TestPage"));
-const ExamDetailPage = lazy(() => import("../../views/pages/TestDetailPage"));
-const PlanWizardPage = lazy(() => import("../../views/pages/PlanWizardPage"));
-const DemoPage = lazy(() => import("../../views/pages/DemoPage"));
+const ResetPasswordPage = lazy(() => import('../../views/pages/ResetPasswordPage'));
+const ExamPage = lazy(() => import('../../views/pages/TestPage'));
+const ExamDetailPage = lazy(() => import('../../views/pages/TestDetailPage'));
+const PlanWizardPage = lazy(() => import('../../views/pages/PlanWizardPage'));
+const DemoPage = lazy(() => import('../../views/pages/DemoPage'));
 
 const publicRoutes: AppRoute[] = [
   { path: "/", element: LandingPage },

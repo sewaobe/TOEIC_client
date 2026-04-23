@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Close, CheckCircle, QrCode2, MoreVert, LocalPrintshop } from '@mui/icons-material';
+import './certificate-fonts.css';
 
 // --- Types & Interfaces ---
 

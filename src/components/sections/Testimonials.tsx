@@ -15,8 +15,18 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import SwiperCore from 'swiper';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination, A11y, Autoplay } from 'swiper/modules';
+import './testimonials-swiper.css';
 
 import { motion, useInView } from 'framer-motion';
+
+const getAvatarLabel = (name: string) =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
 
 // Dữ liệu mẫu
 const testimonialsData = [
@@ -24,57 +34,49 @@ const testimonialsData = [
     quote:
       'Nhờ có lộ trình cá nhân hóa, mình đã tăng được 150 điểm chỉ sau 1 tháng. Giao diện thi thử y hệt thi thật giúp mình không còn bị áp lực tâm lý nữa.',
     name: 'Nguyễn Thu Trang',
-    title: 'Sinh viên Đại học Ngoại thương',
-    avatar: '/images/avatar-1.jpg',
+    title: 'Sinh viên FTU',
   },
   {
     quote:
       'Kho đề thi và tài liệu cực kỳ chất lượng và luôn được cập nhật. Phần giải thích chi tiết sau mỗi câu hỏi thực sự là cứu cánh cho mình.',
     name: 'Trần Minh Quang',
     title: 'Nhân viên IT',
-    avatar: '/images/avatar-2.jpg',
   },
   {
     quote:
       'Mình đã thử nhiều nền tảng khác nhưng chỉ ở đây mình mới cảm thấy thực sự tiến bộ. Cộng đồng học tập rất sôi nổi và hữu ích.',
     name: 'Lê Hoàng Yến',
-    title: 'Sinh viên Đại học Kinh tế Quốc dân',
-    avatar: '/images/avatar-3.jpg',
+    title: 'Sinh viên NEU',
   },
   {
     quote:
       'Tính năng flashcard và luyện nghe thực sự tuyệt vời. Giao diện thân thiện và dễ sử dụng trên cả điện thoại.',
     name: 'Phạm Anh Khoa',
     title: 'Marketing Manager',
-    avatar: '/images/avatar-4.jpg',
   },
   {
     quote:
       'Nhờ có lộ trình cá nhân hóa, mình đã tăng được 150 điểm chỉ sau 1 tháng. Giao diện thi thử y hệt thi thật giúp mình không còn bị áp lực tâm lý nữa.',
-    name: 'Nguyễn Thu Trang1',
-    title: 'Sinh viên Đại học Ngoại thương',
-    avatar: '/images/avatar-1.jpg',
+    name: 'Nguyễn Quynh Nhu',
+    title: 'Sinh viên FPT',
   },
   {
     quote:
       'Kho đề thi và tài liệu cực kỳ chất lượng và luôn được cập nhật. Phần giải thích chi tiết sau mỗi câu hỏi thực sự là cứu cánh cho mình.',
-    name: 'Trần Minh Quang1',
+    name: 'Trần Minh Quoc',
     title: 'Nhân viên IT',
-    avatar: '/images/avatar-2.jpg',
   },
   {
     quote:
       'Mình đã thử nhiều nền tảng khác nhưng chỉ ở đây mình mới cảm thấy thực sự tiến bộ. Cộng đồng học tập rất sôi nổi và hữu ích.',
-    name: 'Lê Hoàng Yến1',
-    title: 'Sinh viên Đại học Kinh tế Quốc dân',
-    avatar: '/images/avatar-3.jpg',
+    name: 'Lê Hoàng Thanh',
+    title: 'Sinh viên NEU',
   },
   {
     quote:
       'Tính năng flashcard và luyện nghe thực sự tuyệt vời. Giao diện thân thiện và dễ sử dụng trên cả điện thoại.',
-    name: 'Phạm Anh Khoa1',
+    name: 'Phạm Anh Khoi',
     title: 'Marketing Manager',
-    avatar: '/images/avatar-4.jpg',
   },
 ];
 
@@ -94,7 +96,6 @@ const Testimonials: FC = () => {
       swiperInstance.autoplay?.stop();
     }
   }, [inView, swiperInstance]);
-  console.log(inView);
   return (
     <motion.div
       ref={containerRef}
@@ -185,9 +186,14 @@ const Testimonials: FC = () => {
                             alignItems='center'
                           >
                             <Avatar
-                              src={testimonial.avatar}
                               alt={testimonial.name}
-                            />
+                              sx={{
+                                bgcolor: 'primary.main',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {getAvatarLabel(testimonial.name)}
+                            </Avatar>
                             <Box>
                               <Typography fontWeight='600'>
                                 {testimonial.name}

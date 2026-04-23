@@ -9,13 +9,24 @@ export const useThrottledCallback = <T extends any[]>(
   callback: (...args: T) => void,
   delay: number = 300
 ) => {
-  const throttleRef = useRef<NodeJS.Timeout | null>(null);
+  const throttleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestArgsRef = useRef<T | null>(null);
 
   const throttledFn = useCallback(
     (...args: T) => {
-      if (throttleRef.current) clearTimeout(throttleRef.current);
+      latestArgsRef.current = args;
+
+      if (throttleRef.current) return;
+
       throttleRef.current = setTimeout(() => {
-        callback(...args);
+        throttleRef.current = null;
+
+        if (!latestArgsRef.current) {
+          return;
+        }
+
+        callback(...latestArgsRef.current);
+        latestArgsRef.current = null;
       }, delay);
     },
     [callback, delay]

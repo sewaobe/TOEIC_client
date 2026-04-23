@@ -14,9 +14,10 @@ import {
   Pagination,
 } from "@mui/material";
 import MainLayout from "../layouts/MainLayout";
-import { styled, useTheme } from "@mui/material/styles";
-import { useReducer, useEffect } from "react";
+import { alpha, useTheme } from "@mui/material/styles";
+import { useReducer, useEffect, useRef } from "react";
 import SearchIcon from "@mui/icons-material/Search";
+import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
 import TestCard from "../../components/Home/TestCard";
 import testService from "../../services/test.service";
 import { useThrottledCallback } from "../../hooks/useThrottledCallback";
@@ -30,6 +31,7 @@ const initialState = {
   pageLoaded: 1,
   totalPages: 1,
   suggestions: [] as any[],
+  hasFetchedSuggestions: false,
   anchorEl: null as null | HTMLElement,
   loadingSuggest: false,
   loadingTests: false,
@@ -45,6 +47,7 @@ type Action =
   | { type: "SET_PAGE_LOADED"; payload: number }
   | { type: "SET_TOTAL_PAGES"; payload: number }
   | { type: "SET_SUGGESTIONS"; payload: any[] }
+  | { type: "SET_HAS_FETCHED_SUGGESTIONS"; payload: boolean }
   | { type: "SET_ANCHOR"; payload: HTMLElement | null }
   | { type: "SET_LOADING_SUGGEST"; payload: boolean }
   | { type: "SET_LOADING_TESTS"; payload: boolean };
@@ -65,6 +68,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, totalPages: action.payload };
     case "SET_SUGGESTIONS":
       return { ...state, suggestions: action.payload };
+    case "SET_HAS_FETCHED_SUGGESTIONS":
+      return { ...state, hasFetchedSuggestions: action.payload };
     case "SET_ANCHOR":
       return { ...state, anchorEl: action.payload };
     case "SET_LOADING_SUGGEST":
@@ -76,26 +81,41 @@ function reducer(state: State, action: Action): State {
   }
 }
 
+type CategoryFilter = {
+  label: string;
+  keywords?: string;
+  year?: string;
+};
+
+const CATEGORY_FILTERS: CategoryFilter[] = [
+  { label: "All" },
+  { label: "YBM 2025", keywords: "YBM 2025" },
+  { label: "New economy", keywords: "New economy" },
+  { label: "ETS 2026", year: "2026" },
+  { label: "ETS 2024", year: "2024" },
+  { label: "ETS 2023", year: "2023" },
+  { label: "ETS 2022", year: "2022" },
+  { label: "ETS 2021", year: "2021" },
+  { label: "ETS 2020", year: "2020" },
+  { label: "ETS 2019", year: "2019" },
+];
+
 const ExamPage = () => {
   const theme = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
-  const Item = styled(Paper)(({ theme }) => ({
-    backgroundColor: "#fff",
-    ...theme.typography.body2,
-    padding: theme.spacing(1),
-    textAlign: "center",
-    color: (theme.vars ?? theme).palette.text.primary,
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-    "&:hover": {
-      backgroundColor: theme.palette.action.hover,
-      transform: "scale(1.02)",
-      boxShadow: theme.shadows[4],
-    },
-  }));
 
   const [state, dispatch] = useReducer(reducer, initialState);
   const limit = 6;
+  const testsRequestIdRef = useRef(0);
+  const suggestRequestIdRef = useRef(0);
+
+  const resetSuggestionsState = () => {
+    suggestRequestIdRef.current += 1;
+    dispatch({ type: "SET_LOADING_SUGGEST", payload: false });
+    dispatch({ type: "SET_SUGGESTIONS", payload: [] });
+    dispatch({ type: "SET_HAS_FETCHED_SUGGESTIONS", payload: false });
+    dispatch({ type: "SET_ANCHOR", payload: null });
+  };
 
   const updateQueryParams = ({
     page,
@@ -140,9 +160,22 @@ const ExamPage = () => {
     p: number = 1,
     filters?: { keywords?: string; year?: string },
   ) => {
+    const requestId = ++testsRequestIdRef.current;
+    const normalizedFilters = filters
+      ? {
+          ...(filters.keywords ? { keywords: filters.keywords } : {}),
+          ...(filters.year ? { year: filters.year } : {}),
+        }
+      : undefined;
+
     dispatch({ type: "SET_LOADING_TESTS", payload: true });
     try {
-      const res = await testService.getTests(p, limit, filters);
+      const res = await testService.getTests(p, limit, normalizedFilters);
+
+      if (requestId !== testsRequestIdRef.current) {
+        return;
+      }
+
       dispatch({ type: "SET_TESTS", payload: res.tests });
       dispatch({
         type: "SET_TOTAL_PAGES",
@@ -151,9 +184,14 @@ const ExamPage = () => {
       dispatch({ type: "SET_PAGE_LOADED", payload: Number(res.page) || 1 });
       dispatch({ type: "SET_PAGE", payload: Number(res.page) || 1 });
     } catch (err) {
+      if (requestId !== testsRequestIdRef.current) {
+        return;
+      }
       console.error(err);
     } finally {
-      dispatch({ type: "SET_LOADING_TESTS", payload: false });
+      if (requestId === testsRequestIdRef.current) {
+        dispatch({ type: "SET_LOADING_TESTS", payload: false });
+      }
     }
   };
 
@@ -167,7 +205,7 @@ const ExamPage = () => {
     const year = searchParams.get("year")?.trim() || "";
 
     dispatch({ type: "SET_SEARCH", payload: keywords });
-    dispatch({ type: "SET_ANCHOR", payload: null });
+    resetSuggestionsState();
 
     fetchTests(page, { keywords, year });
   }, [queryKey]);
@@ -175,40 +213,65 @@ const ExamPage = () => {
   // --- Throttled suggestion fetch ---
   const throttledFetchSuggestions = useThrottledCallback(
     async (value: string, target: HTMLElement) => {
-      if (value.trim() === "") {
-        dispatch({ type: "SET_SUGGESTIONS", payload: [] });
-        dispatch({ type: "SET_ANCHOR", payload: null });
+      const normalizedValue = value.trim();
+
+      if (!normalizedValue) {
+        resetSuggestionsState();
         return;
       }
-      dispatch({ type: "SET_LOADING_SUGGEST", payload: true });
+
+      const requestId = ++suggestRequestIdRef.current;
+      dispatch({ type: "SET_ANCHOR", payload: target });
+
       try {
         const res = await testService.getTests(1, 5, {
-          keywords: value.trim(),
+          keywords: normalizedValue,
         });
+
+        if (requestId !== suggestRequestIdRef.current) {
+          return;
+        }
+
         dispatch({ type: "SET_SUGGESTIONS", payload: res.tests });
-        dispatch({ type: "SET_ANCHOR", payload: target });
+        dispatch({ type: "SET_HAS_FETCHED_SUGGESTIONS", payload: true });
       } catch (err) {
+        if (requestId !== suggestRequestIdRef.current) {
+          return;
+        }
         console.error(err);
       } finally {
-        dispatch({ type: "SET_LOADING_SUGGEST", payload: false });
+        if (requestId === suggestRequestIdRef.current) {
+          dispatch({ type: "SET_LOADING_SUGGEST", payload: false });
+        }
       }
     },
-    700,
+    3000,
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     dispatch({ type: "SET_SEARCH", payload: value });
+
+    if (!value.trim()) {
+      resetSuggestionsState();
+    } else {
+      dispatch({ type: "SET_ANCHOR", payload: e.currentTarget });
+      dispatch({ type: "SET_LOADING_SUGGEST", payload: true });
+      dispatch({ type: "SET_SUGGESTIONS", payload: [] });
+      dispatch({ type: "SET_HAS_FETCHED_SUGGESTIONS", payload: false });
+    }
+
     throttledFetchSuggestions(value, e.currentTarget);
   };
 
   const handleSelectSuggestion = (title: string) => {
     dispatch({ type: "SET_SEARCH", payload: title });
-    dispatch({ type: "SET_ANCHOR", payload: null });
+    resetSuggestionsState();
     updateQueryParams({ keywords: title, year: null, page: 1 });
   };
 
   const handleSearchClick = () => {
+    resetSuggestionsState();
     updateQueryParams({
       keywords: state.searchValue.trim() || null,
       year: null,
@@ -216,19 +279,72 @@ const ExamPage = () => {
     });
   };
 
-  const handleCategoryFilter = (value: string) => {
-    dispatch({ type: "SET_SUGGESTIONS", payload: [] });
-    dispatch({ type: "SET_ANCHOR", payload: null });
+  const handleCategoryFilter = (filter: CategoryFilter) => {
+    resetSuggestionsState();
 
-    if (/^\d{4}$/.test(value)) {
+    if (!filter.keywords && !filter.year) {
       dispatch({ type: "SET_SEARCH", payload: "" });
-      updateQueryParams({ year: value, keywords: null, page: 1 });
+      updateQueryParams({ year: null, keywords: null, page: 1 });
       return;
     }
 
-    dispatch({ type: "SET_SEARCH", payload: value });
-    updateQueryParams({ keywords: value, year: null, page: 1 });
+    if (filter.year) {
+      dispatch({ type: "SET_SEARCH", payload: "" });
+      updateQueryParams({ year: filter.year, keywords: null, page: 1 });
+      return;
+    }
+
+    dispatch({ type: "SET_SEARCH", payload: filter.keywords || "" });
+    updateQueryParams({ keywords: filter.keywords || null, year: null, page: 1 });
   };
+
+  const selectedKeywords = searchParams.get("keywords")?.trim().toLowerCase() || "";
+  const selectedYear = searchParams.get("year")?.trim() || "";
+
+  const isCategoryActive = (filter: CategoryFilter) => {
+    if (!filter.keywords && !filter.year) {
+      return !selectedKeywords && !selectedYear;
+    }
+
+    if (filter.year) {
+      return selectedYear === filter.year;
+    }
+
+    return selectedKeywords === (filter.keywords || "").toLowerCase();
+  };
+
+  const activeCategoryBg = alpha(
+    theme.palette.primary.main,
+    theme.palette.mode === "dark" ? 0.24 : 0.12,
+  );
+  const activeCategoryText =
+    theme.palette.mode === "dark"
+      ? theme.palette.primary.light
+      : theme.palette.primary.main;
+  const activeCategoryBorder = alpha(
+    theme.palette.primary.main,
+    theme.palette.mode === "dark" ? 0.55 : 0.35,
+  );
+  const activeCategoryHoverBg = alpha(
+    theme.palette.primary.main,
+    theme.palette.mode === "dark" ? 0.34 : 0.2,
+  );
+
+  const hasSearchValue = Boolean(state.searchValue.trim());
+
+  const showNoSuggestions = Boolean(
+    hasSearchValue &&
+      state.hasFetchedSuggestions &&
+      !state.loadingSuggest &&
+      state.suggestions.length === 0,
+  );
+
+  const isSuggestionsPopperOpen = Boolean(
+    state.anchorEl &&
+      !state.loadingSuggest &&
+      hasSearchValue &&
+      (state.suggestions.length > 0 || showNoSuggestions),
+  );
 
   return (
     <MainLayout>
@@ -240,43 +356,113 @@ const ExamPage = () => {
                 variant="h2"
                 sx={{
                   color: theme.palette.primary.main,
-                  fontSize: { xs: "3rem", md: "48px" },
+                  fontSize: { xs: "2.25rem", md: "44px" },
+                  lineHeight: 1.1,
                 }}
-                className="font-bold mb-2"
+                className="font-bold"
               >
                 Thư viện đề thi
               </Typography>
 
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 1,
+                }}
+              >
+                {CATEGORY_FILTERS.map((item) => {
+                  const isActive = isCategoryActive(item);
+
+                  return (
+                    <Button
+                      key={item.label}
+                      onClick={() => handleCategoryFilter(item)}
+                      variant="outlined"
+                      color="primary"
+                      sx={{
+                        height: 36,
+                        px: 1.75,
+                        borderRadius: "2px",
+                        textTransform: "none",
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        minWidth: { xs: "auto", sm: 104 },
+                        borderColor: isActive
+                          ? activeCategoryBorder
+                          : theme.palette.divider,
+                        backgroundColor: isActive
+                          ? activeCategoryBg
+                          : theme.palette.background.paper,
+                        color: isActive
+                          ? activeCategoryText
+                          : theme.palette.text.primary,
+                        boxShadow: "none",
+                        "&:hover": {
+                          borderColor: isActive
+                            ? activeCategoryBorder
+                            : theme.palette.text.secondary,
+                          backgroundColor: isActive
+                            ? activeCategoryHoverBg
+                            : theme.palette.action.hover,
+                        },
+                      }}
+                    >
+                      {item.label}
+                    </Button>
+                  );
+                })}
+              </Box>
+
               <Stack
                 direction={{ xs: "column", sm: "row" }}
-                spacing={{ xs: 1, md: 4 }}
+                spacing={1.25}
+                sx={{ width: "100%", maxWidth: 640 }}
               >
-                {["New economy", "2024", "2023", "2022", "2021"].map((item) => (
-                  <Item key={item} onClick={() => handleCategoryFilter(item)}>
-                    {item}
-                  </Item>
-                ))}
+                <TextField
+                  placeholder="Tìm kiếm..."
+                  variant="outlined"
+                  value={state.searchValue}
+                  onChange={handleInputChange}
+                  size="small"
+                  fullWidth
+                  sx={{
+                    backgroundColor: theme.palette.background.paper,
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "2px",
+                    },
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        {state.loadingSuggest ? (
+                          <CircularProgress size={16} thickness={5} />
+                        ) : (
+                          <SearchIcon fontSize="small" />
+                        )}
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleSearchClick}
+                  sx={{
+                    borderRadius: "2px",
+                    px: 2,
+                    minWidth: { xs: 132, sm: 124 },
+                    height: 40,
+                    fontWeight: 700,
+                  }}
+                >
+                  Tìm kiếm
+                </Button>
               </Stack>
 
-              <TextField
-                placeholder="Tìm kiếm..."
-                variant="outlined"
-                value={state.searchValue}
-                onChange={handleInputChange}
-                size="small"
-                className="w-2/3"
-                sx={{ backgroundColor: theme.palette.background.paper }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-
               <Popper
-                open={Boolean(state.anchorEl && state.suggestions.length > 0)}
+                open={isSuggestionsPopperOpen}
                 anchorEl={state.anchorEl}
                 placement="bottom-start"
                 style={{ zIndex: 1300 }}
@@ -295,15 +481,28 @@ const ExamPage = () => {
                         : 348,
                       maxHeight: 250,
                       overflowY: "auto",
-                      borderRadius: 2,
+                      borderRadius: "2px",
                       ml: -6,
                     }}
                   >
-                    {state.loadingSuggest ? (
-                      <MenuItem sx={{ justifyContent: "center" }}>
-                        <CircularProgress size={24} />
-                        <Typography className="ml-2">Đang tìm...</Typography>
-                      </MenuItem>
+                    {showNoSuggestions ? (
+                      <Box
+                        sx={{
+                          px: 2,
+                          py: 2,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 0.75,
+                          color: "text.secondary",
+                        }}
+                      >
+                        <SearchOffRoundedIcon fontSize="small" />
+                        <Typography variant="body2" align="center">
+                          Không có kết quả nào phù hợp
+                        </Typography>
+                      </Box>
                     ) : (
                       state.suggestions.map((t) => (
                         <MenuItem
@@ -323,14 +522,6 @@ const ExamPage = () => {
                 </ClickAwayListener>
               </Popper>
 
-              <Button
-                variant="contained"
-                color="primary"
-                className="rounded-full flex items-center gap-2 w-28"
-                onClick={handleSearchClick}
-              >
-                Tìm kiếm
-              </Button>
             </Box>
           </SecondLayout>
         </Box>
@@ -372,8 +563,8 @@ const ExamPage = () => {
                         title={t.title}
                         score={t.score}
                         topic={t.details}
-                        countComment={t.totalComments}
-                        countSubmit={t.totalUsers}
+                        countComment={t.totalComments || 0}
+                        countSubmit={t.totalUsers || 0}
                         isNew={true}
                       />
                     </Stack>
@@ -385,7 +576,7 @@ const ExamPage = () => {
                 <Pagination
                   count={Number(state.totalPages)}
                   page={state.page}
-                  onChange={(e, value) => updateQueryParams({ page: value })}
+                  onChange={(_, value) => updateQueryParams({ page: value })}
                   color="primary"
                 />
               </Box>

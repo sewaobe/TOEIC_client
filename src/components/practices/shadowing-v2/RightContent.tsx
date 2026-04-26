@@ -17,6 +17,10 @@ import {
 	AccessTime as Clock,
 	Share as Share2,
 } from '@mui/icons-material';
+import { Popover, Box, Typography, IconButton, CircularProgress, Divider } from '@mui/material';
+import VolumeUpOutlinedIcon from '@mui/icons-material/VolumeUpOutlined';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ActiveTranscriptData {
@@ -67,6 +71,18 @@ interface RightContentProps {
 	onToggleVideoPlayback: () => void;
 	onHandleNext: () => void;
 	onHandlePrevious: () => void;
+}
+
+interface DictData {
+	word: string;
+	ipa: string;
+	audioUrl: string;
+	mainTranslation: string;
+	meanings: {
+		partOfSpeech: string;
+		definitions: string[];
+	}[];
+	notFound?: boolean;
 }
 
 const SPEED_OPTIONS = ['0.5x', '0.75x', '1x', '1.25x', '1.5x'];
@@ -307,6 +323,8 @@ export default function RightContent({
 			height: 'clamp(375px, 50vh, 580px)',
 			maxHeight: '580px',
 		};
+
+
 
 	useEffect(() => {
 		const audio = audioRef.current;
@@ -565,6 +583,103 @@ export default function RightContent({
 		if (!isVideoPlaying) onToggleVideoPlayback();
 	};
 
+	// --- DICTIONARY POPOVER STATE ---
+	const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+	const [dictData, setDictData] = useState<DictData | null>(null);
+	const [loading, setLoading] = useState(false);
+
+	const handleWordClick = async (event: React.MouseEvent<HTMLElement>, rawWord: string) => {
+		const cleanWord = rawWord.replace(/[.,!?;:]/g, '').toLowerCase();
+		if (!cleanWord) return;
+
+		setAnchorEl(event.currentTarget);
+		setLoading(true);
+		setDictData(null);
+
+		try {
+			// Gọi song song 2 API để tối ưu tốc độ
+			const [enRes, viRes] = await Promise.allSettled([
+				fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`),
+				fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&dt=bd&q=${cleanWord}`)
+			]);
+
+			let ipa = '';
+			let audioUrl = '';
+			let viMeanings: any[] = [];
+			let mainTranslation = '';
+
+			// 1. Lấy IPA và Audio từ Free Dictionary API
+			if (enRes.status === 'fulfilled' && enRes.value.ok) {
+				const enData = await enRes.value.json();
+				const entry = enData[0];
+				ipa = entry.phonetic || entry.phonetics?.find((p: any) => p.text)?.text || '';
+				audioUrl = entry.phonetics?.find((p: any) => p.audio !== "")?.audio || '';
+			}
+
+			// 2. Lấy nghĩa từ Google Translate API
+			if (viRes.status === 'fulfilled' && viRes.value.ok) {
+				const viData = await viRes.value.json();
+				mainTranslation = viData[0]?.[0]?.[0] || '';
+
+				if (viData[1]) {
+					viMeanings = viData[1].map((item: any) => ({
+						partOfSpeech: item[0],
+						definitions: item[1] || []
+					}));
+				} else if (mainTranslation) {
+					viMeanings = [{ partOfSpeech: "translation", definitions: [mainTranslation] }];
+				}
+			}
+
+			setDictData({
+				word: cleanWord,
+				ipa,
+				audioUrl,
+				mainTranslation,
+				meanings: viMeanings,
+				notFound: !mainTranslation && viMeanings.length === 0
+			});
+
+		} catch (error) {
+			console.error("Lỗi API từ điển:", error);
+			setDictData({ word: cleanWord, ipa: '', audioUrl: '', mainTranslation: "", meanings: [], notFound: true });
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	// Hàm phát âm thanh dự phòng bằng Web Speech API của trình duyệt
+	const fallbackTTS = (text: string) => {
+		if (!text || !window.speechSynthesis) return;
+		const utterance = new SpeechSynthesisUtterance(text);
+		utterance.lang = 'en-US';
+		window.speechSynthesis.speak(utterance);
+	};
+
+	const playAudio = () => {
+		if (dictData?.audioUrl) {
+			// Thử phát audio chuẩn từ Free Dictionary API
+			const audio = new Audio(dictData.audioUrl);
+			audio.play().catch(() => {
+				// Nếu trình duyệt chặn hoặc link chết, dùng giọng đọc mặc định của trình duyệt
+				fallbackTTS(dictData.word);
+			});
+		} else if (dictData?.word) {
+			fallbackTTS(dictData.word);
+		}
+	};
+
+	const handleClosePopover = () => {
+		if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+
+		setAnchorEl(null);
+	};
+
+
+	const openPopover = Boolean(anchorEl);
+
 	return (
 		<>
 			{isAudioSource && <audio ref={audioRef} src={shadowingData.audioUrl} preload="metadata" />}
@@ -678,8 +793,16 @@ export default function RightContent({
 
 						<div className="mb-6 space-y-3">
 							{showSentence ? (
-								<h2 className="text-xl md:text-2xl font-medium text-gray-800">
-									{activeTranscriptData?.text}
+								<h2 className="text-xl md:text-2xl font-medium text-gray-800 flex flex-wrap gap-x-[5px] gap-y-1">
+									{activeTranscriptData?.text?.split(' ').map((word, idx) => (
+										<span
+											key={idx}
+											onClick={(e) => handleWordClick(e, word)}
+											className="cursor-pointer hover:bg-blue-100 hover:text-blue-600 rounded px-[2px] transition-colors"
+										>
+											{word}
+										</span>
+									))}
 								</h2>
 							) : (
 								<div className="flex flex-wrap gap-2 py-2">
@@ -869,6 +992,93 @@ export default function RightContent({
 
 				</div>
 			</div>
+			<Popover
+				open={openPopover}
+				anchorEl={anchorEl}
+				onClose={handleClosePopover}
+				disableRestoreFocus
+				anchorOrigin={{
+					vertical: 'bottom',
+					horizontal: 'left',
+				}}
+				transformOrigin={{
+					vertical: 'top',
+					horizontal: 'left',
+				}}
+				PaperProps={{
+					sx: { width: 320, p: 2, borderRadius: 2, mt: 1, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb' }
+				}}
+			>
+				{loading ? (
+					<Box display="flex" justifyContent="center" p={3}>
+						<CircularProgress size={24} />
+					</Box>
+				) : dictData?.notFound ? (
+					<Typography color="text.secondary" variant="body2" align="center">
+						Không tìm thấy nghĩa cho "{dictData.word}".
+					</Typography>
+				) : dictData ? (
+					<Box>
+						{/* Header: Word + Actions */}
+						<Box display="flex" alignItems="center" justifyContent="space-between" mb={1.5}>
+							<Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+								<Typography variant="h6" fontWeight="bold" sx={{ color: '#0f172a' }}>
+									{dictData.word}
+								</Typography>
+
+								{/* --- IPA --- */}
+								{dictData.ipa && (
+									<Typography variant="body2" sx={{ color: '#64748b', fontFamily: 'monospace', ml: 1 }}>
+										{dictData.ipa}
+									</Typography>
+								)}
+								<IconButton size="small" onClick={playAudio} sx={{ color: '#64748b', '&:hover': { bgcolor: '#f1f5f9', color: '#0f172a' } }}>
+									<VolumeUpOutlinedIcon fontSize="small" />
+								</IconButton>
+							</Box>
+							<Box display="flex" gap={0.5}>
+								<IconButton size="small" sx={{ color: '#64748b', '&:hover': { bgcolor: '#f1f5f9', color: '#0f172a' } }}>
+									<StarBorderIcon sx={{ fontSize: 18 }} />
+								</IconButton>
+								<IconButton size="small" sx={{ color: '#64748b', '&:hover': { bgcolor: '#f1f5f9', color: '#0f172a' } }}>
+									<MenuBookIcon sx={{ fontSize: 18 }} />
+								</IconButton>
+							</Box>
+						</Box>
+
+						<Divider sx={{ mb: 1.5, borderColor: '#f1f5f9' }} />
+
+						{/* List Meanings */}
+						<Box sx={{ maxHeight: 220, overflowY: 'auto', pr: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+							{dictData.meanings.map((meaning, mIdx) => (
+								<Box key={mIdx}>
+									{meaning.partOfSpeech !== 'translation' && (
+										<Typography
+											variant="caption"
+											sx={{ display: 'inline-block', px: 1, py: 0.25, bgcolor: '#f1f5f9', color: '#64748b', borderRadius: 1, mb: 1, fontWeight: 600, fontSize: '10px' }}
+										>
+											{meaning.partOfSpeech}
+										</Typography>
+									)}
+									<Box display="flex" flexDirection="column" gap={0.5}>
+										{/* Lấy tối đa 3 nghĩa đầu tiên cho mỗi loại từ để đỡ rối */}
+										{meaning.definitions.slice(0, 3).map((def, dIdx) => (
+											<Box key={dIdx} display="flex" alignItems="center" gap={1}>
+												<Typography variant="body2" sx={{ fontWeight: 600, fontStyle: 'italic', color: '#3b82f6', mt: '2px', opacity: 0.8 }}>
+													{meaning.partOfSpeech !== 'translation' ? meaning.partOfSpeech : 'vi'}
+												</Typography>
+												<Typography variant="body2" sx={{ color: '#334155', fontWeight: 500, lineHeight: 1.4 }}>
+													{def}
+												</Typography>
+											</Box>
+										))}
+									</Box>
+								</Box>
+							))}
+						</Box>
+					</Box>
+				) : null}
+			</Popover>
 		</>
 	);
 }

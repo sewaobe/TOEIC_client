@@ -17,7 +17,7 @@ import {
 	AccessTime as Clock,
 	Share as Share2,
 } from '@mui/icons-material';
-import { active } from 'd3';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ActiveTranscriptData {
 	text: string;
@@ -72,6 +72,13 @@ interface RightContentProps {
 const SPEED_OPTIONS = ['0.5x', '0.75x', '1x', '1.25x', '1.5x'];
 
 const FEEDBACK_WORDS = [
+	{ word: 'faced', correct: false },
+	{ word: 'with', correct: false },
+	{ word: 'the', correct: false },
+	{ word: 'realities', correct: false },
+	{ word: 'of', correct: false },
+	{ word: 'current', correct: false },
+	{ word: 'crises', correct: false },
 	{ word: 'faced', correct: false },
 	{ word: 'with', correct: false },
 	{ word: 'the', correct: false },
@@ -655,7 +662,7 @@ export default function RightContent({
 					</div>
 
 					{/* Main Sentence Card */}
-					<div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6 mb-6">
+					<div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6 mb-6 transition-all duration-300">
 
 						<div className="flex flex-wrap justify-end gap-2 md:gap-4 mb-4 text-xs font-medium">
 							<button onClick={onToggleShowSentence} className={`flex items-center gap-1 transition-colors ${showSentence ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
@@ -702,92 +709,122 @@ export default function RightContent({
 							)}
 						</div>
 
-						{appState === 'idle' && (
-							<div
-								onClick={onStartRecording}
-								className="bg-blue-50/60 border border-blue-100 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition-colors group"
-							>
-								<div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-3 group-hover:scale-105 transition-transform shadow-sm">
-									<Mic className="w-8 h-8" />
-								</div>
-								<h3 className="text-lg font-medium text-gray-800">Click to start recording</h3>
-								<p className="text-sm text-gray-500">(Max 30 seconds)</p>
-							</div>
-						)}
+						<motion.div layout className="flex flex-col justify-center w-full overflow-hidden">
 
-						{appState === 'recording' && (
-							<div className="py-12 flex flex-col items-center justify-center">
-								<div className="relative mb-6">
-									<div className="absolute inset-0 bg-gray-200 rounded-full animate-ping opacity-50 scale-150"></div>
-									<button
-										onClick={onStopRecording}
-										className="relative w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center shadow-lg hover:bg-black transition-colors"
+							{/* AnimatePresence mode="wait" giúp state cũ mờ đi hẳn rồi state mới mới hiện ra */}
+							<AnimatePresence mode="wait">
+
+								{appState === 'idle' && (
+									<motion.div
+										key="idle"
+										initial={{ opacity: 0, y: 10 }}
+										animate={{ opacity: 1, y: 0 }}
+										exit={{ opacity: 0, y: -10 }}
+										transition={{ duration: 0.2 }}
+										className="w-full flex justify-center"
 									>
-										<Square className="w-6 h-6 text-white fill-white rounded-sm" />
-									</button>
-								</div>
-								<div className="flex flex-col items-center w-64">
-									<div className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-2">
-										<div className="w-2 h-2 bg-gray-600 rounded-full animate-pulse"></div>
-										{recordTimer}s / 30s
-									</div>
-									<div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
 										<div
-											className="h-full bg-gray-600 transition-all duration-1000 ease-linear"
-											style={{ width: `${(recordTimer / 30) * 100}%` }}
-										></div>
-									</div>
-								</div>
-							</div>
-						)}
-
-						{appState === 'feedback' && (
-							<div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-								<div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-3">
-									<BarChart2 className="w-4 h-4" /> 0/{wordCount} words correct
-								</div>
-
-								<div className="bg-gray-50 rounded-xl p-4 border border-gray-100 mb-4">
-									<span className="text-sm text-gray-500 mb-3 block">You said:</span>
-									<div className="flex items-center gap-4">
-										<button className="text-gray-800"><Play className="w-5 h-5 fill-current" /></button>
-										<span className="text-sm font-medium w-10">0:00</span>
-										<div className="flex-1 h-1.5 bg-gray-200 rounded-full relative cursor-pointer">
-											<div className="absolute top-1/2 -translate-y-1/2 left-[30%] w-3 h-3 bg-gray-800 rounded-full"></div>
-											<div className="h-full bg-gray-800 rounded-full w-[30%]"></div>
+											onClick={onStartRecording}
+											// Thêm h-56 và bỏ p-8. Flexbox sẽ tự động căn giữa nội dung
+											className="w-full h-56 bg-blue-50/60 border border-blue-100 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition-colors group"
+										>
+											<div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-3 group-hover:scale-105 transition-transform shadow-sm">
+												<Mic className="w-8 h-8" />
+											</div>
+											<h3 className="text-lg font-medium text-gray-800">Click to start recording</h3>
+											<p className="text-sm text-gray-500">(Max 30 seconds)</p>
 										</div>
-										<button className="text-gray-500"><Volume2 className="w-5 h-5" /></button>
-									</div>
-								</div>
+									</motion.div>
+								)}
 
-								<div className="flex flex-wrap gap-2 mb-6">
-									{FEEDBACK_WORDS.slice(0, wordCount).map((item, idx) => (
-										<div key={idx} className="bg-red-50 text-red-500 border border-red-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5">
-											{item.word} <span className="text-xs">x</span>
+								{appState === 'recording' && (
+									<motion.div
+										key="recording"
+										initial={{ opacity: 0, scale: 0.95 }}
+										animate={{ opacity: 1, scale: 1 }}
+										exit={{ opacity: 0, scale: 0.95 }}
+										transition={{ duration: 0.2 }}
+										// Thêm h-56 và bỏ py-8 để chiều cao khớp 100% với box Idle ở trên
+										className="h-56 flex flex-col items-center justify-center w-full"
+									>
+										<div className="relative mb-4">
+											<div className="absolute inset-0 bg-gray-200 rounded-full animate-ping opacity-50 scale-150"></div>
+											<button
+												onClick={onStopRecording}
+												className="relative w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center shadow-lg hover:bg-black transition-colors"
+											>
+												<Square className="w-6 h-6 text-white fill-white rounded-sm" />
+											</button>
 										</div>
-									))}
-								</div>
+										<div className="flex flex-col items-center w-64">
+											<div className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-2">
+												<div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
+												{recordTimer}s / 30s
+											</div>
+											<div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+												<div
+													className="h-full bg-gray-600 transition-all duration-1000 ease-linear"
+													style={{ width: `${(recordTimer / 30) * 100}%` }}
+												></div>
+											</div>
+										</div>
+									</motion.div>
+								)}
 
-								<button className="w-full py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium rounded-xl flex items-center justify-center gap-2 transition-colors border border-indigo-100">
-									<Sparkles className="w-4 h-4" /> Ask AI for Pronunciation Feedback
-								</button>
-							</div>
-						)}
+								{appState === 'feedback' && (
+									<motion.div
+										key="feedback"
+										initial={{ opacity: 0, y: 20 }}
+										animate={{ opacity: 1, y: 0 }}
+										exit={{ opacity: 0, y: -20 }}
+										transition={{ duration: 0.3 }}
+										className="w-full"
+									>
+										<div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-3">
+											<BarChart2 className="w-4 h-4" /> 0/{wordCount} words correct
+										</div>
+
+										<div className="bg-gray-50 rounded-xl p-4 border border-gray-100 mb-4">
+											<span className="text-sm text-gray-500 mb-3 block">You said:</span>
+											<div className="flex items-center gap-4">
+												<button className="text-gray-800"><Play className="w-5 h-5 fill-current" /></button>
+												<span className="text-sm font-medium w-10">0:00</span>
+												<div className="flex-1 h-1.5 bg-gray-200 rounded-full relative cursor-pointer">
+													<div className="absolute top-1/2 -translate-y-1/2 left-[30%] w-3 h-3 bg-gray-800 rounded-full"></div>
+													<div className="h-full bg-gray-800 rounded-full w-[30%]"></div>
+												</div>
+												<button className="text-gray-500"><Volume2 className="w-5 h-5" /></button>
+											</div>
+										</div>
+
+										<div className="flex flex-wrap gap-2 mb-6">
+											{FEEDBACK_WORDS.slice(0, wordCount).map((item, idx) => (
+												<div key={idx} className="bg-red-50 text-red-500 border border-red-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5">
+													{item.word} <span className="text-xs">x</span>
+												</div>
+											))}
+										</div>
+
+										<button className="w-full py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium rounded-xl flex items-center justify-center gap-2 transition-colors border border-indigo-100">
+											<Sparkles className="w-4 h-4" /> Ask AI for Pronunciation Feedback
+										</button>
+									</motion.div>
+								)}
+							</AnimatePresence>
+						</motion.div>
 					</div>
 
 					{/* Bottom Controls Area */}
-					{appState === 'idle' && (
-						<div className="mb-6">
-							<p className="text-sm text-gray-500 mb-3 font-medium">Listen and repeat the sentence above</p>
-							<div className="flex flex-wrap gap-2">
-								{wordPattern.map((length, idx) => (
-									<div key={idx} className="px-3 md:px-4 py-1.5 md:py-2 bg-gray-100 rounded-lg text-gray-400 font-bold tracking-[0.2em] text-base md:text-lg">
-										{'.'.repeat(length)}
-									</div>
-								))}
-							</div>
+					<div className="mb-6">
+						<p className="text-sm text-gray-500 mb-3 font-medium">Listen and repeat the sentence above</p>
+						<div className="flex flex-wrap gap-2">
+							{wordPattern.map((length, idx) => (
+								<div key={idx} className="px-2 md:px-3 py-1 md:py-1.5 bg-gray-100 rounded-lg text-gray-400 font-bold tracking-[0.2em] text-base md:text-lg">
+									{'.'.repeat(length)}
+								</div>
+							))}
 						</div>
-					)}
+					</div>
 
 					{/* Playback Controls & Next Button */}
 					<div className="flex flex-col-reverse sm:flex-row justify-between items-center mt-6 md:mt-8 gap-6 sm:gap-0">

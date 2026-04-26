@@ -264,6 +264,11 @@ export default function PracticeShadowingV2Page() {
     }
   }
 
+  const handleSelectedTranscriptTab = (transcriptId: number) => {
+    setAppState('idle');
+    setActiveTranscriptId(transcriptId);
+  }
+
   const toggleVideoPlayback = () => {
     setIsVideoPlaying(!isVideoPlaying);
   };
@@ -319,7 +324,7 @@ export default function PracticeShadowingV2Page() {
             onBack={handleBack}
             onSetMediaMode={setMediaMode}
             onSetActiveTab={setActiveTab}
-            onSetActiveTranscriptId={setActiveTranscriptId}
+            onSetActiveTranscriptId={handleSelectedTranscriptTab}
           />
 
           <RightContent

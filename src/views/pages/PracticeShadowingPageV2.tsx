@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Autorenew as Loader2,
 } from '@mui/icons-material';
@@ -22,7 +22,7 @@ interface ShadowingData {
   title: string;
   level: string;
   part_type: number;
-  source_type: "audio" | "youtube";
+  source_type?: 'audio' | 'youtube';
   status: string;
   transcript: string;
   audio_url: string;
@@ -165,6 +165,9 @@ export default function PracticeShadowingV2Page() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isCompactHeight, setIsCompactHeight] = useState<boolean>(false);
 
+  const normalizedSourceType = shadowingData?.source_type || 'audio';
+  const canUseVideo = normalizedSourceType === 'youtube';
+
   useEffect(() => {
     const updateCompactMode = () => {
       setIsCompactHeight(window.innerHeight <= 700);
@@ -177,13 +180,22 @@ export default function PracticeShadowingV2Page() {
 
   useEffect(() => {
     fetchShadowingData().then((data) => {
-      setShadowingData(data);
+      setShadowingData({
+        ...data,
+        source_type: data.source_type || 'audio',
+      });
       if (data.timings.length > 0) {
         setActiveTranscriptId(1);
       }
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    if (!canUseVideo && mediaMode === 'video') {
+      setMediaMode('audio');
+    }
+  }, [canUseVideo, mediaMode]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
@@ -238,6 +250,20 @@ export default function PracticeShadowingV2Page() {
     }
   };
 
+  const handlePrevious = () => {
+    setAppState('idle');
+    if (!shadowingData) return;
+
+    const currentIndex = (activeTranscriptId || 1);
+    if (currentIndex === 1) return;
+
+    if (currentIndex >= 2 && currentIndex <= shadowingData.timings.length) {
+      setActiveTranscriptId(currentIndex - 1);
+    } else {
+      setActiveTranscriptId(1);
+    }
+  }
+
   const toggleVideoPlayback = () => {
     setIsVideoPlaying(!isVideoPlaying);
   };
@@ -283,6 +309,7 @@ export default function PracticeShadowingV2Page() {
               transcript: transcriptSegments,
             }}
             mediaMode={mediaMode}
+            canUseVideo={canUseVideo}
             activeIndex={activeIndex}
             activeTranscriptId={activeTranscriptId}
             activeTab={activeTab}
@@ -297,15 +324,21 @@ export default function PracticeShadowingV2Page() {
 
           <RightContent
             activeIndex={activeIndex}
+            activeTranscriptId={activeTranscriptId}
             shadowingData={{
               title: shadowingData.title,
               audioUrl: shadowingData.audio_url,
-              sourceType: shadowingData.source_type,
+              sourceType: normalizedSourceType,
               level: shadowingData.level,
               duration: shadowingData.duration,
               segmentCount: transcriptSegments.length,
             }}
             activeTranscriptData={activeTranscriptData}
+            transcriptTimings={transcriptSegments.map((segment) => ({
+              id: segment.id,
+              startTime: segment.startTime,
+              endTime: segment.endTime,
+            }))}
             appState={appState}
             recordTimer={recordTimer}
             mediaMode={mediaMode}
@@ -319,8 +352,10 @@ export default function PracticeShadowingV2Page() {
             onToggleShowTranslation={() => setShowTranslation(!showTranslation)}
             onStartRecording={handleStartRecording}
             onStopRecording={handleStopRecording}
+            onSetActiveTranscriptId={setActiveTranscriptId}
             onToggleVideoPlayback={toggleVideoPlayback}
             onHandleNext={handleNext}
+            onHandlePrevious={handlePrevious}
           />
         </main>
       </div>

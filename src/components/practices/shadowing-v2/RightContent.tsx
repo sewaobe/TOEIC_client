@@ -17,6 +17,7 @@ import {
 	AccessTime as Clock,
 	Share as Share2,
 } from '@mui/icons-material';
+import { active } from 'd3';
 
 interface ActiveTranscriptData {
 	text: string;
@@ -24,6 +25,12 @@ interface ActiveTranscriptData {
 	translationVi: string;
 	startTime?: number;
 	endTime?: number;
+}
+
+interface TimingSegment {
+	id: number;
+	startTime: number;
+	endTime: number;
 }
 
 interface ShadowingMediaData {
@@ -39,8 +46,10 @@ interface ShadowingMediaData {
 
 interface RightContentProps {
 	activeIndex: number;
+	activeTranscriptId: number | null;
 	shadowingData: ShadowingMediaData;
 	activeTranscriptData?: ActiveTranscriptData;
+	transcriptTimings: TimingSegment[];
 	appState: 'idle' | 'recording' | 'feedback';
 	recordTimer: number;
 	mediaMode: 'video' | 'audio';
@@ -54,8 +63,10 @@ interface RightContentProps {
 	onToggleShowTranslation: () => void;
 	onStartRecording: () => void;
 	onStopRecording: () => void;
+	onSetActiveTranscriptId: (id: number) => void;
 	onToggleVideoPlayback: () => void;
 	onHandleNext: () => void;
+	onHandlePrevious: () => void;
 }
 
 const SPEED_OPTIONS = ['0.5x', '0.75x', '1x', '1.25x', '1.5x'];
@@ -145,16 +156,32 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 	}, [isPlaying, isAnimating, numBars]);
 
 	return (
-		<div className="w-full h-full bg-[#f8f9fd] p-4 md:p-6 flex flex-col items-center justify-center shrink-0 relative z-30 transition-all duration-300">
+		<div className="w-full h-full bg-[#f8f9fd] flex flex-col items-center justify-center shrink-0 relative z-30 transition-all duration-300">
 			<div className="w-full max-w-[420px] bg-[#e0e4eb] rounded-2xl p-5 md:p-6 flex flex-col items-center justify-center shadow-sm border border-white/50">
 				<div className="text-center mb-3">
 					<span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Segment {activeIndex} of {segmentCount}</span>
 				</div>
 				<div className="flex justify-center mb-3">
-					<div className="flex items-center px-6 py-2 rounded-2xl bg-white/60 backdrop-blur-sm border border-white shadow-sm">
-						<span className="text-2xl md:text-3xl font-mono font-bold text-gray-900 tracking-wider">{formatTime(currentTime)}</span>
+					{/* 1. Thêm 'relative' vào container cha để làm mốc tọa độ cho con 'absolute' */}
+					<div className="relative flex items-center pl-6 pr-4 py-2 rounded-2xl bg-white/60 backdrop-blur-sm border border-white shadow-sm min-h-[52px]">
+
+						{/* 2. Dấu chấm đỏ, sử dụng positioning absolute */}
+						{isPlaying && (
+							<div className="absolute left-2 top-1/2 -translate-y-1/2 flex h-2.5 w-2.5 items-center justify-center">
+								{/* Hiệu ứng tỏa vòng tròn (Ping) */}
+								<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+								{/* Dấu chấm đỏ chính có đổ bóng nhẹ để trông "nổi" hơn */}
+								<span className="relative inline-flex h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+							</div>
+						)}
+
+						{/* 3. Phần text thời gian */}
+						<span className="text-xl md:text-2xl font-mono font-bold text-gray-900 tracking-wider w-full text-center">
+							{formatTime(currentTime)}
+						</span>
 					</div>
 				</div>
+
 				<div className="flex items-center justify-center gap-1.5 h-14 w-full mb-3 opacity-40">
 					{baseHeights.map((base, idx) => {
 						let currentHeight = 8;
@@ -187,7 +214,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 						onClick={onTogglePlayback}
 						className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-all hover:scale-105 active:scale-95 bg-gray-900 text-white hover:bg-black w-14 h-14 md:w-16 md:h-16 rounded-full shadow-lg mx-1"
 					>
-						{isPlaying ? <Pause className="w-6 h-6 md:w-7 md:h-7" aria-hidden="true" /> : <Play className="w-6 h-6 md:w-7 md:h-7 ml-1" aria-hidden="true" />}
+						{isPlaying ? <Pause className="w-6 h-6 md:w-7 md:h-7" aria-hidden="true" /> : <Play className="w-6 h-6 md:w-7 md:h-7" aria-hidden="true" />}
 					</button>
 					<button onClick={onRotateCw} className="inline-flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full text-gray-500 hover:text-gray-900 hover:bg-white/60 active:bg-white active:scale-95 transition-all">
 						<RotateCw className="w-4 h-4 md:w-5 md:h-5" aria-hidden="true" />
@@ -209,7 +236,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 						))}
 					</div>
 				</div>
-				<div className="mt-3 w-full px-2">
+				<div className="mt-3 w-full px-2 hidden">
 					<input
 						type="range"
 						min={0}
@@ -231,8 +258,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
 export default function RightContent({
 	activeIndex,
+	activeTranscriptId,
 	shadowingData,
 	activeTranscriptData,
+	transcriptTimings,
 	appState,
 	recordTimer,
 	mediaMode,
@@ -246,18 +275,22 @@ export default function RightContent({
 	onToggleShowTranslation,
 	onStartRecording,
 	onStopRecording,
+	onSetActiveTranscriptId,
 	onToggleVideoPlayback,
 	onHandleNext,
+	onHandlePrevious
 }: RightContentProps) {
 	const wordPattern = activeTranscriptData ? getWordPattern(activeTranscriptData.text) : [];
 	const wordCount = wordPattern.length;
 	const tagName = shadowingData.level || 'Audio';
 	const hasVideoSource = shadowingData.sourceType === 'youtube' && Boolean(shadowingData.videoSourceId);
 	const isAudioSource = shadowingData.sourceType === 'audio';
+	const [currentSpeed, setCurrentSpeed] = useState('1x');
 	const audioRef = useRef<HTMLAudioElement>(null);
 	const [audioCurrentTime, setAudioCurrentTime] = useState(0);
 	const [audioDuration, setAudioDuration] = useState(shadowingData.duration || 0);
-	const [currentSpeed, setCurrentSpeed] = useState('1x');
+	const hasMountedSegmentRef = useRef(false);
+	const previousSegmentIdRef = useRef<number | null>(null);
 	const mediaContainerStyle = mediaMode === 'video'
 		? {
 			height: 'clamp(375px, 46vh, 520px)',
@@ -272,13 +305,48 @@ export default function RightContent({
 		const audio = audioRef.current;
 		if (!audio || !isAudioSource) return;
 
-		const handleTimeUpdate = () => setAudioCurrentTime(audio.currentTime || 0);
+		const handleTimeUpdate = () => {
+			const current = audio.currentTime || 0;
+			setAudioCurrentTime(current);
+
+			const segmentEnd = activeTranscriptData?.endTime;
+			if (typeof segmentEnd === 'number' && current >= segmentEnd) {
+				audio.currentTime = segmentEnd;
+				setAudioCurrentTime(segmentEnd);
+				audio.pause();
+				if (isVideoPlaying) {
+					onToggleVideoPlayback();
+				}
+				return;
+			}
+
+			if (transcriptTimings.length === 0) return;
+
+			const segmentIndexByTime = transcriptTimings.findIndex(
+				(segment) => current >= segment.startTime && current < segment.endTime,
+			);
+
+			if (segmentIndexByTime >= 0) {
+				const segmentByTime = transcriptTimings[segmentIndexByTime];
+				if (segmentByTime.id !== activeTranscriptId) {
+					onSetActiveTranscriptId(segmentByTime.id);
+				}
+			}
+
+			const currentSegmentIndex = activeTranscriptId
+				? transcriptTimings.findIndex((segment) => segment.id === activeTranscriptId)
+				: segmentIndexByTime;
+
+			if (currentSegmentIndex < 0) return;
+		};
 		const handleLoadedMetadata = () => {
 			setAudioDuration(audio.duration || shadowingData.duration || 0);
 		};
 		const handleEnded = () => {
 			setAudioCurrentTime(audio.duration || 0);
-			onHandleNext();
+			if (isVideoPlaying) {
+				onToggleVideoPlayback();
+			}
 		};
 
 		audio.addEventListener('timeupdate', handleTimeUpdate);
@@ -290,7 +358,16 @@ export default function RightContent({
 			audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
 			audio.removeEventListener('ended', handleEnded);
 		};
-	}, [isAudioSource, onHandleNext, shadowingData.duration]);
+	}, [
+		activeTranscriptId,
+		activeTranscriptData?.endTime,
+		isAudioSource,
+		isVideoPlaying,
+		onSetActiveTranscriptId,
+		onToggleVideoPlayback,
+		shadowingData.duration,
+		transcriptTimings,
+	]);
 
 	useEffect(() => {
 		if (!isAudioSource) return;
@@ -302,31 +379,102 @@ export default function RightContent({
 	}, [currentSpeed, isAudioSource]);
 
 	useEffect(() => {
-		if (!isAudioSource) return;
-		const audio = audioRef.current;
-		if (!audio) return;
-
 		if (isVideoPlaying) {
-			const playPromise = audio.play();
-			if (playPromise && typeof playPromise.catch === 'function') {
-				playPromise.catch(() => {
-					// Ignore autoplay rejection and keep UI stable.
-				});
+			if (isAudioSource) {
+				const audio = audioRef.current;
+				if (!audio) return;
+				const playPromise = audio.play();
+				if (playPromise && typeof playPromise.catch === 'function') {
+					playPromise.catch(() => {
+						// Ignore autoplay rejection and keep UI stable.
+					});
+				}
 			}
-		} else {
+		} else if (isAudioSource) {
+			const audio = audioRef.current;
+			if (!audio) return;
 			audio.pause();
 		}
 	}, [isAudioSource, isVideoPlaying]);
 
 	useEffect(() => {
-		if (!isAudioSource) return;
-		const audio = audioRef.current;
-		if (!audio) return;
-
 		const nextTime = activeTranscriptData?.startTime ?? 0;
-		audio.currentTime = nextTime;
-		setAudioCurrentTime(nextTime);
-	}, [activeTranscriptData?.startTime, activeTranscriptData?.endTime, isAudioSource]);
+		const currentSegmentId = activeTranscriptId ?? null;
+		const isSegmentChanged = previousSegmentIdRef.current !== currentSegmentId;
+		if (!isSegmentChanged) return;
+
+		previousSegmentIdRef.current = currentSegmentId;
+
+		if (isAudioSource) {
+			const audio = audioRef.current;
+			if (!audio) return;
+			audio.currentTime = nextTime;
+			setAudioCurrentTime(nextTime);
+		} else if (hasVideoSource && iframeRef.current?.contentWindow) {
+			try {
+				iframeRef.current.contentWindow.postMessage(
+					JSON.stringify({ event: 'command', func: 'seekTo', args: [nextTime, true] }),
+					'*',
+				);
+			} catch (e) {
+				console.error('Iframe cross-origin block');
+			}
+		}
+
+		if (!hasMountedSegmentRef.current) {
+			hasMountedSegmentRef.current = true;
+			return;
+		}
+
+		if (!isVideoPlaying) {
+			onToggleVideoPlayback();
+		}
+	}, [
+		activeTranscriptId,
+		activeTranscriptData?.startTime,
+		hasVideoSource,
+		iframeRef,
+		isAudioSource,
+		isVideoPlaying,
+		onToggleVideoPlayback,
+	]);
+
+	useEffect(() => {
+		if (isAudioSource || !hasVideoSource || !isVideoPlaying || !activeTranscriptData) return;
+
+		const segmentStart = activeTranscriptData.startTime ?? 0;
+		const segmentEnd = activeTranscriptData.endTime ?? segmentStart;
+		const durationMs = Math.max((segmentEnd - segmentStart) * 1000, 0);
+		if (durationMs <= 0) return;
+
+		const timeoutId = setTimeout(() => {
+			if (iframeRef.current?.contentWindow) {
+				try {
+					iframeRef.current.contentWindow.postMessage(
+						JSON.stringify({ event: 'command', func: 'seekTo', args: [segmentEnd, true] }),
+						'*',
+					);
+				} catch (e) {
+					console.error('Iframe cross-origin block');
+				}
+			}
+
+			if (isVideoPlaying) {
+				onToggleVideoPlayback();
+			}
+		}, durationMs);
+
+		return () => clearTimeout(timeoutId);
+	}, [
+		activeTranscriptData,
+		activeTranscriptId,
+		hasVideoSource,
+		isAudioSource,
+		isVideoPlaying,
+		onSetActiveTranscriptId,
+		onToggleVideoPlayback,
+		transcriptTimings,
+	]);
 
 	const handleSeekAudio = (time: number) => {
 		if (!isAudioSource) return;
@@ -334,6 +482,80 @@ export default function RightContent({
 		if (!audio) return;
 		audio.currentTime = time;
 		setAudioCurrentTime(time);
+	};
+
+	const handleToggleMediaPlayBack = () => {
+		// Kiểm tra an toàn dữ liệu đầu vào
+		if (
+			!activeTranscriptData ||
+			typeof activeTranscriptData.endTime !== 'number' ||
+			typeof activeTranscriptData.startTime !== 'number'
+		) {
+			onToggleVideoPlayback();
+			return;
+		}
+
+		// Lấy thời gian hiện tại trực tiếp từ audio element (nếu là audio) để chính xác nhất
+		const currentTime = isAudioSource && audioRef.current
+			? audioRef.current.currentTime
+			: audioCurrentTime;
+
+		// Dùng >= để đảm bảo bắt đúng logic kết thúc segment
+		if (currentTime >= activeTranscriptData.endTime) {
+
+			if (isAudioSource && audioRef.current) {
+				// Cập nhật trực tiếp currentTime của Audio DOM Node
+				audioRef.current.currentTime = activeTranscriptData.startTime;
+			} else if (hasVideoSource && iframeRef.current?.contentWindow) {
+				// Tua lại đối với Youtube Iframe
+				try {
+					iframeRef.current.contentWindow.postMessage(
+						JSON.stringify({ event: 'command', func: 'seekTo', args: [activeTranscriptData.startTime, true] }),
+						'*',
+					);
+				} catch (e) {
+					console.error('Iframe cross-origin block');
+				}
+			}
+
+			// Cập nhật lại React state
+			setAudioCurrentTime(activeTranscriptData.startTime);
+		}
+
+		// Kích hoạt play/pause
+		onToggleVideoPlayback();
+	};
+
+	const handleToggleMediaRotate = () => {
+		// Kiểm tra an toàn dữ liệu đầu vào
+		if (
+			!activeTranscriptData ||
+			typeof activeTranscriptData.endTime !== 'number' ||
+			typeof activeTranscriptData.startTime !== 'number'
+		) {
+			return;
+		}
+
+		if (isAudioSource && audioRef.current) {
+			// Cập nhật trực tiếp currentTime của Audio DOM Node
+			audioRef.current.currentTime = activeTranscriptData.startTime;
+		} else if (hasVideoSource && iframeRef.current?.contentWindow) {
+			// Tua lại đối với Youtube Iframe
+			try {
+				iframeRef.current.contentWindow.postMessage(
+					JSON.stringify({ event: 'command', func: 'seekTo', args: [activeTranscriptData.startTime, true] }),
+					'*',
+				);
+			} catch (e) {
+				console.error('Iframe cross-origin block');
+			}
+		}
+
+		// Cập nhật lại React state
+		setAudioCurrentTime(activeTranscriptData.startTime);
+
+		// Kích hoạt play
+		if (!isVideoPlaying) onToggleVideoPlayback();
 	};
 
 	return (
@@ -357,8 +579,11 @@ export default function RightContent({
 							currentSpeed={currentSpeed}
 							onSeek={handleSeekAudio}
 							onSpeedChange={setCurrentSpeed}
-							onTogglePlayback={onToggleVideoPlayback}
+							onTogglePlayback={handleToggleMediaPlayBack}
 							onSkipForward={onHandleNext}
+							onSkipBack={onHandlePrevious}
+							onRotateCcw={handleToggleMediaRotate}
+							onRotateCw={handleToggleMediaRotate}
 						/>
 					)}
 
@@ -569,11 +794,11 @@ export default function RightContent({
 						<div className="hidden sm:block w-24"></div>
 
 						<div className="flex flex-wrap justify-center items-center gap-3 md:gap-4">
-							<button className="text-gray-400 hover:text-gray-600"><SkipBack className="w-4 h-4 md:w-5 md:h-5" /></button>
-							<button className="text-gray-400 hover:text-gray-600"><RotateCcw className="w-4 h-4 md:w-5 md:h-5" /></button>
+							<button onClick={onHandlePrevious} className="text-gray-400 hover:text-gray-600"><SkipBack className="w-4 h-4 md:w-5 md:h-5" /></button>
+							<button onClick={handleToggleMediaRotate} className="text-gray-400 hover:text-gray-600"><RotateCcw className="w-4 h-4 md:w-5 md:h-5" /></button>
 
 							<button
-								onClick={onToggleVideoPlayback}
+								onClick={handleToggleMediaPlayBack}
 								className="w-10 h-10 md:w-12 md:h-12 bg-gray-900 rounded-xl flex items-center justify-center shadow-md hover:bg-black transition-colors shrink-0"
 							>
 								{isVideoPlaying ? (
@@ -587,7 +812,8 @@ export default function RightContent({
 								{SPEED_OPTIONS.map(speed => (
 									<button
 										key={speed}
-										className={`px-2 py-1 md:py-1.5 text-[10px] md:text-[11px] font-bold rounded-md transition-colors whitespace-nowrap ${speed === '1x' ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'
+										onClick={() => setCurrentSpeed(speed)}
+										className={`px-2 py-1 md:py-1.5 text-[10px] md:text-[11px] font-bold rounded-md transition-colors whitespace-nowrap ${speed === currentSpeed ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'
 											}`}
 									>
 										{speed}

@@ -34,6 +34,7 @@ interface Suggestion {
 interface SidebarProps {
 	shadowingData: ShadowingDataForSidebar;
 	mediaMode: 'video' | 'audio';
+	canUseVideo: boolean;
 	isCompactHeight: boolean;
 	activeIndex: number;
 	activeTranscriptId: number | null;
@@ -55,6 +56,7 @@ const getWordPattern = (text: string): number[] => {
 export default function Sidebar({
 	shadowingData,
 	mediaMode,
+	canUseVideo,
 	isCompactHeight,
 	activeIndex,
 	activeTranscriptId,
@@ -77,12 +79,14 @@ export default function Sidebar({
 						<ArrowLeft className="w-4 h-4 text-gray-700" />
 					</button>
 					<div className="flex bg-gray-100 p-1 rounded-lg">
-						<button
-							onClick={() => onSetMediaMode('video')}
-							className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${mediaMode === 'video' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:bg-gray-200'}`}
-						>
-							<Video className="w-3.5 h-3.5" /> Video
-						</button>
+						{canUseVideo && (
+							<button
+								onClick={() => onSetMediaMode('video')}
+								className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${mediaMode === 'video' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:bg-gray-200'}`}
+							>
+								<Video className="w-3.5 h-3.5" /> Video
+							</button>
+						)}
 						<button
 							onClick={() => onSetMediaMode('audio')}
 							className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${mediaMode === 'audio' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:bg-gray-200'}`}

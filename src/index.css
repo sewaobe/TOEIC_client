@@ -83,4 +83,24 @@ input[type='password']::-ms-clear {
 .no-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome, Safari and Opera */
 }
- 
+
+@keyframes floatAndRotate {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  27% {
+    transform: translateY(-6px) rotate(-10deg);
+  } /* Đỉnh điểm chuyển động */
+  54% {
+    transform: translateY(0) rotate(0deg);
+  } /* Kết thúc chuyển động */
+  100% {
+    transform: translateY(0) rotate(0deg);
+  } /* Nghỉ 2s (từ 54% đến 100%) */
+}
+
+.animate-school-icon {
+  display: inline-block;
+  /* Dùng ease-in-out cho mượt, thời gian tổng là 4.4s */
+  animation: floatAndRotate 4.4s ease-in-out infinite;
+}

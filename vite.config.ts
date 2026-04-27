@@ -14,43 +14,43 @@ export default defineConfig(({ mode }) => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            react: ["react", "react-dom", "react-router-dom"],
+          // manualChunks: {
+          //   react: ["react", "react-dom", "react-router-dom"],
 
-            mui: [
-              "@mui/material",
-              "@mui/icons-material",
-              "@emotion/react",
-              "@emotion/styled"
-            ],
+          //   mui: [
+          //     "@mui/material",
+          //     "@mui/icons-material",
+          //     "@emotion/react",
+          //     "@emotion/styled"
+          //   ],
 
-            charts: [
-              "recharts",
-              "d3",
-              "@mui/x-charts"
-            ],
+          // charts: [
+          //   "recharts",
+          //   "d3",
+          //   "@mui/x-charts"
+          // ],
 
-            editor: [
-              "@milkdown/crepe",
-              "@milkdown/react",
-              "@milkdown/kit",
-              "react-quill",
-              "quill",
-              "@uiw/react-md-editor"
-            ],
+          // editor: [
+          //   "@milkdown/crepe",
+          //   "@milkdown/react",
+          //   "@milkdown/kit",
+          //   "react-quill",
+          //   "quill",
+          //   "@uiw/react-md-editor"
+          // ],
 
-            media: [
-              "video.js",
-              "videojs-youtube",
-              "lottie-web"
-            ],
+          //   media: [
+          //     "video.js",
+          //     "videojs-youtube",
+          //     "lottie-web"
+          //   ],
 
-            utils: [
-              "axios",
-              "zod",
-              "socket.io-client"
-            ]
-          }
+          //   utils: [
+          //     "axios",
+          //     "zod",
+          //     "socket.io-client"
+          //   ]
+          // }
         }
       }
     }

@@ -21,19 +21,23 @@ const Footer: FC = () => {
 
   // 2. Tự động kiểm tra sức khỏe Backend khi load trang
   useEffect(() => {
-    // Gọi vào một endpoint nhẹ nhất của Backend em
-    // Nếu chưa có /health, em có thể gọi vào một route public nào đó cũng được
-    fetch('https://api.toeic-smart.io.vn/api/healthy', { method: 'GET' })
-      .then((res) => {
+    const checkBackendHealth = async () => {
+      try {
+        const res = await fetch('https://api.toeic-smart.io.vn/api/healthy', {
+          method: 'GET',
+        });
+
         if (res.ok) {
           setSystemStatus('up');
         } else {
-          setSystemStatus('down'); // Lỗi 500, 404...
+          setSystemStatus('down');
         }
-      })
-      .catch(() => {
-        setSystemStatus('down'); // Chết sập nguồn (Network Error)
-      });
+      } catch (error) {
+        setSystemStatus('down');
+      }
+    };
+
+    checkBackendHealth();
   }, []);
 
   // 3. Cấu hình màu sắc theo trạng thái

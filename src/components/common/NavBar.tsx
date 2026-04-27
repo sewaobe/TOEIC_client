@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import {
   AppBar,
   Toolbar,
@@ -99,32 +98,15 @@ export default function Navbar() {
           {/* Logo + tên website */}
           <div className="flex items-center gap-2 select-none">
             {/* 🎓 Icon động */}
-            <motion.div
-              initial={{ y: 0, rotate: 0 }}
-              animate={{ y: [0, -6, 0], rotate: [0, -10, 0] }}
-              transition={{
-                duration: 2.4,
-                ease: "easeInOut",
-                repeat: Infinity,
-                repeatDelay: 2,
-              }}
-              whileHover={{ rotate: -15, scale: 1.1 }}
-              className="text-blue-600"
-            >
-              <SchoolIcon sx={{ fontSize: 36 }} />
-            </motion.div>
+            <div className="text-blue-600 animate-school-icon hover:rotate-[-15deg] hover:scale-110 transition-transform duration-300">
+              <SchoolIcon className="text-[36px]" />
+            </div>
 
             {/* 🌈 Chữ gradient */}
             <Typography
               variant="h6"
               component="div"
-              sx={{
-                fontWeight: "bold",
-                background: "linear-gradient(90deg, #2563eb, #06b6d4, #f97316)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                letterSpacing: 0.3,
-              }}
+              className="font-bold bg-gradient-to-r from-blue-600 via-cyan-500 to-orange-500 bg-clip-text text-transparent tracking-[0.3px]"
             >
               TOEIC Smart
             </Typography>
@@ -282,7 +264,6 @@ export default function Navbar() {
         anchor="right"
         open={mobileOpen}
         onClose={handleDrawerToggle}
-        ModalProps={{ keepMounted: true }}
       >
         <Box
           className="flex flex-col gap-4 p-6 w-64"

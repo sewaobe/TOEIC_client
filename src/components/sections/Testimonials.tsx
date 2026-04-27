@@ -102,6 +102,9 @@ const Testimonials: FC = () => {
       initial={{ opacity: 0, y: 60 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.8, ease: 'easeOut' }}
+      style={{
+        contain: 'content' // <-- Thêm dòng này để cách ly Layout Thrashing
+      }}
     >
       <Box sx={{ bgcolor: 'background.default', py: { xs: 8, md: 12 } }}>
         <Container maxWidth='lg'>

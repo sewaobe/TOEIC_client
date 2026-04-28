@@ -24,23 +24,6 @@ const keyBenefits = [
   },
 ];
 
-// Animation variants cho thanh lợi ích
-const benefitsContainerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      delayChildren: 0.5, // Bắt đầu animation sau khi text chính hiện ra
-      staggerChildren: 0.2, // Các item con xuất hiện nối đuôi nhau
-    },
-  },
-};
-
-const benefitItemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } },
-} as const;
-
 const Hero: FC = () => {
   const navigate = useNavigate();
   return (
@@ -65,37 +48,36 @@ const Hero: FC = () => {
     >
       <Container maxWidth='md' sx={{ position: 'relative', zIndex: 1 }}>
         <Typography
-          variant='h1'
-          component='h1'
-          fontWeight='bold'
-          textAlign='center'
-          sx={{
-            fontSize: { xs: '2.5rem', sm: '3.5rem' },
-            color: 'text.primary',
-          }}
-          className='text-title'
+          variant="h1"
+          component="h1"
+          className="text-center text-title !font-bold !text-[2.5rem] sm:!text-[3.5rem] !leading-[1.2] text-[#2563eb]"
         >
-          Chinh phục TOEIC với TOEIC Smart
+          Chinh phục TOEIC với
+          <br /> {/* Ép xuống dòng ngay sau chữ với */}
+          <span className="bg-gradient-to-r from-[#2563eb] via-[#3b82f6] to-[#6366f1] bg-clip-text text-transparent">
+            TOEIC Smart
+          </span>
         </Typography>
         {/* Keep motion for non-LCP elements to preserve UX polish without delaying title paint. */}
         <Stack
-          component={motion.div}
-          variants={benefitsContainerVariants}
-          initial='hidden'
-          animate='visible'
-          direction='row'
+          direction="row"
           spacing={{ xs: 2, sm: 4 }}
-          justifyContent='center'
-          sx={{ mt: 3, mb: 3 }} // Tạo khoảng cách với các nút bấm
+          justifyContent="center"
+          sx={{ mt: 3, mb: 3 }}
+          className="opacity-0 animate-fade-up" // Container cũng có thể animation nếu muốn
+          style={{ animationDelay: '0.5s' }}    // DelayChildren: 0.5s
         >
-          {keyBenefits.map((benefit) => (
+          {keyBenefits.map((benefit, index) => (
             <Stack
               key={benefit.text}
-              component={motion.div}
-              variants={benefitItemVariants}
-              direction='row'
-              alignItems='center'
+              direction="row"
+              alignItems="center"
               spacing={1}
+              className="opacity-0 animate-fade-up"
+              style={{
+                // StaggerChildren: 0.2s mỗi item
+                animationDelay: `${0.5 + (index * 0.2)}s`
+              }}
             >
               <benefit.Icon
                 sx={{ color: 'success.main', fontSize: '1.25rem' }}

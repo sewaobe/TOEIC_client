@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import lottie from 'lottie-web/build/player/lottie_light';
-import animationData from '../../assets/roadmap.json';
 
 const LottieAnimation: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -45,7 +44,7 @@ const LottieAnimation: React.FC = () => {
         renderer: 'svg',
         loop: false, // Giữ nguyên yêu cầu chạy 1 lần
         autoplay: true,
-        animationData,
+        path: '/animations/roadmap.json',
       });
 
       return () => {

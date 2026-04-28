@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  NotificationsNone,
-  Chat,
-  ErrorOutline,
-  Comment,
-  Info,
-} from "@mui/icons-material";
+import NotificationsNone from '@mui/icons-material/NotificationsNone';
+import Chat from '@mui/icons-material/Chat';
+import ErrorOutline from '@mui/icons-material/ErrorOutline';
+import Comment from '@mui/icons-material/Comment';
+import Info from '@mui/icons-material/Info';
+
 import {
   Badge,
   Popper,
@@ -304,8 +303,8 @@ export default function NotificationDropdown() {
                                 bgcolor: n.isRead
                                   ? "transparent"
                                   : theme.palette.mode === "light"
-                                  ? `${theme.palette.primary.main}1F` // màu primary nhạt (opacity 12%)
-                                  : `${theme.palette.primary.light}22`,
+                                    ? `${theme.palette.primary.main}1F` // màu primary nhạt (opacity 12%)
+                                    : `${theme.palette.primary.light}22`,
                                 "&:hover": {
                                   bgcolor: theme.palette.action.selected,
                                   transform: "translateY(-1px)",

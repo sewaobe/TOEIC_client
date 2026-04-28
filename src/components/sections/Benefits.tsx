@@ -1,14 +1,12 @@
 import { FC } from 'react';
 import { Box, Typography, Card } from '@mui/material';
-import { Benefit } from '../../models/Benefit';
+import { benefits } from '../../models/Benefit';
 import CardBenefit from '../cards/CardBenefit';
 import { FadeUp, SlideLeft, SlideRight } from '../animations/motionWrappers';
 
-interface BenefitsProps {
-  benefits: Benefit[];
-}
+interface BenefitsProps { }
 
-const Benefits: FC<BenefitsProps> = ({ benefits }) => {
+const Benefits: FC<BenefitsProps> = () => {
   return (
     <Box component='section' className='relative py-20 overflow-hidden'>
       <FadeUp>
@@ -29,7 +27,10 @@ const Benefits: FC<BenefitsProps> = ({ benefits }) => {
           <img
             src={benefits[0].image}
             alt={benefits[0].title}
-            className={`absolute object-contain bottom-0 right-[5%]`}
+            loading='lazy'
+            width={400}
+            height={300}
+            className="absolute bottom-0 right-[5%] object-contain w-auto h-[80%] max-w-[40%] aspect-[4/3]"
           />
 
           <div className='absolute top-6 left-8 w-[300px] sm:w-[300px] md:w-[600px] max-w-[80%]'>

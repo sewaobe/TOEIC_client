@@ -8,19 +8,31 @@ module.exports = {
     // ========================
 
     // BLUE
-    'bg-blue-50', 'bg-blue-100', 'bg-blue-500',
-    'text-blue-600', 'text-blue-700',
-    'border-blue-200', 'border-blue-500',
+    'bg-blue-50',
+    'bg-blue-100',
+    'bg-blue-500',
+    'text-blue-600',
+    'text-blue-700',
+    'border-blue-200',
+    'border-blue-500',
 
     // PURPLE
-    'bg-purple-50', 'bg-purple-100', 'bg-purple-500',
-    'text-purple-600', 'text-purple-700',
-    'border-purple-200', 'border-purple-500',
+    'bg-purple-50',
+    'bg-purple-100',
+    'bg-purple-500',
+    'text-purple-600',
+    'text-purple-700',
+    'border-purple-200',
+    'border-purple-500',
 
     // EMERALD
-    'bg-emerald-50', 'bg-emerald-100', 'bg-emerald-500',
-    'text-emerald-600', 'text-emerald-700',
-    'border-emerald-200', 'border-emerald-500',
+    'bg-emerald-50',
+    'bg-emerald-100',
+    'bg-emerald-500',
+    'text-emerald-600',
+    'text-emerald-700',
+    'border-emerald-200',
+    'border-emerald-500',
 
     // ORANGE
     'bg-orange-50',
@@ -65,6 +77,10 @@ module.exports = {
           '0%': { transform: 'translateY(100%)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
+        fadeUp: {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
 
       animation: {
@@ -72,6 +88,7 @@ module.exports = {
         'scroll-forward': 'scroll-forward 25s linear infinite',
         'scroll-reverse': 'scroll-reverse 25s linear infinite',
         'slide-up': 'slide-up 0.3s ease-out',
+        'fade-up': 'fadeUp 0.5s ease-out forwards',
       },
 
       // ========================

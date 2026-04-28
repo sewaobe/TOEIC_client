@@ -10,16 +10,12 @@ import {
   Box,
   Divider,
 } from "@mui/material";
-import {
-  Info,
-  Chat,
-  ErrorOutline,
-  Comment,
-  BugReport,
-  WarningAmber,
-  LibraryBooks,
-  NotificationsNone,
-} from "@mui/icons-material";
+import Info from '@mui/icons-material/Info';
+import Chat from '@mui/icons-material/Chat';
+import ErrorOutline from '@mui/icons-material/ErrorOutline';
+import Comment from '@mui/icons-material/Comment';
+import WarningAmber from '@mui/icons-material/WarningAmber';
+import NotificationsNone from '@mui/icons-material/NotificationsNone';
 import CloseIcon from "@mui/icons-material/Close";
 import { useTheme } from "@mui/material/styles";
 import { Notification } from "../../types/Notification";

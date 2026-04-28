@@ -1,4 +1,4 @@
-import React, { useState, forwardRef } from 'react';
+import React, { useState, forwardRef, useEffect, useCallback } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -13,14 +13,12 @@ import {
     Tooltip
 } from '@mui/material';
 import { TransitionProps } from '@mui/material/transitions';
-import {
-    Close as CloseIcon,
-    CheckCircle as CheckCircleIcon,
-    ContentCopy as ContentCopyIcon,
-    Sync as SyncIcon,
-    RadioButtonUnchecked as RadioButtonUncheckedIcon,
-    Check as CheckIcon
-} from '@mui/icons-material';
+import Close from '@mui/icons-material/Close';
+import CheckCircle from '@mui/icons-material/CheckCircle';
+import ContentCopy from '@mui/icons-material/ContentCopy';
+import Sync from '@mui/icons-material/Sync';
+import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked';
+import Check from '@mui/icons-material/Check';
 
 // ----------------------------------------------------------------------
 // Constants & Setup
@@ -121,7 +119,7 @@ const SmartCopyButton: React.FC<SmartCopyButtonProps> = ({ textToCopy, tooltipTe
                 size="small"
                 className={`transition-colors duration-200 ${copied ? 'text-green-500' : 'text-blue-500'}`}
             >
-                {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                {copied ? <Check fontSize="small" /> : <ContentCopy fontSize="small" />}
             </IconButton>
         </Tooltip>
     );
@@ -131,21 +129,55 @@ const SmartCopyButton: React.FC<SmartCopyButtonProps> = ({ textToCopy, tooltipTe
 // Component: AnnouncementModal
 // ----------------------------------------------------------------------
 
-interface AnnouncementModalProps {
-    open: boolean;
-    onClose: () => void;
-}
+interface AnnouncementModalProps { }
 
-const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ open, onClose }) => {
+type IdleWindow = Window & {
+    requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+    cancelIdleCallback?: (handle: number) => void;
+};
+
+const AnnouncementModal: React.FC<AnnouncementModalProps> = () => {
+    const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
+
+    useEffect(() => {
+        if (!import.meta.env.PROD) {
+            return;
+        }
+
+        const idleWindow = window as IdleWindow;
+        let timeoutId: number | null = null;
+        let idleHandle: number | null = null;
+
+        const openAnnouncement = () => {
+            setIsAnnouncementOpen(true);
+        };
+
+        if (idleWindow.requestIdleCallback) {
+            idleHandle = idleWindow.requestIdleCallback(openAnnouncement, {
+                timeout: 2500,
+            });
+        } else {
+            timeoutId = window.setTimeout(openAnnouncement, 1200);
+        }
+
+        return () => {
+            if (idleHandle !== null && idleWindow.cancelIdleCallback) {
+                idleWindow.cancelIdleCallback(idleHandle);
+            }
+            if (timeoutId !== null) {
+                window.clearTimeout(timeoutId);
+            }
+        };
+    }, []);
 
     const renderFeatureIcon = (status: FeatureStatus) => {
         switch (status) {
             case 'integrated':
-                return <CheckCircleIcon color="success" fontSize="small" className="mr-2 shrink-0" />;
+                return <CheckCircle color="success" fontSize="small" className="mr-2 shrink-0" />;
             case 'wip':
-                return <SyncIcon color="warning" fontSize="small" className="mr-2 shrink-0 animate-spin-slow" />;
+                return <Sync color="warning" fontSize="small" className="mr-2 shrink-0 animate-spin-slow" />;
             case 'pending':
-                return <RadioButtonUncheckedIcon sx={{ color: 'text.disabled' }} fontSize="small" className="mr-2 shrink-0" />;
+                return <RadioButtonUnchecked sx={{ color: 'text.disabled' }} fontSize="small" className="mr-2 shrink-0" />;
             default:
                 return null;
         }
@@ -172,10 +204,14 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ open, onClose }) 
         </Box>
     );
 
+    const handleClose = useCallback(() => {
+        setIsAnnouncementOpen(false);
+    }, [])
+
     return (
         <Dialog
-            open={open}
-            onClose={onClose}
+            open={isAnnouncementOpen}
+            onClose={handleClose}
             aria-labelledby="announcement-dialog-title"
             aria-describedby="announcement-dialog-description"
             TransitionComponent={Transition}
@@ -191,8 +227,8 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ open, onClose }) 
                 <Typography variant="h6" className="font-bold text-gray-800">
                     Thông Báo Dự Án Demo
                 </Typography>
-                <IconButton onClick={onClose} size="small" aria-label="close">
-                    <CloseIcon />
+                <IconButton onClick={handleClose} size="small" aria-label="close">
+                    <Close />
                 </IconButton>
             </DialogTitle>
 
@@ -211,13 +247,13 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ open, onClose }) 
                     {/* Legend (Chú thích) */}
                     <div className="flex flex-wrap items-center gap-4 bg-gray-50 p-2 rounded-md border border-gray-100 mb-2">
                         <div className="flex items-center text-xs text-gray-600">
-                            <CheckCircleIcon color="success" sx={{ fontSize: 16 }} className="mr-1" /> Đã tích hợp
+                            <CheckCircle color="success" sx={{ fontSize: 16 }} className="mr-1" /> Đã tích hợp
                         </div>
                         <div className="flex items-center text-xs text-gray-600">
-                            <SyncIcon color="warning" sx={{ fontSize: 16 }} className="mr-1" /> Đang phát triển
+                            <Sync color="warning" sx={{ fontSize: 16 }} className="mr-1" /> Đang phát triển
                         </div>
                         <div className="flex items-center text-xs text-gray-600">
-                            <RadioButtonUncheckedIcon sx={{ color: 'text.disabled', fontSize: 16 }} className="mr-1" /> Chưa tích hợp
+                            <RadioButtonUnchecked sx={{ color: 'text.disabled', fontSize: 16 }} className="mr-1" /> Chưa tích hợp
                         </div>
                     </div>
 
@@ -270,7 +306,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ open, onClose }) 
                 <Button
                     variant="contained"
                     color="primary"
-                    onClick={onClose}
+                    onClick={handleClose}
                     fullWidth
                     disableElevation
                     sx={{ py: 1.5, borderRadius: 2, fontWeight: 'bold' }}

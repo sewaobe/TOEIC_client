@@ -1,5 +1,5 @@
 import { lazy, ComponentType } from 'react';
-import LandingPage from '../../views/pages/LandingPage';
+const LandingPage = lazy(() => import('../../views/pages/LandingPage'));
 
 export interface AppRoute {
   path: string;
@@ -14,7 +14,7 @@ const ResetPasswordPage = lazy(() => import('../../views/pages/ResetPasswordPage
 const ExamPage = lazy(() => import('../../views/pages/TestPage'));
 const ExamDetailPage = lazy(() => import('../../views/pages/TestDetailPage'));
 const PlanWizardPage = lazy(() => import('../../views/pages/PlanWizardPage'));
-const DemoPage = lazy(() => import('../../views/pages/PracticeShadowingPageV2'));
+const DemoPage = lazy(() => import('../../views/pages/PracticeShadowingListPageV2'));
 
 const publicRoutes: AppRoute[] = [
   { path: "/", element: LandingPage },

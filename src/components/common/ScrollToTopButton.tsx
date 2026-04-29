@@ -1,4 +1,4 @@
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, useRef } from 'react';
 import { Fab, Zoom, useTheme } from '@mui/material';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
@@ -18,34 +18,43 @@ interface ScrollToTopButtonProps {
 
 const ScrollToTopButton: FC<ScrollToTopButtonProps> = ({
   scrollThreshold = 1000,
-  scrollContainerSelector = '.custom-scrollbar', // 🔹 default cho bạn
+  scrollContainerSelector = '.custom-scrollbar', // default cho bạn
 }) => {
   const theme = useTheme();
   const [isVisible, setIsVisible] = useState(false);
   const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
 
-  // ✅ Lấy reference đến container scroll
+  const ticking = useRef(false);
+
+  // Lấy reference đến container scroll
   useEffect(() => {
     const el = document.querySelector(scrollContainerSelector) as HTMLElement | null;
     setScrollEl(el);
   }, [scrollContainerSelector]);
 
-  // ✅ Lắng nghe sự kiện cuộn của container (hoặc window nếu không có)
+  // Lắng nghe sự kiện cuộn của container (hoặc window nếu không có)
   useEffect(() => {
     if (!scrollEl) return;
 
     const handleScroll = () => {
-      const scrollTop = scrollEl.scrollTop;
-      setIsVisible(scrollTop > scrollThreshold);
+      if (!ticking.current) {
+        requestAnimationFrame(() => {
+          const scrollTop = scrollEl.scrollTop;
+          setIsVisible(scrollTop > scrollThreshold);
+          ticking.current = false; // Reset lại cờ sau khi xử lý xong
+        });
+        ticking.current = true; // Đánh dấu là đang có một frame chờ xử lý
+      }
     };
 
-    scrollEl.addEventListener('scroll', handleScroll);
+    // Thêm { passive: true } để trình duyệt tối ưu việc cuộn
+    scrollEl.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       scrollEl.removeEventListener('scroll', handleScroll);
     };
   }, [scrollEl, scrollThreshold]);
 
-  // ✅ Cuộn container về đầu
+  // Cuộn container về đầu
   const scrollToTop = () => {
     if (scrollEl) {
       scrollEl.scrollTo({ top: 0, behavior: 'smooth' });

@@ -140,82 +140,86 @@ const Testimonials: FC = () => {
             </IconButton>
 
             {/* Swiper */}
-            <Swiper
-              modules={[Pagination, A11y, Autoplay]}
-              onSwiper={setSwiperInstance}
-              spaceBetween={16}
-              slidesPerView={1}
-              centeredSlides
-              loop={testimonialsData.length >= 4}
-              autoplay={{
-                delay: 500,
-                disableOnInteraction: false,
-                pauseOnMouseEnter: true,
-              }}
-              pagination={{ clickable: true }}
-              breakpoints={{
-                640: { slidesPerView: 2, spaceBetween: 20 },
-                1024: { slidesPerView: 3, spaceBetween: 30 },
-              }}
-              style={{ paddingBottom: '50px' }}
-            >
-              {testimonialsData.map((testimonial) => (
-                <SwiperSlide key={testimonial.name} style={{ height: 'auto' }}>
-                  {({ isActive }) => (
-                    <Card
-                      sx={{
-                        height: '100%',
-                        borderRadius: '16px',
-                        display: 'flex',
-                        transform: isActive ? 'scale(1.0)' : 'scale(0.9)',
-                        transition: 'transform 0.4s ease',
-                      }}
-                    >
-                      <CardContent
-                        sx={{ p: 4, display: 'flex', flexDirection: 'column' }}
+            {inView ? (
+              <Swiper
+                modules={[Pagination, A11y, Autoplay]}
+                onSwiper={setSwiperInstance}
+                spaceBetween={16}
+                slidesPerView={1}
+                centeredSlides
+                loop={testimonialsData.length >= 4}
+                autoplay={{
+                  delay: 1200,
+                  disableOnInteraction: false,
+                  pauseOnMouseEnter: true,
+                }}
+                pagination={{ clickable: true }}
+                breakpoints={{
+                  640: { slidesPerView: 2, spaceBetween: 20 },
+                  1024: { slidesPerView: 3, spaceBetween: 30 },
+                }}
+                style={{ paddingBottom: '50px', minHeight: 300 }}
+              >
+                {testimonialsData.map((testimonial) => (
+                  <SwiperSlide key={testimonial.name} style={{ minHeight: '250px' }}>
+                    {({ isActive }) => (
+                      <Card
+                        sx={{
+                          height: '100%',
+                          borderRadius: '16px',
+                          display: 'flex',
+                          transform: isActive ? 'scale(1.0)' : 'scale(0.9)',
+                          transition: 'transform 0.4s ease',
+                        }}
                       >
-                        <Stack spacing={3} sx={{ flexGrow: 1 }}>
-                          <Typography
-                            variant='body1'
-                            fontStyle='italic'
-                            color='text.secondary'
-                            sx={{ flexGrow: 1 }}
-                          >
-                            "{testimonial.quote}"
-                          </Typography>
-                          <Stack
-                            direction='row'
-                            spacing={2}
-                            alignItems='center'
-                          >
-                            <Avatar
-                              alt={testimonial.name}
-                              sx={{
-                                bgcolor: 'primary.main',
-                                fontWeight: 700,
-                              }}
+                        <CardContent
+                          sx={{ p: 4, display: 'flex', flexDirection: 'column' }}
+                        >
+                          <Stack spacing={3} sx={{ flexGrow: 1 }}>
+                            <Typography
+                              variant='body1'
+                              fontStyle='italic'
+                              color='text.secondary'
+                              sx={{ flexGrow: 1 }}
                             >
-                              {getAvatarLabel(testimonial.name)}
-                            </Avatar>
-                            <Box>
-                              <Typography fontWeight='600'>
-                                {testimonial.name}
-                              </Typography>
-                              <Typography
-                                variant='body2'
-                                color='text.secondary'
+                              "{testimonial.quote}"
+                            </Typography>
+                            <Stack
+                              direction='row'
+                              spacing={2}
+                              alignItems='center'
+                            >
+                              <Avatar
+                                alt={testimonial.name}
+                                sx={{
+                                  bgcolor: 'primary.main',
+                                  fontWeight: 700,
+                                }}
                               >
-                                {testimonial.title}
-                              </Typography>
-                            </Box>
+                                {getAvatarLabel(testimonial.name)}
+                              </Avatar>
+                              <Box>
+                                <Typography fontWeight='600'>
+                                  {testimonial.name}
+                                </Typography>
+                                <Typography
+                                  variant='body2'
+                                  color='text.secondary'
+                                >
+                                  {testimonial.title}
+                                </Typography>
+                              </Box>
+                            </Stack>
                           </Stack>
-                        </Stack>
-                      </CardContent>
-                    </Card>
-                  )}
-                </SwiperSlide>
-              ))}
-            </Swiper>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            ) : (
+              <div style={{ minHeight: 300 }} />
+            )}
 
             {/* Next button */}
             <IconButton

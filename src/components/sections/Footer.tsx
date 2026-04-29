@@ -21,7 +21,24 @@ const Footer: FC = () => {
 
   // 2. Tự động kiểm tra sức khỏe Backend khi load trang
   useEffect(() => {
+    let triggered = false;
+    const scrollEl = document.querySelector(".custom-scrollbar");
+
+    const onTrigger = () => {
+      void checkBackendHealth();
+    }
+    const cleanup = () => {
+      scrollEl?.removeEventListener('scroll', onTrigger);
+      window.removeEventListener('click', onTrigger);
+      window.removeEventListener('touchstart', onTrigger);
+      window.removeEventListener('keydown', onTrigger);
+    }
+
     const checkBackendHealth = async () => {
+      if (triggered) return;
+      triggered = true;
+      cleanup();
+
       try {
         const res = await fetch('https://api.toeic-smart.io.vn/api/healthy', {
           method: 'GET',
@@ -37,7 +54,12 @@ const Footer: FC = () => {
       }
     };
 
-    checkBackendHealth();
+    scrollEl?.addEventListener('scroll', onTrigger, { passive: true });
+    window.addEventListener('click', onTrigger, { passive: true });
+    window.addEventListener('touchstart', onTrigger, { passive: true });
+    window.addEventListener('keydown', onTrigger);
+
+    return cleanup;
   }, []);
 
   // 3. Cấu hình màu sắc theo trạng thái

@@ -3,8 +3,6 @@ import privateRoutes from './routeConfig/privateRoutes';
 import publicRoutes from './routeConfig/publicRoutes';
 import { RouteWrapper } from './guards/RouteWrapper';
 import { Suspense } from 'react';
-import { Toaster } from 'sonner';
-import { GlobalToastListener } from '../components/common/GlobalToastListener';
 import RouteLoadingFallback from '../components/common/RouteLoadingFallback';
 
 
@@ -12,20 +10,6 @@ export const AppRouter = () => {
 
   return (
     <>
-      <Toaster
-        position='top-right'
-        richColors
-        toastOptions={{
-          classNames: {
-            loading: `
-              !text-blue-400 
-              [&>svg]:!text-blue-400 
-              [&>svg]:!stroke-blue-400 
-              [&>svg]:!fill-blue-400
-            `,
-          },
-        }} />
-      <GlobalToastListener />
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           {publicRoutes.map(({ path, element: Element, guard: Guard }) => (

@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
-import Navbar from '../../components/common/NavBar';
 import Footer from '../../components/sections/Footer';
+import LandingNavbar from '../../components/common/LandingNavbar';
 
 interface LandingLayoutProps {
   children: ReactNode;
@@ -9,7 +9,7 @@ interface LandingLayoutProps {
 function LandingLayout({ children }: LandingLayoutProps) {
   return (
     <div className='max-h-screen custom-scrollbar'>
-      <Navbar />
+      <LandingNavbar />
       <div className='pt-16'>{children}</div>
       <Footer />
     </div>

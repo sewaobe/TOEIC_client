@@ -1,12 +1,10 @@
 import { FC } from 'react';
 import { Box, Typography, Button, Stack, Container } from '@mui/material';
-import { motion } from 'framer-motion';
 
 // Import các icon cần thiết từ thư viện MUI
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import AutoGraphIcon from '@mui/icons-material/AutoGraph';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import { useNavigate } from 'react-router-dom';
 
 // 1. Tách dữ liệu ra để dễ quản lý và cập nhật
 const keyBenefits = [
@@ -25,7 +23,6 @@ const keyBenefits = [
 ];
 
 const Hero: FC = () => {
-  const navigate = useNavigate();
   return (
     <Box
       sx={{
@@ -97,7 +94,7 @@ const Hero: FC = () => {
           <Button
             variant='contained'
             size='large'
-            onClick={() => navigate('/overview-test?type=entry-test')}
+            onClick={() => window.location.href = '/overview-test?type=entry-test'}
           >
             Bắt đầu ngay
           </Button>

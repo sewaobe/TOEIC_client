@@ -18,7 +18,6 @@ import MenuIcon from "@mui/icons-material/Menu";
 import SchoolIcon from "@mui/icons-material/School";
 import LockIcon from "@mui/icons-material/Lock";
 import authService from "../../services/authService";
-import { useNavigate } from "react-router-dom";
 
 interface NavLink {
     label: string;
@@ -45,7 +44,6 @@ export default function LandingNavbar() {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [user, setUser] = useState<User | null>(null);
     const theme = useTheme();
-    const navigate = useNavigate();
 
     const pathname = window.location.pathname;
 
@@ -65,15 +63,15 @@ export default function LandingNavbar() {
         await authService.logout();
         setUser(null);
         handleMenuClose();
-        navigate('/login');
+        window.location.href = "/login";
     };
 
     const handleNavigate = (href: string, label: string) => {
         if (label === "Trang chủ") {
-            navigate(user ? "/home" : "/");
+            window.location.href = user ? "/home" : "/";
             return;
         }
-        navigate(href);
+        window.location.href = href;
     };
 
     const isActive = (href: string, label: string) => {

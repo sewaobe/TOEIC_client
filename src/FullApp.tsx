@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { BrowserRouter, useLocation } from 'react-router-dom';
 import { AppRouter } from './routes/AppRouter.tsx';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState, store } from './stores/store.ts';
@@ -77,24 +77,26 @@ initSentryWhenIdle();
 
 export default function FullApp() {
     return (
-        <Provider store={store}>
-            <Toaster
-                position='top-right'
-                richColors
-                toastOptions={{
-                    classNames: {
-                        loading: `
+        <BrowserRouter>
+            <Provider store={store}>
+                <Toaster
+                    position='top-right'
+                    richColors
+                    toastOptions={{
+                        classNames: {
+                            loading: `
                                     !text-blue-400 
                                     [&>svg]:!text-blue-400 
                                     [&>svg]:!stroke-blue-400 
                                     [&>svg]:!fill-blue-400
                                 `,
-                    },
-                }} />
-            <GlobalToastListener />
-            <AppProvider>
-                <AppRouter />
-            </AppProvider>
-        </Provider>
+                        },
+                    }} />
+                <GlobalToastListener />
+                <AppProvider>
+                    <AppRouter />
+                </AppProvider>
+            </Provider>
+        </BrowserRouter>
     );
 }

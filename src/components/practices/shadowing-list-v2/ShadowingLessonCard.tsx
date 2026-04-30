@@ -1,6 +1,7 @@
 import { Card, CardContent, Skeleton } from "@mui/material";
 import { ShadowingSummaryLesson } from "../../../views/pages/PracticeShadowingListPageV2";
 import { AccessTime } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 
 export function LessonCard({
   item,
@@ -9,8 +10,9 @@ export function LessonCard({
   item: ShadowingSummaryLesson;
   progress: number;
 }): JSX.Element {
+  const navigate = useNavigate();
   const handleNavigate = () => {
-    console.log("Open lesson:", item.id);
+    navigate(`${item.id}`);
   };
 
   return (

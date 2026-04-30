@@ -1,37 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   Autorenew as Loader2,
 } from '@mui/icons-material';
 import Sidebar from '../../components/practices/shadowing-detail-v2/Sidebar';
 import RightContent from '../../components/practices/shadowing-detail-v2/RightContent';
 import PracticeLayout from '../layouts/PracticeLayout';
+import { ShadowingLessonDetail, shadowingV2Service } from '../../services/shadowing_service_v2';
 
 // ==========================================
 // TYPES & INTERFACES
 // ==========================================
-
-interface ShadowingTiming {
-  endTime: number;
-  startTime: number;
-  text: string;
-  ipa: string;
-  translationVi: string;
-}
-
-interface ShadowingData {
-  _id: { $oid: string };
-  title: string;
-  level: string;
-  part_type: number;
-  source_type?: 'audio' | 'youtube';
-  thumbnail: string;
-  tags: string[];
-  status: string;
-  transcript: string;
-  audio_url: string;
-  duration: number;
-  timings: ShadowingTiming[];
-}
 
 interface Suggestion {
   id: number;
@@ -46,94 +25,8 @@ interface Suggestion {
 }
 
 // ==========================================
-// MOCK API & HELPERS
+// MOCK SUGGESTIONS
 // ==========================================
-
-const mockShadowingData: ShadowingData = {
-  _id: { $oid: '69eaf8099c1d00c0b0ae0958' },
-  title: 'Oakwood Weather and Sports',
-  level: 'B1',
-  part_type: 3,
-  status: 'approved',
-  source_type: "audio",
-  thumbnail: "",
-  tags: [""],
-  transcript: "For the remainder of today, we're looking at mostly dry conditions with overcast skies here in Oakwood. However, starting tomorrow, temperatures are set to drop, and we should expect a fair bit of snow accumulation. So if you're heading out, don't forget to bundle up, a warm coat will be essential. Moving into next week, there are signs that warmer weather might finally arrive, hinting that spring is just around the corner. Now, let's shift gears and talk about our local sports scene, including an exciting win from our basketball team last night!",
-  audio_url: 'https://res.cloudinary.com/dgi1g967z/video/upload/v1777003937/shadowings/vjs4hqi95yitj51jwgay.mp3',
-  duration: 41,
-  timings: [
-    {
-      text: "For the remainder of today, we're looking at mostly dry conditions with overcast skies here in Oakwood.",
-      translationVi: 'Trong phần còn lại của ngày hôm nay, chúng tôi đang xem xét điều kiện chủ yếu khô ráo với bầu trời u ám ở Oakwood.',
-      startTime: 0,
-      endTime: 6.39,
-      ipa: ""
-    },
-    {
-      text: 'However, starting tomorrow, temperatures are set to drop,',
-      translationVi: 'Tuy nhiên, bắt đầu từ ngày mai, nhiệt độ sẽ giảm xuống,',
-      startTime: 6.71,
-      endTime: 10.77,
-      ipa: ""
-    },
-    {
-      text: 'and we should expect a fair bit of snow accumulation.',
-      translationVi: 'và chúng ta nên mong đợi một chút tuyết tích tụ.',
-      startTime: 10.77,
-      endTime: 14.18,
-      ipa: ""
-    },
-    {
-      text: "So if you're heading out, don't forget to bundle up,",
-      translationVi: 'Vì vậy, nếu bạn đang đi ra ngoài, đừng quên bó lại,',
-      startTime: 14.45,
-      endTime: 18.15,
-      ipa: ""
-    },
-    {
-      text: 'a warm coat will be essential.',
-      translationVi: 'Một chiếc áo khoác ấm sẽ là điều cần thiết.',
-      startTime: 18.27,
-      endTime: 20.72,
-      ipa: ""
-    },
-    {
-      text: 'Moving into next week,',
-      translationVi: 'Chuyển sang tuần tới,',
-      startTime: 21.26,
-      endTime: 22.8,
-      ipa: ""
-    },
-    {
-      text: 'there are signs that warmer weather might finally arrive,',
-      translationVi: 'có những dấu hiệu cho thấy thời tiết ấm hơn cuối cùng cũng có thể đến,',
-      startTime: 22.8,
-      endTime: 26.28,
-      ipa: ""
-    },
-    {
-      text: 'hinting that spring is just around the corner.',
-      translationVi: 'gợi ý rằng mùa xuân đang đến gần.',
-      startTime: 26.28,
-      endTime: 29.38,
-      ipa: ""
-    },
-    {
-      text: "Now, let's shift gears and talk about our local sports scene,",
-      translationVi: 'Bây giờ, hãy chuyển hướng và nói về bối cảnh thể thao địa phương của chúng ta,',
-      startTime: 29.49,
-      endTime: 34.2,
-      ipa: ""
-    },
-    {
-      text: 'including an exciting win from our basketball team last night!',
-      translationVi: 'bao gồm cả chiến thắng thú vị từ đội bóng rổ của chúng tôi đêm qua!',
-      startTime: 34.2,
-      endTime: 38.26,
-      ipa: ""
-    },
-  ],
-};
 
 const mockSuggestions: Suggestion[] = [
   { id: 1, title: "Apartment Cleaning Quote Request", difficulty: "B1", badge: "Improve weak area", badgeType: "warning", category: "TOEIC", duration: 1, progress: 0, thumbnailUrl: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=300&auto=format&fit=crop" },
@@ -144,20 +37,13 @@ const mockSuggestions: Suggestion[] = [
   { id: 6, title: "Can you \"see\" images in your mind? Some...", difficulty: "C1", badge: "Same topic", badgeType: "info", category: "General", duration: 3, progress: 0, thumbnailUrl: "https://images.unsplash.com/photo-1507413245164-6160d8298b31?q=80&w=300&auto=format&fit=crop" },
 ];
 
-const fetchShadowingData = (): Promise<ShadowingData> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(mockShadowingData);
-    }, 1000);
-  });
-};
-
 // ==========================================
 // MAIN APP COMPONENT
 // ==========================================
 
 export default function PracticeShadowingV2Page() {
-  const [shadowingData, setShadowingData] = useState<ShadowingData | null>(null);
+  const { shadowingId } = useParams<{ shadowingId: string }>();
+  const [shadowingData, setShadowingData] = useState<ShadowingLessonDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   const [appState, setAppState] = useState<'idle' | 'recording' | 'feedback'>('idle');
@@ -194,17 +80,45 @@ export default function PracticeShadowingV2Page() {
   }, []);
 
   useEffect(() => {
-    fetchShadowingData().then((data) => {
-      setShadowingData({
-        ...data,
-        source_type: data.source_type || 'audio',
-      });
-      if (data.timings.length > 0) {
-        setActiveTranscriptId(1);
+    let isMounted = true;
+
+    const fetchShadowingDetail = async () => {
+      if (!shadowingId) {
+        if (isMounted) {
+          setShadowingData(null);
+          setLoading(false);
+        }
+        return;
       }
-      setLoading(false);
-    });
-  }, []);
+
+      try {
+        setLoading(true);
+        const data = await shadowingV2Service.getDetail(shadowingId);
+
+        if (isMounted) {
+          setShadowingData(data);
+          if (data?.timings.length) {
+            setActiveTranscriptId(1);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load shadowing detail:', error);
+        if (isMounted) {
+          setShadowingData(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchShadowingDetail();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [shadowingId]);
 
   useEffect(() => {
     if (!canUseVideo && mediaMode === 'video') {

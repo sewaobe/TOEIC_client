@@ -3,9 +3,10 @@ import { ShadowingSummaryLesson } from "../../../views/pages/PracticeShadowingLi
 import { ArrowForward } from "@mui/icons-material";
 import { LessonCard, LessonCardSkeleton } from "./ShadowingLessonCard";
 
-export function SectionRow({ title, items, progressMap, onShowMore }: {
+export function SectionRow({ title, items, isAllCategory, progressMap, onShowMore }: {
   title: string;
   items: ShadowingSummaryLesson[];
+  isAllCategory: boolean;
   progressMap: Record<string, number>;
   onShowMore: () => void;
 }): JSX.Element {
@@ -21,9 +22,11 @@ export function SectionRow({ title, items, progressMap, onShowMore }: {
           <div className="py-10 text-center text-slate-400">
             No lessons found
           </div>
-        ) : items.slice(0, 5).map(item => (
-          <LessonCard key={item.id} item={item} progress={progressMap[item.id] || 0} />
-        ))}
+        ) : isAllCategory ? items.slice(0,5).map(item => (
+            <LessonCard key={item.id} item={item} progress={progressMap[item.id] || 0} />
+          )) : items.map(item => (
+            <LessonCard key={item.id} item={item} progress={progressMap[item.id] || 0} />
+          ))}
       </div>
     </section>
   );

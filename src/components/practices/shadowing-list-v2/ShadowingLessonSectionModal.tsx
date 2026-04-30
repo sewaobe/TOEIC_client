@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { Level, ShadowingSummaryLesson } from "../../../views/pages/PracticeShadowingListPageV2";
-import { Dialog, DialogContent, DialogTitle, FormControl, IconButton, MenuItem, Select, Slide } from "@mui/material";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Level, ShadowingCategory, ShadowingSummaryLesson, ShadowingSummaryLessonSectionMap } from "../../../views/pages/PracticeShadowingListPageV2";
+import { CircularProgress, Dialog, DialogContent, DialogTitle, FormControl, IconButton, MenuItem, Select, Slide } from "@mui/material";
 import { Close } from "@mui/icons-material";
 import { LessonCard } from "./ShadowingLessonCard";
+import { shadowingV2Service } from "../../../services/shadowing_service_v2";
 
 export type SortValue =
     | 'newest'
@@ -13,7 +14,8 @@ export type SortValue =
 type LessonSectionModalProps = {
     open: boolean;
     title: string;
-    items: ShadowingSummaryLesson[];
+    category: ShadowingCategory;
+    sectionKey: keyof ShadowingSummaryLessonSectionMap;
     progressMap: Record<string, number>;
     onClose: () => void;
 };
@@ -21,10 +23,16 @@ type LessonSectionModalProps = {
 export function LessonSectionModal({
     open,
     title,
-    items,
+    category,
+    sectionKey,
     progressMap,
     onClose,
 }: LessonSectionModalProps): JSX.Element {
+    const [items, setItems] = useState<ShadowingSummaryLesson[]>([]);
+    const [page, setPage] = useState(1);
+    const [isLoading, setIsLoading] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const inFlightPagesRef = useRef<Set<number>>(new Set());
     const [levelFilter, setLevelFilter] =
         useState<'ALL' | Level>('ALL');
 
@@ -36,11 +44,59 @@ export function LessonSectionModal({
         if (!open) {
             setLevelFilter('ALL');
             setSortBy('newest');
+            setItems([]);
+            setPage(1);
+            setHasMore(true);
         }
     }, [open]);
 
+    const fetchPage = async (pageToLoad: number, mode: 'replace' | 'append') => {
+        if (inFlightPagesRef.current.has(pageToLoad)) {
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            inFlightPagesRef.current.add(pageToLoad);
+            const data = await shadowingV2Service.getList({
+                category,
+                level: levelFilter,
+                limit: 20,
+                page: pageToLoad,
+            });
+
+            if (!data) return;
+
+            const expectedSize = category === 'ALL' ? 60 : 20;
+            const reachedEnd = data.length < expectedSize;
+
+            setHasMore(!reachedEnd);
+            setPage(pageToLoad);
+            setItems(prev => (mode === 'replace' ? data : [...prev, ...data]));
+        } finally {
+            inFlightPagesRef.current.delete(pageToLoad);
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        fetchPage(1, 'replace');
+    }, [open, category, levelFilter]);
+
     const finalItems = useMemo(() => {
         let data = [...items];
+
+        if (sectionKey === 'newLessons') {
+            data = data.filter((item) => item.isNew);
+        }
+
+        if (sectionKey === 'inProgress') {
+            data = data.filter((item) => (progressMap[item.id] || 0) > 0);
+        }
 
         /* filter level */
         if (levelFilter !== 'ALL') {
@@ -76,7 +132,20 @@ export function LessonSectionModal({
         }
 
         return data;
-    }, [items, levelFilter, sortBy, progressMap]);
+    }, [items, levelFilter, sortBy, progressMap, sectionKey]);
+
+    const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+        if (isLoading || !hasMore || items.length < 15) {
+            return;
+        }
+
+        const target = event.currentTarget;
+        const remaining = target.scrollHeight - target.scrollTop - target.clientHeight;
+
+        if (remaining < 200) {
+            fetchPage(page + 1, 'append');
+        }
+    };
 
     return (
         <Dialog
@@ -112,7 +181,7 @@ export function LessonSectionModal({
                 </IconButton>
             </DialogTitle>
 
-            <DialogContent>
+            <DialogContent onScroll={handleScroll}>
                 {/* TOOLBAR */}
                 <div className="mb-5 flex flex-col sticky top-0 z-10 bg-white md:flex-row gap-3 md:items-center md:justify-between">
                     {/* LEFT */}
@@ -168,7 +237,12 @@ export function LessonSectionModal({
 
                 {/* GRID */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 py-1">
-                    {finalItems.map((item) => (
+
+                    {finalItems.length === 0 ? (
+                        <div className="py-10 text-center text-slate-400">
+                            No lessons found
+                        </div>
+                    ) : finalItems.map((item) => (
                         <LessonCard
                             key={item.id}
                             item={item}
@@ -178,6 +252,12 @@ export function LessonSectionModal({
                         />
                     ))}
                 </div>
+
+                {isLoading && (
+                    <div className="flex justify-center py-6">
+                        <CircularProgress size={28} />
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     );

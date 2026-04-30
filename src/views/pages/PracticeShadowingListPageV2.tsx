@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   IconButton, Tooltip,
-  ToggleButtonGroup, ToggleButton, FormControl, Select, MenuItem
+  ToggleButtonGroup, ToggleButton, FormControl, Select, MenuItem, CircularProgress
 } from '@mui/material';
 
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -79,62 +79,139 @@ export default function PracticeShadowingListPage(): JSX.Element {
   const [sections, setSections] = useState<ShadowingSummaryLessonSectionMap>({ toeic: [], ted: [], newLessons: [], inProgress: [] });
   const [progressMap, setProgressMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [openSection, setOpenSection] = useState<keyof ShadowingSummaryLessonSectionMap | null>(null);
+  const inFlightPagesRef = useRef<Set<number>>(new Set());
 
   const [categoryFilter, setCategoryFilter] = useState<ShadowingCategory>("ALL");
   const [levelFilter, setLevelFilter] = useState<Level>("ALL");
 
+  const buildSections = (
+    lessons: ShadowingSummaryLesson[],
+    progressObj: Record<string, number>
+  ) => {
+    const inProgress = lessons
+      .filter((lesson) => (progressObj[lesson.id] || 0) > 0)
+      .slice(0, 10);
+
+    if (categoryFilter === "ALL") {
+      setSections({
+        toeic: lessons.filter((shadowing) => shadowing.category === "TOEIC"),
+        ted: lessons.filter((shadowing) => shadowing.category === "TED"),
+        newLessons: lessons.filter((shadowing) => shadowing.isNew),
+        inProgress,
+      });
+      return;
+    }
+
+    setSections({
+      toeic: categoryFilter === "TOEIC" ? lessons : [],
+      ted: categoryFilter === "TED" ? lessons : [],
+      newLessons: [],
+      inProgress,
+    });
+  };
+
+  const fetchPage = async (pageToLoad: number, mode: "replace" | "append") => {
+    if (inFlightPagesRef.current.has(pageToLoad)) {
+      return;
+    }
+
+    const limit = categoryFilter === "ALL" ? 5 : 20;
+    const loadingSetter = mode === "replace" ? setLoading : setIsLoadingMore;
+
+    try {
+      inFlightPagesRef.current.add(pageToLoad);
+      loadingSetter(true);
+
+      const shadowingLessons = await shadowingV2Service.getList({
+        category: categoryFilter,
+        level: levelFilter,
+        limit,
+        page: pageToLoad,
+      });
+
+      if (!shadowingLessons) {
+        return;
+      }
+
+      const mergedLessons = mode === "append"
+        ? Array.from(new Map([...sections.toeic, ...sections.ted, ...shadowingLessons].map(x => [x.id, x])).values())
+        : shadowingLessons;
+
+      const newIds = shadowingLessons
+        .map((lesson) => lesson.id)
+        .filter((id) => !(progressMap[id] > 0 || progressMap[id] === 0));
+
+      const progressRes = newIds.length > 0 ? await apiGetProgress(newIds) : [];
+      const updatedProgress = progressRes.reduce<Record<string, number>>((acc, item) => {
+        acc[item.lessonId] = item.progress;
+        return acc;
+      }, {});
+
+      const nextProgressMap = { ...progressMap, ...updatedProgress };
+
+      setProgressMap(nextProgressMap);
+      buildSections(mergedLessons, nextProgressMap);
+
+      setPage(pageToLoad);
+      setHasMore(shadowingLessons.length >= limit);
+    } finally {
+      inFlightPagesRef.current.delete(pageToLoad);
+      loadingSetter(false);
+    }
+  };
+
   // =====================================================
-  // FETCH 3 APIs
+  // FETCH LISTS
   // =====================================================
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
+    fetchPage(1, "replace");
+    setOpenSection(null);
+  }, [categoryFilter, levelFilter]);
 
-        const shadowingLessons = await shadowingV2Service.getList({
-          category: "ALL",
-          level: "ALL",
-          limit: 5,
-          page: 1
-        });
+  useEffect(() => {
+    if (categoryFilter === "ALL") {
+      return;
+    }
 
-        if (!shadowingLessons) {
-          return;
-        }
+    const container = document.querySelector<HTMLElement>(".custom-scrollbar");
+    if (!container) {
+      return;
+    }
 
-        const uniqueLessons = Array.from(new Map(shadowingLessons.map(x => [x.id, x])).values());
-        const ids = uniqueLessons.map(x => x.id);
+    const handleScroll = () => {
+      if (loading || isLoadingMore || !hasMore) {
+        return;
+      }
 
-        const progressRes = await apiGetProgress(ids);
-        const progressObj = progressRes.reduce<Record<string, number>>((acc, item) => {
-          acc[item.lessonId] = item.progress;
-          return acc;
-        }, {});
-
-        const inProgress = uniqueLessons.filter(x => progressObj[x.id] > 0).slice(0, 10);
-
-        setProgressMap(progressObj);
-        setSections({
-          toeic: shadowingLessons.filter(shadowing => shadowing.category === "TOEIC"),
-          ted: shadowingLessons.filter(shadowing => shadowing.category === "TED"),
-          newLessons: shadowingLessons.filter(shadowing => shadowing.isNew),
-          inProgress,
-        });
-      } finally {
-        setLoading(false);
+      const remaining = container.scrollHeight - container.scrollTop - container.clientHeight;
+      if (remaining < 200) {
+        fetchPage(page + 1, "append");
       }
     };
 
-    fetchData();
-  }, []);
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [categoryFilter, page, hasMore, isLoadingMore, loading, levelFilter]);
 
-  const configs: { key: keyof ShadowingSummaryLessonSectionMap; title: string }[] = useMemo(() => [
-    { key: 'inProgress', title: 'In Progress' },
-    { key: 'newLessons', title: 'New' },
-    { key: 'toeic', title: 'TOEIC' },
-    { key: 'ted', title: 'TED' },
-  ], []);
+  const configs: { key: keyof ShadowingSummaryLessonSectionMap; title: string }[] = useMemo(() => {
+    if (categoryFilter === 'ALL') {
+      return [
+        { key: 'inProgress', title: 'In Progress' },
+        { key: 'newLessons', title: 'New' },
+        { key: 'toeic', title: 'TOEIC' },
+        { key: 'ted', title: 'TED' },
+      ];
+    }
+
+    return [
+      { key: 'inProgress', title: 'In Progress' },
+      { key: categoryFilter === 'TOEIC' ? 'toeic' : 'ted', title: categoryFilter },
+    ];
+  }, [categoryFilter]);
 
   return (
     <PracticeLayout>
@@ -288,10 +365,16 @@ export default function PracticeShadowingListPage(): JSX.Element {
                 key={section.key}
                 title={section.title}
                 items={sections[section.key]}
+                isAllCategory={categoryFilter === "ALL"}
                 progressMap={progressMap}
                 onShowMore={() => setOpenSection(section.key)}
               />
             ))}
+            {isLoadingMore && (
+              <div className="flex justify-center py-6">
+                <CircularProgress size={28} />
+              </div>
+            )}
           </div>
         )}
 
@@ -303,11 +386,14 @@ export default function PracticeShadowingListPage(): JSX.Element {
               (x) => x.key === openSection
             )?.title || ''
           }
-          items={
-            openSection
-              ? sections[openSection]
-              : []
+          category={
+            openSection === 'toeic'
+              ? 'TOEIC'
+              : openSection === 'ted'
+                ? 'TED'
+                : 'ALL'
           }
+          sectionKey={openSection || 'toeic'}
           progressMap={progressMap}
           onClose={() =>
             setOpenSection(null)

@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTitle, FormControl, IconButton, MenuItem, 
 import { Close } from "@mui/icons-material";
 import { LessonCard } from "./ShadowingLessonCard";
 
-type SortValue =
+export type SortValue =
     | 'newest'
     | 'durationAsc'
     | 'durationDesc'

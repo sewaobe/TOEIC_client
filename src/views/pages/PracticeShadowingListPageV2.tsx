@@ -9,12 +9,13 @@ import RestartAlt from '@mui/icons-material/RestartAlt';
 import PracticeLayout from '../layouts/PracticeLayout';
 import { SectionRow, SectionSkeleton } from '../../components/practices/shadowing-list-v2/ShadowingSectionRow';
 import { LessonSectionModal } from '../../components/practices/shadowing-list-v2/ShadowingLessonSectionModal';
+import { shadowingV2Service } from '../../services/shadowing_service_v2';
 
 // =====================================================
 // TYPES
 // =====================================================
-export type Level = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
-export type ShadowingCategory = 'TOEIC' | 'TED';
+export type Level = "ALL" | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+export type ShadowingCategory = 'ALL' | 'TOEIC' | 'TED';
 
 export type ShadowingSummaryLesson = {
   id: string;
@@ -25,6 +26,7 @@ export type ShadowingSummaryLesson = {
   audioUrl: string;
   duration: number;
   createdAt: string;
+  isNew: boolean;
 };
 
 export type ShadowingLessonProgress = {
@@ -45,7 +47,7 @@ export type ShadowingSummaryLessonSectionMap = {
 const levels: Level[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 const thumb = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop';
 
-const DB: ShadowingSummaryLesson[] = Array.from({ length: 30 }).map((_, i) => ({
+export const DB: ShadowingSummaryLesson[] = Array.from({ length: 30 }).map((_, i) => ({
   id: `lesson_${i + 1}`,
   title: i % 2 === 0 ? `TOEIC Listening ${i + 1}` : `TED Shadowing ${i + 1}`,
   level: levels[i % levels.length],
@@ -54,6 +56,7 @@ const DB: ShadowingSummaryLesson[] = Array.from({ length: 30 }).map((_, i) => ({
   audioUrl: '#',
   duration: 25 + i,
   createdAt: new Date(Date.now() - i * 86400000).toISOString(),
+  isNew: i % 2 === 0 ? true : false
 }));
 
 // =====================================================
@@ -61,20 +64,6 @@ const DB: ShadowingSummaryLesson[] = Array.from({ length: 30 }).map((_, i) => ({
 // =====================================================
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function apiGetHomeSections(): Promise<{ toeic: ShadowingSummaryLesson[]; ted: ShadowingSummaryLesson[] }> {
-  await delay(700);
-  return {
-    toeic: DB.filter(x => x.category === 'TOEIC').slice(0, 5),
-    ted: DB.filter(x => x.category === 'TED').slice(0, 5),
-  };
-}
-
-async function apiGetNewLessons(): Promise<ShadowingSummaryLesson[]> {
-  await delay(600);
-  return [...DB]
-    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-    .slice(0, 10);
-}
 
 async function apiGetProgress(ids: string[]): Promise<ShadowingLessonProgress[]> {
   await delay(500);
@@ -92,8 +81,8 @@ export default function PracticeShadowingListPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [openSection, setOpenSection] = useState<keyof ShadowingSummaryLessonSectionMap | null>(null);
 
-  const [categoryFilter, setCategoryFilter] = useState<"ALL" | ShadowingCategory>("ALL");
-  const [levelFilter, setLevelFilter] = useState<"ALL" | Level>("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<ShadowingCategory>("ALL");
+  const [levelFilter, setLevelFilter] = useState<Level>("ALL");
 
   // =====================================================
   // FETCH 3 APIs
@@ -103,13 +92,18 @@ export default function PracticeShadowingListPage(): JSX.Element {
       try {
         setLoading(true);
 
-        const [homeRes, newRes] = await Promise.all([
-          apiGetHomeSections(),
-          apiGetNewLessons(),
-        ]);
+        const shadowingLessons = await shadowingV2Service.getList({
+          category: "ALL",
+          level: "ALL",
+          limit: 5,
+          page: 1
+        });
 
-        const allLessons = [...homeRes.toeic, ...homeRes.ted, ...newRes];
-        const uniqueLessons = Array.from(new Map(allLessons.map(x => [x.id, x])).values());
+        if (!shadowingLessons) {
+          return;
+        }
+
+        const uniqueLessons = Array.from(new Map(shadowingLessons.map(x => [x.id, x])).values());
         const ids = uniqueLessons.map(x => x.id);
 
         const progressRes = await apiGetProgress(ids);
@@ -122,9 +116,9 @@ export default function PracticeShadowingListPage(): JSX.Element {
 
         setProgressMap(progressObj);
         setSections({
-          toeic: homeRes.toeic,
-          ted: homeRes.ted,
-          newLessons: newRes,
+          toeic: shadowingLessons.filter(shadowing => shadowing.category === "TOEIC"),
+          ted: shadowingLessons.filter(shadowing => shadowing.category === "TED"),
+          newLessons: shadowingLessons.filter(shadowing => shadowing.isNew),
           inProgress,
         });
       } finally {

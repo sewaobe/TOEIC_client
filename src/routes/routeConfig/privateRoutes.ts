@@ -31,8 +31,11 @@ const PracticeDictationPage = lazy(
 const PracticeChallengePage = lazy(
   () => import("../../views/pages/PracticeChallengePage"),
 );
-const PracticeShadowingPage = lazy(
-  () => import("../../views/pages/PracticeShadowingPage"),
+const PracticeShadowingListPageV2 = lazy(
+  () => import("../../views/pages/PracticeShadowingListPageV2"),
+);
+const PracticeShadowingPageV2 = lazy(
+  () => import("../../views/pages/PracticeShadowingPageV2"),
 );
 const PracticeQuizPage = lazy(
   () => import("../../views/pages/PracticeQuizPage"),
@@ -146,12 +149,12 @@ const privateRoutes: AppRoute[] = [
   },
   {
     path: "/practice-skill/shadowing",
-    element: PracticeShadowingPage,
+    element: PracticeShadowingListPageV2,
     guard: ProtectedRoute,
   },
   {
     path: "/practice-skill/shadowing/:id",
-    element: PracticeShadowingPage,
+    element: PracticeShadowingPageV2,
     guard: ProtectedRoute,
   },
   {

@@ -1,4 +1,4 @@
-export type PracticeType = "definition_based" | "fill_blank" | "listening" | "reading" | "grammar";
+export type PracticeType = "definition_based" | "fill_blank" | "listening" | "reading" | "grammar" | "shadowing";
 export type SessionStatus = "in_progress" | "completed" | "cancelled";
 
 export interface PracticeSession {
@@ -12,6 +12,7 @@ export interface PracticeSession {
     total_items: number;
     completed_items: number;
     current_index: number;
+    completed_indices: number[];
     
     // Kết quả
     correct_count: number;
@@ -38,6 +39,7 @@ export interface StartSessionResponse {
 export interface UpdateProgressRequest {
     current_index?: number;
     completed_items?: number;
+    completed_indices?: number[];
     correct_count?: number;
     total_accuracy?: number;
 }

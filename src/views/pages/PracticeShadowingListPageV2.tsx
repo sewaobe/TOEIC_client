@@ -10,6 +10,7 @@ import PracticeLayout from '../layouts/PracticeLayout';
 import { SectionRow, SectionSkeleton } from '../../components/practices/shadowing-list-v2/ShadowingSectionRow';
 import { LessonSectionModal } from '../../components/practices/shadowing-list-v2/ShadowingLessonSectionModal';
 import { shadowingV2Service } from '../../services/shadowing_service_v2';
+import { useNavigate } from 'react-router-dom';
 
 // =====================================================
 // TYPES
@@ -41,6 +42,10 @@ export type ShadowingSummaryLessonSectionMap = {
   inProgress: ShadowingSummaryLesson[];
 };
 
+const dedupeLessonsById = (lessons: ShadowingSummaryLesson[]) => {
+  return Array.from(new Map(lessons.map((lesson) => [lesson.id, lesson])).values());
+};
+
 // =====================================================
 // MOCK DATABASE
 // =====================================================
@@ -58,19 +63,6 @@ export const DB: ShadowingSummaryLesson[] = Array.from({ length: 30 }).map((_, i
   createdAt: new Date(Date.now() - i * 86400000).toISOString(),
   isNew: i % 2 === 0 ? true : false
 }));
-
-// =====================================================
-// MOCK PROMISE APIs
-// =====================================================
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-
-async function apiGetProgress(ids: string[]): Promise<ShadowingLessonProgress[]> {
-  await delay(500);
-  return ids
-    .filter((_, i) => i % 2 === 0)
-    .map((id, i) => ({ lessonId: id, progress: Math.min(95, 15 + i * 18) }));
-}
 
 export default function PracticeShadowingListPage(): JSX.Element {
   // =====================================================
@@ -92,23 +84,24 @@ export default function PracticeShadowingListPage(): JSX.Element {
     lessons: ShadowingSummaryLesson[],
     progressObj: Record<string, number>
   ) => {
-    const inProgress = lessons
+    const uniqueLessons = dedupeLessonsById(lessons);
+    const inProgress = uniqueLessons
       .filter((lesson) => (progressObj[lesson.id] || 0) > 0)
       .slice(0, 10);
 
     if (categoryFilter === "ALL") {
       setSections({
-        toeic: lessons.filter((shadowing) => shadowing.category === "TOEIC"),
-        ted: lessons.filter((shadowing) => shadowing.category === "TED"),
-        newLessons: lessons.filter((shadowing) => shadowing.isNew),
+        toeic: uniqueLessons.filter((shadowing) => shadowing.category === "TOEIC"),
+        ted: uniqueLessons.filter((shadowing) => shadowing.category === "TED"),
+        newLessons: uniqueLessons.filter((shadowing) => shadowing.isNew),
         inProgress,
       });
       return;
     }
 
     setSections({
-      toeic: categoryFilter === "TOEIC" ? lessons : [],
-      ted: categoryFilter === "TED" ? lessons : [],
+      toeic: categoryFilter === "TOEIC" ? uniqueLessons : [],
+      ted: categoryFilter === "TED" ? uniqueLessons : [],
       newLessons: [],
       inProgress,
     });
@@ -145,7 +138,7 @@ export default function PracticeShadowingListPage(): JSX.Element {
         .map((lesson) => lesson.id)
         .filter((id) => !(progressMap[id] > 0 || progressMap[id] === 0));
 
-      const progressRes = newIds.length > 0 ? await apiGetProgress(newIds) : [];
+      const progressRes = (newIds.length > 0 ? await shadowingV2Service.getProgressByIds(newIds) : []) || [];
       const updatedProgress = progressRes.reduce<Record<string, number>>((acc, item) => {
         acc[item.lessonId] = item.progress;
         return acc;
@@ -208,10 +201,14 @@ export default function PracticeShadowingListPage(): JSX.Element {
     }
 
     return [
-      { key: 'inProgress', title: 'In Progress' },
       { key: categoryFilter === 'TOEIC' ? 'toeic' : 'ted', title: categoryFilter },
     ];
   }, [categoryFilter]);
+
+  const navigate = useNavigate();
+  const handleBack = () => {
+    navigate(-1);
+  }
 
   return (
     <PracticeLayout>
@@ -219,7 +216,7 @@ export default function PracticeShadowingListPage(): JSX.Element {
         {/* HEADER */}
         <div className="mb-8 space-y-6">
           <div className="relative flex justify-center">
-            <div className="absolute left-0 top-0">
+            <div className="absolute left-0 top-0" onClick={handleBack}>
               <IconButton
                 sx={{
                   backgroundColor: '#f1f5f9',

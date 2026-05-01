@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState, RefObject } from 'reac
 import {
 	ArrowBack as ArrowLeft,
 	Mic,
-	VolumeUp as Volume2,
 	PlayArrow as Play,
 	Replay as RotateCcw,
 	RotateRight as RotateCw,
@@ -50,6 +49,13 @@ interface RightContentProps {
 	activeTranscriptId: number | null;
 	shadowingData: ShadowingMediaData;
 	activeTranscriptData?: ActiveTranscriptData;
+	currentFeedback?: {
+		transcript: string;
+		score: number;
+		feedback: string;
+		wordResults?: { word: string; correct: boolean }[];
+	} | null;
+	completedIndices?: number[];
 	transcriptTimings: TimingSegment[];
 	appState: 'idle' | 'recording' | 'feedback';
 	recordTimer: number;
@@ -68,6 +74,7 @@ interface RightContentProps {
 	onToggleVideoPlayback: () => void;
 	onHandleNext: () => void;
 	onHandlePrevious: () => void;
+	onCompletePractice?: () => void;
 }
 
 interface DictData {
@@ -83,23 +90,6 @@ interface DictData {
 }
 
 const SPEED_OPTIONS = ['0.5x', '0.75x', '1x', '1.25x', '1.5x'];
-
-const FEEDBACK_WORDS = [
-	{ word: 'faced', correct: false },
-	{ word: 'with', correct: false },
-	{ word: 'the', correct: false },
-	{ word: 'realities', correct: false },
-	{ word: 'of', correct: false },
-	{ word: 'current', correct: false },
-	{ word: 'crises', correct: false },
-	{ word: 'faced', correct: false },
-	{ word: 'with', correct: false },
-	{ word: 'the', correct: false },
-	{ word: 'realities', correct: false },
-	{ word: 'of', correct: false },
-	{ word: 'current', correct: false },
-	{ word: 'crises', correct: false },
-];
 
 const getWordPattern = (text: string): number[] => {
 	if (!text) return [];
@@ -281,6 +271,8 @@ export default function RightContent({
 	activeTranscriptId,
 	shadowingData,
 	activeTranscriptData,
+	currentFeedback,
+	completedIndices = [],
 	transcriptTimings,
 	appState,
 	recordTimer,
@@ -299,10 +291,11 @@ export default function RightContent({
 	onToggleVideoPlayback,
 	onHandleNext,
 	onHandlePrevious,
+	onCompletePractice,
 }: RightContentProps) {
 	const wordPattern = activeTranscriptData ? getWordPattern(activeTranscriptData.text) : [];
 	const wordCount = wordPattern.length;
-	const tagName = shadowingData.level || 'Audio';
+	const completedSegmentCount = completedIndices.length;
 	const hasVideoSource = shadowingData.sourceType === 'youtube' && Boolean(shadowingData.videoSourceId);
 	const isAudioSource = shadowingData.sourceType === 'audio';
 	const [currentSpeed, setCurrentSpeed] = useState('1x');
@@ -1029,28 +1022,20 @@ export default function RightContent({
 										className="w-full"
 									>
 										<div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-3">
-											<BarChart2 className="w-4 h-4" /> 0/{wordCount} words correct
+											<BarChart2 className="w-4 h-4" /> Score {currentFeedback?.score ?? 0}/100
 										</div>
 
 										<div className="bg-gray-50 rounded-xl p-4 border border-gray-100 mb-4">
 											<span className="text-sm text-gray-500 mb-3 block">You said:</span>
-											<div className="flex items-center gap-4">
-												<button className="text-gray-800"><Play className="w-5 h-5 fill-current" /></button>
-												<span className="text-sm font-medium w-10">0:00</span>
-												<div className="flex-1 h-1.5 bg-gray-200 rounded-full relative cursor-pointer">
-													<div className="absolute top-1/2 -translate-y-1/2 left-[30%] w-3 h-3 bg-gray-800 rounded-full"></div>
-													<div className="h-full bg-gray-800 rounded-full w-[30%]"></div>
-												</div>
-												<button className="text-gray-500"><Volume2 className="w-5 h-5" /></button>
-											</div>
+											<p className="text-sm font-medium text-gray-800">
+												{currentFeedback?.transcript || '(No speech detected)'}
+											</p>
 										</div>
 
-										<div className="flex flex-wrap gap-2 mb-6">
-											{FEEDBACK_WORDS.slice(0, wordCount).map((item, idx) => (
-												<div key={idx} className="bg-red-50 text-red-500 border border-red-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5">
-													{item.word} <span className="text-xs">x</span>
-												</div>
-											))}
+										<div className="bg-blue-50 rounded-xl p-4 border border-blue-100 mb-6">
+											<p className="text-sm font-medium text-blue-700">
+												{currentFeedback?.feedback || 'Recording saved.'}
+											</p>
 										</div>
 
 										<button className="w-full py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium rounded-xl flex items-center justify-center gap-2 transition-colors border border-indigo-100">
@@ -1066,7 +1051,18 @@ export default function RightContent({
 					<div className="mb-6">
 						<p className="text-sm text-gray-500 mb-3 font-medium">Listen and repeat the sentence above</p>
 						<div className="flex flex-wrap gap-2">
-							{wordPattern.map((length, idx) => (
+							{currentFeedback?.wordResults?.length ? currentFeedback.wordResults.map((item, idx) => (
+								<div
+									key={`${item.word}-${idx}`}
+									className={`px-2 md:px-3 py-1 md:py-1.5 rounded-lg border text-sm md:text-base font-semibold ${
+										item.correct
+											? 'bg-green-50 text-green-700 border-green-200'
+											: 'bg-red-50 text-red-600 border-red-200'
+									}`}
+								>
+									{item.word}
+								</div>
+							)) : wordPattern.map((length, idx) => (
 								<div key={idx} className="px-2 md:px-3 py-1 md:py-1.5 bg-gray-100 rounded-lg text-gray-400 font-bold tracking-[0.2em] text-base md:text-lg">
 									{'.'.repeat(length)}
 								</div>
@@ -1112,6 +1108,19 @@ export default function RightContent({
 							className="flex items-center justify-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-6 py-2.5 rounded-lg transition-colors w-full sm:w-auto"
 						>
 							Next <ArrowLeft className="w-4 h-4 rotate-180" />
+						</button>
+					</div>
+
+					<div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white p-4">
+						<p className="text-sm text-gray-500">
+							Completed {completedSegmentCount}/{shadowingData.segmentCount} segments
+						</p>
+						<button
+							onClick={onCompletePractice}
+							disabled={!onCompletePractice || completedSegmentCount < shadowingData.segmentCount}
+							className="w-full sm:w-auto rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+						>
+							Submit shadowing
 						</button>
 					</div>
 

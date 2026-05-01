@@ -38,6 +38,7 @@ interface SidebarProps {
 	isCompactHeight: boolean;
 	activeIndex: number;
 	activeTranscriptId: number | null;
+	completedIndices?: number[];
 	activeTab: 'transcript' | 'suggestions';
 	progressPercent: number;
 	mockSuggestions: Suggestion[];
@@ -60,6 +61,7 @@ export default function Sidebar({
 	isCompactHeight,
 	activeIndex,
 	activeTranscriptId,
+	completedIndices = [],
 	activeTab,
 	progressPercent,
 	mockSuggestions,
@@ -145,6 +147,7 @@ export default function Sidebar({
 						<div className={isCompactHeight ? 'space-y-2' : 'space-y-3'}>
 							{shadowingData.transcript.map((item, index) => {
 								const isActive = item.id === activeTranscriptId;
+								const isCompleted = completedIndices.includes(index);
 								const pattern = getWordPattern(item.text);
 								const localIdx = index + 1;
 
@@ -155,28 +158,40 @@ export default function Sidebar({
 										type="button"
 										onClick={() => onSetActiveTranscriptId(item.id)}
 										className={`w-full text-left p-4 rounded-xl border group transform-gpu translate-x-0 transition-[transform,background-color,border-color,box-shadow] duration-200 ease-out hover:translate-x-1 ${
-											isActive
-												? 'bg-[#080B120D] shadow-sm border-gray-200/60'
-												: 'border-transparent bg-transparent hover:border-gray-300/80 hover:bg-gray-100'
+											isCompleted
+												? isActive
+													? 'border-green-300 bg-green-100 shadow-sm'
+													: 'border-green-200 bg-green-50 hover:border-green-300 hover:bg-green-100/70'
+												: isActive
+													? 'bg-[#080B120D] shadow-sm border-gray-200/60'
+													: 'border-transparent bg-transparent hover:border-gray-300/80 hover:bg-gray-100'
 										}`}
 									>
 										<div className="flex items-start gap-3">
 											<div className="pt-0.5 shrink-0 mt-1 flex items-center justify-center">
-											{isActive ? (
+											{isCompleted ? (
 												<div className="relative flex items-center justify-center w-5 h-5">
-													<div className="absolute inset-0 bg-gray-900 rounded-full animate-ping opacity-25"></div>
-													<div className="relative w-4 h-4 bg-gray-900 rounded-full"></div>
+													{isActive && <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-20"></div>}
+													<div className="relative w-4 h-4 rounded-full bg-green-500 ring-2 ring-green-100 transition-colors"></div>
 												</div>
-											) : (
-												<div className="w-4 h-4 rounded-full border-2 border-gray-300/90 group-hover:border-gray-400 transition-colors"></div>
-											)}
+											) : isActive ? (
+													<div className="relative flex items-center justify-center w-5 h-5">
+														<div className="absolute inset-0 bg-gray-900 rounded-full animate-ping opacity-25"></div>
+														<div className="relative w-4 h-4 bg-gray-900 rounded-full"></div>
+													</div>
+												) : (
+													<div className="w-4 h-4 rounded-full border-2 border-gray-300/90 group-hover:border-gray-400 transition-colors"></div>
+												)}
 											</div>
 											<div className="flex-1 min-w-0">
 												<div className="flex items-center justify-between mb-2">
 													<div className="flex items-center gap-2">
-														<span className={`text-sm font-medium transition-colors ${isActive ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-700'}`}>#{localIdx}</span>
+														<span className={`text-sm font-medium transition-colors ${isCompleted ? 'text-green-700' : isActive ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-700'}`}>#{localIdx}</span>
 														{isActive && (
 															<span className="text-[10px] font-bold bg-gray-900 text-white px-2 py-0.5 rounded uppercase tracking-wider">Now</span>
+														)}
+														{isCompleted && (
+															<span className="text-[10px] font-bold bg-green-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Done</span>
 														)}
 													</div>
 													<div className="flex items-center gap-1 shrink-0 text-gray-500">
@@ -192,7 +207,7 @@ export default function Sidebar({
 
 												<div className="flex flex-wrap gap-1.5 mt-2">
 													{pattern.map((length, i) => (
-														<span key={i} className={`text-[10px] tracking-[0.2em] leading-none transition-colors ${isActive ? 'text-gray-900 font-bold' : 'text-gray-300 group-hover:text-gray-400'}`}>
+														<span key={i} className={`text-[10px] tracking-[0.2em] leading-none transition-colors ${isCompleted ? 'text-green-500 font-bold' : isActive ? 'text-gray-900 font-bold' : 'text-gray-300 group-hover:text-gray-400'}`}>
 															{'*'.repeat(length)}
 														</span>
 													))}

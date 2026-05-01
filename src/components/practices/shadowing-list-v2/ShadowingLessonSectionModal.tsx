@@ -20,6 +20,10 @@ type LessonSectionModalProps = {
     onClose: () => void;
 };
 
+const dedupeLessonsById = (lessons: ShadowingSummaryLesson[]) => {
+    return Array.from(new Map(lessons.map((lesson) => [lesson.id, lesson])).values());
+};
+
 export function LessonSectionModal({
     open,
     title,
@@ -72,7 +76,7 @@ export function LessonSectionModal({
 
             setHasMore(!reachedEnd);
             setPage(pageToLoad);
-            setItems(prev => (mode === 'replace' ? data : [...prev, ...data]));
+            setItems(prev => dedupeLessonsById(mode === 'replace' ? data : [...prev, ...data]));
         } finally {
             inFlightPagesRef.current.delete(pageToLoad);
             setIsLoading(false);
@@ -131,7 +135,7 @@ export function LessonSectionModal({
                 );
         }
 
-        return data;
+        return dedupeLessonsById(data);
     }, [items, levelFilter, sortBy, progressMap, sectionKey]);
 
     const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {

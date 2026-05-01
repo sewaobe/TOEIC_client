@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Autorenew as Loader2,
@@ -121,8 +121,8 @@ export default function PracticeShadowingV2Page() {
   }, [shadowingId]);
 
   useEffect(() => {
-    if (!canUseVideo && mediaMode === 'video') {
-      setMediaMode('audio');
+    if (canUseVideo) {
+      setMediaMode('video');
     }
   }, [canUseVideo, mediaMode]);
 
@@ -199,12 +199,34 @@ export default function PracticeShadowingV2Page() {
   }
 
   const toggleVideoPlayback = () => {
+    console.log(isVideoPlaying)
     setIsVideoPlaying(!isVideoPlaying);
   };
 
   const handleBack = () => {
     window.history.back();
   };
+
+
+  const transcriptSegments = useMemo(() => {
+    if (!shadowingData) return [];
+    return shadowingData.timings.map((timing, index) => ({
+      id: index + 1,
+      text: timing.text,
+      translationVi: timing.translationVi,
+      ipa: '',
+      startTime: timing.startTime,
+      endTime: timing.endTime,
+    }));
+  }, [shadowingData]);
+
+  const transcriptTimings = useMemo(() => {
+    return transcriptSegments.map((segment) => ({
+      id: segment.id,
+      startTime: segment.startTime,
+      endTime: segment.endTime,
+    }));
+  }, [transcriptSegments]);
 
   if (loading) {
     return (
@@ -216,15 +238,6 @@ export default function PracticeShadowingV2Page() {
   }
 
   if (!shadowingData) return <div className="p-8 text-red-500">Failed to load data.</div>;
-
-  const transcriptSegments = shadowingData.timings.map((timing, index) => ({
-    id: index + 1,
-    text: timing.text,
-    translationVi: timing.translationVi,
-    ipa: '',
-    startTime: timing.startTime,
-    endTime: timing.endTime,
-  }));
 
   const activeTranscriptData = transcriptSegments.find(t => t.id === activeTranscriptId);
   const activeIndex = activeTranscriptId || 1;
@@ -266,13 +279,10 @@ export default function PracticeShadowingV2Page() {
               level: shadowingData.level,
               duration: shadowingData.duration,
               segmentCount: transcriptSegments.length,
+              videoSourceId: shadowingData.source_type === "youtube" ? shadowingData.audio_url.split("?v=")[1] : undefined,
             }}
             activeTranscriptData={activeTranscriptData}
-            transcriptTimings={transcriptSegments.map((segment) => ({
-              id: segment.id,
-              startTime: segment.startTime,
-              endTime: segment.endTime,
-            }))}
+            transcriptTimings={transcriptTimings}
             appState={appState}
             recordTimer={recordTimer}
             mediaMode={mediaMode}

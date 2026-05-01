@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, RefObject } from 'react';
+import React, { useCallback, useEffect, useRef, useState, RefObject } from 'react';
 import {
 	ArrowBack as ArrowLeft,
 	Mic,
@@ -14,8 +14,6 @@ import {
 	AutoAwesome as Sparkles,
 	Stop as Square,
 	Pause,
-	AccessTime as Clock,
-	Share as Share2,
 } from '@mui/icons-material';
 import { Popover, Box, Typography, IconButton, CircularProgress, Divider } from '@mui/material';
 import VolumeUpOutlinedIcon from '@mui/icons-material/VolumeUpOutlined';
@@ -42,7 +40,6 @@ interface ShadowingMediaData {
 	sourceType: 'audio' | 'youtube';
 	audioUrl: string;
 	videoSourceId?: string;
-	thumbnailUrl?: string;
 	level?: string;
 	duration?: number;
 	segmentCount: number;
@@ -301,7 +298,7 @@ export default function RightContent({
 	onSetActiveTranscriptId,
 	onToggleVideoPlayback,
 	onHandleNext,
-	onHandlePrevious
+	onHandlePrevious,
 }: RightContentProps) {
 	const wordPattern = activeTranscriptData ? getWordPattern(activeTranscriptData.text) : [];
 	const wordCount = wordPattern.length;
@@ -311,6 +308,9 @@ export default function RightContent({
 	const [currentSpeed, setCurrentSpeed] = useState('1x');
 	const audioRef = useRef<HTMLAudioElement>(null);
 	const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+	const [youtubeCurrentTime, setYoutubeCurrentTime] = useState(0);
+	const youtubeCurrentTimeRef = useRef(0);
+	const youtubeStopHandledRef = useRef(false);
 	const [audioDuration, setAudioDuration] = useState(shadowingData.duration || 0);
 	const hasMountedSegmentRef = useRef(false);
 	const previousSegmentIdRef = useRef<number | null>(null);
@@ -323,8 +323,25 @@ export default function RightContent({
 			height: 'clamp(375px, 50vh, 580px)',
 			maxHeight: '580px',
 		};
+	const hasUserStartedVideoRef = useRef(false);
+	const youtubeOrigin = typeof window !== 'undefined' ? window.location.origin : '';
 
+	const postYoutubeMessage = useCallback((message: Record<string, unknown>) => {
+		if (!iframeRef.current?.contentWindow) return;
 
+		try {
+			iframeRef.current.contentWindow.postMessage(
+				JSON.stringify(message),
+				'*',
+			);
+		} catch (e) {
+			console.error('Iframe cross-origin block');
+		}
+	}, [iframeRef]);
+
+	const postYoutubeCommand = useCallback((func: string, args: unknown[] = []) => {
+		postYoutubeMessage({ event: 'command', func, args });
+	}, [postYoutubeMessage]);
 
 	useEffect(() => {
 		const audio = audioRef.current;
@@ -404,6 +421,13 @@ export default function RightContent({
 	}, [currentSpeed, isAudioSource]);
 
 	useEffect(() => {
+		if (!hasVideoSource) return;
+
+		const speed = Number(currentSpeed.replace('x', ''));
+		postYoutubeCommand('setPlaybackRate', [Number.isFinite(speed) ? speed : 1]);
+	}, [currentSpeed, hasVideoSource, postYoutubeCommand]);
+
+	useEffect(() => {
 		if (isVideoPlaying) {
 			if (isAudioSource) {
 				const audio = audioRef.current;
@@ -422,6 +446,49 @@ export default function RightContent({
 		}
 	}, [isAudioSource, isVideoPlaying]);
 
+	const segmentStart = activeTranscriptData?.startTime ?? 0;
+	const segmentEnd = activeTranscriptData?.endTime ?? segmentStart;
+
+	useEffect(() => {
+		if (!hasVideoSource) return;
+
+		postYoutubeMessage({ event: 'listening', id: 'shadowing-youtube-player' });
+		postYoutubeCommand('getCurrentTime');
+
+		const handleYoutubeMessage = (event: MessageEvent) => {
+			if (typeof event.origin === 'string' && !event.origin.includes('youtube.com')) return;
+
+			let data: any;
+			try {
+				data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+			} catch {
+				return;
+			}
+
+			if (data?.event !== 'infoDelivery' || typeof data?.info?.currentTime !== 'number') return;
+
+			const currentTime = data.info.currentTime;
+			youtubeCurrentTimeRef.current = currentTime;
+			setYoutubeCurrentTime(currentTime);
+
+			if (typeof data.info.playerState === 'number') {
+				console.log('[Shadowing YouTube state]', {
+					playerState: data.info.playerState,
+					currentTime: Number(currentTime.toFixed(2)),
+					activeTranscriptId,
+					segmentStart,
+					segmentEnd,
+				});
+			}
+		};
+
+		window.addEventListener('message', handleYoutubeMessage);
+
+		return () => {
+			window.removeEventListener('message', handleYoutubeMessage);
+		};
+	}, [activeTranscriptId, hasVideoSource, postYoutubeCommand, postYoutubeMessage, segmentEnd, segmentStart]);
+
 	useEffect(() => {
 		const nextTime = activeTranscriptData?.startTime ?? 0;
 		const currentSegmentId = activeTranscriptId ?? null;
@@ -429,25 +496,46 @@ export default function RightContent({
 		if (!isSegmentChanged) return;
 
 		previousSegmentIdRef.current = currentSegmentId;
+		youtubeStopHandledRef.current = false;
+
+		if (!hasMountedSegmentRef.current && !isAudioSource && hasVideoSource && currentSegmentId === 1) {
+			hasMountedSegmentRef.current = true;
+			youtubeCurrentTimeRef.current = 0;
+			setYoutubeCurrentTime(0);
+			postYoutubeMessage({ event: 'listening', id: 'shadowing-youtube-player' });
+			postYoutubeCommand('getCurrentTime');
+			console.log('[Shadowing YouTube initial intro]', {
+				activeTranscriptId: currentSegmentId,
+				currentTime: 0,
+				firstSegmentStart: nextTime,
+				segmentEnd: activeTranscriptData?.endTime,
+			});
+			return;
+		}
 
 		if (isAudioSource) {
 			const audio = audioRef.current;
 			if (!audio) return;
 			audio.currentTime = nextTime;
 			setAudioCurrentTime(nextTime);
-		} else if (hasVideoSource && iframeRef.current?.contentWindow) {
-			try {
-				iframeRef.current.contentWindow.postMessage(
-					JSON.stringify({ event: 'command', func: 'seekTo', args: [nextTime, true] }),
-					'*',
-				);
-			} catch (e) {
-				console.error('Iframe cross-origin block');
-			}
+		} else if (hasVideoSource) {
+			postYoutubeCommand('seekTo', [nextTime, true]);
+			postYoutubeCommand('getCurrentTime');
+			youtubeCurrentTimeRef.current = nextTime;
+			setYoutubeCurrentTime(nextTime);
+			console.log('[Shadowing YouTube seek segment]', {
+				activeTranscriptId: currentSegmentId,
+				seekTo: nextTime,
+				segmentEnd: activeTranscriptData?.endTime,
+			});
 		}
 
 		if (!hasMountedSegmentRef.current) {
 			hasMountedSegmentRef.current = true;
+			return;
+		}
+
+		if (!isAudioSource && !hasUserStartedVideoRef.current) {
 			return;
 		}
 
@@ -457,48 +545,58 @@ export default function RightContent({
 	}, [
 		activeTranscriptId,
 		activeTranscriptData?.startTime,
+		activeTranscriptData?.endTime,
 		hasVideoSource,
 		iframeRef,
 		isAudioSource,
 		isVideoPlaying,
 		onToggleVideoPlayback,
+		postYoutubeCommand,
+		postYoutubeMessage,
 	]);
 
 	useEffect(() => {
 		if (isAudioSource || !hasVideoSource || !isVideoPlaying || !activeTranscriptData) return;
+		if (!hasUserStartedVideoRef.current) return;
 
-		const segmentStart = activeTranscriptData.startTime ?? 0;
-		const segmentEnd = activeTranscriptData.endTime ?? segmentStart;
-		const durationMs = Math.max((segmentEnd - segmentStart) * 1000, 0);
-		if (durationMs <= 0) return;
+		youtubeStopHandledRef.current = false;
 
-		const timeoutId = setTimeout(() => {
-			if (iframeRef.current?.contentWindow) {
-				try {
-					iframeRef.current.contentWindow.postMessage(
-						JSON.stringify({ event: 'command', func: 'seekTo', args: [segmentEnd, true] }),
-						'*',
-					);
-				} catch (e) {
-					console.error('Iframe cross-origin block');
-				}
-			}
+		const intervalId = setInterval(() => {
+			postYoutubeCommand('getCurrentTime');
 
-			if (isVideoPlaying) {
+			const current = youtubeCurrentTimeRef.current;
+			console.log('[Shadowing YouTube time]', {
+				activeTranscriptId,
+				currentTime: Number(current.toFixed(2)),
+				segmentStart,
+				segmentEnd,
+				remaining: Number((segmentEnd - current).toFixed(2)),
+			});
+
+			if (!youtubeStopHandledRef.current && current >= segmentEnd - 0.05) {
+				youtubeStopHandledRef.current = true;
+				postYoutubeCommand('seekTo', [segmentEnd, true]);
+				postYoutubeCommand('pauseVideo');
 				onToggleVideoPlayback();
+				console.log('[Shadowing YouTube auto stop]', {
+					activeTranscriptId,
+					currentTime: Number(current.toFixed(2)),
+					segmentEnd,
+				});
 			}
-		}, durationMs);
+		}, 250);
 
-		return () => clearTimeout(timeoutId);
+		return () => clearInterval(intervalId);
 	}, [
-		activeTranscriptData,
 		activeTranscriptId,
+		segmentStart,
+		segmentEnd,
+		activeTranscriptData,
 		hasVideoSource,
 		isAudioSource,
 		isVideoPlaying,
-		onSetActiveTranscriptId,
 		onToggleVideoPlayback,
-		transcriptTimings,
+		postYoutubeCommand,
 	]);
 
 	const handleSeekAudio = (time: number) => {
@@ -523,28 +621,45 @@ export default function RightContent({
 		// Lấy thời gian hiện tại trực tiếp từ audio element (nếu là audio) để chính xác nhất
 		const currentTime = isAudioSource && audioRef.current
 			? audioRef.current.currentTime
-			: audioCurrentTime;
+			: youtubeCurrentTimeRef.current;
+		const shouldPlayInitialYoutubeIntro =
+			!isAudioSource &&
+			activeTranscriptId === 1 &&
+			!hasUserStartedVideoRef.current;
 
 		// Dùng >= để đảm bảo bắt đúng logic kết thúc segment
-		if (currentTime >= activeTranscriptData.endTime) {
+		if (
+			!shouldPlayInitialYoutubeIntro &&
+			(
+				currentTime >= activeTranscriptData.endTime ||
+				currentTime < activeTranscriptData.startTime ||
+				(!isAudioSource && !hasUserStartedVideoRef.current)
+			)
+		) {
 
 			if (isAudioSource && audioRef.current) {
 				// Cập nhật trực tiếp currentTime của Audio DOM Node
 				audioRef.current.currentTime = activeTranscriptData.startTime;
-			} else if (hasVideoSource && iframeRef.current?.contentWindow) {
-				// Tua lại đối với Youtube Iframe
-				try {
-					iframeRef.current.contentWindow.postMessage(
-						JSON.stringify({ event: 'command', func: 'seekTo', args: [activeTranscriptData.startTime, true] }),
-						'*',
-					);
-				} catch (e) {
-					console.error('Iframe cross-origin block');
-				}
+			} else if (hasVideoSource) {
+				postYoutubeCommand('seekTo', [activeTranscriptData.startTime, true]);
+				postYoutubeCommand('getCurrentTime');
+				youtubeCurrentTimeRef.current = activeTranscriptData.startTime;
+				setYoutubeCurrentTime(activeTranscriptData.startTime);
+				youtubeStopHandledRef.current = false;
+				console.log('[Shadowing YouTube reset before play]', {
+					activeTranscriptId,
+					fromCurrentTime: Number(currentTime.toFixed(2)),
+					seekTo: activeTranscriptData.startTime,
+					segmentEnd: activeTranscriptData.endTime,
+				});
 			}
 
 			// Cập nhật lại React state
 			setAudioCurrentTime(activeTranscriptData.startTime);
+		}
+
+		if (!isAudioSource && !isVideoPlaying) {
+			hasUserStartedVideoRef.current = true;
 		}
 
 		// Kích hoạt play/pause
@@ -564,16 +679,17 @@ export default function RightContent({
 		if (isAudioSource && audioRef.current) {
 			// Cập nhật trực tiếp currentTime của Audio DOM Node
 			audioRef.current.currentTime = activeTranscriptData.startTime;
-		} else if (hasVideoSource && iframeRef.current?.contentWindow) {
-			// Tua lại đối với Youtube Iframe
-			try {
-				iframeRef.current.contentWindow.postMessage(
-					JSON.stringify({ event: 'command', func: 'seekTo', args: [activeTranscriptData.startTime, true] }),
-					'*',
-				);
-			} catch (e) {
-				console.error('Iframe cross-origin block');
-			}
+		} else if (hasVideoSource) {
+			postYoutubeCommand('seekTo', [activeTranscriptData.startTime, true]);
+			postYoutubeCommand('getCurrentTime');
+			youtubeCurrentTimeRef.current = activeTranscriptData.startTime;
+			setYoutubeCurrentTime(activeTranscriptData.startTime);
+			youtubeStopHandledRef.current = false;
+			console.log('[Shadowing YouTube replay]', {
+				activeTranscriptId,
+				seekTo: activeTranscriptData.startTime,
+				segmentEnd: activeTranscriptData.endTime,
+			});
 		}
 
 		// Cập nhật lại React state
@@ -671,8 +787,8 @@ export default function RightContent({
 
 	const handleClosePopover = () => {
 		if (document.activeElement instanceof HTMLElement) {
-            document.activeElement.blur();
-        }
+			document.activeElement.blur();
+		}
 
 		setAnchorEl(null);
 	};
@@ -696,7 +812,7 @@ export default function RightContent({
 							activeIndex={activeIndex}
 							segmentCount={shadowingData.segmentCount}
 							isPlaying={isVideoPlaying}
-							currentTime={audioCurrentTime}
+							currentTime={hasVideoSource ? youtubeCurrentTime : audioCurrentTime}
 							duration={audioDuration}
 							currentSpeed={currentSpeed}
 							onSeek={handleSeekAudio}
@@ -713,14 +829,55 @@ export default function RightContent({
 						{hasVideoSource && (
 							<iframe
 								ref={iframeRef}
-								className="absolute inset-0 w-full h-full"
-								src={`https://www.youtube.com/embed/${shadowingData.videoSourceId}?enablejsapi=1&controls=0&rel=0`}
+								className="absolute inset-0 w-full h-full pointer-events-none"
+								src={`https://www.youtube.com/embed/${shadowingData.videoSourceId}?enablejsapi=1&controls=0&rel=0&origin=${encodeURIComponent(youtubeOrigin)}`}
 								title="YouTube video player"
 								frameBorder="0"
+								onLoad={() => {
+									postYoutubeMessage({ event: 'listening', id: 'shadowing-youtube-player' });
+									postYoutubeCommand('getCurrentTime');
+								}}
 								allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
 								allowFullScreen
 							></iframe>
 						)}
+
+						<div
+							className={`absolute inset-0 z-10 cursor-pointer ${isVideoPlaying ? '' : 'bg-black/10'}`}
+							onClick={hasVideoSource ? handleToggleMediaPlayBack : undefined}
+						>
+							{!isVideoPlaying && (
+								<div className="absolute inset-0 flex items-center justify-center">
+									<button
+										className={`w-16 h-12 rounded-xl flex items-center justify-center shadow-lg transition-transform hover:scale-105 ${hasVideoSource ? 'bg-red-600 cursor-pointer' : 'bg-gray-500 cursor-not-allowed'}`}
+										disabled={!hasVideoSource}
+									>
+										<Play className="w-6 h-6 text-white fill-white" />
+									</button>
+								</div>
+							)}
+						</div>
+
+						<div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+							<button
+								onClick={onHandlePrevious}
+								className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
+							>
+								<SkipBack className="w-4 h-4" />
+							</button>
+							<button
+								onClick={handleToggleMediaRotate}
+								className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
+							>
+								<RotateCcw className="w-4 h-4" />
+							</button>
+							<button
+								onClick={onHandleNext}
+								className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
+							>
+								<SkipForward className="w-4 h-4" />
+							</button>
+						</div>
 
 						{!hasVideoSource && mediaMode === 'video' && (
 							<div className="absolute inset-0 flex flex-col items-center justify-center text-white/90 px-6 text-center">
@@ -729,38 +886,6 @@ export default function RightContent({
 							</div>
 						)}
 
-						{!isVideoPlaying && mediaMode === 'video' && (
-							<>
-								{shadowingData.thumbnailUrl && (
-									<img src={shadowingData.thumbnailUrl} alt="Thumbnail" className="absolute inset-0 w-full h-full object-cover opacity-60" />
-								)}
-								<div className="absolute top-0 left-0 w-full p-4 bg-gradient-to-b from-black/80 to-transparent flex justify-between pointer-events-none">
-									<div className="flex items-center gap-3">
-										<div className="px-2 py-1 bg-black/80 rounded-md text-white flex items-center justify-center font-bold text-xs">{tagName}</div>
-										<span className="text-white font-medium text-sm truncate w-48">{shadowingData.title}</span>
-									</div>
-									<div className="flex gap-2">
-										<button className="p-2 hover:bg-white/20 rounded-full text-white pointer-events-auto"><Share2 className="w-4 h-4" /></button>
-										<button className="p-2 hover:bg-white/20 rounded-full text-white pointer-events-auto"><Clock className="w-4 h-4" /></button>
-									</div>
-								</div>
-
-								<div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-									<button
-										onClick={onToggleVideoPlayback}
-										className={`w-16 h-12 rounded-xl flex items-center justify-center shadow-lg transition-transform hover:scale-105 pointer-events-auto ${hasVideoSource ? 'bg-red-600 cursor-pointer' : 'bg-gray-500 cursor-not-allowed'}`}
-										disabled={!hasVideoSource}
-									>
-										<Play className="w-6 h-6 text-white fill-white" />
-									</button>
-								</div>
-
-								<div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full flex items-center gap-2 shadow-sm pointer-events-auto cursor-pointer">
-									<SkipBack className="w-4 h-4" />
-									<span className="text-sm font-medium">Skip to start</span>
-								</div>
-							</>
-						)}
 					</div>
 				</div>
 

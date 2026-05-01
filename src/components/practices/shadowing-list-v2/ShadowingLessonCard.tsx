@@ -3,6 +3,12 @@ import { ShadowingSummaryLesson } from "../../../views/pages/PracticeShadowingLi
 import { AccessTime } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return mins !== 0 ? `${mins}m:${secs.toString().padStart(2, '0')}s` : `${secs.toString().padStart(2, '0')}s`;
+};
+
 export function LessonCard({
   item,
   progress,
@@ -100,7 +106,7 @@ export function LessonCard({
           "
         >
           <AccessTime sx={{ fontSize: 14 }} />
-          <span>{item.duration} min</span>
+          <span>{formatTime(item.duration)}</span>
         </div>
       </div>
 

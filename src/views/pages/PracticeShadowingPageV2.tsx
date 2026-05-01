@@ -214,7 +214,7 @@ export default function PracticeShadowingV2Page() {
       id: index + 1,
       text: timing.text,
       translationVi: timing.translationVi,
-      ipa: '',
+      ipa: timing.ipa,
       startTime: timing.startTime,
       endTime: timing.endTime,
     }));

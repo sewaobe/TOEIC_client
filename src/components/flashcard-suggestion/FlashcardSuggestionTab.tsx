@@ -1,25 +1,23 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Button, Paper, Stack, Typography } from "@mui/material";
 import { Alarm, PlayArrow, StarBorder, VolumeUp } from "@mui/icons-material";
-import { reviewStats } from "./mockData";
+import { reviewStats, todayReviewSummary as mockTodayReviewSummary } from "./mockData";
 import MemoryStatusCard from "./MemoryStatusCard";
 import ReviewScheduleCard from "./ReviewScheduleCard";
 import SuggestedVocabularySection from "./SuggestedVocabularySection";
+import { TodayReviewSummary } from "../../types/UserVocabularyProgressV2";
+import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
 
-const totalDue = 28;
-
-const HeroFlashcardPreview = () => (
+const CompactHeroPreview = () => (
   <Box
     sx={{
-      width: { xs: "100%", md: 330 },
-      minWidth: 0,
-      height: { xs: 132, sm: 150 },
-      display: "flex",
+      display: { xs: "none", md: "flex" },
       alignItems: "center",
       justifyContent: "center",
+      minWidth: 0,
+      minHeight: 150,
       position: "relative",
       overflow: "hidden",
-      mt: { xs: 1, md: 0 },
     }}
   >
     {[2, 1, 0].map((offset) => (
@@ -28,12 +26,12 @@ const HeroFlashcardPreview = () => (
         elevation={0}
         sx={{
           position: "absolute",
-          width: { xs: "min(245px, calc(100% - 32px))", sm: 285 },
-          height: { xs: 104, sm: 120 },
-          borderRadius: 4,
+          width: { md: 210, xl: 250 },
+          height: { md: 112, xl: 128 },
+          borderRadius: 3,
           border: "1px solid #dbeafe",
-          boxShadow: "0 12px 30px rgba(37,99,235,0.14)",
-          transform: `translate(${offset * 8}px, ${offset * -6}px) rotate(${offset * 3}deg)`,
+          boxShadow: "0 12px 28px rgba(37,99,235,0.12)",
+          transform: `translate(${offset * 7}px, ${offset * -5}px) rotate(${offset * 3}deg)`,
           bgcolor: "rgba(255,255,255,0.92)",
         }}
       />
@@ -41,40 +39,53 @@ const HeroFlashcardPreview = () => (
     <Paper
       elevation={0}
       sx={{
-        width: { xs: "min(245px, calc(100% - 32px))", sm: 285 },
-        height: { xs: 104, sm: 120 },
-        borderRadius: 4,
+        width: { md: 210, xl: 250 },
+        height: { md: 112, xl: 128 },
+        borderRadius: 3,
         border: "1px solid #dbeafe",
-        boxShadow: "0 14px 34px rgba(37,99,235,0.16)",
+        boxShadow: "0 14px 32px rgba(37,99,235,0.15)",
         zIndex: 2,
-        p: { xs: 1.5, sm: 2 },
+        p: 1.5,
         bgcolor: "white",
       }}
     >
       <Box sx={{ display: "flex", justifyContent: "space-between", color: "#2563eb" }}>
-        <VolumeUp fontSize="small" />
-        <StarBorder fontSize="small" sx={{ color: "#cbd5e1" }} />
+        <VolumeUp sx={{ fontSize: 18 }} />
+        <StarBorder sx={{ fontSize: 18, color: "#cbd5e1" }} />
       </Box>
-      <Typography
-        sx={{
-          mt: { xs: 1, sm: 1.5 },
-          textAlign: "center",
-          color: "#2563eb",
-          fontWeight: 800,
-          fontSize: { xs: 18, sm: 22 },
-        }}
-      >
+      <Typography sx={{ mt: 1, textAlign: "center", color: "#2563eb", fontWeight: 800, fontSize: { md: 18, xl: 20 } }}>
         incentive
       </Typography>
-      <Box sx={{ mt: { xs: 1.8, sm: 2.5 }, mx: "auto", width: "70%" }}>
-        <Box sx={{ height: 7, borderRadius: 999, bgcolor: "#e5e7eb", mb: 1 }} />
-        <Box sx={{ height: 6, borderRadius: 999, bgcolor: "#e5e7eb", width: "72%" }} />
+      <Box sx={{ mt: 1.6, mx: "auto", width: "70%" }}>
+        <Box sx={{ height: 6, borderRadius: 999, bgcolor: "#e5e7eb", mb: 0.8 }} />
+        <Box sx={{ height: 5, borderRadius: 999, bgcolor: "#e5e7eb", width: "72%" }} />
       </Box>
     </Paper>
   </Box>
 );
 
 const FlashcardSuggestionTab: React.FC = () => {
+  const [summary, setSummary] = useState<TodayReviewSummary>(mockTodayReviewSummary);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    userVocabularyProgressV2Service.getTodayReviewSummary().then((data) => {
+      if (isMounted) {
+        setSummary(data);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const stats = reviewStats.map((stat) => ({
+    ...stat,
+    value: summary[stat.key],
+  }));
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
       <Paper
@@ -95,103 +106,97 @@ const FlashcardSuggestionTab: React.FC = () => {
             inset: 0,
             backgroundImage: "radial-gradient(#bfdbfe 1.2px, transparent 1.2px)",
             backgroundSize: "18px 18px",
-            opacity: 0.45,
-            maskImage: "linear-gradient(90deg, transparent, black 68%)",
+            opacity: 0.42,
+            maskImage: "linear-gradient(90deg, transparent, black 72%)",
           }}
         />
-        <Box
-          sx={{
-            position: "relative",
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) 330px" },
-            gap: { xs: 2, md: 3 },
-            alignItems: "center",
-            minWidth: 0,
-          }}
-        >
-          <Box sx={{ minWidth: 0 }}>
-            <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 2 }}>
-              <Box sx={{ p: 1, borderRadius: 2, color: "#2563eb", bgcolor: "#dbeafe", flexShrink: 0 }}>
-                <Alarm fontSize="small" />
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                  Ôn tập hôm nay
-                </Typography>
-                <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                  Ưu tiên những từ cần ôn gấp để ghi nhớ hiệu quả hơn.
-                </Typography>
-              </Box>
-            </Stack>
+        <Box sx={{ position: "relative", minWidth: 0 }}>
+          <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 2 }}>
+            <Box sx={{ p: 1, borderRadius: 2, color: "#2563eb", bgcolor: "#dbeafe", flexShrink: 0 }}>
+              <Alarm fontSize="small" />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                Ôn tập hôm nay
+              </Typography>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                Ưu tiên các từ đến hạn, sắp quên và quá hạn theo lịch ghi nhớ của bạn.
+              </Typography>
+            </Box>
+          </Stack>
 
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", sm: "140px minmax(0, 1fr)", lg: "170px minmax(0, 1fr)" },
-                gap: 2,
-                alignItems: "center",
-                minWidth: 0,
-              }}
-            >
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) 250px", xl: "minmax(0, 1fr) 290px" },
+              gap: 2.5,
+              alignItems: "center",
+              minWidth: 0,
+            }}
+          >
+            <Box sx={{ minWidth: 0 }}>
               <Box
                 sx={{
-                  width: { xs: 112, sm: 122 },
-                  height: { xs: 112, sm: 122 },
-                  borderRadius: "50%",
-                  background: "conic-gradient(#2563eb 0 78%, #bfdbfe 78% 100%)",
-                  display: "flex",
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", sm: "128px minmax(0, 1fr)", xl: "140px minmax(0, 1fr)" },
+                  gap: 2,
                   alignItems: "center",
-                  justifyContent: "center",
-                  mx: { xs: "auto", sm: 0 },
+                  mb: 2,
+                  minWidth: 0,
                 }}
               >
                 <Box
                   sx={{
-                    width: { xs: 88, sm: 96 },
-                    height: { xs: 88, sm: 96 },
+                    width: { xs: 112, sm: 122 },
+                    height: { xs: 112, sm: 122 },
                     borderRadius: "50%",
-                    bgcolor: "#eff6ff",
+                    background: "conic-gradient(#2563eb 0 75%, #bfdbfe 75% 100%)",
                     display: "flex",
-                    flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
+                    mx: { xs: "auto", sm: 0 },
                   }}
                 >
-                  <Typography variant="h4" sx={{ fontWeight: 900 }}>
-                    {totalDue}
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                    từ cần ôn
-                  </Typography>
+                  <Box
+                    sx={{
+                      width: { xs: 88, sm: 96 },
+                      height: { xs: 88, sm: 96 },
+                      borderRadius: "50%",
+                      bgcolor: "#eff6ff",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Typography variant="h4" sx={{ fontWeight: 900 }}>
+                      {summary.total}
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      từ cần ôn
+                    </Typography>
+                  </Box>
                 </Box>
-              </Box>
 
-              <Box sx={{ minWidth: 0 }}>
                 <Box
                   sx={{
                     display: "grid",
                     gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" },
-                    gap: 1.5,
-                    mb: 2.5,
+                    gap: 1.2,
+                    minWidth: 0,
                   }}
                 >
-                  {reviewStats.map((stat) => (
+                  {stats.map((stat) => (
                     <Paper
-                      key={stat.label}
+                      key={stat.key}
                       elevation={0}
-                      sx={{ p: 1.6, borderRadius: 2, border: "1px solid #e2e8f0", minWidth: 0 }}
+                      sx={{ p: 1.35, borderRadius: 2, border: "1px solid #e2e8f0", minWidth: 0 }}
                     >
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
                         <Box sx={{ width: 9, height: 9, borderRadius: "50%", bgcolor: stat.color, flexShrink: 0 }} />
                         <Typography
                           variant="caption"
-                          sx={{
-                            fontWeight: 700,
-                            color: "text.secondary",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
+                          sx={{ fontWeight: 700, color: "text.secondary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                         >
                           {stat.label}
                         </Typography>
@@ -202,21 +207,40 @@ const FlashcardSuggestionTab: React.FC = () => {
                     </Paper>
                   ))}
                 </Box>
-
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                  <Button variant="contained" startIcon={<PlayArrow />} sx={{ borderRadius: 2, fontWeight: 800, px: { xs: 2, sm: 4 } }}>
-                    Bắt đầu ôn 28 từ
-                  </Button>
-                </Stack>
               </Box>
-            </Box>
-          </Box>
 
-          <HeroFlashcardPreview />
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                <Button
+                  variant="contained"
+                  startIcon={<PlayArrow />}
+                  sx={{ borderRadius: 2, fontWeight: 800, px: { xs: 2, sm: 3 }, whiteSpace: "nowrap", flexShrink: 0 }}
+                >
+                  Ôn hôm nay và sắp quên ({summary.primaryReviewCount} từ)
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<PlayArrow />}
+                  sx={{ borderRadius: 2, fontWeight: 800, px: { xs: 2, sm: 3 }, whiteSpace: "nowrap", flexShrink: 0 }}
+                >
+                  Ôn từ quá hạn ({summary.overdueReviewCount} từ)
+                </Button>
+              </Stack>
+            </Box>
+
+            <CompactHeroPreview />
+          </Box>
         </Box>
       </Paper>
 
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) minmax(0, 1fr)" }, gap: 2, minWidth: 0 }}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 7fr) minmax(340px, 3fr)" },
+          gap: 2,
+          alignItems: "stretch",
+          minWidth: 0,
+        }}
+      >
         <ReviewScheduleCard />
         <MemoryStatusCard />
       </Box>

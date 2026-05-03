@@ -1,5 +1,13 @@
 export type VocabularyMemoryStatus = "learning" | "reviewing" | "mastered";
 
+export type MemoryUiBucket =
+  | "mastered"
+  | "active_reviewing"
+  | "at_risk"
+  | "overdue";
+
+export type SuggestionPriority = "high" | "medium" | "low";
+
 export type DhpRecallResult = "remembered" | "forgot";
 
 export type FlashcardEvalType = "easy" | "medium" | "hard" | "skip";
@@ -9,6 +17,14 @@ export type UserVocabularyMemoryId = string;
 export type VocabularyId = string;
 
 export type ISODateString = string;
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message: string;
+  errors: unknown;
+  meta?: unknown;
+}
 
 export interface UserVocabularyMemoryV2 {
   _id?: UserVocabularyMemoryId;
@@ -111,7 +127,70 @@ export interface SspMmcPolicy {
   policies: Record<string, SspMmcPolicyEntry[]>;
 }
 
-export type SuggestionPriority = "Cao" | "Trung bình" | "Thấp";
+export interface TodayReviewSummary {
+  total: number;
+  dueToday: number;
+  atRisk: number;
+  overdue: number;
+  primaryReviewCount: number;
+  overdueReviewCount: number;
+}
+
+export interface ReviewSchedulePoint {
+  date: ISODateString;
+  label: string;
+  count: number;
+}
+
+export interface MemoryStatusSummaryItem {
+  bucket: MemoryUiBucket;
+  label: string;
+  count: number;
+  percentage: number;
+}
+
+export interface SuggestedVocabularyApiItem {
+  id: string;
+  vocabularyId: VocabularyId;
+  word: string;
+  phonetic?: string;
+  meaning?: string;
+  type?: string;
+  topic?: string;
+  level?: string;
+  priority: SuggestionPriority;
+  priorityLabel: string;
+  pRecallNow: number;
+  dueAt: ISODateString | null;
+  dueLabel: string;
+  memoryBucket: MemoryUiBucket;
+  status: VocabularyMemoryStatus;
+  halfLifeDays: number;
+  difficulty: number;
+  reviewCount: number;
+  sessionCount: number;
+}
+
+export interface SuggestedVocabularyPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface SuggestedVocabularyCounters {
+  all: number;
+  dueToday: number;
+  atRisk: number;
+  overdue: number;
+  mastered: number;
+}
+
+export interface PaginatedSuggestions {
+  items: SuggestedVocabularyApiItem[];
+  pagination: SuggestedVocabularyPagination;
+  counters: SuggestedVocabularyCounters;
+}
 
 export type SuggestionDueTone = "danger" | "warning" | "success";
 
@@ -144,13 +223,17 @@ export interface SuggestedVocabularyItem extends VocabularyDisplayInfo {
     | "last_dhp_recall_result"
   >;
   priority: SuggestionPriority;
-  pRecall: number;
+  priorityLabel: string;
+  pRecallNow: number;
   pRecallPercent: number;
+  dueAt?: ISODateString | null;
   dueLabel: string;
   dueTone: SuggestionDueTone;
+  memoryBucket?: MemoryUiBucket;
 }
 
 export interface SuggestionReviewStat {
+  key: "dueToday" | "atRisk" | "overdue";
   label: string;
   value: number;
   color: string;
@@ -162,8 +245,8 @@ export interface SuggestionSchedulePoint {
 }
 
 export interface SuggestionMemoryStatus {
+  bucket: MemoryUiBucket;
   label: string;
-  status?: VocabularyMemoryStatus;
   value: number;
   percent: number;
   color: string;

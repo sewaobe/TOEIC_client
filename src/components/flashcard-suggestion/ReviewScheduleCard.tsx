@@ -1,70 +1,129 @@
-import React from "react";
-import { Box, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
+import React, { useEffect, useMemo, useState } from "react";
+import { Box, MenuItem, Paper, Select, Stack, Tooltip, Typography } from "@mui/material";
+import { ReviewSchedulePoint } from "../../types/UserVocabularyProgressV2";
+import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
 import { schedulePoints } from "./mockData";
 
-const MiniLineChart = () => {
+const mockSchedule: ReviewSchedulePoint[] = schedulePoints.slice(0, 7).map((point, index) => ({
+  date: new Date(Date.now() + index * 24 * 60 * 60 * 1000).toISOString(),
+  label: point.label,
+  count: point.value,
+}));
+
+interface MiniLineChartProps {
+  data: ReviewSchedulePoint[];
+}
+
+const MiniLineChart: React.FC<MiniLineChartProps> = ({ data }) => {
   const width = 600;
-  const height = 120;
-  const paddingX = 24;
-  const paddingY = 16;
-  const maxValue = 60;
-  const points = schedulePoints
+  const height = 160;
+  const paddingX = 32;
+  const paddingTop = 22;
+  const paddingBottom = 28;
+  const maxValue = Math.max(10, ...data.map((point) => point.count));
+  const xLabelStep = data.length <= 7 ? 1 : data.length <= 14 ? 2 : 5;
+  const points = data
     .map((point, index) => {
       const x =
         paddingX +
-        (index * (width - paddingX * 2)) / (schedulePoints.length - 1);
+        (index * (width - paddingX * 2)) / Math.max(data.length - 1, 1);
       const y =
         height -
-        paddingY -
-        (point.value / maxValue) * (height - paddingY * 2);
+        paddingBottom -
+        (point.count / maxValue) * (height - paddingTop - paddingBottom);
       return `${x},${y}`;
     })
     .join(" ");
 
+  const ticks = useMemo(() => {
+    const middle = Math.round(maxValue / 2);
+    return [0, middle, maxValue];
+  }, [maxValue]);
+
   return (
-    <Box sx={{ width: "100%", overflowX: "auto", pb: 0.5 }}>
-      <Box
-        component="svg"
-        viewBox={`0 0 ${width} ${height}`}
-        sx={{ minWidth: { xs: 460, sm: 520 }, width: "100%" }}
-      >
-        {[0, 20, 40, 60].map((tick) => {
-          const y = height - paddingY - (tick / maxValue) * (height - paddingY * 2);
-          return (
-            <g key={tick}>
-              <text x="0" y={y + 4} fontSize="11" fill="#64748b">
-                {tick}
-              </text>
-              <line x1="28" y1={y} x2={width - 8} y2={y} stroke="#e2e8f0" />
-            </g>
-          );
-        })}
-        <polyline
-          points={points}
-          fill="none"
-          stroke="#2563eb"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        {schedulePoints.map((point, index) => {
-          const x =
-            paddingX +
-            (index * (width - paddingX * 2)) / (schedulePoints.length - 1);
+    <Box sx={{ width: "100%", flex: 1, minHeight: 0, overflowX: "auto", pb: 0.5 }}>
+      <Box sx={{ position: "relative", minWidth: { xs: 460, sm: data.length > 14 ? 760 : 520 }, height: "100%", minHeight: 160 }}>
+        <Box
+          component="svg"
+          viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="none"
+          sx={{ width: "100%", height: "100%", display: "block" }}
+        >
+          {ticks.map((tick) => {
+            const y = height - paddingBottom - (tick / maxValue) * (height - paddingTop - paddingBottom);
+            return (
+              <g key={tick}>
+                <text x="0" y={y + 3} fontSize="9" fill="#64748b">
+                  {tick}
+                </text>
+                <line x1="28" y1={y} x2={width - 8} y2={y} stroke="#e2e8f0" />
+              </g>
+            );
+          })}
+          <polyline
+            points={points}
+            fill="none"
+            stroke="#2563eb"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {data.map((point, index) => {
+            const x =
+              paddingX +
+              (index * (width - paddingX * 2)) / Math.max(data.length - 1, 1);
+            const y =
+              height -
+              paddingBottom -
+              (point.count / maxValue) * (height - paddingTop - paddingBottom);
+            const shouldShowLabel =
+              index === 0 || index === data.length - 1 || index % xLabelStep === 0;
+            const shouldShowValue = data.length <= 14 || index % xLabelStep === 0;
+            return (
+              <g key={`${point.date}-${point.label}`}>
+                <circle cx={x} cy={y} r="3.5" fill="#fff" stroke="#2563eb" strokeWidth="2.2" />
+                {shouldShowValue && (
+                  <text x={x} y={y - 9} textAnchor="middle" fontSize="9" fill="#2563eb" fontWeight="700">
+                    {point.count}
+                  </text>
+                )}
+                {shouldShowLabel && (
+                  <text x={x} y={height - 6} textAnchor="middle" fontSize="9" fill="#64748b">
+                    {point.label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </Box>
+        {data.map((point, index) => {
+          const xPercent =
+            ((paddingX + (index * (width - paddingX * 2)) / Math.max(data.length - 1, 1)) / width) * 100;
           const y =
             height -
-            paddingY -
-            (point.value / maxValue) * (height - paddingY * 2);
+            paddingBottom -
+            (point.count / maxValue) * (height - paddingTop - paddingBottom);
+          const yPercent = (y / height) * 100;
+
           return (
-            <g key={point.label}>
-              <circle cx={x} cy={y} r="5" fill="#fff" stroke="#2563eb" strokeWidth="3" />
-              <text x={x} y={y - 12} textAnchor="middle" fontSize="12" fill="#2563eb" fontWeight="700">
-                {point.value}
-              </text>
-              <text x={x} y={height - 2} textAnchor="middle" fontSize="11" fill="#64748b">
-                {point.label}
-              </text>
-            </g>
+            <Tooltip
+              key={`${point.date}-${point.label}-tooltip`}
+              arrow
+              title={`${point.label}: ${point.count} từ đến hạn cần ôn`}
+            >
+              <Box
+                sx={{
+                  position: "absolute",
+                  left: `${xPercent}%`,
+                  top: `${yPercent}%`,
+                  width: 18,
+                  height: 18,
+                  transform: "translate(-50%, -50%)",
+                  borderRadius: "50%",
+                  cursor: "pointer",
+                }}
+              />
+            </Tooltip>
           );
         })}
       </Box>
@@ -72,50 +131,73 @@ const MiniLineChart = () => {
   );
 };
 
-const ReviewScheduleCard: React.FC = () => (
-  <Paper
-    elevation={0}
-    sx={{
-      p: { xs: 2, sm: 2.5 },
-      borderRadius: 3,
-      border: "1px solid #e2e8f0",
-      minWidth: 0,
-    }}
-  >
-    <Stack
-      direction={{ xs: "column", sm: "row" }}
-      spacing={1.5}
-      alignItems={{ xs: "flex-start", sm: "center" }}
-      justifyContent="space-between"
-      sx={{ mb: 1 }}
+const ReviewScheduleCard: React.FC = () => {
+  const [rangeDays, setRangeDays] = useState<7 | 14 | 30>(7);
+  const [schedule, setSchedule] = useState<ReviewSchedulePoint[]>(mockSchedule);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    userVocabularyProgressV2Service.getReviewSchedule({ rangeDays }).then((data) => {
+      if (isMounted) {
+        setSchedule(data);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [rangeDays]);
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        p: { xs: 2, sm: 2.5 },
+        borderRadius: 3,
+        border: "1px solid #e2e8f0",
+        minWidth: 0,
+        minHeight: { xs: 300, sm: 320 },
+        display: "flex",
+        flexDirection: "column",
+      }}
     >
-      <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontWeight: 800 }}>
-          Lộ trình ôn tập 7 ngày tới
-        </Typography>
-        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.4 }}>
-          Số từ đến hạn cần ôn theo ngày.
-        </Typography>
-      </Box>
-      <Select
-        size="small"
-        defaultValue="7"
-        sx={{
-          minWidth: 128,
-          height: 34,
-          borderRadius: 2,
-          fontSize: 13,
-          fontWeight: 700,
-          flexShrink: 0,
-        }}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        justifyContent="space-between"
+        sx={{ mb: 1.5, flexShrink: 0 }}
       >
-        <MenuItem value="7">7 ngày tới</MenuItem>
-        <MenuItem value="14">14 ngày tới</MenuItem>
-        <MenuItem value="30">30 ngày tới</MenuItem>
-      </Select>
-    </Stack>
-    <MiniLineChart />
-  </Paper>
-);
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 800 }}>
+            Lộ trình ôn tập {rangeDays} ngày tới
+          </Typography>
+          <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.4 }}>
+            Số từ đến hạn cần ôn theo ngày.
+          </Typography>
+        </Box>
+        <Select
+          size="small"
+          value={String(rangeDays)}
+          onChange={(event) => setRangeDays(Number(event.target.value) as 7 | 14 | 30)}
+          sx={{
+            minWidth: 128,
+            height: 34,
+            borderRadius: 2,
+            fontSize: 13,
+            fontWeight: 700,
+            flexShrink: 0,
+          }}
+        >
+          <MenuItem value="7">7 ngày tới</MenuItem>
+          <MenuItem value="14">14 ngày tới</MenuItem>
+          <MenuItem value="30">30 ngày tới</MenuItem>
+        </Select>
+      </Stack>
+      <MiniLineChart data={schedule} />
+    </Paper>
+  );
+};
 
 export default ReviewScheduleCard;

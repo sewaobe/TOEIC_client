@@ -14,7 +14,7 @@ const ResetPasswordPage = lazy(() => import('../../views/pages/ResetPasswordPage
 const ExamPage = lazy(() => import('../../views/pages/TestPage'));
 const ExamDetailPage = lazy(() => import('../../views/pages/TestDetailPage'));
 const PlanWizardPage = lazy(() => import('../../views/pages/PlanWizardPage'));
-// const DemoPage = lazy(() => import('../../views/pages/PracticeShadowingListPageV2'));
+const DemoPage = lazy(() => import('../../views/pages/FlashCardPage'));
 // const DemoPageDetail = lazy(() => import('../../views/pages/PracticeShadowingPageV2'));
 
 const publicRoutes: AppRoute[] = [
@@ -27,7 +27,7 @@ const publicRoutes: AppRoute[] = [
   { path: "/test", element: TestDemoPage },
   { path: "/tests/:id", element: ExamDetailPage },
   { path: "/plan", element: PlanWizardPage },
-  // { path: "/demo", element: DemoPage },
+  { path: "/demo", element: DemoPage },
   // { path: "/demo/:shadowingId", element: DemoPageDetail },
 ];
 

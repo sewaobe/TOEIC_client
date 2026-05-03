@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -29,18 +29,24 @@ import {
   Search,
   VolumeUp,
 } from "@mui/icons-material";
-import { SuggestedVocabularyItem } from "../../types/UserVocabularyProgressV2";
+import {
+  PaginatedSuggestions,
+  SuggestedVocabularyApiItem,
+  SuggestionDueTone,
+  SuggestionPriority,
+} from "../../types/UserVocabularyProgressV2";
 import { suggestedVocabularies } from "./mockData";
+import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
 
 const filterLabels = ["Chủ đề", "Cấp độ", "Độ ưu tiên", "Đến hạn", "Xác suất nhớ"];
 
-const priorityColor: Record<SuggestedVocabularyItem["priority"], string> = {
-  Cao: "#ef4444",
-  "Trung bình": "#f59e0b",
-  Thấp: "#10b981",
+const priorityColor: Record<SuggestionPriority, string> = {
+  high: "#ef4444",
+  medium: "#f59e0b",
+  low: "#10b981",
 };
 
-const dueToneColor: Record<SuggestedVocabularyItem["dueTone"], string> = {
+const dueToneColor: Record<SuggestionDueTone, string> = {
   danger: "#ef4444",
   warning: "#f59e0b",
   success: "#10b981",
@@ -56,16 +62,100 @@ const compactButtonSx = {
   flexShrink: 0,
 };
 
+const mockSuggestions: PaginatedSuggestions = {
+  items: suggestedVocabularies.map((item) => ({
+    id: item.vocabularyId,
+    vocabularyId: item.vocabularyId,
+    word: item.word,
+    phonetic: item.phonetic,
+    meaning: item.meaning,
+    topic: item.topic,
+    level: item.level,
+    priority: item.priority,
+    priorityLabel: item.priorityLabel,
+    pRecallNow: item.pRecallNow,
+    dueAt: item.dueAt ?? null,
+    dueLabel: item.dueLabel,
+    memoryBucket: item.memoryBucket ?? "active_reviewing",
+    status: item.memory?.status ?? "reviewing",
+    halfLifeDays: item.memory?.half_life_days ?? 0,
+    difficulty: item.memory?.difficulty ?? 0,
+    reviewCount: 0,
+    sessionCount: 0,
+  })),
+  pagination: {
+    page: 1,
+    limit: 20,
+    total: 416,
+    totalPages: 21,
+  },
+  counters: {
+    all: 416,
+    dueToday: 142,
+    atRisk: 38,
+    overdue: 20,
+    mastered: 236,
+  },
+};
+
+function resolveDueTone(item: SuggestedVocabularyApiItem): SuggestionDueTone {
+  if (item.memoryBucket === "overdue" || item.priority === "high") {
+    return "danger";
+  }
+
+  if (item.memoryBucket === "at_risk" || item.priority === "medium") {
+    return "warning";
+  }
+
+  return "success";
+}
+
+function resolveTopicColor(topic?: string): string {
+  if (topic === "Culture" || topic === "Work") {
+    return "#dcfce7";
+  }
+
+  if (topic === "Economics") {
+    return "#ede9fe";
+  }
+
+  return "#dbeafe";
+}
+
 const SuggestedVocabularySection: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<PaginatedSuggestions>(mockSuggestions);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    userVocabularyProgressV2Service.getSuggestedVocabulary({ page: 1, limit: 20 }).then((data) => {
+      if (isMounted) {
+        setSuggestions(data);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const vocabularyItems = suggestions.items;
   const allVocabularyIds = useMemo(
-    () => suggestedVocabularies.map((item) => item.vocabularyId),
-    [],
+    () => vocabularyItems.map((item) => item.vocabularyId),
+    [vocabularyItems],
   );
   const selectedCount = selectedIds.length;
-  const isAllSelected = selectedCount === allVocabularyIds.length;
+  const isAllSelected = selectedCount > 0 && selectedCount === allVocabularyIds.length;
   const isPartiallySelected = selectedCount > 0 && !isAllSelected;
+
+  const quickTabs = [
+    ["Tất cả", suggestions.counters.all, "#dbeafe"],
+    ["Đến hạn hôm nay", suggestions.counters.dueToday, "#dbeafe"],
+    ["Sắp quên", suggestions.counters.atRisk, "#fef3c7"],
+    ["Quá hạn", suggestions.counters.overdue, "#fee2e2"],
+    ["Đã nắm vững", suggestions.counters.mastered, "#dcfce7"],
+  ] as const;
 
   const handleToggleAll = () => {
     setSelectedIds(isAllSelected ? [] : allVocabularyIds);
@@ -170,17 +260,22 @@ const SuggestedVocabularySection: React.FC = () => {
         </Box>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, flexShrink: 0 }}>
-          <Button variant="contained" size="small" sx={{ ...compactButtonSx, px: 1.4 }}>
-            Tất cả
-          </Button>
-          {[
-            ["Đến hạn", "142", "#dbeafe"],
-            ["Sắp quên", "38", "#fee2e2"],
-            ["Đã nắm vững", "236", "#dcfce7"],
-          ].map(([label, count, bg]) => (
-            <Button key={label} variant="outlined" size="small" sx={{ ...compactButtonSx, color: "text.primary", borderColor: "#e2e8f0" }}>
+          {quickTabs.map(([label, count, bg], index) => (
+            <Button
+              key={label}
+              variant={index === 0 ? "contained" : "outlined"}
+              size="small"
+              sx={{
+                ...compactButtonSx,
+                px: index === 0 ? 1.4 : 1,
+                color: index === 0 ? undefined : "text.primary",
+                borderColor: index === 0 ? undefined : "#e2e8f0",
+              }}
+            >
               {label}
-              <Chip label={count} size="small" sx={{ ml: 0.6, height: 17, bgcolor: bg, fontWeight: 800, fontSize: 10 }} />
+              {index > 0 && (
+                <Chip label={count} size="small" sx={{ ml: 0.6, height: 17, bgcolor: bg, fontWeight: 800, fontSize: 10 }} />
+              )}
             </Button>
           ))}
         </Box>
@@ -215,13 +310,7 @@ const SuggestedVocabularySection: React.FC = () => {
                     transition: "opacity 0.18s ease",
                   }}
                 >
-                  <Checkbox
-                    size="small"
-                    checked={isAllSelected}
-                    indeterminate={isPartiallySelected}
-                    onChange={handleToggleAll}
-                    sx={{ p: 0 }}
-                  />
+                  <Checkbox size="small" checked={isAllSelected} indeterminate={isPartiallySelected} onChange={handleToggleAll} sx={{ p: 0 }} />
                   <Typography variant="body2" sx={{ fontWeight: 800, minWidth: 92 }}>
                     Đã chọn {selectedCount} từ
                   </Typography>
@@ -260,12 +349,7 @@ const SuggestedVocabularySection: React.FC = () => {
             </TableRow>
             <TableRow sx={{ bgcolor: "#f8fafc" }}>
               <TableCell padding="checkbox">
-                <Checkbox
-                  size="small"
-                  checked={isAllSelected}
-                  indeterminate={isPartiallySelected}
-                  onChange={handleToggleAll}
-                />
+                <Checkbox size="small" checked={isAllSelected} indeterminate={isPartiallySelected} onChange={handleToggleAll} />
               </TableCell>
               {["Từ vựng", "Nghĩa", "Chủ đề", "Cấp độ", "Độ ưu tiên", "Xác suất nhớ", "Đến hạn"].map((head) => (
                 <TableCell key={head} sx={{ fontWeight: 900, color: "#475569", whiteSpace: "nowrap" }}>
@@ -275,11 +359,12 @@ const SuggestedVocabularySection: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {suggestedVocabularies.map((item) => {
+            {vocabularyItems.map((item) => {
+              const pRecallPercent = Math.round(item.pRecallNow * 100);
               const probabilityColor =
-                item.pRecallPercent < 25
+                pRecallPercent < 25
                   ? "#ef4444"
-                  : item.pRecallPercent < 65
+                  : pRecallPercent < 65
                     ? "#f59e0b"
                     : "#10b981";
               return (
@@ -308,7 +393,7 @@ const SuggestedVocabularySection: React.FC = () => {
                   </TableCell>
                   <TableCell sx={{ color: "text.secondary", minWidth: 170 }}>{item.meaning}</TableCell>
                   <TableCell>
-                    <Chip label={item.topic} size="small" sx={{ bgcolor: item.topicColor, color: "#2563eb", fontWeight: 800 }} />
+                    <Chip label={item.topic} size="small" sx={{ bgcolor: resolveTopicColor(item.topic), color: "#2563eb", fontWeight: 800 }} />
                   </TableCell>
                   <TableCell>
                     <Chip label={item.level} size="small" sx={{ bgcolor: "#dbeafe", color: "#2563eb", fontWeight: 900 }} />
@@ -316,17 +401,17 @@ const SuggestedVocabularySection: React.FC = () => {
                   <TableCell>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: priorityColor[item.priority], flexShrink: 0 }} />
-                      <Typography variant="body2">{item.priority}</Typography>
+                      <Typography variant="body2">{item.priorityLabel}</Typography>
                     </Stack>
                   </TableCell>
                   <TableCell sx={{ minWidth: 180 }}>
                     <Stack direction="row" spacing={1.2} alignItems="center">
                       <Typography variant="body2" sx={{ color: probabilityColor, fontWeight: 900, width: 38 }}>
-                        {item.pRecallPercent}%
+                        {pRecallPercent}%
                       </Typography>
                       <LinearProgress
                         variant="determinate"
-                        value={item.pRecallPercent}
+                        value={pRecallPercent}
                         sx={{
                           flex: 1,
                           height: 6,
@@ -337,7 +422,7 @@ const SuggestedVocabularySection: React.FC = () => {
                       />
                     </Stack>
                   </TableCell>
-                  <TableCell sx={{ color: dueToneColor[item.dueTone], fontWeight: 800, whiteSpace: "nowrap" }}>
+                  <TableCell sx={{ color: dueToneColor[resolveDueTone(item)], fontWeight: 800, whiteSpace: "nowrap" }}>
                     {item.dueLabel}
                   </TableCell>
                 </TableRow>
@@ -361,7 +446,7 @@ const SuggestedVocabularySection: React.FC = () => {
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
             Hiển thị
           </Typography>
-          <Select size="small" defaultValue={20} sx={{ borderRadius: 2, height: 36 }}>
+          <Select size="small" value={suggestions.pagination.limit} sx={{ borderRadius: 2, height: 36 }}>
             <MenuItem value={20}>20</MenuItem>
           </Select>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
@@ -375,20 +460,20 @@ const SuggestedVocabularySection: React.FC = () => {
           sx={{ overflowX: "auto", justifyContent: { xs: "flex-start", sm: "flex-end" }, pb: { xs: 0.5, sm: 0 } }}
         >
           <Typography variant="body2" sx={{ color: "text.secondary", whiteSpace: "nowrap", mr: 1 }}>
-            1-20 của 416
+            1-{vocabularyItems.length} của {suggestions.pagination.total}
           </Typography>
           <Divider orientation="vertical" flexItem />
           <IconButton size="small">
             <KeyboardArrowLeft />
           </IconButton>
           {[1, 2, 3].map((page) => (
-            <Button key={page} size="small" variant={page === 1 ? "contained" : "text"} sx={{ minWidth: 34, borderRadius: 2 }}>
+            <Button key={page} size="small" variant={page === suggestions.pagination.page ? "contained" : "text"} sx={{ minWidth: 34, borderRadius: 2 }}>
               {page}
             </Button>
           ))}
           <Typography variant="body2">...</Typography>
           <Button size="small" variant="text" sx={{ minWidth: 34, borderRadius: 2 }}>
-            21
+            {suggestions.pagination.totalPages}
           </Button>
           <IconButton size="small">
             <KeyboardArrowRight />

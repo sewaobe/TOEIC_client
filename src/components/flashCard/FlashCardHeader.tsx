@@ -1,15 +1,17 @@
 import React from 'react';
 import { Box, Typography, Button, useTheme } from '@mui/material';
 import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined';
+export type FlashcardPageTab = 'myList' | 'learning' | 'explore' | 'suggestion';
+
 interface FlashcardsHeaderProps {
-    activeTab: 'myList' | 'learning' | 'explore';
-    onChangeTab: (tab: 'myList' | 'learning' | 'explore') => void;
+    activeTab: FlashcardPageTab;
+    onChangeTab: (tab: FlashcardPageTab) => void;
 }
 
 const FlashcardsHeader: React.FC<FlashcardsHeaderProps> = ({ activeTab, onChangeTab }) => {
     const theme = useTheme();
 
-    const btnStyle = (tab: 'myList' | 'learning' | 'explore') => ({
+    const btnStyle = (tab: FlashcardPageTab) => ({
         fontWeight: 600,
         borderRadius: 2,
         textTransform: 'none',
@@ -41,6 +43,9 @@ const FlashcardsHeader: React.FC<FlashcardsHeaderProps> = ({ activeTab, onChange
                 </Button>
                 <Button onClick={() => onChangeTab('explore')} sx={btnStyle('explore')}>
                     Khám phá
+                </Button>
+                <Button onClick={() => onChangeTab('suggestion')} sx={btnStyle('suggestion')}>
+                    Gợi ý
                 </Button>
             </Box>
         </Box>

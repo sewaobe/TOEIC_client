@@ -3,9 +3,12 @@ import { Box, Typography, useTheme } from "@mui/material";
 import MainLayout from "../layouts/MainLayout";
 import AlertBox from "../../components/flashCardItem/AlertBox";
 import FlashcardsList from "../../components/flashCard/FlashcardList";
-import FlashcardsHeader from "../../components/flashCard/FlashCardHeader";
+import FlashcardsHeader, {
+  FlashcardPageTab,
+} from "../../components/flashCard/FlashCardHeader";
 import { VideoModal } from "../../components/modals/VideoModal";
 import SmartReviewBanner from "../../components/flashCard/SmartReviewBanner";
+import FlashcardSuggestionTab from "../../components/flashcard-suggestion/FlashcardSuggestionTab";
 // src/mock/flashcardMock.ts
 export interface FlashcardList {
   _id: string;
@@ -20,9 +23,7 @@ export interface FlashcardList {
 
 const FlashcardsPage: React.FC = () => {
   const theme = useTheme();
-  const [activeTab, setActiveTab] = useState<"myList" | "learning" | "explore">(
-    "myList",
-  );
+  const [activeTab, setActiveTab] = useState<FlashcardPageTab>("myList");
   const [openVideoModal, setOpenVideoModal] = useState(false);
   const handleOpen = () => setOpenVideoModal(true);
   const handleClose = () => setOpenVideoModal(false);
@@ -41,7 +42,7 @@ const FlashcardsPage: React.FC = () => {
           <FlashcardsHeader activeTab={activeTab} onChangeTab={setActiveTab} />
 
           {/* Smart Review Banner */}
-          <SmartReviewBanner />
+          {activeTab !== "suggestion" && <SmartReviewBanner />}
 
           {/* Content */}
           <Box
@@ -53,6 +54,7 @@ const FlashcardsPage: React.FC = () => {
               boxShadow: 3,
             }}
           >
+            {activeTab !== "suggestion" && (
             <AlertBox
               severity="info"
               message={
@@ -80,6 +82,7 @@ const FlashcardsPage: React.FC = () => {
                 </>
               }
             />
+            )}
 
             {/* Nội dung thay đổi theo activeTab */}
             {activeTab === "myList" && (
@@ -97,6 +100,7 @@ const FlashcardsPage: React.FC = () => {
                 title="Khám Phá Flashcards Mới"
               />
             )}
+            {activeTab === "suggestion" && <FlashcardSuggestionTab />}
           </Box>
         </Box>
       </Box>

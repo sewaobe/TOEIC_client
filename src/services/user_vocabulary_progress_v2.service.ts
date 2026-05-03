@@ -5,7 +5,9 @@ import {
   MemoryUiBucket,
   PaginatedSuggestions,
   ReviewSchedulePoint,
+  SuggestionDetail,
   SuggestionPriority,
+  SuggestionReason,
   TodayReviewSummary,
 } from "../types/UserVocabularyProgressV2";
 import {
@@ -111,6 +113,130 @@ const mockPaginatedSuggestions: PaginatedSuggestions = {
   },
 };
 
+function buildMockSuggestionDetail(vocabularyId: string): SuggestionDetail {
+  const item =
+    suggestedVocabularies.find((vocabulary) => vocabulary.vocabularyId === vocabularyId) ??
+    suggestedVocabularies[0];
+  const pRecallPercent = Math.round(item.pRecallNow * 100);
+
+  return {
+    vocabulary_id: item.vocabularyId,
+    word: item.word,
+    phonetic: item.phonetic,
+    meaning: item.meaning,
+    topic_title: item.topic,
+    level: item.level,
+    priority: item.priority,
+    p_recall: item.pRecallNow,
+    half_life_days: item.memory?.half_life_days ?? 0.54,
+    last_reviewed_at: new Date(Date.now() - randomInt(1, 6) * DAY_MS).toISOString(),
+    due_at: item.dueAt ?? item.memory?.due_at ?? null,
+    last_response_time_avg_ms: randomInt(2600, 7800),
+    reasons: buildMockSuggestionReasons(item.priority, pRecallPercent, item.vocabularyId),
+  };
+}
+
+function buildMockSuggestionReasons(
+  priority: SuggestionPriority,
+  pRecallPercent: number,
+  vocabularyId: string,
+): SuggestionReason[] {
+  const reasonSets: SuggestionReason[][] = [
+    [
+      {
+        code: "OVERDUE",
+        title: "Đã quá hạn ôn tập",
+        description: "Từ này đã vượt lịch ôn dự kiến, nên được ưu tiên ôn lại.",
+        severity: "high",
+      },
+      {
+        code: "LOW_RECALL_PROBABILITY",
+        title: "Nguy cơ quên cao",
+        description: `Hệ thống ước tính bạn chỉ còn nhớ khoảng ${pRecallPercent}%, nên cần ôn sớm.`,
+        severity: "high",
+      },
+      {
+        code: "LAST_DHP_FORGOT",
+        title: "Phiên gần nhất cho thấy trí nhớ chưa ổn định",
+        description: "Kết quả học gần nhất được hệ thống xem là chưa nhớ chắc.",
+        severity: "medium",
+      },
+    ],
+    [
+      {
+        code: "DUE_TODAY",
+        title: "Đã đến thời điểm ôn lại",
+        description: "Từ này được lên lịch ôn vào hôm nay để duy trì trí nhớ.",
+        severity: "high",
+      },
+      {
+        code: "LAST_SESSION_HARD",
+        title: "Bạn từng gặp khó với từ này",
+        description: "Trong lần ôn gần nhất, bạn đã đánh giá từ này là Hard.",
+        severity: "medium",
+      },
+      {
+        code: "HIGH_DIFFICULTY",
+        title: "Từ này có độ khó cao với bạn",
+        description: "Mức difficulty hiện tại cao hơn nhiều từ khác trong danh sách.",
+        severity: "medium",
+      },
+    ],
+    [
+      {
+        code: "LOW_RECALL_PROBABILITY",
+        title: "Nguy cơ quên cao",
+        description: `Hệ thống ước tính bạn chỉ còn nhớ khoảng ${pRecallPercent}%, nên cần ôn sớm.`,
+        severity: "high",
+      },
+      {
+        code: "REPEATED_IN_LAST_SESSION",
+        title: "Bạn đã phải ôn lại nhiều lần trong phiên trước",
+        description: "Từ này từng xuất hiện nhiều lần trước khi bạn hoàn thành phiên học.",
+        severity: "medium",
+      },
+      {
+        code: "LONG_RESPONSE_TIME",
+        title: "Bạn mất nhiều thời gian với từ này",
+        description: "Thời gian phản hồi trung bình ở lần học gần nhất khá cao.",
+        severity: "low",
+      },
+    ],
+    [
+      {
+        code: "UPCOMING_DUE",
+        title: "Sắp đến hạn ôn tập",
+        description: "Từ này sẽ đến hạn trong vài ngày tới, bạn có thể ôn sớm nếu muốn.",
+        severity: "low",
+      },
+      {
+        code: "HIGH_DIFFICULTY",
+        title: "Từ này có độ khó cao với bạn",
+        description: "Mức difficulty hiện tại cao hơn nhiều từ khác trong danh sách.",
+        severity: "medium",
+      },
+      {
+        code: "LONG_RESPONSE_TIME",
+        title: "Bạn mất nhiều thời gian với từ này",
+        description: "Thời gian phản hồi trung bình ở lần học gần nhất khá cao.",
+        severity: "low",
+      },
+    ],
+  ];
+
+  const hash = Math.abs(hashString(vocabularyId));
+
+  if (priority === "high") {
+    return reasonSets[hash % 3];
+  }
+
+  if (priority === "medium") {
+    return reasonSets[(hash % 3) + 1];
+  }
+
+  return reasonSets[3];
+}
+
 function hasTodayReviewData(data?: TodayReviewSummary | null): data is TodayReviewSummary {
   return Boolean(data && data.total > 0);
 }
@@ -133,8 +259,18 @@ function hasSuggestionData(data?: PaginatedSuggestions | null): data is Paginate
   return Boolean(data && Array.isArray(data.items) && data.items.length > 0);
 }
 
+function hasSuggestionDetailData(data?: SuggestionDetail | null): data is SuggestionDetail {
+  return Boolean(data && data.vocabulary_id && data.word);
+}
+
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function hashString(value: string): number {
+  return value.split("").reduce((hash, char) => {
+    return (hash * 31 + char.charCodeAt(0)) | 0;
+  }, 0);
 }
 
 export const userVocabularyProgressV2Service = {
@@ -197,6 +333,20 @@ export const userVocabularyProgressV2Service = {
       return hasSuggestionData(response.data) ? response.data : mockPaginatedSuggestions;
     } catch (error) {
       return mockPaginatedSuggestions;
+    }
+  },
+
+  getSuggestionDetail: async (vocabularyId: string): Promise<SuggestionDetail> => {
+    try {
+      const response = await axiosClient.get<ApiResponse<SuggestionDetail>>(
+        `${BASE_URL}/suggestions/${vocabularyId}`,
+      );
+
+      return hasSuggestionDetailData(response.data)
+        ? response.data
+        : buildMockSuggestionDetail(vocabularyId);
+    } catch (error) {
+      return buildMockSuggestionDetail(vocabularyId);
     }
   },
 };

@@ -192,6 +192,40 @@ export interface PaginatedSuggestions {
   counters: SuggestedVocabularyCounters;
 }
 
+export type SuggestionReasonCode =
+  | "OVERDUE"
+  | "DUE_TODAY"
+  | "UPCOMING_DUE"
+  | "LOW_RECALL_PROBABILITY"
+  | "LAST_SESSION_HARD"
+  | "LAST_DHP_FORGOT"
+  | "HIGH_DIFFICULTY"
+  | "REPEATED_IN_LAST_SESSION"
+  | "LONG_RESPONSE_TIME";
+
+export interface SuggestionReason {
+  code: SuggestionReasonCode;
+  title: string;
+  description: string;
+  severity: "high" | "medium" | "low";
+}
+
+export interface SuggestionDetail {
+  vocabulary_id: VocabularyId;
+  word: string;
+  phonetic?: string;
+  meaning?: string;
+  topic_title?: string;
+  level?: string;
+  priority: SuggestionPriority;
+  p_recall: number;
+  half_life_days: number;
+  last_reviewed_at: ISODateString | null;
+  due_at: ISODateString | null;
+  last_response_time_avg_ms: number | null;
+  reasons: SuggestionReason[];
+}
+
 export type SuggestionDueTone = "danger" | "warning" | "success";
 
 export interface VocabularyDisplayInfo {

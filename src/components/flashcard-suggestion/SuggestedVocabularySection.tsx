@@ -31,12 +31,14 @@ import {
 } from "@mui/icons-material";
 import {
   PaginatedSuggestions,
+  SuggestionDetail,
   SuggestedVocabularyApiItem,
   SuggestionDueTone,
   SuggestionPriority,
 } from "../../types/UserVocabularyProgressV2";
 import { suggestedVocabularies } from "./mockData";
 import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
+import SuggestionDetailModal from "./SuggestionDetailModal";
 
 const filterLabels = ["Chủ đề", "Cấp độ", "Độ ưu tiên", "Đến hạn", "Xác suất nhớ"];
 
@@ -125,6 +127,8 @@ function resolveTopicColor(topic?: string): string {
 const SuggestedVocabularySection: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<PaginatedSuggestions>(mockSuggestions);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedDetail, setSelectedDetail] = useState<SuggestionDetail | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -169,7 +173,14 @@ const SuggestedVocabularySection: React.FC = () => {
     );
   };
 
+  const handleOpenDetail = async (vocabularyId: string) => {
+    const detail = await userVocabularyProgressV2Service.getSuggestionDetail(vocabularyId);
+    setSelectedDetail(detail);
+    setDetailOpen(true);
+  };
+
   return (
+    <>
     <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 3, border: "1px solid #e2e8f0", minWidth: 0 }}>
       <Typography variant="h6" sx={{ fontWeight: 900, mb: 1 }}>
         Từ vựng được gợi ý
@@ -368,11 +379,17 @@ const SuggestedVocabularySection: React.FC = () => {
                     ? "#f59e0b"
                     : "#10b981";
               return (
-                <TableRow key={item.vocabularyId} hover>
+                <TableRow
+                  key={item.vocabularyId}
+                  hover
+                  onClick={() => handleOpenDetail(item.vocabularyId)}
+                  sx={{ cursor: "pointer" }}
+                >
                   <TableCell padding="checkbox">
                     <Checkbox
                       size="small"
                       checked={selectedIds.includes(item.vocabularyId)}
+                      onClick={(event) => event.stopPropagation()}
                       onChange={() => handleToggleRow(item.vocabularyId)}
                     />
                   </TableCell>
@@ -481,6 +498,12 @@ const SuggestedVocabularySection: React.FC = () => {
         </Stack>
       </Box>
     </Paper>
+    <SuggestionDetailModal
+      open={detailOpen}
+      detail={selectedDetail}
+      onClose={() => setDetailOpen(false)}
+    />
+    </>
   );
 };
 

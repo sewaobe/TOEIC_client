@@ -27,6 +27,8 @@ import { SuggestionDetail, SuggestionReason } from "../../types/UserVocabularyPr
 interface SuggestionDetailModalProps {
   open: boolean;
   detail: SuggestionDetail | null;
+  isSelected?: boolean;
+  onAddToSelection?: (vocabularyId: string) => void;
   onClose: () => void;
 }
 
@@ -51,6 +53,8 @@ const priorityLabel = {
 const SuggestionDetailModal: React.FC<SuggestionDetailModalProps> = ({
   open,
   detail,
+  isSelected = false,
+  onAddToSelection,
   onClose,
 }) => {
   if (!detail) {
@@ -190,8 +194,13 @@ const SuggestionDetailModal: React.FC<SuggestionDetailModalProps> = ({
             <Button variant="contained" startIcon={<PlayArrow />} sx={{ borderRadius: 2, fontWeight: 800 }}>
               Ôn từ này ngay
             </Button>
-            <Button variant="outlined" sx={{ borderRadius: 2, fontWeight: 800 }}>
-              Thêm vào lựa chọn
+            <Button
+              variant="outlined"
+              disabled={isSelected}
+              onClick={() => onAddToSelection?.(detail.vocabulary_id)}
+              sx={{ borderRadius: 2, fontWeight: 800 }}
+            >
+              {isSelected ? "Đã thêm vào lựa chọn" : "Thêm vào lựa chọn"}
             </Button>
             <Button variant="text" onClick={onClose} sx={{ borderRadius: 2, fontWeight: 800 }}>
               Đóng

@@ -5,6 +5,7 @@ import {
   MemoryUiBucket,
   PaginatedSuggestions,
   ReviewSchedulePoint,
+  SuggestionBucket,
   SuggestionDetail,
   SuggestionPriority,
   SuggestionReason,
@@ -19,6 +20,7 @@ import {
 
 const BASE_URL = "/v2/user-vocabulary-progress";
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MOCK_SUGGESTION_TOTAL = 416;
 
 export interface GetReviewScheduleParams {
   rangeDays?: 7 | 14 | 30;
@@ -31,7 +33,7 @@ export interface GetSuggestedVocabularyParams {
   topic?: string;
   level?: string;
   priority?: SuggestionPriority | "all";
-  bucket?: MemoryUiBucket | "all";
+  bucket?: SuggestionBucket;
   sortBy?: "due_at" | "p_recall" | "word";
   sortOrder?: "asc" | "desc";
 }
@@ -77,11 +79,14 @@ function buildMockMemoryStatusSummary(): MemoryStatusSummaryItem[] {
   }));
 }
 
-const mockPaginatedSuggestions: PaginatedSuggestions = {
-  items: suggestedVocabularies.map((item) => ({
-    id: item.vocabularyId,
-    vocabularyId: item.vocabularyId,
-    word: item.word,
+const mockSuggestionItems: PaginatedSuggestions["items"] = Array.from({ length: MOCK_SUGGESTION_TOTAL }, (_, index) => {
+  const item = suggestedVocabularies[index % suggestedVocabularies.length];
+  const idSuffix = index < suggestedVocabularies.length ? "" : `-${index + 1}`;
+
+  return {
+    id: `${item.vocabularyId}${idSuffix}`,
+    vocabularyId: `${item.vocabularyId}${idSuffix}`,
+    word: idSuffix ? `${item.word} ${index + 1}` : item.word,
     phonetic: item.phonetic,
     meaning: item.meaning,
     topic: item.topic,
@@ -97,30 +102,88 @@ const mockPaginatedSuggestions: PaginatedSuggestions = {
     difficulty: item.memory?.difficulty ?? 0,
     reviewCount: 0,
     sessionCount: 0,
-  })),
+  };
+});
+
+const mockSuggestionCounters: PaginatedSuggestions["counters"] = {
+  all: 416,
+  dueToday: 142,
+  atRisk: 38,
+  overdue: 20,
+  mastered: 236,
+};
+
+const mockPaginatedSuggestions: PaginatedSuggestions = {
+  items: mockSuggestionItems,
   pagination: {
     page: 1,
     limit: 20,
-    total: suggestedVocabularies.length,
-    totalPages: 1,
+    total: mockSuggestionItems.length,
+    totalPages: Math.ceil(mockSuggestionItems.length / 20),
   },
-  counters: {
-    all: 416,
-    dueToday: 142,
-    atRisk: 38,
-    overdue: 20,
-    mastered: 236,
-  },
+  counters: mockSuggestionCounters,
 };
+
+function buildMockPaginatedSuggestions(
+  params: GetSuggestedVocabularyParams = {},
+): PaginatedSuggestions {
+  const page = Math.max(1, params.page ?? 1);
+  const limit = Math.max(1, params.limit ?? 20);
+  const search = params.search?.trim().toLowerCase();
+  const todayKey = new Date().toDateString();
+
+  const filtered = mockSuggestionItems.filter((item) => {
+    if (
+      search &&
+      !item.word.toLowerCase().includes(search) &&
+      !item.meaning?.toLowerCase().includes(search)
+    ) {
+      return false;
+    }
+
+    if (params.priority && params.priority !== "all" && item.priority !== params.priority) {
+      return false;
+    }
+
+    if (params.bucket && params.bucket !== "all") {
+      if (params.bucket === "due_today") {
+        if (!item.dueAt || new Date(item.dueAt).toDateString() !== todayKey || item.status === "mastered") {
+          return false;
+        }
+      } else if (item.memoryBucket !== params.bucket) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const safePage = Math.min(page, totalPages);
+  const startIndex = (safePage - 1) * limit;
+
+  return {
+    items: filtered.slice(startIndex, startIndex + limit),
+    pagination: {
+      page: safePage,
+      limit,
+      total,
+      totalPages,
+    },
+    counters: mockSuggestionCounters,
+  };
+}
 
 function buildMockSuggestionDetail(vocabularyId: string): SuggestionDetail {
   const item =
     suggestedVocabularies.find((vocabulary) => vocabulary.vocabularyId === vocabularyId) ??
+    suggestedVocabularies.find((vocabulary) => vocabularyId.startsWith(`${vocabulary.vocabularyId}-`)) ??
     suggestedVocabularies[0];
   const pRecallPercent = Math.round(item.pRecallNow * 100);
 
   return {
-    vocabulary_id: item.vocabularyId,
+    vocabulary_id: vocabularyId,
     word: item.word,
     phonetic: item.phonetic,
     meaning: item.meaning,
@@ -330,9 +393,11 @@ export const userVocabularyProgressV2Service = {
         },
       );
 
-      return hasSuggestionData(response.data) ? response.data : mockPaginatedSuggestions;
+      return hasSuggestionData(response.data)
+        ? response.data
+        : buildMockPaginatedSuggestions(params);
     } catch (error) {
-      return mockPaginatedSuggestions;
+      return buildMockPaginatedSuggestions(params);
     }
   },
 

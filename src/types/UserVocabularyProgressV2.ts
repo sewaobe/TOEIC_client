@@ -6,6 +6,8 @@ export type MemoryUiBucket =
   | "at_risk"
   | "overdue";
 
+export type SuggestionBucket = "all" | "due_today" | MemoryUiBucket;
+
 export type SuggestionPriority = "high" | "medium" | "low";
 
 export type DhpRecallResult = "remembered" | "forgot";

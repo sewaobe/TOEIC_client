@@ -31,6 +31,7 @@ import {
 } from "@mui/icons-material";
 import {
   PaginatedSuggestions,
+  SuggestionBucket,
   SuggestionDetail,
   SuggestedVocabularyApiItem,
   SuggestionDueTone,
@@ -129,11 +130,16 @@ const SuggestedVocabularySection: React.FC = () => {
   const [suggestions, setSuggestions] = useState<PaginatedSuggestions>(mockSuggestions);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<SuggestionDetail | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [bucket, setBucket] = useState<SuggestionBucket>("all");
 
   useEffect(() => {
     let isMounted = true;
 
-    userVocabularyProgressV2Service.getSuggestedVocabulary({ page: 1, limit: 20 }).then((data) => {
+    userVocabularyProgressV2Service.getSuggestedVocabulary({ page, limit, search, bucket }).then((data) => {
       if (isMounted) {
         setSuggestions(data);
       }
@@ -142,7 +148,7 @@ const SuggestedVocabularySection: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [page, limit, search, bucket]);
 
   const vocabularyItems = suggestions.items;
   const allVocabularyIds = useMemo(
@@ -150,19 +156,35 @@ const SuggestedVocabularySection: React.FC = () => {
     [vocabularyItems],
   );
   const selectedCount = selectedIds.length;
-  const isAllSelected = selectedCount > 0 && selectedCount === allVocabularyIds.length;
-  const isPartiallySelected = selectedCount > 0 && !isAllSelected;
+  const selectedOnPageCount = allVocabularyIds.filter((id) => selectedIds.includes(id)).length;
+  const isAllSelected = allVocabularyIds.length > 0 && selectedOnPageCount === allVocabularyIds.length;
+  const isPartiallySelected = selectedOnPageCount > 0 && !isAllSelected;
 
-  const quickTabs = [
-    ["Tất cả", suggestions.counters.all, "#dbeafe"],
-    ["Đến hạn hôm nay", suggestions.counters.dueToday, "#dbeafe"],
-    ["Sắp quên", suggestions.counters.atRisk, "#fef3c7"],
-    ["Quá hạn", suggestions.counters.overdue, "#fee2e2"],
-    ["Đã nắm vững", suggestions.counters.mastered, "#dcfce7"],
-  ] as const;
+  const quickTabs: Array<{ value: SuggestionBucket; label: string; count: number; bg: string }> = [
+    { value: "all", label: "Tất cả", count: suggestions.counters.all, bg: "#dbeafe" },
+    { value: "due_today", label: "Đến hạn hôm nay", count: suggestions.counters.dueToday, bg: "#dbeafe" },
+    { value: "at_risk", label: "Sắp quên", count: suggestions.counters.atRisk, bg: "#fef3c7" },
+    { value: "overdue", label: "Quá hạn", count: suggestions.counters.overdue, bg: "#fee2e2" },
+    { value: "mastered", label: "Đã nắm vững", count: suggestions.counters.mastered, bg: "#dcfce7" },
+  ];
+
+  const pagination = suggestions.pagination;
+  const paginationStart = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
+  const paginationEnd = Math.min(pagination.page * pagination.limit, pagination.total);
+  const firstVisiblePage = Math.max(1, Math.min(pagination.page - 1, pagination.totalPages - 2));
+  const visiblePages = Array.from(
+    { length: Math.min(3, pagination.totalPages) },
+    (_, index) => firstVisiblePage + index,
+  );
 
   const handleToggleAll = () => {
-    setSelectedIds(isAllSelected ? [] : allVocabularyIds);
+    setSelectedIds((current) => {
+      if (isAllSelected) {
+        return current.filter((id) => !allVocabularyIds.includes(id));
+      }
+
+      return Array.from(new Set([...current, ...allVocabularyIds]));
+    });
   };
 
   const handleToggleRow = (vocabularyId: string) => {
@@ -177,6 +199,29 @@ const SuggestedVocabularySection: React.FC = () => {
     const detail = await userVocabularyProgressV2Service.getSuggestionDetail(vocabularyId);
     setSelectedDetail(detail);
     setDetailOpen(true);
+  };
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      setPage(1);
+      setSearch(searchInput.trim());
+    }
+  };
+
+  const handleQuickTabChange = (nextBucket: SuggestionBucket) => {
+    setBucket(nextBucket);
+    setPage(1);
+  };
+
+  const handleLimitChange = (nextLimit: number) => {
+    setLimit(nextLimit);
+    setPage(1);
+  };
+
+  const handleAddToSelection = (vocabularyId: string) => {
+    setSelectedIds((current) =>
+      current.includes(vocabularyId) ? current : [...current, vocabularyId],
+    );
   };
 
   return (
@@ -208,6 +253,9 @@ const SuggestedVocabularySection: React.FC = () => {
         <TextField
           size="small"
           fullWidth
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          onKeyDown={handleSearchKeyDown}
           placeholder="Tìm từ vựng, nghĩa, ví dụ..."
           InputProps={{ startAdornment: <Search fontSize="small" sx={{ color: "text.secondary", mr: 1, flexShrink: 0 }} /> }}
           sx={{
@@ -271,21 +319,22 @@ const SuggestedVocabularySection: React.FC = () => {
         </Box>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, flexShrink: 0 }}>
-          {quickTabs.map(([label, count, bg], index) => (
+          {quickTabs.map((tab) => (
             <Button
-              key={label}
-              variant={index === 0 ? "contained" : "outlined"}
+              key={tab.value}
+              variant={bucket === tab.value ? "contained" : "outlined"}
               size="small"
+              onClick={() => handleQuickTabChange(tab.value)}
               sx={{
                 ...compactButtonSx,
-                px: index === 0 ? 1.4 : 1,
-                color: index === 0 ? undefined : "text.primary",
-                borderColor: index === 0 ? undefined : "#e2e8f0",
+                px: tab.value === "all" ? 1.4 : 1,
+                color: bucket === tab.value ? undefined : "text.primary",
+                borderColor: bucket === tab.value ? undefined : "#e2e8f0",
               }}
             >
-              {label}
-              {index > 0 && (
-                <Chip label={count} size="small" sx={{ ml: 0.6, height: 17, bgcolor: bg, fontWeight: 800, fontSize: 10 }} />
+              {tab.label}
+              {tab.value !== "all" && (
+                <Chip label={tab.count} size="small" sx={{ ml: 0.6, height: 17, bgcolor: tab.bg, fontWeight: 800, fontSize: 10 }} />
               )}
             </Button>
           ))}
@@ -463,8 +512,15 @@ const SuggestedVocabularySection: React.FC = () => {
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
             Hiển thị
           </Typography>
-          <Select size="small" value={suggestions.pagination.limit} sx={{ borderRadius: 2, height: 36 }}>
+          <Select
+            size="small"
+            value={limit}
+            onChange={(event) => handleLimitChange(Number(event.target.value))}
+            sx={{ borderRadius: 2, height: 36 }}
+          >
+            <MenuItem value={10}>10</MenuItem>
             <MenuItem value={20}>20</MenuItem>
+            <MenuItem value={50}>50</MenuItem>
           </Select>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
             từ vựng
@@ -477,22 +533,45 @@ const SuggestedVocabularySection: React.FC = () => {
           sx={{ overflowX: "auto", justifyContent: { xs: "flex-start", sm: "flex-end" }, pb: { xs: 0.5, sm: 0 } }}
         >
           <Typography variant="body2" sx={{ color: "text.secondary", whiteSpace: "nowrap", mr: 1 }}>
-            1-{vocabularyItems.length} của {suggestions.pagination.total}
+            {paginationStart}-{paginationEnd} của {pagination.total}
           </Typography>
           <Divider orientation="vertical" flexItem />
-          <IconButton size="small">
+          <IconButton
+            size="small"
+            disabled={pagination.page <= 1}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+          >
             <KeyboardArrowLeft />
           </IconButton>
-          {[1, 2, 3].map((page) => (
-            <Button key={page} size="small" variant={page === suggestions.pagination.page ? "contained" : "text"} sx={{ minWidth: 34, borderRadius: 2 }}>
-              {page}
+          {visiblePages.map((pageNumber) => (
+            <Button
+              key={pageNumber}
+              size="small"
+              variant={pageNumber === pagination.page ? "contained" : "text"}
+              onClick={() => setPage(pageNumber)}
+              sx={{ minWidth: 34, borderRadius: 2 }}
+            >
+              {pageNumber}
             </Button>
           ))}
-          <Typography variant="body2">...</Typography>
-          <Button size="small" variant="text" sx={{ minWidth: 34, borderRadius: 2 }}>
-            {suggestions.pagination.totalPages}
-          </Button>
-          <IconButton size="small">
+          {pagination.totalPages > 3 && visiblePages[visiblePages.length - 1] < pagination.totalPages && (
+            <>
+              <Typography variant="body2">...</Typography>
+              <Button
+                size="small"
+                variant={pagination.page === pagination.totalPages ? "contained" : "text"}
+                onClick={() => setPage(pagination.totalPages)}
+                sx={{ minWidth: 34, borderRadius: 2 }}
+              >
+                {pagination.totalPages}
+              </Button>
+            </>
+          )}
+          <IconButton
+            size="small"
+            disabled={pagination.page >= pagination.totalPages}
+            onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
+          >
             <KeyboardArrowRight />
           </IconButton>
         </Stack>
@@ -501,6 +580,8 @@ const SuggestedVocabularySection: React.FC = () => {
     <SuggestionDetailModal
       open={detailOpen}
       detail={selectedDetail}
+      isSelected={Boolean(selectedDetail && selectedIds.includes(selectedDetail.vocabulary_id))}
+      onAddToSelection={handleAddToSelection}
       onClose={() => setDetailOpen(false)}
     />
     </>

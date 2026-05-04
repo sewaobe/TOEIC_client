@@ -40,6 +40,7 @@ import {
 import { suggestedVocabularies } from "./mockData";
 import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
 import SuggestionDetailModal from "./SuggestionDetailModal";
+import { speakText } from "../../utils/tts.util";
 
 const filterLabels = ["Chủ đề", "Cấp độ", "Độ ưu tiên", "Đến hạn", "Xác suất nhớ"];
 
@@ -444,7 +445,15 @@ const SuggestedVocabularySection: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={1.2} alignItems="center">
-                        <IconButton size="small" sx={{ color: "#2563eb", bgcolor: "#dbeafe", flexShrink: 0 }}>
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+
+                            speakText(item.word);
+                          }}
+                          size="small"
+                          sx={{ color: "#2563eb", bgcolor: "#dbeafe", flexShrink: 0 }}
+                        >
                           <VolumeUp sx={{ fontSize: 16 }} />
                         </IconButton>
                         <Box sx={{ minWidth: 0 }}>
@@ -459,10 +468,10 @@ const SuggestedVocabularySection: React.FC = () => {
                     </TableCell>
                     <TableCell sx={{ color: "text.secondary", minWidth: 170, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.meaning}</TableCell>
                     <TableCell>
-                      <Chip label={item.topic} size="small" sx={{ bgcolor: resolveTopicColor(item.topic), color: "#2563eb", fontWeight: 700, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"  }} />
+                      <Chip label={item.topic} size="small" sx={{ bgcolor: resolveTopicColor(item.topic), color: "#2563eb", fontWeight: 700, maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} />
                     </TableCell>
                     <TableCell>
-                      <Chip label={item.level} size="small" sx={{ bgcolor: "#dbeafe", color: "#2563eb", fontWeight: 900 }} />
+                      <Chip label={item.level} size="small" sx={{ bgcolor: "#dbeafe", color: "#2563eb", fontWeight: 800 }} />
                     </TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={1} alignItems="center">
@@ -472,7 +481,7 @@ const SuggestedVocabularySection: React.FC = () => {
                     </TableCell>
                     <TableCell sx={{ minWidth: 180 }}>
                       <Stack direction="row" spacing={1.2} alignItems="center">
-                        <Typography variant="body2" sx={{ color: probabilityColor, fontWeight: 900, width: 38 }}>
+                        <Typography variant="body2" sx={{ color: probabilityColor, fontWeight: 800, width: 38 }}>
                           {pRecallPercent}%
                         </Typography>
                         <LinearProgress
@@ -488,7 +497,7 @@ const SuggestedVocabularySection: React.FC = () => {
                         />
                       </Stack>
                     </TableCell>
-                    <TableCell sx={{ color: dueToneColor[resolveDueTone(item)], fontWeight: 800, whiteSpace: "nowrap" }}>
+                    <TableCell sx={{ color: dueToneColor[resolveDueTone(item)], fontWeight: 700, whiteSpace: "nowrap" }}>
                       {item.dueLabel}
                     </TableCell>
                   </TableRow>

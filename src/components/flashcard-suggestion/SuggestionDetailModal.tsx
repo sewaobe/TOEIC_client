@@ -23,6 +23,7 @@ import {
   VolumeUp,
 } from "@mui/icons-material";
 import { SuggestionDetail, SuggestionReason } from "../../types/UserVocabularyProgressV2";
+import { speakText } from "../../utils/tts.util";
 
 interface SuggestionDetailModalProps {
   open: boolean;
@@ -89,7 +90,7 @@ const SuggestionDetailModal: React.FC<SuggestionDetailModalProps> = ({
               1. Thông tin từ vựng
             </Typography>
             <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mt: 1.2 }}>
-              <IconButton size="small" sx={{ color: "#2563eb", bgcolor: "#dbeafe" }}>
+              <IconButton onClick={() => speakText(detail.word)} size="small" sx={{ color: "#2563eb", bgcolor: "#dbeafe" }}>
                 <VolumeUp sx={{ fontSize: 17 }} />
               </IconButton>
               <Box sx={{ minWidth: 0, flex: 1 }}>

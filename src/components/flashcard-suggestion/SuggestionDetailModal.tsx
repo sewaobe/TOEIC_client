@@ -83,7 +83,7 @@ const SuggestionDetailModal: React.FC<SuggestionDetailModalProps> = ({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
+      <DialogContent sx={{ px: 2.5, pb: 2.5, pt: 0 }} className="no-scrollbar">
         <Stack spacing={1.5}>
           <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.5 }}>
             <Typography variant="caption" sx={{ color: "#2563eb", fontWeight: 900 }}>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -7,6 +7,9 @@ import {
   IconButton,
   Skeleton,
 } from "@mui/material";
+import NotesIcon from "@mui/icons-material/Notes";
+import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
+import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import LibraryBooksOutlinedIcon from "@mui/icons-material/LibraryBooksOutlined";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import EditIcon from "@mui/icons-material/Edit";
@@ -32,6 +35,58 @@ import { useSpeech } from "../../hooks/useSpeech";
 import ContinueLearningFLModal from "../../components/modals/ContinueLearningFLModal";
 import { flashCardProgressService } from "../../services/flashcard_progress.service";
 
+type ParsedNotes = {
+  phrases: string[];
+  synonyms: string[];
+  others: string[];
+};
+
+const SECTION_SEPARATOR = "###";
+const ITEM_SEPARATOR = "|||";
+
+const parseVocabularyNotes = (notes?: string): ParsedNotes => {
+  const result: ParsedNotes = {
+    phrases: [],
+    synonyms: [],
+    others: [],
+  };
+
+  if (!notes?.trim()) return result;
+
+  notes.split(SECTION_SEPARATOR).forEach((section) => {
+    const trimmedSection = section.trim();
+    if (!trimmedSection) return;
+
+    const [rawKey, ...rawValueParts] = trimmedSection.split("::");
+    const key = rawKey?.trim();
+    const value = rawValueParts.join("::").trim();
+
+    if (!key || !value) {
+      result.others.push(trimmedSection);
+      return;
+    }
+
+    const items = value
+      .split(ITEM_SEPARATOR)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (key === "phrases") {
+      result.phrases.push(...items);
+      return;
+    }
+
+    if (key === "synonyms") {
+      result.synonyms.push(...items);
+      return;
+    }
+
+    result.others.push(...items);
+  });
+
+  return result;
+};
+
 export const FlashcardItemPaper = ({
   f,
   handleOpenItemModal,
@@ -52,6 +107,40 @@ export const FlashcardItemPaper = ({
   };
 
   const { speak } = useSpeech();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const handleSpeak = async (vocabulary: FlashcardItem) => {
+    const audioUrl = vocabulary.audio?.trim();
+
+    if (!audioUrl) {
+      speak(vocabulary.word);
+      return;
+    }
+
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onerror = () => {
+        speak(vocabulary.word);
+      }
+
+      await audio.play();
+    } catch (err) {
+      console.error("Không thể phát audio, fallback sang speech:", err);
+      speak(vocabulary.word);
+    }
+  }
+
+  const parsedNotes = parseVocabularyNotes(f.notes);
+  const hasParsedNotes =
+    parsedNotes.phrases.length > 0 ||
+    parsedNotes.synonyms.length > 0 ||
+    parsedNotes.others.length > 0;
 
   return (
     <Paper
@@ -85,7 +174,7 @@ export const FlashcardItemPaper = ({
             <VolumeUpIcon
               fontSize="small"
               sx={{ cursor: "pointer", color: "primary.main" }}
-              onClick={() => speak(f.word)}
+              onClick={() => handleSpeak(f)}
             />
             <IconButton size="small" onClick={() => handleOpenItemModal(f)}>
               <EditIcon fontSize="small" />
@@ -165,19 +254,155 @@ export const FlashcardItemPaper = ({
               </Box>
             )}
 
-            {f.notes && (
-              <Typography
-                variant="body2"
+            {hasParsedNotes && (
+              <Box
                 sx={{
-                  fontStyle: "italic",
-                  color: "text.secondary",
-                  bgcolor: "rgba(0,0,0,0.03)",
-                  p: 1,
-                  borderRadius: 1,
+                  bgcolor: "#F8FAFC",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  p: 1.5,
+                  borderRadius: 2,
+                  mt: 1,
                 }}
               >
-                📝 {f.notes}
-              </Typography>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: 700,
+                    mb: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.75,
+                    color: "text.primary",
+                  }}
+                >
+                  <NotesIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+                  Ghi chú
+                </Typography>
+
+                {parsedNotes.phrases.length > 0 && (
+                  <Box sx={{ mb: 1.25 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 700,
+                        color: "text.secondary",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.4,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                        mb: 0.75,
+                      }}
+                    >
+                      <FormatQuoteIcon sx={{ fontSize: 15 }} />
+                      Cụm từ
+                    </Typography>
+
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+                      {parsedNotes.phrases.map((phrase, index) => (
+                        <Box
+                          key={`phrase-${index}`}
+                          sx={{
+                            bgcolor: "white",
+                            border: "1px solid",
+                            borderColor: "divider",
+                            borderRadius: 1.5,
+                            px: 1.25,
+                            py: 0.75,
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            {phrase}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+
+                {parsedNotes.synonyms.length > 0 && (
+                  <Box sx={{ mb: parsedNotes.others.length > 0 ? 1.25 : 0 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 700,
+                        color: "text.secondary",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.4,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                        mb: 0.75,
+                      }}
+                    >
+                      <CompareArrowsIcon sx={{ fontSize: 15 }} />
+                      Từ đồng nghĩa
+                    </Typography>
+
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+                      {parsedNotes.synonyms.map((synonym, index) => (
+                        <Box
+                          key={`synonym-${index}`}
+                          sx={{
+                            bgcolor: "white",
+                            border: "1px solid",
+                            borderColor: "divider",
+                            borderRadius: 1.5,
+                            px: 1.25,
+                            py: 0.75,
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            {synonym}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+
+                {parsedNotes.others.length > 0 && (
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 700,
+                        color: "text.secondary",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.4,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                        mb: 0.75,
+                      }}
+                    >
+                      <NotesIcon sx={{ fontSize: 15 }} />
+                      Khác
+                    </Typography>
+
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+                      {parsedNotes.others.map((item, index) => (
+                        <Box
+                          key={`note-other-${index}`}
+                          sx={{
+                            bgcolor: "white",
+                            border: "1px solid",
+                            borderColor: "divider",
+                            borderRadius: 1.5,
+                            px: 1.25,
+                            py: 0.75,
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            {item}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+              </Box>
             )}
           </Box>
 
@@ -589,9 +814,8 @@ const FlashcardDetail: React.FC = () => {
         <CreateFlashcardItemModal
           key={editWord ? editWord._id : "create-new-item"}
           open={openItemModal}
-          listName={`Flashcard List Chủ đề ${
-            flashcardInfo ? flashcardInfo.title : "đang bị lỗi"
-          }`}
+          listName={`Flashcard List Chủ đề ${flashcardInfo ? flashcardInfo.title : "đang bị lỗi"
+            }`}
           onClose={() => setOpenItemModal(false)}
           onSave={handleSaveItem}
           editData={editWord}

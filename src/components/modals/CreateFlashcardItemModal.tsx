@@ -30,6 +30,7 @@ export interface FlashcardItem {
     word: string;
     definition?: string;
     image?: string | null; // chỉ lưu string (base64 hoặc URL)
+    audio?: string;
     type?: string;
     phonetic?: string;
     examples?: { en: string; vi: string }[];

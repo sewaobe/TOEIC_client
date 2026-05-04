@@ -35,16 +35,16 @@ import { useSpeech } from "../../hooks/useSpeech";
 import ContinueLearningFLModal from "../../components/modals/ContinueLearningFLModal";
 import { flashCardProgressService } from "../../services/flashcard_progress.service";
 
-type ParsedNotes = {
+export type ParsedNotes = {
   phrases: string[];
   synonyms: string[];
   others: string[];
 };
 
-const SECTION_SEPARATOR = "###";
-const ITEM_SEPARATOR = "|||";
+export const SECTION_SEPARATOR = "###";
+export const ITEM_SEPARATOR = "|||";
 
-const parseVocabularyNotes = (notes?: string): ParsedNotes => {
+export const parseVocabularyNotes = (notes?: string): ParsedNotes => {
   const result: ParsedNotes = {
     phrases: [],
     synonyms: [],

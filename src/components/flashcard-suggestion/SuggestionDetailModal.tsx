@@ -191,14 +191,14 @@ const SuggestionDetailModal: React.FC<SuggestionDetailModalProps> = ({
           <Divider />
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} justifyContent="flex-end">
-            <Button variant="contained" startIcon={<PlayArrow />} sx={{ borderRadius: 2, fontWeight: 800 }}>
+            <Button variant="contained" startIcon={<PlayArrow />} sx={{ borderRadius: 2, fontWeight: 700 }}>
               Ôn từ này ngay
             </Button>
             <Button
               variant="outlined"
               disabled={isSelected}
               onClick={() => onAddToSelection?.(detail.vocabulary_id)}
-              sx={{ borderRadius: 2, fontWeight: 800 }}
+              sx={{ borderRadius: 2, fontWeight: 700 }}
             >
               {isSelected ? "Đã thêm vào lựa chọn" : "Thêm vào lựa chọn"}
             </Button>

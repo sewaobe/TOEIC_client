@@ -194,6 +194,17 @@ export interface PaginatedSuggestions {
   counters: SuggestedVocabularyCounters;
 }
 
+export interface SuggestionFilterOption {
+  value: string;
+  label: string;
+}
+
+export interface SuggestionFilterOptions {
+  topics: SuggestionFilterOption[];
+  levels: SuggestionFilterOption[];
+  priorities: Array<SuggestionFilterOption & { value: SuggestionPriority }>;
+}
+
 export type SuggestionReasonCode =
   | "OVERDUE"
   | "DUE_TODAY"

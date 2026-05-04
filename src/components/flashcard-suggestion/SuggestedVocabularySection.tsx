@@ -35,14 +35,13 @@ import {
   SuggestionDetail,
   SuggestedVocabularyApiItem,
   SuggestionDueTone,
+  SuggestionFilterOptions,
   SuggestionPriority,
 } from "../../types/UserVocabularyProgressV2";
 import { suggestedVocabularies } from "./mockData";
 import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
 import SuggestionDetailModal from "./SuggestionDetailModal";
 import { speakText } from "../../utils/tts.util";
-
-const filterLabels = ["Chủ đề", "Cấp độ", "Độ ưu tiên", "Đến hạn", "Xác suất nhớ"];
 
 const priorityColor: Record<SuggestionPriority, string> = {
   high: "#ef4444",
@@ -64,6 +63,23 @@ const compactButtonSx = {
   px: 1,
   whiteSpace: "nowrap",
   flexShrink: 0,
+};
+
+const filterSelectSx = {
+  borderRadius: 2,
+  fontWeight: 700,
+  height: 30,
+  minWidth: 100,
+  flexShrink: 0,
+  fontSize: 11,
+  "& .MuiSelect-select": {
+    py: 0.3,
+    px: 1,
+    pr: "24px !important",
+  },
+  "& .MuiSvgIcon-root": {
+    fontSize: 18,
+  },
 };
 
 const mockSuggestions: PaginatedSuggestions = {
@@ -102,6 +118,24 @@ const mockSuggestions: PaginatedSuggestions = {
   },
 };
 
+const mockFilterOptions: SuggestionFilterOptions = {
+  topics: Array.from(
+    new Set(suggestedVocabularies.map((item) => item.topic).filter(Boolean)),
+  )
+    .sort()
+    .map((topic) => ({ value: topic as string, label: topic as string })),
+  levels: Array.from(
+    new Set(suggestedVocabularies.map((item) => item.level).filter(Boolean)),
+  )
+    .sort()
+    .map((level) => ({ value: level as string, label: level as string })),
+  priorities: [
+    { value: "high", label: "Cao" },
+    { value: "medium", label: "Trung bình" },
+    { value: "low", label: "Thấp" },
+  ],
+};
+
 function resolveDueTone(item: SuggestedVocabularyApiItem): SuggestionDueTone {
   if (item.memoryBucket === "overdue" || item.priority === "high") {
     return "danger";
@@ -136,11 +170,15 @@ const SuggestedVocabularySection: React.FC = () => {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [bucket, setBucket] = useState<SuggestionBucket>("all");
+  const [filterOptions, setFilterOptions] = useState<SuggestionFilterOptions>(mockFilterOptions);
+  const [topic, setTopic] = useState("all");
+  const [level, setLevel] = useState("all");
+  const [priority, setPriority] = useState<SuggestionPriority | "all">("all");
 
   useEffect(() => {
     let isMounted = true;
 
-    userVocabularyProgressV2Service.getSuggestedVocabulary({ page, limit, search, bucket }).then((data) => {
+    userVocabularyProgressV2Service.getSuggestedVocabulary({ page, limit, search, bucket, topic, level, priority }).then((data) => {
       if (isMounted) {
         setSuggestions(data);
       }
@@ -149,7 +187,21 @@ const SuggestedVocabularySection: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [page, limit, search, bucket]);
+  }, [page, limit, search, bucket, topic, level, priority]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    userVocabularyProgressV2Service.getSuggestionFilterOptions().then((data) => {
+      if (isMounted) {
+        setFilterOptions(data);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const vocabularyItems = suggestions.items;
   const allVocabularyIds = useMemo(
@@ -219,6 +271,13 @@ const SuggestedVocabularySection: React.FC = () => {
     setPage(1);
   };
 
+  const handleResetFilters = () => {
+    setTopic("all");
+    setLevel("all");
+    setPriority("all");
+    setPage(1);
+  };
+
   const handleAddToSelection = (vocabularyId: string) => {
     setSelectedIds((current) =>
       current.includes(vocabularyId) ? current : [...current, vocabularyId],
@@ -280,35 +339,61 @@ const SuggestedVocabularySection: React.FC = () => {
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, flexShrink: 0 }}>
-            {filterLabels.map((label) => (
-              <Select
-                key={label}
-                size="small"
-                displayEmpty
-                defaultValue=""
-                sx={{
-                  borderRadius: 2,
-                  fontWeight: 700,
-                  height: 30,
-                  minWidth: 92,
-                  flexShrink: 0,
-                  fontSize: 11,
-                  "& .MuiSelect-select": {
-                    py: 0.3,
-                    px: 1,
-                    pr: "24px !important",
-                  },
-                  "& .MuiSvgIcon-root": {
-                    fontSize: 18,
-                  },
-                }}
-              >
-                <MenuItem value="">{label}</MenuItem>
-              </Select>
-            ))}
+            <Select
+              size="small"
+              displayEmpty
+              value={topic}
+              onChange={(event) => {
+                setTopic(event.target.value);
+                setPage(1);
+              }}
+              sx={filterSelectSx}
+            >
+              <MenuItem value="all">Chủ đề</MenuItem>
+              {filterOptions.topics.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+            <Select
+              size="small"
+              displayEmpty
+              value={level}
+              onChange={(event) => {
+                setLevel(event.target.value);
+                setPage(1);
+              }}
+              sx={filterSelectSx}
+            >
+              <MenuItem value="all">Cấp độ</MenuItem>
+              {filterOptions.levels.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+            <Select
+              size="small"
+              displayEmpty
+              value={priority}
+              onChange={(event) => {
+                setPriority(event.target.value as SuggestionPriority | "all");
+                setPage(1);
+              }}
+              sx={filterSelectSx}
+            >
+              <MenuItem value="all">Độ ưu tiên</MenuItem>
+              {filterOptions.priorities.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
             <Button
               variant="outlined"
               startIcon={<FilterList sx={{ fontSize: 16 }} />}
+              onClick={handleResetFilters}
               sx={{
                 ...compactButtonSx,
                 minHeight: 30,

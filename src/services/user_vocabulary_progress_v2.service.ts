@@ -7,6 +7,7 @@ import {
   ReviewSchedulePoint,
   SuggestionBucket,
   SuggestionDetail,
+  SuggestionFilterOptions,
   SuggestionPriority,
   SuggestionReason,
   TodayReviewSummary,
@@ -124,6 +125,24 @@ const mockPaginatedSuggestions: PaginatedSuggestions = {
   counters: mockSuggestionCounters,
 };
 
+const mockSuggestionFilterOptions: SuggestionFilterOptions = {
+  topics: Array.from(
+    new Set(mockSuggestionItems.map((item) => item.topic).filter(Boolean)),
+  )
+    .sort()
+    .map((topic) => ({ value: topic as string, label: topic as string })),
+  levels: Array.from(
+    new Set(mockSuggestionItems.map((item) => item.level).filter(Boolean)),
+  )
+    .sort()
+    .map((level) => ({ value: level as string, label: level as string })),
+  priorities: [
+    { value: "high", label: "Cao" },
+    { value: "medium", label: "Trung bình" },
+    { value: "low", label: "Thấp" },
+  ],
+};
+
 function buildMockPaginatedSuggestions(
   params: GetSuggestedVocabularyParams = {},
 ): PaginatedSuggestions {
@@ -142,6 +161,14 @@ function buildMockPaginatedSuggestions(
     }
 
     if (params.priority && params.priority !== "all" && item.priority !== params.priority) {
+      return false;
+    }
+
+    if (params.topic && params.topic !== "all" && item.topic !== params.topic) {
+      return false;
+    }
+
+    if (params.level && params.level !== "all" && item.level !== params.level) {
       return false;
     }
 
@@ -326,6 +353,17 @@ function hasSuggestionDetailData(data?: SuggestionDetail | null): data is Sugges
   return Boolean(data && data.vocabulary_id && data.word);
 }
 
+function hasSuggestionFilterOptionsData(
+  data?: SuggestionFilterOptions | null,
+): data is SuggestionFilterOptions {
+  return Boolean(
+    data &&
+      Array.isArray(data.topics) &&
+      Array.isArray(data.levels) &&
+      Array.isArray(data.priorities),
+  );
+}
+
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -398,6 +436,20 @@ export const userVocabularyProgressV2Service = {
         : buildMockPaginatedSuggestions(params);
     } catch (error) {
       return buildMockPaginatedSuggestions(params);
+    }
+  },
+
+  getSuggestionFilterOptions: async (): Promise<SuggestionFilterOptions> => {
+    try {
+      const response = await axiosClient.get<ApiResponse<SuggestionFilterOptions>>(
+        `${BASE_URL}/suggestions/filter-options`,
+      );
+
+      return hasSuggestionFilterOptionsData(response.data)
+        ? response.data
+        : mockSuggestionFilterOptions;
+    } catch (error) {
+      return mockSuggestionFilterOptions;
     }
   },
 

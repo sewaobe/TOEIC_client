@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -10,6 +10,7 @@ import {
   MenuItem,
   Paper,
   Select,
+  Skeleton,
   Stack,
   Table,
   TableBody,
@@ -38,7 +39,6 @@ import {
   SuggestionFilterOptions,
   SuggestionPriority,
 } from "../../types/UserVocabularyProgressV2";
-import { suggestedVocabularies } from "./mockData";
 import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
 import SuggestionDetailModal from "./SuggestionDetailModal";
 import { speakText } from "../../utils/tts.util";
@@ -82,60 +82,32 @@ const filterSelectSx = {
   },
 };
 
-const mockSuggestions: PaginatedSuggestions = {
-  items: suggestedVocabularies.map((item) => ({
-    id: item.vocabularyId,
-    vocabularyId: item.vocabularyId,
-    word: item.word,
-    phonetic: item.phonetic,
-    meaning: item.meaning,
-    topic: item.topic,
-    level: item.level,
-    priority: item.priority,
-    priorityLabel: item.priorityLabel,
-    pRecallNow: item.pRecallNow,
-    dueAt: item.dueAt ?? null,
-    dueLabel: item.dueLabel,
-    memoryBucket: item.memoryBucket ?? "active_reviewing",
-    status: item.memory?.status ?? "reviewing",
-    halfLifeDays: item.memory?.half_life_days ?? 0,
-    difficulty: item.memory?.difficulty ?? 0,
-    reviewCount: 0,
-    sessionCount: 0,
-  })),
+const emptySuggestions: PaginatedSuggestions = {
+  items: [],
   pagination: {
     page: 1,
     limit: 20,
-    total: 416,
-    totalPages: 21,
+    total: 0,
+    totalPages: 1,
   },
   counters: {
-    all: 416,
-    dueToday: 142,
-    atRisk: 38,
-    overdue: 20,
-    mastered: 236,
+    all: 0,
+    dueToday: 0,
+    atRisk: 0,
+    overdue: 0,
+    mastered: 0,
   },
 };
 
-const mockFilterOptions: SuggestionFilterOptions = {
-  topics: Array.from(
-    new Set(suggestedVocabularies.map((item) => item.topic).filter(Boolean)),
-  )
-    .sort()
-    .map((topic) => ({ value: topic as string, label: topic as string })),
-  levels: Array.from(
-    new Set(suggestedVocabularies.map((item) => item.level).filter(Boolean)),
-  )
-    .sort()
-    .map((level) => ({ value: level as string, label: level as string })),
+const emptyFilterOptions: SuggestionFilterOptions = {
+  topics: [],
+  levels: [],
   priorities: [
     { value: "high", label: "Cao" },
     { value: "medium", label: "Trung bình" },
     { value: "low", label: "Thấp" },
   ],
 };
-
 function resolveDueTone(item: SuggestedVocabularyApiItem): SuggestionDueTone {
   if (item.memoryBucket === "overdue" || item.priority === "high") {
     return "danger";
@@ -162,7 +134,9 @@ function resolveTopicColor(topic?: string): string {
 
 const SuggestedVocabularySection: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [suggestions, setSuggestions] = useState<PaginatedSuggestions>(mockSuggestions);
+  const [suggestions, setSuggestions] = useState<PaginatedSuggestions>(emptySuggestions);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(true);
+  const [isLoadingFilterOptions, setIsLoadingFilterOptions] = useState(true);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<SuggestionDetail | null>(null);
   const [page, setPage] = useState(1);
@@ -170,7 +144,7 @@ const SuggestedVocabularySection: React.FC = () => {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [bucket, setBucket] = useState<SuggestionBucket>("all");
-  const [filterOptions, setFilterOptions] = useState<SuggestionFilterOptions>(mockFilterOptions);
+  const [filterOptions, setFilterOptions] = useState<SuggestionFilterOptions>(emptyFilterOptions);
   const [topic, setTopic] = useState("all");
   const [level, setLevel] = useState("all");
   const [priority, setPriority] = useState<SuggestionPriority | "all">("all");
@@ -178,11 +152,19 @@ const SuggestedVocabularySection: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
 
-    userVocabularyProgressV2Service.getSuggestedVocabulary({ page, limit, search, bucket, topic, level, priority }).then((data) => {
-      if (isMounted) {
-        setSuggestions(data);
-      }
-    });
+    setIsLoadingSuggestions(true);
+    userVocabularyProgressV2Service
+      .getSuggestedVocabulary({ page, limit, search, bucket, topic, level, priority })
+      .then((data) => {
+        if (isMounted) {
+          setSuggestions(data);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingSuggestions(false);
+        }
+      });
 
     return () => {
       isMounted = false;
@@ -192,11 +174,19 @@ const SuggestedVocabularySection: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
 
-    userVocabularyProgressV2Service.getSuggestionFilterOptions().then((data) => {
-      if (isMounted) {
-        setFilterOptions(data);
-      }
-    });
+    setIsLoadingFilterOptions(true);
+    userVocabularyProgressV2Service
+      .getSuggestionFilterOptions()
+      .then((data) => {
+        if (isMounted) {
+          setFilterOptions(data);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingFilterOptions(false);
+        }
+      });
 
     return () => {
       isMounted = false;
@@ -343,6 +333,7 @@ const SuggestedVocabularySection: React.FC = () => {
               size="small"
               displayEmpty
               value={topic}
+              disabled={isLoadingFilterOptions}
               onChange={(event) => {
                 setTopic(event.target.value);
                 setPage(1);
@@ -360,6 +351,7 @@ const SuggestedVocabularySection: React.FC = () => {
               size="small"
               displayEmpty
               value={level}
+              disabled={isLoadingFilterOptions}
               onChange={(event) => {
                 setLevel(event.target.value);
                 setPage(1);
@@ -377,6 +369,7 @@ const SuggestedVocabularySection: React.FC = () => {
               size="small"
               displayEmpty
               value={priority}
+              disabled={isLoadingFilterOptions}
               onChange={(event) => {
                 setPriority(event.target.value as SuggestionPriority | "all");
                 setPage(1);
@@ -505,7 +498,29 @@ const SuggestedVocabularySection: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {vocabularyItems.map((item) => {
+              {isLoadingSuggestions ? (
+                Array.from({ length: limit > 20 ? 10 : Math.min(limit, 10) }).map((_, index) => (
+                  <TableRow key={`suggestion-skeleton-${index}`}>
+                    <TableCell padding="checkbox">
+                      <Skeleton variant="rounded" width={18} height={18} />
+                    </TableCell>
+                    <TableCell><Skeleton width={140} /></TableCell>
+                    <TableCell><Skeleton width={180} /></TableCell>
+                    <TableCell><Skeleton variant="rounded" width={74} height={22} /></TableCell>
+                    <TableCell><Skeleton variant="rounded" width={42} height={22} /></TableCell>
+                    <TableCell><Skeleton width={90} /></TableCell>
+                    <TableCell><Skeleton width={160} /></TableCell>
+                    <TableCell><Skeleton width={80} /></TableCell>
+                  </TableRow>
+                ))
+              ) : vocabularyItems.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} sx={{ py: 5, textAlign: "center", color: "text.secondary", fontWeight: 700 }}>
+                    Chưa có từ vựng gợi ý.
+                  </TableCell>
+                </TableRow>
+              ) : (
+              vocabularyItems.map((item) => {
                 const pRecallPercent = Math.round(item.pRecallNow * 100);
                 const probabilityColor =
                   pRecallPercent < 25
@@ -587,7 +602,8 @@ const SuggestedVocabularySection: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 );
-              })}
+              })
+              )}
             </TableBody>
           </Table>
         </TableContainer>
@@ -683,3 +699,4 @@ const SuggestedVocabularySection: React.FC = () => {
 };
 
 export default SuggestedVocabularySection;
+

@@ -1,14 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, MenuItem, Paper, Select, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, MenuItem, Paper, Select, Skeleton, Stack, Tooltip, Typography } from "@mui/material";
 import { ReviewSchedulePoint } from "../../types/UserVocabularyProgressV2";
 import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
-import { schedulePoints } from "./mockData";
-
-const mockSchedule: ReviewSchedulePoint[] = schedulePoints.slice(0, 7).map((point, index) => ({
-  date: new Date(Date.now() + index * 24 * 60 * 60 * 1000).toISOString(),
-  label: point.label,
-  count: point.value,
-}));
 
 interface MiniLineChartProps {
   data: ReviewSchedulePoint[];
@@ -133,16 +126,25 @@ const MiniLineChart: React.FC<MiniLineChartProps> = ({ data }) => {
 
 const ReviewScheduleCard: React.FC = () => {
   const [rangeDays, setRangeDays] = useState<7 | 14 | 30>(7);
-  const [schedule, setSchedule] = useState<ReviewSchedulePoint[]>(mockSchedule);
+  const [schedule, setSchedule] = useState<ReviewSchedulePoint[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
-    userVocabularyProgressV2Service.getReviewSchedule({ rangeDays }).then((data) => {
-      if (isMounted) {
-        setSchedule(data);
-      }
-    });
+    setIsLoading(true);
+    userVocabularyProgressV2Service
+      .getReviewSchedule({ rangeDays })
+      .then((data) => {
+        if (isMounted) {
+          setSchedule(data);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
 
     return () => {
       isMounted = false;
@@ -195,7 +197,7 @@ const ReviewScheduleCard: React.FC = () => {
           <MenuItem value="30">30 ngày tới</MenuItem>
         </Select>
       </Stack>
-      <MiniLineChart data={schedule} />
+      {isLoading ? <Skeleton variant="rounded" sx={{ flex: 1, minHeight: 180 }} /> : <MiniLineChart data={schedule} />}
     </Paper>
   );
 };

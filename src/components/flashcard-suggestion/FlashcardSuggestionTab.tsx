@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { Box, Button, Paper, Stack, Typography } from "@mui/material";
+import { Box, Button, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { Alarm, PlayArrow, StarBorder, VolumeUp } from "@mui/icons-material";
-import { reviewStats, todayReviewSummary as mockTodayReviewSummary } from "./mockData";
 import MemoryStatusCard from "./MemoryStatusCard";
 import ReviewScheduleCard from "./ReviewScheduleCard";
 import SuggestedVocabularySection from "./SuggestedVocabularySection";
 import { TodayReviewSummary } from "../../types/UserVocabularyProgressV2";
 import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
+
+const reviewStats: Array<{ key: keyof Pick<TodayReviewSummary, "dueToday" | "atRisk" | "overdue">; label: string; color: string }> = [
+  { key: "dueToday", label: "Đến hạn hôm nay", color: "#2563eb" },
+  { key: "atRisk", label: "Sắp quên", color: "#f59e0b" },
+  { key: "overdue", label: "Quá hạn", color: "#ef4444" },
+];
 
 const CompactHeroPreview = () => (
   <Box
@@ -65,16 +70,25 @@ const CompactHeroPreview = () => (
 );
 
 const FlashcardSuggestionTab: React.FC = () => {
-  const [summary, setSummary] = useState<TodayReviewSummary>(mockTodayReviewSummary);
+  const [summary, setSummary] = useState<TodayReviewSummary | null>(null);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
-    userVocabularyProgressV2Service.getTodayReviewSummary().then((data) => {
-      if (isMounted) {
-        setSummary(data);
-      }
-    });
+    setIsLoadingSummary(true);
+    userVocabularyProgressV2Service
+      .getTodayReviewSummary()
+      .then((data) => {
+        if (isMounted) {
+          setSummary(data);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingSummary(false);
+        }
+      });
 
     return () => {
       isMounted = false;
@@ -83,8 +97,12 @@ const FlashcardSuggestionTab: React.FC = () => {
 
   const stats = reviewStats.map((stat) => ({
     ...stat,
-    value: summary[stat.key],
+    value: summary?.[stat.key] ?? 0,
   }));
+  const totalReviewCount = summary?.total ?? 0;
+  const circleProgress = totalReviewCount > 0
+    ? Math.min(100, Math.round(((summary?.primaryReviewCount ?? 0) / totalReviewCount) * 100))
+    : 0;
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
@@ -150,7 +168,7 @@ const FlashcardSuggestionTab: React.FC = () => {
                     width: { xs: 112, sm: 122 },
                     height: { xs: 112, sm: 122 },
                     borderRadius: "50%",
-                    background: "conic-gradient(#2563eb 0 75%, #bfdbfe 75% 100%)",
+                    background: `conic-gradient(#2563eb 0 ${circleProgress}%, #bfdbfe ${circleProgress}% 100%)`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -170,7 +188,7 @@ const FlashcardSuggestionTab: React.FC = () => {
                     }}
                   >
                     <Typography variant="h4" sx={{ fontWeight: 900 }}>
-                      {summary.total}
+                      {isLoadingSummary ? <Skeleton width={44} /> : summary?.total ?? 0}
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 700 }}>
                       từ cần ôn
@@ -202,7 +220,7 @@ const FlashcardSuggestionTab: React.FC = () => {
                         </Typography>
                       </Stack>
                       <Typography variant="h6" sx={{ fontWeight: 900, mt: 0.3 }}>
-                        {stat.value}
+                        {isLoadingSummary ? <Skeleton width={32} /> : stat.value}
                       </Typography>
                     </Paper>
                   ))}
@@ -215,14 +233,14 @@ const FlashcardSuggestionTab: React.FC = () => {
                   startIcon={<PlayArrow />}
                   sx={{ borderRadius: 2, fontWeight: 800, px: { xs: 2, sm: 3 }, whiteSpace: "nowrap", flexShrink: 0 }}
                 >
-                  Ôn hôm nay và sắp quên ({summary.primaryReviewCount} từ)
+                  Ôn hôm nay và sắp quên ({summary?.primaryReviewCount ?? 0} từ)
                 </Button>
                 <Button
                   variant="outlined"
                   startIcon={<PlayArrow />}
                   sx={{ borderRadius: 2, fontWeight: 800, px: { xs: 2, sm: 3 }, whiteSpace: "nowrap", flexShrink: 0 }}
                 >
-                  Ôn từ quá hạn ({summary.overdueReviewCount} từ)
+                  Ôn từ quá hạn ({summary?.overdueReviewCount ?? 0} từ)
                 </Button>
               </Stack>
             </Box>

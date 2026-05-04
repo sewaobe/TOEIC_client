@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, Paper, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, Paper, Skeleton, Stack, Tooltip, Typography } from "@mui/material";
 import { MemoryStatusSummaryItem, MemoryUiBucket } from "../../types/UserVocabularyProgressV2";
 import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
-import { memoryStatuses } from "./mockData";
 
 const bucketColor: Record<MemoryUiBucket, string> = {
   mastered: "#10b981",
@@ -10,13 +9,6 @@ const bucketColor: Record<MemoryUiBucket, string> = {
   at_risk: "#f59e0b",
   overdue: "#ef4444",
 };
-
-const mockMemoryStatuses: MemoryStatusSummaryItem[] = memoryStatuses.map((status) => ({
-  bucket: status.bucket,
-  label: status.label,
-  count: status.value,
-  percentage: status.percent,
-}));
 
 interface MemoryDonutProps {
   data: MemoryStatusSummaryItem[];
@@ -38,7 +30,23 @@ const MemoryDonut: React.FC<MemoryDonutProps> = ({ data }) => {
     });
   }, [data]);
 
-  const stablePercent = data.find((item) => item.bucket === "mastered")?.percentage ?? 0;
+  const dominantStatus = useMemo(() => {
+    if (data.length === 0) {
+      return null;
+    }
+
+    return data.reduce((currentMax, item) => {
+      if (item.count > currentMax.count) {
+        return item;
+      }
+
+      if (item.count === currentMax.count && item.percentage > currentMax.percentage) {
+        return item;
+      }
+
+      return currentMax;
+    }, data[0]);
+  }, [data]);
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -80,10 +88,10 @@ const MemoryDonut: React.FC<MemoryDonutProps> = ({ data }) => {
           }}
         >
           <Typography variant="h5" sx={{ fontWeight: 800, color: "text.primary" }}>
-            {Math.round(stablePercent)}%
+            {Math.round(dominantStatus?.percentage ?? 0)}%
           </Typography>
           <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
-            Đã vững
+            {dominantStatus?.label ?? "Chưa có dữ liệu"}
           </Typography>
         </Box>
       </Box>
@@ -92,16 +100,25 @@ const MemoryDonut: React.FC<MemoryDonutProps> = ({ data }) => {
 };
 
 const MemoryStatusCard: React.FC = () => {
-  const [statuses, setStatuses] = useState<MemoryStatusSummaryItem[]>(mockMemoryStatuses);
+  const [statuses, setStatuses] = useState<MemoryStatusSummaryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
-    userVocabularyProgressV2Service.getMemoryStatusSummary().then((data) => {
-      if (isMounted) {
-        setStatuses(data);
-      }
-    });
+    setIsLoading(true);
+    userVocabularyProgressV2Service
+      .getMemoryStatusSummary()
+      .then((data) => {
+        if (isMounted) {
+          setStatuses(data);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
 
     return () => {
       isMounted = false;
@@ -125,6 +142,16 @@ const MemoryStatusCard: React.FC = () => {
           Tổng quan trạng thái ghi nhớ của các từ trong hệ thống.
         </Typography>
       </Box>
+      {isLoading ? (
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "120px minmax(0, 1fr)", xl: "132px minmax(0, 1fr)" }, gap: { xs: 3, sm: 2.5, md: 3 }, alignItems: "center" }}>
+          <Skeleton variant="circular" width={150} height={150} sx={{ mx: "auto" }} />
+          <Stack spacing={1.4}>
+            {[0, 1, 2, 3].map((item) => (
+              <Skeleton key={item} variant="text" width="75%" />
+            ))}
+          </Stack>
+        </Box>
+      ) : (
       <Box
         sx={{
           display: "grid",
@@ -154,6 +181,7 @@ const MemoryStatusCard: React.FC = () => {
           ))}
         </Stack>
       </Box>
+      )}
     </Paper>
   );
 };

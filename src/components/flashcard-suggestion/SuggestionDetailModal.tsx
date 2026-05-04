@@ -202,9 +202,6 @@ const SuggestionDetailModal: React.FC<SuggestionDetailModalProps> = ({
             >
               {isSelected ? "Đã thêm vào lựa chọn" : "Thêm vào lựa chọn"}
             </Button>
-            <Button variant="text" onClick={onClose} sx={{ borderRadius: 2, fontWeight: 800 }}>
-              Đóng
-            </Button>
           </Stack>
         </Stack>
       </DialogContent>

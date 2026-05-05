@@ -104,11 +104,9 @@ const HomePage: FC = () => {
       <Box sx={{ px: { xs: 2, sm: 4, md: 6 } }}>
         <HeroSection />
         <FeatureSection />
-        
+
         {/* Chỉ hiện section này nếu có bài làm */}
-        {userRecentTests.length > 0 && (
-          <TestSection title="Bài làm gần đây" tests={userRecentTests} no={0} />
-        )}
+        <TestSection title="Bài làm gần đây" tests={userRecentTests} no={0} />
 
         <TestSection
           title="Đề thi mới nhất"

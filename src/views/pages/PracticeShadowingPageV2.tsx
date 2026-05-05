@@ -301,7 +301,7 @@ export default function PracticeShadowingV2Page() {
     if (canUseVideo) {
       setMediaMode('video');
     }
-  }, [canUseVideo, mediaMode]);
+  }, []);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;

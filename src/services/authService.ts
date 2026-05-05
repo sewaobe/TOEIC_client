@@ -21,8 +21,8 @@ export interface BannedAccountError {
 }
 
 const authService = {
-  login: (data: LoginFormInputs, isRemember: boolean) =>
-    axiosClient.post("/auth/login", { ...data, isRemember }),
+  login: (data: LoginFormInputs) =>
+    axiosClient.post("/auth/login", { ...data}),
   loginWithGoogle: async (idToken: String): Promise<any> => {
     const res = await axiosClient.post("/auth/google", { idToken });
     return res;

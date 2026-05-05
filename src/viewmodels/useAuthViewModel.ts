@@ -38,9 +38,9 @@ export const useAuthViewModel = () => {
   };
 
   // -------- Login ----------
-  const login = async (data: LoginFormInputs, isRemember: boolean) => {
+  const login = async (data: LoginFormInputs) => {
     try {
-      const res = (await authService.login(data, isRemember)) as any;
+      const res = (await authService.login(data)) as any;
       if (res?.meta?.role_name === "student") {
         dispatch(setAuth(true));
         dispatch(getUserThunk());

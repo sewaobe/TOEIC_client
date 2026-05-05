@@ -3,8 +3,6 @@ import {
   Box,
   TextField,
   Button,
-  Checkbox,
-  FormControlLabel,
   Typography,
   IconButton,
   InputAdornment,
@@ -62,10 +60,9 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
   } = authViewModel.useLoginForm();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
 
   const onSubmit = handleSubmit((data) => {
-    authViewModel.login(data, rememberMe);
+    authViewModel.login(data);
   });
 
   const navigate = useNavigate();
@@ -156,20 +153,10 @@ const LoginForm: FC<LoginFormProps> = ({ onSwitch }) => {
         sx={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "end",
           my: 2,
         }}
       >
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              color="primary"
-            />
-          }
-          label={<Typography variant="body2">Remember Me</Typography>}
-        />
         <MuiLink href="/reset-password" variant="body2" underline="hover">
           Forgot Password?
         </MuiLink>

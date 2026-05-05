@@ -37,12 +37,14 @@ import DictationAIAnalysis from "./DictationAIAnalysis";
 import SentenceRenderer from "./SetenceRenderer";
 import { loadStopWords } from "../../utils/stopWord";
 import DictationTourGuide from "../tour-guide/DictationTourGuide";
+import { calculateWordSimilarity, normalizeForDictation } from "../../utils/textSimilarity.util";
 
 /* ===== Types ===== */
 type Difficulty = "easy" | "medium" | "hard";
 
 interface DictationContentProps {
   dictation: Dictation;
+  initialDifficulty?: Difficulty;
 }
 
 export interface DictationWord {
@@ -52,12 +54,7 @@ export interface DictationWord {
 }
 
 /* ===== Helpers ===== */
-const normalize = (text: string): string =>
-  text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/gi, "") // xóa toàn bộ dấu câu, ký tự đặc biệt
-    .replace(/\s+/g, " ") // gộp khoảng trắng
-    .trim();
+const normalize = normalizeForDictation;
 
 const getBlankRatio = (level: Difficulty): number =>
   level === "easy" ? 0.2 : level === "hard" ? 0.55 : 0.35;
@@ -94,10 +91,52 @@ const buildWords = async (
   }));
 };
 
+const getSegmentBounds = (
+  segment: Dictation["timings"][number],
+  fallbackDuration?: number,
+  audioDuration?: number
+) => {
+  const start = Math.max(0, segment.startTime ?? 0);
+  const fallbackEnd =
+    typeof fallbackDuration === "number" && fallbackDuration > start
+      ? fallbackDuration
+      : typeof audioDuration === "number" &&
+        Number.isFinite(audioDuration) &&
+        audioDuration > start
+        ? audioDuration
+        : start;
+  const end = segment.endTime > start ? segment.endTime : fallbackEnd;
+
+  return {
+    start,
+    end,
+    duration: Math.max(end - start, 0),
+  };
+};
+
+const PASS_THRESHOLD: Record<Difficulty, number> = {
+  easy: 100,
+  medium: 100,
+  hard: 85,
+};
+
+const DIFFICULTY_LABEL: Record<Difficulty, string> = {
+  easy: "Dễ",
+  medium: "Trung bình",
+  hard: "Khó",
+};
+
+const isPassedAccuracy = (difficulty: Difficulty, accuracy: number): boolean => {
+  return accuracy >= PASS_THRESHOLD[difficulty];
+};
+
 /* ===== Component ===== */
-export default function DictationContent({ dictation }: DictationContentProps) {
+export default function DictationContent({
+  dictation,
+  initialDifficulty = "hard",
+}: DictationContentProps) {
   // Dictation UI: force single mode (full-sentence input)
-  const [difficulty] = useState<Difficulty>("hard");
+  const [difficulty, setDifficulty] = useState<Difficulty>(initialDifficulty);
   const [sentences, setSentences] = useState<
     { id: number; text: string; words: DictationWord[] }[]
   >([]);
@@ -127,6 +166,10 @@ export default function DictationContent({ dictation }: DictationContentProps) {
   const [isRunGuide, setIsRunGuide] = useState<boolean>(() => {
     return localStorage.getItem("dictation_tour_seen") !== "true";
   });
+
+  useEffect(() => {
+    setDifficulty(initialDifficulty);
+  }, [initialDifficulty, dictation._id]);
 
   /* ===== Load sentences with stopwords filter ===== */
   useEffect(() => {
@@ -161,13 +204,29 @@ export default function DictationContent({ dictation }: DictationContentProps) {
   /* ===== Audio Logic ===== */
   const handlePlay = useCallback(() => {
     if (!dictation.audio_url || !currentSegment) return;
-    const audio = audioRef.current ?? new Audio(dictation.audio_url);
+
+    const audioSrc = dictation.audio_url;
+    let audio = audioRef.current;
+
+    if (!audio || audio.getAttribute("src") !== audioSrc) {
+      audio?.pause();
+      audio = new Audio(audioSrc);
+      audioRef.current = audio;
+    }
+
     audioRef.current = audio;
 
-    const start = (currentSegment.startTime || 0) / 1000;
-    const end = (currentSegment.endTime || 0) / 1000;
-    const duration = end - start;
+    const { start, end, duration } = getSegmentBounds(
+      currentSegment,
+      dictation.duration,
+      audio.duration
+    );
 
+    if (duration <= 0) return;
+
+    audio.pause();
+    audio.ontimeupdate = null;
+    audio.onended = null;
     audio.currentTime = start;
     audio.playbackRate = playbackRate;
     setIsPlaying(true);
@@ -179,21 +238,34 @@ export default function DictationContent({ dictation }: DictationContentProps) {
         audio.pause();
         setIsPlaying(false);
         setProgress(100);
-        audio.removeEventListener("timeupdate", onTime);
+        audio.ontimeupdate = null;
+        audio.onended = null;
         return;
       }
       const p = ((current - start) / duration) * 100;
       setProgress(p);
     };
 
-    audio.addEventListener("timeupdate", onTime);
-    audio.play().catch(() => setIsPlaying(false));
-  }, [dictation.audio_url, currentSegment, playbackRate]);
+    audio.ontimeupdate = onTime;
+    audio.onended = () => {
+      setIsPlaying(false);
+      setProgress(100);
+      audio.ontimeupdate = null;
+      audio.onended = null;
+    };
+    audio.play().catch(() => {
+      setIsPlaying(false);
+      audio.ontimeupdate = null;
+      audio.onended = null;
+    });
+  }, [dictation.audio_url, dictation.duration, currentSegment, playbackRate]);
 
   useEffect(() => {
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current.ontimeupdate = null;
+        audioRef.current.onended = null;
         audioRef.current.src = "";
       }
     };
@@ -214,9 +286,7 @@ export default function DictationContent({ dictation }: DictationContentProps) {
     if (!currentItem) return 0;
 
     if (difficulty === "hard") {
-      const userText = normalize(userAnswers[0] || "");
-      const correctText = normalize(currentItem.text);
-      return userText === correctText ? 100 : 0;
+      return calculateWordSimilarity(currentItem.text, userAnswers[0] || "");
     }
 
     if (difficulty === "easy") {
@@ -226,12 +296,16 @@ export default function DictationContent({ dictation }: DictationContentProps) {
     }
 
     if (blankIndices.length === 0) return 0;
+
     let correct = 0;
+
     blankIndices.forEach((i) => {
       const correctWord = normalize(currentItem.words[i].word);
       const userWord = normalize(userAnswers[i] || "");
+
       if (userWord === correctWord) correct++;
     });
+    
     return Math.round((correct / blankIndices.length) * 100);
   }, [currentItem, blankIndices, userAnswers, difficulty]);
 
@@ -269,14 +343,16 @@ export default function DictationContent({ dictation }: DictationContentProps) {
     };
     setAttemptLogs((prev) => [...prev, newLog]);
 
-    if (acc === 100) {
+    if (isPassedAccuracy(difficulty, acc)) {
       setCompleted((prev) => Math.min(prev + 1, totalItems));
+
       if (autoNext && currentIndex < totalItems - 1) {
         setTimeout(() => {
           setCurrentIndex((i) => i + 1);
           setShowAnswer(false);
           setUserAnswers({});
           setProgress(0);
+          setStartedAt(Date.now());
         }, 1200);
       }
     }
@@ -290,7 +366,9 @@ export default function DictationContent({ dictation }: DictationContentProps) {
   };
 
   const handleNext = () => {
-    if (calcAccuracy() === 100 && currentIndex < totalItems - 1) {
+    const acc = calcAccuracy();
+
+    if (isPassedAccuracy(difficulty, acc) && currentIndex < totalItems - 1) {
       setCurrentIndex((i) => i + 1);
       setShowAnswer(false);
       setUserAnswers({});
@@ -498,9 +576,12 @@ export default function DictationContent({ dictation }: DictationContentProps) {
           value={progress}
           onChange={(_, newValue) => {
             if (!audioRef.current || !currentSegment) return;
-            const start = (currentSegment.startTime || 0) / 1000;
-            const end = (currentSegment.endTime || 0) / 1000;
-            const duration = end - start;
+            const { start, duration } = getSegmentBounds(
+              currentSegment,
+              dictation.duration,
+              audioRef.current.duration
+            );
+            if (duration <= 0) return;
             const newTime = start + ((newValue as number) / 100) * duration;
             audioRef.current.currentTime = newTime;
             setProgress(newValue as number);
@@ -548,10 +629,19 @@ export default function DictationContent({ dictation }: DictationContentProps) {
         mb={3}
         className="dictation-difficulty"
       >
-        <Box>
+        <Box display="flex" alignItems="center" gap={1}>
           <Typography variant="body2" color="text.secondary">
-            Chế độ: Điền nguyên câu
+            Chế độ:
           </Typography>
+          <Chip
+            size="small"
+            label={DIFFICULTY_LABEL[difficulty]}
+            sx={{
+              fontWeight: 700,
+              backgroundColor: "#eff6ff",
+              color: "#2563eb",
+            }}
+          />
         </Box>
 
         <Box display="flex" alignItems="center" gap={1}>
@@ -641,7 +731,7 @@ export default function DictationContent({ dictation }: DictationContentProps) {
           >
             Kiểm tra
           </Button>
-        ) : accuracy === 100 ? (
+        ) : isPassedAccuracy(difficulty, accuracy) ? (
           <Button
             variant="contained"
             color="success"
@@ -673,7 +763,7 @@ export default function DictationContent({ dictation }: DictationContentProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
           >
-            {accuracy === 100 ? (
+            {isPassedAccuracy(difficulty, accuracy) ? (
               <Alert
                 icon={<CheckCircleIcon />}
                 severity="success"
@@ -687,8 +777,7 @@ export default function DictationContent({ dictation }: DictationContentProps) {
                 severity="warning"
                 sx={{ mt: 1, borderRadius: 2 }}
               >
-                Bạn đúng khoảng {accuracy}% từ cần điền. Nghe lại đoạn này và
-                sửa những ô đỏ nhé.
+                Bạn đạt khoảng {accuracy}%. Nghe lại đoạn này và sửa những phần còn sai nhé.
               </Alert>
             )}
             {/* Hiển thị kết quả chi tiết người dùng nhập & transcript */}
@@ -722,14 +811,14 @@ export default function DictationContent({ dictation }: DictationContentProps) {
               >
                 {difficulty === "medium"
                   ? currentItem.words
-                      .map((w) =>
-                        w.isBlank
+                    .map((w) =>
+                      w.isBlank
+                        ? userAnswers[w.index]
                           ? userAnswers[w.index]
-                            ? userAnswers[w.index]
-                            : "____"
-                          : w.word
-                      )
-                      .join(" ")
+                          : "____"
+                        : w.word
+                    )
+                    .join(" ")
                   : userAnswers[0] || "(Chưa nhập nội dung)"}
               </Typography>
 

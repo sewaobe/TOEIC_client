@@ -8,9 +8,13 @@ import DictationList from "../../components/practices/DictationList";
 import { Dictation } from "../../types/Dictation";
 import { dictationService } from "../../services/dictation.service";
 
+type DictationDifficulty = "easy" | "medium" | "hard";
+
 const PracticeDictationPage = () => {
   const { id: urlId } = useParams<{ id?: string }>();
   const [selectedLesson, setSelectedLesson] = useState<Dictation | null>(null);
+  const [selectedDifficulty, setSelectedDifficulty] =
+    useState<DictationDifficulty>("hard");
   const [loading, setLoading] = useState<boolean>(false);
   const [filters, setFilters] = useState<{
     part_type?: number;
@@ -36,10 +40,14 @@ const PracticeDictationPage = () => {
     setSelectedLesson(null); // Reset bài đang học
   };
 
-  const handleSelectLesson = async (lessonId: string) => {
+  const handleSelectLesson = async (
+    lessonId: string,
+    difficulty: DictationDifficulty = "hard"
+  ) => {
     try {
       setLoading(true);
       const lesson = await dictationService.getDictationById(lessonId);
+      setSelectedDifficulty(difficulty);
       setSelectedLesson(lesson);
       setFilters(null); // Ẩn list, hiện content
     } catch (error) {
@@ -70,7 +78,10 @@ const PracticeDictationPage = () => {
             </Box>
           ) : selectedLesson ? (
             // Đang học 1 bài cụ thể
-            <DictationContent dictation={selectedLesson} />
+            <DictationContent
+              dictation={selectedLesson}
+              initialDifficulty={selectedDifficulty}
+            />
           ) : filters ? (
             // Đang xem danh sách bài (theo Part hoặc Tag)
             <DictationList

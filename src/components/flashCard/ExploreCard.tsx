@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Chip, Tooltip, Typography } from "@mui/material";
-import { getIconComponentByName, mapBgToIconColor } from "../../utils/colorMapFromBg";
+import { getIconComponentByName } from "../../utils/colorMapFromBg";
 import { useNavigate } from "react-router-dom";
 
 export interface FlashcardExplore {
@@ -22,13 +22,7 @@ export interface FlashcardExplore {
 }
 
 export const ExploreCard: React.FC<{ item: FlashcardExplore }> = ({ item }) => {
-    const { IconComponent, bgColor } = getIconComponentByName(item.iconName || "Book");
-    const textColor = mapBgToIconColor(bgColor);
-
-    // Tailwind gradient classes
-    const gradientClass = item.gradient
-        ? `bg-gradient-to-r ${item.gradient}`
-        : "bg-gray-50";
+    const { IconComponent } = getIconComponentByName(item.iconName || "Book");
 
     const navigate = useNavigate();
 
@@ -39,16 +33,24 @@ export const ExploreCard: React.FC<{ item: FlashcardExplore }> = ({ item }) => {
 
     return (
         <Box
-            className={`rounded-2xl p-4 shadow-customCard flex flex-col justify-between min-h-[180px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${gradientClass}`}
+            className={`rounded-2xl p-4 shadow-customCard flex flex-col justify-between min-h-[180px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg`}
             onClick={handleClick}
-            sx={{ cursor: "pointer" }}
+            sx={{
+                cursor: "pointer",
+                background: "linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)",
+                border: "1px solid #E5E7EB",
+            }}
         >
             {/* Header: Icon + Title + Chip “Mới” */}
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                     {/* Icon tròn */}
                     <div
-                        className={`w-11 h-11 flex items-center justify-center rounded-full shadow-sm ${bgColor} ${textColor}`}
+                        className={`w-11 h-11 flex items-center justify-center rounded-full shadow-sm`}
+                        style={{
+                            backgroundColor: "#FFFFFF",
+                            color: "#2563EB",
+                        }}
                     >
                         <IconComponent fontSize="medium" />
                     </div>
@@ -107,7 +109,7 @@ export const ExploreCard: React.FC<{ item: FlashcardExplore }> = ({ item }) => {
 
             {/* Thông tin: số từ + người học */}
             <div className="flex items-center justify-between mt-3 text-sm text-gray-700">
-                <span>📘 {item.wordCount} từ</span>
+                <span>{item.wordCount} từ</span>
 
                 {/* Avatars người học */}
                 <div className="flex items-center">
@@ -134,7 +136,7 @@ export const ExploreCard: React.FC<{ item: FlashcardExplore }> = ({ item }) => {
                             )}
                         </>
                     ) : (
-                        <span>👥 0 người học</span>
+                        <span>0 người học</span>
                     )}
                 </div>
             </div>

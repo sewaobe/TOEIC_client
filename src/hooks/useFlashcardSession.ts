@@ -46,6 +46,7 @@ export const useFlashcardSession = ({
     const [current, setCurrent] = useState<FlashcardItem | null>(null);
     const [logs, setLogs] = useState<Log[]>([]);
     const [startTime, setStartTime] = useState<number>(Date.now());
+    const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null);
     const [openStats, setOpenStats] = useState(false);
     const [initialTotal, setInitialTotal] = useState(0);
     const [isFinished, setIsFinished] = useState(false);
@@ -69,13 +70,19 @@ export const useFlashcardSession = ({
                         .filter((v: FlashcardItem | undefined): v is FlashcardItem => !!v);
 
                     setQueue(orderedQueue);
-                    setCurrent(orderedQueue[progress.current_index] ?? orderedQueue[0] ?? null);
+                    const restoredCurrent = orderedQueue[progress.current_index] ?? orderedQueue[0] ?? null;
+                    const restoredStartTime = Date.now();
+
+                    setCurrent(restoredCurrent);
                     setLogs(progress.logs ?? []);
                     setInitialTotal(orderedQueue.length);
-                    setStartTime(Date.now());
+                    setStartTime(restoredStartTime);
+                    setSessionStartedAt(
+                        progress.logs?.[0]?.attempted_at ?? new Date(restoredStartTime).toISOString()
+                    );
 
                     localStorage.setItem("flashcard_session_id", progress.session_id);
-                    toast.success("🔄 Đã khôi phục phiên học trước đó");
+                    toast.success("Đã khôi phục phiên học trước đó");
                 } else {
                     // Nếu không có → tạo session mới
                     let sorted = [...vocabularies];
@@ -84,10 +91,13 @@ export const useFlashcardSession = ({
                         : sorted.sort(() => Math.random() - 0.5);
 
                     setQueue(sorted);
+                    const sessionStartTime = Date.now();
+
                     setCurrent(sorted[0]);
                     setLogs([]);
                     setInitialTotal(sorted.length);
-                    setStartTime(Date.now());
+                    setStartTime(sessionStartTime);
+                    setSessionStartedAt(new Date(sessionStartTime).toISOString());
 
                     const orderIds = sorted.map((v) => v._id ?? v.word);
 
@@ -144,7 +154,7 @@ export const useFlashcardSession = ({
     // 🧩 3. Tính toán thông số attempt hiện tại
     const currentAttempt: Attempt | null = useMemo(() => {
         if (logs.length === 0) return null;
-        const started_at = logs[0].attempted_at;
+        const started_at = sessionStartedAt ?? logs[0].attempted_at;
         const finished_at = logs[logs.length - 1].attempted_at;
         const total = logs.length;
 
@@ -170,7 +180,7 @@ export const useFlashcardSession = ({
             total,
             logs,
         };
-    }, [logs]);
+    }, [logs, sessionStartedAt]);
 
     // 🧩 4. Autosave định kỳ
     useEffect(() => {
@@ -242,9 +252,9 @@ export const useFlashcardSession = ({
                         success: () => {
                             localStorage.removeItem("flashcard_session_id");
                             setOpenStats(true);
-                            return "✅ Lưu thành công!";
+                            return "Lưu thành công!";
                         },
-                        error: "❌ Lưu thất bại!",
+                        error: "Lưu thất bại!",
                     }
                 );
             } else {

@@ -183,6 +183,7 @@ export interface SuggestedVocabularyPagination {
 export interface SuggestedVocabularyCounters {
   all: number;
   dueToday: number;
+  activeReviewing: number;
   atRisk: number;
   overdue: number;
   mastered: number;

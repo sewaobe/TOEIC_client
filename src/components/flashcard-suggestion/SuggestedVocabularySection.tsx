@@ -93,6 +93,7 @@ const emptySuggestions: PaginatedSuggestions = {
   counters: {
     all: 0,
     dueToday: 0,
+    activeReviewing: 0,
     atRisk: 0,
     overdue: 0,
     mastered: 0,
@@ -205,7 +206,8 @@ const SuggestedVocabularySection: React.FC = () => {
 
   const quickTabs: Array<{ value: SuggestionBucket; label: string; count: number; bg: string }> = [
     { value: "all", label: "Tất cả", count: suggestions.counters.all, bg: "#dbeafe" },
-    { value: "due_today", label: "Đến hạn hôm nay", count: suggestions.counters.dueToday, bg: "#dbeafe" },
+    { value: "active_reviewing", label: "Đang học", count: suggestions.counters.activeReviewing, bg: "#dbeafe" },
+    { value: "due_today", label: "Cần ôn hôm nay", count: suggestions.counters.dueToday, bg: "#dbeafe" },
     { value: "at_risk", label: "Sắp quên", count: suggestions.counters.atRisk, bg: "#fef3c7" },
     { value: "overdue", label: "Quá hạn", count: suggestions.counters.overdue, bg: "#fee2e2" },
     { value: "mastered", label: "Đã nắm vững", count: suggestions.counters.mastered, bg: "#dcfce7" },
@@ -278,7 +280,7 @@ const SuggestedVocabularySection: React.FC = () => {
     <>
       <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 3, border: "1px solid #e2e8f0", minWidth: 0 }}>
         <Typography variant="h6" sx={{ fontWeight: 900, mb: 1 }}>
-          Từ vựng được gợi ý
+          Tất cả từ vựng đã học
         </Typography>
         <Box
           sx={{
@@ -490,7 +492,7 @@ const SuggestedVocabularySection: React.FC = () => {
                 <TableCell padding="checkbox">
                   <Checkbox size="small" checked={isAllSelected} indeterminate={isPartiallySelected} onChange={handleToggleAll} />
                 </TableCell>
-                {["Từ vựng", "Nghĩa", "Chủ đề", "Cấp độ", "Độ ưu tiên", "Xác suất nhớ", "Đến hạn"].map((head) => (
+                {["Từ vựng", "Nghĩa", "Chủ đề", "Cấp độ", "Ưu tiên ôn ngay", "Xác suất nhớ hiện tại", "Đến hạn"].map((head) => (
                   <TableCell key={head} sx={{ fontWeight: 900, color: "#475569", whiteSpace: "nowrap" }}>
                     {head}
                   </TableCell>
@@ -520,89 +522,89 @@ const SuggestedVocabularySection: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-              vocabularyItems.map((item) => {
-                const pRecallPercent = Math.round(item.pRecallNow * 100);
-                const probabilityColor =
-                  pRecallPercent < 25
-                    ? "#ef4444"
-                    : pRecallPercent < 65
-                      ? "#f59e0b"
-                      : "#10b981";
-                return (
-                  <TableRow
-                    key={item.vocabularyId}
-                    hover
-                    onClick={() => handleOpenDetail(item.vocabularyId)}
-                    sx={{ cursor: "pointer" }}
-                  >
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        size="small"
-                        checked={selectedIds.includes(item.vocabularyId)}
-                        onClick={(event) => event.stopPropagation()}
-                        onChange={() => handleToggleRow(item.vocabularyId)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={1.2} alignItems="center">
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-
-                            speakText(item.word);
-                          }}
+                vocabularyItems.map((item) => {
+                  const pRecallPercent = Math.round(item.pRecallNow * 100);
+                  const probabilityColor =
+                    pRecallPercent < 25
+                      ? "#ef4444"
+                      : pRecallPercent < 65
+                        ? "#f59e0b"
+                        : "#10b981";
+                  return (
+                    <TableRow
+                      key={item.vocabularyId}
+                      hover
+                      onClick={() => handleOpenDetail(item.vocabularyId)}
+                      sx={{ cursor: "pointer" }}
+                    >
+                      <TableCell padding="checkbox">
+                        <Checkbox
                           size="small"
-                          sx={{ color: "#2563eb", bgcolor: "#dbeafe", flexShrink: 0 }}
-                        >
-                          <VolumeUp sx={{ fontSize: 16 }} />
-                        </IconButton>
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 900, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {item.word}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: "text.secondary", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {item.phonetic}
-                          </Typography>
-                        </Box>
-                      </Stack>
-                    </TableCell>
-                    <TableCell sx={{ color: "text.secondary", minWidth: 170, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.meaning}</TableCell>
-                    <TableCell>
-                      <Chip label={item.topic} size="small" sx={{ bgcolor: resolveTopicColor(item.topic), color: "#2563eb", fontWeight: 700, maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} />
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={item.level} size="small" sx={{ bgcolor: "#dbeafe", color: "#2563eb", fontWeight: 800 }} />
-                    </TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: priorityColor[item.priority], flexShrink: 0 }} />
-                        <Typography variant="body2">{item.priorityLabel}</Typography>
-                      </Stack>
-                    </TableCell>
-                    <TableCell sx={{ minWidth: 180 }}>
-                      <Stack direction="row" spacing={1.2} alignItems="center">
-                        <Typography variant="body2" sx={{ color: probabilityColor, fontWeight: 800, width: 38 }}>
-                          {pRecallPercent}%
-                        </Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={pRecallPercent}
-                          sx={{
-                            flex: 1,
-                            height: 6,
-                            borderRadius: 99,
-                            bgcolor: "#e5e7eb",
-                            "& .MuiLinearProgress-bar": { bgcolor: probabilityColor, borderRadius: 99 },
-                          }}
+                          checked={selectedIds.includes(item.vocabularyId)}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={() => handleToggleRow(item.vocabularyId)}
                         />
-                      </Stack>
-                    </TableCell>
-                    <TableCell sx={{ color: dueToneColor[resolveDueTone(item)], fontWeight: 700, whiteSpace: "nowrap" }}>
-                      {item.dueLabel}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={1.2} alignItems="center">
+                          <IconButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+
+                              speakText(item.word);
+                            }}
+                            size="small"
+                            sx={{ color: "#2563eb", bgcolor: "#dbeafe", flexShrink: 0 }}
+                          >
+                            <VolumeUp sx={{ fontSize: 16 }} />
+                          </IconButton>
+                          <Box sx={{ minWidth: 0, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <Typography variant="body2" sx={{ fontWeight: 900, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {item.word}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "text.secondary"}}>
+                              {item.phonetic}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                      </TableCell>
+                      <TableCell sx={{ color: "text.secondary", minWidth: 170, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.meaning}</TableCell>
+                      <TableCell>
+                        <Chip label={item.topic} size="small" sx={{ bgcolor: resolveTopicColor(item.topic), color: "#2563eb", fontWeight: 700, maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} />
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={item.level} size="small" sx={{ bgcolor: "#dbeafe", color: "#2563eb", fontWeight: 800 }} />
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: priorityColor[item.priority], flexShrink: 0 }} />
+                          <Typography variant="body2">{item.priorityLabel}</Typography>
+                        </Stack>
+                      </TableCell>
+                      <TableCell sx={{ minWidth: 180 }}>
+                        <Stack direction="row" spacing={1.2} alignItems="center">
+                          <Typography variant="body2" sx={{ color: probabilityColor, fontWeight: 800, width: 38 }}>
+                            {pRecallPercent}%
+                          </Typography>
+                          <LinearProgress
+                            variant="determinate"
+                            value={pRecallPercent}
+                            sx={{
+                              flex: 1,
+                              height: 6,
+                              borderRadius: 99,
+                              bgcolor: "#e5e7eb",
+                              "& .MuiLinearProgress-bar": { bgcolor: probabilityColor, borderRadius: 99 },
+                            }}
+                          />
+                        </Stack>
+                      </TableCell>
+                      <TableCell sx={{ color: dueToneColor[resolveDueTone(item)], fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {item.dueLabel}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -699,4 +701,3 @@ const SuggestedVocabularySection: React.FC = () => {
 };
 
 export default SuggestedVocabularySection;
-

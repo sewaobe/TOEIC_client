@@ -35,6 +35,7 @@ export interface Dictation {
   created_at: string;
   updated_at?: string;
   topic?: string[];
+  tags?: string[];
   userStats?: DictationUserStats | null;
 }
 

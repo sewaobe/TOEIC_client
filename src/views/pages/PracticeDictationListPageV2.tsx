@@ -122,7 +122,7 @@ export default function PracticeDictationListPageV2(): JSX.Element {
     if (!selectedDictation) return;
 
     navigate(
-      `/practice-skill/dictation/${selectedDictation._id}?difficulty=${selectedDifficulty}`
+      `/practice-skill/dictation-v2/${selectedDictation._id}?difficulty=${selectedDifficulty}`
     );
     setSelectedDictation(null);
   };

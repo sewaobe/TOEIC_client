@@ -24,6 +24,7 @@ export default function SentenceRenderer({
       return (
         <EasyMode
           sentence={sentence}
+          userAnswers={userAnswers}
           showAnswer={showAnswer}
           onChange={onChange}
         />
@@ -38,7 +39,13 @@ export default function SentenceRenderer({
         />
       );
     case "hard":
-      return <HardMode showAnswer={showAnswer} onChange={onChange} />;
+      return (
+        <HardMode
+          userAnswers={userAnswers}
+          showAnswer={showAnswer}
+          onChange={onChange}
+        />
+      );
   }
 }
 
@@ -82,14 +89,16 @@ const fieldSx = {
 
 function EasyMode({
   sentence,
+  userAnswers,
   onChange,
   showAnswer,
 }: {
   sentence: { words: DictationWord[] };
+  userAnswers: Record<number, string>;
   onChange: (index: number, value: string) => void;
   showAnswer: boolean;
 }) {
-  const [selected, setSelected] = useState<string[]>([]);
+  const selected = (userAnswers[0] || "").split(/\s+/).filter(Boolean);
 
   const [shuffledWords] = useState(() => {
     const shuffled = [...sentence.words];
@@ -102,13 +111,10 @@ function EasyMode({
 
   const handleSelect = (word: string) => {
     if (showAnswer) return;
-    setSelected((prev) => {
-      const next = prev.includes(word)
-        ? prev.filter((item) => item !== word)
-        : [...prev, word];
-      onChange(0, next.join(" "));
-      return next;
-    });
+    const next = selected.includes(word)
+      ? selected.filter((item) => item !== word)
+      : [...selected, word];
+    onChange(0, next.join(" "));
   };
 
   return (
@@ -239,9 +245,11 @@ function MediumMode({
 }
 
 function HardMode({
+  userAnswers,
   onChange,
   showAnswer,
 }: {
+  userAnswers: Record<number, string>;
   onChange: (index: number, value: string) => void;
   showAnswer: boolean;
 }) {
@@ -263,6 +271,7 @@ function HardMode({
         minRows={3}
         variant="outlined"
         placeholder="Nghe và nhập lại toàn bộ câu..."
+        value={userAnswers[0] || ""}
         onChange={(event) => onChange(0, event.target.value)}
         disabled={showAnswer}
         sx={{

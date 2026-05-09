@@ -46,12 +46,11 @@ const DictationTourGuide: React.FC<DictationTourGuideProps> = ({ isRun = true })
       placement: "left",
     },
     {
-      target: ".dictation-check",
-      title: "Kiểm tra & Hoàn thành",
-      content:
-        "Sau khi kiểm tra, bạn sẽ thấy đáp án gốc và có thể phân tích kết quả với AI.",
+      target: ".dictation-footer",
+      title: "Điều khiển câu và kiểm tra",
+      content: "Câu trước → quay lại | Kiểm tra → xem đáp án | Câu tiếp / Hoàn thành → sang câu tiếp",
       placement: "top",
-    },
+    }
   ];
 
   const handleJoyrideCallback = (data: CallBackProps) => {

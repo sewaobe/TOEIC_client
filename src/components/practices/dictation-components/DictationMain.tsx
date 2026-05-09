@@ -2,7 +2,6 @@ import type { MouseEvent } from "react";
 import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
-  Headphones as HeadphonesIcon,
   InfoOutlined as InfoOutlinedIcon,
   KeyboardArrowDown as KeyboardArrowDownIcon,
   LockOutlined as LockOutlinedIcon,
@@ -128,7 +127,6 @@ export default function DictationMain({
       variant="contained"
       onClick={onCheck}
       disabled={!allFilled}
-      className="dictation-check"
       sx={{
         ...actionButtonSx,
         background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
@@ -398,31 +396,45 @@ export default function DictationMain({
             <Typography sx={{ color: "#1e293b", fontWeight: 700, fontSize: { xs: 12.5, sm: 13.5, lg: 14.5 } }}>
               Tự động chuyển câu
             </Typography>
+          </Box>
+          <Box display="flex" alignItems="center" gap={{ xs: 0.75, lg: 1 }}>
+            <Switch
+              checked={autoNext}
+              onChange={(event) => onAutoNextChange(event.target.checked)}
+              size="small"
+              sx={{
+                flex: "0 0 auto",
+                "& .MuiSwitch-switchBase.Mui-checked": {
+                  color: "#2563eb",
+                },
+                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                  backgroundColor: "#2563eb",
+                  opacity: 1,
+                },
+              }}
+            />
             <Tooltip title="Xem lại hướng dẫn luyện tập">
               <IconButton
                 onClick={onRestartGuide}
                 size="small"
-                sx={{ color: "#64748b", p: 0.5 }}
+                aria-label="Mở hướng dẫn luyện tập"
+                sx={{
+                  width: { xs: 26, lg: 28 },
+                  height: { xs: 26, lg: 28 },
+                  color: "#64748b",
+                  p: 0.5,
+                  border: "1px solid #dbe3ef",
+                  backgroundColor: "#fff",
+                  "&:hover": {
+                    color: "#2563eb",
+                    backgroundColor: "#eff6ff",
+                  },
+                }}
               >
                 <InfoOutlinedIcon sx={{ fontSize: { xs: 15, lg: 17 } }} />
               </IconButton>
             </Tooltip>
           </Box>
-          <Switch
-            checked={autoNext}
-            onChange={(event) => onAutoNextChange(event.target.checked)}
-            size="small"
-            sx={{
-              flex: "0 0 auto",
-              "& .MuiSwitch-switchBase.Mui-checked": {
-                color: "#2563eb",
-              },
-              "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                backgroundColor: "#2563eb",
-                opacity: 1,
-              },
-            }}
-          />
         </Box>
       </Box>
 
@@ -466,6 +478,7 @@ export default function DictationMain({
       </Box>
 
       <Box
+        className="dictation-footer"
         sx={{
           position: "fixed",
           left: 0,
@@ -506,7 +519,17 @@ export default function DictationMain({
             Trước
           </Button>
 
-          {primaryAction}
+          <Box
+            sx={{
+              display: "flex",
+              minWidth: 0,
+              "& > .MuiButton-root": {
+                width: "100%",
+              },
+            }}
+          >
+            {primaryAction}
+          </Box>
 
           <Button
             variant="contained"

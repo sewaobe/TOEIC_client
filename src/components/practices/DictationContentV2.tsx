@@ -16,6 +16,7 @@ import DictationHeader from "./dictation-components/DictationHeader";
 import DictationMain from "./dictation-components/DictationMain";
 import DictationFeedbackPanel from "./dictation-components/DictationFeedbackPanel";
 import DictationCompletionOverlay from "./dictation-components/DictationCompletionOverlay";
+import DictationTourGuide from "../tour-guide/DictationTourGuide";
 
 export type Difficulty = "easy" | "medium" | "hard";
 
@@ -46,6 +47,13 @@ type EvaluationResult = {
   userTokens: string[];
   correctMatches: boolean[];
   userMatches: boolean[];
+};
+
+export type DictationRuleInsights = {
+  strengths: string[];
+  weaknesses: string[];
+  patterns: string[];
+  suggestion: string;
 };
 
 interface DictationContentV2Props {
@@ -304,6 +312,132 @@ const PASS_THRESHOLD: Record<Difficulty, number> = {
 const isPassedAccuracy = (difficulty: Difficulty, accuracy: number) =>
   accuracy >= PASS_THRESHOLD[difficulty];
 
+const LEVEL_THRESHOLDS: Record<string, number> = {
+  A1: 95,
+  A2: 92,
+  B1: 90,
+  B2: 88,
+  C1: 85,
+  C2: 80,
+};
+
+const emptyInsights: DictationRuleInsights = {
+  strengths: [],
+  weaknesses: [],
+  patterns: [],
+  suggestion: "Tiếp tục duy trì nhịp luyện hiện tại và tăng dần độ khó.",
+};
+
+const normalizeInsightText = (value: string) =>
+  normalizeForDictation(value).replace(/\s+/g, " ").trim();
+
+const uniqueMessages = (messages: string[]) => Array.from(new Set(messages));
+
+const isGenericSentenceMistake = (mistake: string) =>
+  normalizeInsightText(mistake) === normalizeInsightText("Câu chưa chính xác");
+
+const buildDictationRuleInsights = (
+  logs: DictationAttemptLog[],
+  level: string | undefined,
+  timings: Dictation["timings"],
+  avgTime: number
+): DictationRuleInsights => {
+  const normalizedLevel = (level || "B1").toUpperCase();
+  const threshold = LEVEL_THRESHOLDS[normalizedLevel] ?? LEVEL_THRESHOLDS.B1;
+  const strengths: string[] = [];
+  const weaknesses: string[] = [];
+  const patterns: string[] = [];
+  const mistakeCounts = new Map<string, { label: string; count: number }>();
+  let finalWordMistakeCount = 0;
+
+  logs.forEach((log) => {
+    const validMistakes = (log.mistakes || [])
+      .map((mistake) => mistake.trim())
+      .filter(Boolean);
+    const hasMistake = validMistakes.length > 0;
+
+    if (log.accuracy >= threshold && !hasMistake) {
+      strengths.push("Bạn nghe tốt các từ chính trong câu.");
+    }
+
+    if (log.accuracy < threshold || hasMistake) {
+      const mistakeText =
+        validMistakes.length && !validMistakes.some(isGenericSentenceMistake)
+          ? validMistakes.join(", ")
+          : "một số phần trong câu";
+      weaknesses.push(`Bạn còn nhầm ở các từ: ${mistakeText}.`);
+    }
+
+    validMistakes
+      .filter((mistake) => !isGenericSentenceMistake(mistake))
+      .forEach((mistake) => {
+        const key = normalizeInsightText(mistake);
+        if (!key) return;
+
+        const current = mistakeCounts.get(key);
+        mistakeCounts.set(key, {
+          label: current?.label ?? mistake,
+          count: (current?.count ?? 0) + 1,
+        });
+
+        const sentenceText = timings[log.index]?.text || "";
+        const sentenceTokens = tokenizeForDictation(sentenceText);
+        const mistakeTokens = tokenizeForDictation(mistake);
+        const finalTokens = sentenceTokens.slice(Math.max(sentenceTokens.length - 2, 0));
+        const isFinalMistake = mistakeTokens.some((token) =>
+          finalTokens.includes(token)
+        );
+
+        if (isFinalMistake) {
+          finalWordMistakeCount += 1;
+        }
+      });
+  });
+
+  const repeatedMistakes = Array.from(mistakeCounts.values())
+    .filter((item) => item.count >= 2)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+
+  if (repeatedMistakes.length) {
+    patterns.push(
+      `Bạn thường nhầm từ/cụm: ${repeatedMistakes
+        .map((item) => item.label)
+        .join(", ")}.`
+    );
+  }
+
+  if (finalWordMistakeCount >= 2) {
+    patterns.push("Chú ý từ cuối câu.");
+  }
+
+  if (normalizedLevel === "B1") {
+    patterns.push("Tập trung nghe các từ trọng tâm trong câu.");
+  } else if (normalizedLevel === "B2") {
+    patterns.push("Tập trung các cụm từ khó và nối âm.");
+  } else if (normalizedLevel === "C1" || normalizedLevel === "C2") {
+    patterns.push("Luyện phản xạ với câu dài và tốc độ tự nhiên.");
+  }
+
+  const hasWeaknessOrPattern = weaknesses.length > 0 || patterns.length > 0;
+  const suggestionParts = [
+    hasWeaknessOrPattern
+      ? "Nghe chậm các từ khó, chia câu thành cụm để luyện tập hiệu quả hơn."
+      : "Tiếp tục duy trì nhịp luyện hiện tại và tăng dần độ khó.",
+  ];
+
+  if (avgTime > 30) {
+    suggestionParts.push("Bạn có thể luyện lại để rút ngắn thời gian phản xạ.");
+  }
+
+  return {
+    strengths: uniqueMessages(strengths),
+    weaknesses: uniqueMessages(weaknesses),
+    patterns: uniqueMessages(patterns),
+    suggestion: suggestionParts.join(" "),
+  };
+};
+
 export default function DictationContentV2({
   dictation,
   initialDifficulty = "hard",
@@ -325,17 +459,15 @@ export default function DictationContentV2({
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [startedAt, setStartedAt] = useState<number>(Date.now());
-  const [attemptLogs, setAttemptLogs] = useState<DictationAttemptLog[]>([]);
   const [openComplete, setOpenComplete] = useState(false);
   const [summary, setSummary] = useState({
     accuracy: 0,
     total: 0,
     avgTime: 0,
     totalTime: 0,
-    totalWords: 0,
-    correctWords: 0,
     completedItems: 0,
     difficulty: initialDifficulty as Difficulty,
+    insights: emptyInsights,
     logs: [] as DictationAttemptLog[],
   });
   const [loadingAI, setLoadingAI] = useState(false);
@@ -347,6 +479,8 @@ export default function DictationContentV2({
   });
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const autoNextTimerRef = useRef<number | null>(null);
+  const attemptLogsRef = useRef<DictationAttemptLog[]>([]);
+  const hasSubmittedRef = useRef(false);
 
   useEffect(() => {
     setDifficulty(initialDifficulty);
@@ -377,17 +511,17 @@ export default function DictationContentV2({
       setCurrentPassed(false);
       setIsPlaying(false);
       setProgress(0);
-      setAttemptLogs([]);
+      attemptLogsRef.current = [];
+      hasSubmittedRef.current = false;
       setOpenComplete(false);
       setSummary({
         accuracy: 0,
         total: 0,
         avgTime: 0,
         totalTime: 0,
-        totalWords: 0,
-        correctWords: 0,
         completedItems: 0,
         difficulty,
+        insights: emptyInsights,
         logs: [],
       });
       setAiAnalysis(null);
@@ -727,7 +861,8 @@ export default function DictationContentV2({
       finished_at: new Date(finishedAt).toISOString(),
     };
 
-    setAttemptLogs((prev) => [...prev, newLog]);
+    const nextAttemptLogs = [...attemptLogsRef.current, newLog];
+    attemptLogsRef.current = nextAttemptLogs;
     setCurrentShowAnswer(true);
     setCurrentAccuracy(accuracy);
     setCurrentPassed(passed);
@@ -764,6 +899,9 @@ export default function DictationContentV2({
       return next;
     });
     stopAudio();
+    window.setTimeout(() => {
+      handlePlay();
+    }, 0);
   };
 
   const handlePrev = () => {
@@ -791,47 +929,59 @@ export default function DictationContentV2({
   };
 
   const handleSubmit = async () => {
+    if (hasSubmittedRef.current) {
+      setOpenComplete(true);
+      return;
+    }
+
     try {
       await toast.promise(
-        dictationAttemptService.createDictationAttempts(attemptLogs, dictation._id),
+        dictationAttemptService.createDictationAttempts(
+          attemptLogsRef.current,
+          dictation._id
+        ),
         {
           loading: "Đang lưu kết quả luyện tập...",
           success: "Lưu kết quả luyện tập thành công!",
         }
       );
 
-      const total = attemptLogs.length;
+      const logsForSummary = attemptLogsRef.current;
+      const total = logsForSummary.length;
       const accuracy = total
         ? Math.round(
-            attemptLogs.reduce((sum, log) => sum + (log.accuracy || 0), 0) / total
+            logsForSummary.reduce((sum, log) => sum + (log.accuracy || 0), 0) /
+              total
           )
         : 0;
       const avgTime = total
         ? Math.round(
-            attemptLogs.reduce((sum, log) => sum + (log.duration || 0), 0) / total
+            logsForSummary.reduce((sum, log) => sum + (log.duration || 0), 0) /
+              total
           )
         : 0;
-      const totalTime = attemptLogs.reduce(
+      const totalTime = logsForSummary.reduce(
         (sum, log) => sum + (log.duration || 0),
         0
       );
-      const totalWords = sentences.reduce(
-        (sum, sentence) => sum + splitWords(sentence.text).length,
-        0
+      const insights = buildDictationRuleInsights(
+        logsForSummary,
+        dictation.level,
+        dictation.timings || [],
+        avgTime
       );
-      const correctWords = Math.round((totalWords * accuracy) / 100);
 
       setSummary({
         accuracy,
         total,
         avgTime,
         totalTime,
-        totalWords,
-        correctWords,
         completedItems: totalItems,
         difficulty,
-        logs: attemptLogs,
+        insights,
+        logs: logsForSummary,
       });
+      hasSubmittedRef.current = true;
       setOpenComplete(true);
     } catch {
       toast.error("Có lỗi xảy ra khi lưu kết quả luyện tập.");
@@ -925,6 +1075,8 @@ export default function DictationContentV2({
         overflowX: "hidden",
       }}
     >
+      <DictationTourGuide isRun={isRunGuide} />
+
       <DictationHeader
         title={dictation.title}
         level={dictation.level}
@@ -991,11 +1143,10 @@ export default function DictationContentV2({
         completedItems={summary.completedItems}
         totalItems={totalItems}
         totalTime={summary.totalTime}
-        totalWords={summary.totalWords}
-        correctWords={summary.correctWords}
         attemptCount={summary.total}
         level={dictation.level}
         difficulty={summary.difficulty}
+        insights={summary.insights}
         loadingAI={loadingAI}
         hasNextLesson={hasNextLesson}
         onAnalyze={handleAnalyzeWithAI}

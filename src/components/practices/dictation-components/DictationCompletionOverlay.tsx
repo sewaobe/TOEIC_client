@@ -8,6 +8,7 @@ import {
   CheckCircleOutline as CheckCircleOutlineIcon,
   ChevronRight as ChevronRightIcon,
   Headphones as HeadphonesIcon,
+  InfoOutlined as InfoOutlinedIcon,
   Replay as ReplayIcon,
   SmartToyOutlined as SmartToyOutlinedIcon,
   TrackChanges as TrackChangesIcon,
@@ -22,7 +23,7 @@ import {
   Typography,
 } from "@mui/material";
 import { motion } from "framer-motion";
-import type { Difficulty } from "../DictationContentV2";
+import type { DictationRuleInsights, Difficulty } from "../DictationContentV2";
 
 interface DictationCompletionOverlayProps {
   open: boolean;
@@ -30,11 +31,10 @@ interface DictationCompletionOverlayProps {
   completedItems: number;
   totalItems: number;
   totalTime: number;
-  totalWords: number;
-  correctWords: number;
   attemptCount: number;
   level?: string;
   difficulty: Difficulty;
+  insights: DictationRuleInsights;
   loadingAI: boolean;
   hasNextLesson: boolean;
   onAnalyze: () => void;
@@ -120,17 +120,33 @@ function MetricCard({
   );
 }
 
+function InsightRow({
+  icon,
+  message,
+}: {
+  icon: ReactNode;
+  message: string;
+}) {
+  return (
+    <Box display="flex" gap={1.15} p={{ xs: 1.2, md: 1.35 }} alignItems="center">
+      {icon}
+      <Typography sx={{ color: "#0f172a", fontSize: { xs: 12.5, md: 13.5 } }}>
+        {message}
+      </Typography>
+    </Box>
+  );
+}
+
 export default function DictationCompletionOverlay({
   open,
   accuracy,
   completedItems,
   totalItems,
   totalTime,
-  totalWords,
-  correctWords,
   attemptCount,
   level,
   difficulty,
+  insights,
   loadingAI,
   hasNextLesson,
   onAnalyze,
@@ -140,14 +156,25 @@ export default function DictationCompletionOverlay({
 }: DictationCompletionOverlayProps) {
   if (!open) return null;
 
-  const strongResult = accuracy >= 85;
-  const okayResult = accuracy >= 70;
-  const successInsight = strongResult
-    ? "Bạn nghe tốt các câu ngắn và duy trì độ chính xác ổn định."
-    : "Bạn đã hoàn thành toàn bộ bài và có dữ liệu để cải thiện lần sau.";
-  const cautionInsight = okayResult
-    ? "Bạn vẫn nên nghe lại các từ bị nhầm để tăng độ chắc chắn."
-    : "Bạn còn nhầm ở một số cụm âm gần nhau, hãy luyện lại với tốc độ chậm hơn.";
+  const insightRows = [
+    ...insights.strengths.map((message) => ({
+      icon: <CheckCircleOutlineIcon sx={{ color: "#16a34a", fontSize: 21 }} />,
+      message,
+    })),
+    ...insights.weaknesses.map((message) => ({
+      icon: <WarningAmberOutlinedIcon sx={{ color: "#f97316", fontSize: 21 }} />,
+      message,
+    })),
+    ...insights.patterns.map((message) => ({
+      icon: <InfoOutlinedIcon sx={{ color: "#2563eb", fontSize: 21 }} />,
+      message,
+    })),
+    {
+      icon: <InfoOutlinedIcon sx={{ color: "#64748b", fontSize: 21 }} />,
+      message: insights.suggestion,
+    },
+  ];
+  const visibleInsightRows = insightRows.slice(0, 4);
 
   return (
     <Box
@@ -366,19 +393,12 @@ export default function DictationCompletionOverlay({
                   overflow: "hidden",
                 }}
               >
-                <Box display="flex" gap={1.15} p={{ xs: 1.2, md: 1.35 }} alignItems="center">
-                  <CheckCircleOutlineIcon sx={{ color: "#16a34a", fontSize: 21 }} />
-                  <Typography sx={{ color: "#0f172a", fontSize: { xs: 12.5, md: 13.5 } }}>
-                    {successInsight}
-                  </Typography>
-                </Box>
-                <Divider />
-                <Box display="flex" gap={1.15} p={{ xs: 1.2, md: 1.35 }} alignItems="center">
-                  <WarningAmberOutlinedIcon sx={{ color: "#f97316", fontSize: 21 }} />
-                  <Typography sx={{ color: "#0f172a", fontSize: { xs: 12.5, md: 13.5 } }}>
-                    {cautionInsight}
-                  </Typography>
-                </Box>
+                {visibleInsightRows.map((row, index) => (
+                  <Box key={`${row.message}-${index}`}>
+                    {index > 0 ? <Divider /> : null}
+                    <InsightRow icon={row.icon} message={row.message} />
+                  </Box>
+                ))}
               </Box>
             </Box>
 

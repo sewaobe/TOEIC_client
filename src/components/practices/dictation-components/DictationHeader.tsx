@@ -73,7 +73,7 @@ export default function DictationHeader({
           <Box sx={{ display: { xs: "none", sm: "block" }, width: 44 }} />
         )}
 
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0 }} className="dictation-header">
           <Typography
             component="h1"
             sx={{
@@ -106,6 +106,7 @@ export default function DictationHeader({
               fontWeight: 600,
               mb: { xs: 0.45, lg: 0.65 },
             }}
+            className="dictation-progress"
           >
             Tiến độ {completed}/{totalItems}
           </Typography>

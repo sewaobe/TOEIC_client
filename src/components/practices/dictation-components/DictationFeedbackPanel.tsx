@@ -49,6 +49,7 @@ export default function DictationFeedbackPanel({
           borderRadius: 2,
           border: "1px solid #e2e8f0",
           backgroundColor: "#f9fafb",
+          fontSize: 14
         }}
       >
         <Typography variant="subtitle2" fontWeight={600} color="text.secondary">
@@ -65,6 +66,7 @@ export default function DictationFeedbackPanel({
             p: 1.2,
             border: "1px solid #e5e7eb",
             fontStyle: "normal",
+            fontSize: 14
           }}
         >
           {userText}
@@ -88,6 +90,7 @@ export default function DictationFeedbackPanel({
             borderRadius: 1,
             p: 1.2,
             border: "1px solid #c7d2fe",
+            fontSize: 14
           }}
         >
           {transcriptText}

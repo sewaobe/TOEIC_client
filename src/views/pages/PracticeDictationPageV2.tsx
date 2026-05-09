@@ -11,25 +11,8 @@ const PracticeDictationPageV2 = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [selectedLesson, setSelectedLesson] = useState<Dictation | null>(null);
+  const [nextLessonId, setNextLessonId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const loadLesson = async () => {
-      if (!urlId) return;
-
-      try {
-        setLoading(true);
-        const lesson = await dictationService.getDictationById(urlId);
-        setSelectedLesson(lesson);
-      } catch (error) {
-        console.error("Failed to select dictation v2:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadLesson();
-  }, [urlId]);
 
   const rawDifficulty = searchParams.get("difficulty");
   const initialDifficulty =
@@ -38,6 +21,63 @@ const PracticeDictationPageV2 = () => {
     rawDifficulty === "hard"
       ? rawDifficulty
       : "hard";
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadLesson = async () => {
+      if (!urlId) return;
+
+      try {
+        setLoading(true);
+        setNextLessonId(null);
+        const lesson = await dictationService.getDictationById(urlId);
+        if (!isMounted) return;
+
+        setSelectedLesson(lesson);
+
+        const nextCandidates = await dictationService.getAllDictationPage({
+          part_type: lesson.part_type,
+          level: lesson.level,
+          limit: 100,
+        });
+
+        if (!isMounted) return;
+
+        const currentPosition = nextCandidates.items.findIndex(
+          (item) => item._id === lesson._id
+        );
+        const nextLesson =
+          currentPosition >= 0
+            ? nextCandidates.items[currentPosition + 1]
+            : undefined;
+        setNextLessonId(nextLesson?._id ?? null);
+      } catch (error) {
+        console.error("Failed to select dictation v2:", error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadLesson();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [urlId]);
+
+  const handleNextLesson = () => {
+    if (!nextLessonId) {
+      navigate("/practice-skill/dictation-v2");
+      return;
+    }
+
+    navigate(
+      `/practice-skill/dictation-v2/${nextLessonId}?difficulty=${initialDifficulty}`
+    );
+  };
 
   return (
     <PracticeLayout>
@@ -56,6 +96,8 @@ const PracticeDictationPageV2 = () => {
             dictation={selectedLesson}
             initialDifficulty={initialDifficulty}
             onBackToList={() => navigate("/practice-skill/dictation-v2")}
+            hasNextLesson={Boolean(nextLessonId)}
+            onNextLesson={handleNextLesson}
           />
         ) : (
           <Box

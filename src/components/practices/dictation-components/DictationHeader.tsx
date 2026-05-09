@@ -1,14 +1,13 @@
 import {
   Box,
-  Button,
-  Chip,
+  ButtonBase,
   IconButton,
   LinearProgress,
   Typography,
 } from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon,
-  AutoAwesome as AutoAwesomeIcon,
+  CheckCircleOutline as CheckCircleOutlineIcon,
 } from "@mui/icons-material";
 
 interface DictationHeaderProps {
@@ -17,9 +16,6 @@ interface DictationHeaderProps {
   totalItems: number;
   completed: number;
   overallProgress: number;
-  allowAnalyze: boolean;
-  loadingAI: boolean;
-  onAnalyze: () => void;
   onBack?: () => void;
   currentIndex: number;
   passedIndices: Set<number>;
@@ -32,112 +28,146 @@ export default function DictationHeader({
   totalItems,
   completed,
   overallProgress,
-  allowAnalyze,
-  loadingAI,
-  onAnalyze,
   onBack,
   currentIndex,
   passedIndices,
   onJumpTo,
 }: DictationHeaderProps) {
   return (
-    <Box mb={3} className="dictation-header">
-      <Box display="flex" alignItems="center" gap={1.5} mb={2}>
-        {onBack && (
+    <Box mb={{ xs: 1.25, sm: 1.5, md: 1.75, lg: 2 }} className="dictation-header">
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "auto 1fr",
+            sm: "auto 1fr minmax(180px, 260px)",
+            lg: "auto 1fr minmax(240px, 360px)",
+            xl: "auto 1fr minmax(260px, 390px)",
+          },
+          alignItems: "center",
+          gap: { xs: 1, sm: 1.25, md: 1.5, lg: 2.25 },
+          mb: { xs: 1.25, sm: 1.5, lg: 2 },
+        }}
+      >
+        {onBack ? (
           <IconButton
             onClick={onBack}
+            aria-label="Quay lại danh sách"
             sx={{
-              backgroundColor: "#f1f5f9",
+              width: { xs: 32, sm: 36, lg: 40, xl: 42 },
+              height: { xs: 32, sm: 36, lg: 40, xl: 42 },
+              borderRadius: { xs: 1.5, lg: 2 },
+              color: "#0f172a",
+              backgroundColor: "#fff",
+              border: "1px solid #dbe3ef",
+              boxShadow: "0 10px 22px rgba(15, 23, 42, 0.07)",
               "&:hover": {
-                backgroundColor: "#e2e8f0",
+                backgroundColor: "#f8fafc",
+                borderColor: "#c8d3e3",
               },
             }}
           >
-            <ArrowBackIcon />
+            <ArrowBackIcon sx={{ fontSize: { xs: 18, sm: 20, lg: 22 } }} />
           </IconButton>
+        ) : (
+          <Box sx={{ display: { xs: "none", sm: "block" }, width: 44 }} />
         )}
 
-        <Box flex={1}>
-          <Typography variant="h4" fontWeight={700} color="#2563eb">
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            component="h1"
+            sx={{
+              color: "#0f2a5f",
+              fontSize: { xs: 24, sm: 28, md: 31, lg: 35, xl: 38 },
+              fontWeight: 800,
+              lineHeight: 1.05,
+              overflowWrap: "anywhere",
+            }}
+          >
             {title}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Luyện nghe chép chính tả · {level || "—"} · {totalItems} câu
+          <Typography
+            sx={{
+              mt: { xs: 0.4, lg: 0.65 },
+              color: "#5f6b7d",
+              fontSize: { xs: 12, sm: 13, md: 13.5, lg: 14.5, xl: 15 },
+              fontWeight: 500,
+            }}
+          >
+            Luyện nghe chép chính tả · {level || "-"} · {totalItems} câu
           </Typography>
         </Box>
 
-        <Box display="flex" alignItems="center" gap={2}>
-          <Box sx={{ minWidth: 160 }}>
-            <Typography variant="caption" color="text.secondary">
-              Tiến độ {completed}/{totalItems}
-            </Typography>
-            <LinearProgress
-              variant="determinate"
-              value={overallProgress}
-              sx={{ mt: 0.5, height: 8, borderRadius: 5 }}
-            />
-          </Box>
-
-          <Button
-            onClick={onAnalyze}
-            startIcon={<AutoAwesomeIcon sx={{ fontSize: 20 }} />}
-            disabled={!allowAnalyze || loadingAI}
+        <Box sx={{ width: "100%", gridColumn: { xs: "1 / -1", sm: "auto" } }}>
+          <Typography
             sx={{
-              px: 2.5,
-              py: 1,
+              color: "#334155",
+              fontSize: { xs: 11.5, sm: 12.5, lg: 13.5 },
               fontWeight: 600,
-              borderRadius: "999px",
-              textTransform: "none",
-              fontSize: 14,
-              color: "#fff",
-              background: "linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899)",
-              backgroundSize: "300% 300%",
-              animation: allowAnalyze ? "gradientShift 4s ease infinite" : "none",
-              opacity: allowAnalyze ? 1 : 0.5,
-              cursor: allowAnalyze ? "pointer" : "not-allowed",
-              "&:hover": {
-                transform: allowAnalyze ? "scale(1.05)" : "none",
-              },
+              mb: { xs: 0.45, lg: 0.65 },
             }}
           >
-            Phân tích với AI
-          </Button>
+            Tiến độ {completed}/{totalItems}
+          </Typography>
+          <LinearProgress
+            variant="determinate"
+            value={overallProgress}
+            sx={{
+              height: { xs: 5, sm: 6, lg: 7 },
+              borderRadius: 999,
+              backgroundColor: "#e8edf5",
+              "& .MuiLinearProgress-bar": {
+                borderRadius: 999,
+                background: "linear-gradient(90deg, #2563eb, #1d4ed8)",
+              },
+            }}
+          />
         </Box>
       </Box>
 
       <Box
-        display="flex"
-        flexWrap="wrap"
-        gap={1}
         sx={{
-          backgroundColor: "#f8fafc",
-          borderRadius: 2,
-          p: 1,
-          border: "1px solid #e2e8f0",
+          display: "flex",
+          gap: { xs: 0.75, sm: 1, lg: 1.15 },
+          overflowX: "auto",
+          maxWidth: "100%",
+          pb: 0.5,
+          scrollbarWidth: "thin",
         }}
       >
         {Array.from({ length: totalItems }, (_, i) => {
           const isCurrent = i === currentIndex;
           const isPassed = passedIndices.has(i);
 
-          const chipStyles = isCurrent
-            ? { backgroundColor: "#2563eb", color: "#fff" }
-            : isPassed
-            ? { backgroundColor: "#dcfce7", color: "#166534" }
-            : { backgroundColor: "#f1f5f9", color: "#475569" };
-
           return (
-            <Chip
+            <ButtonBase
               key={`timing-${i}`}
-              label={`Câu ${i + 1}`}
-              size="small"
-              clickable
               onClick={() => onJumpTo(i)}
               sx={{
+                flex: "0 0 auto",
+                minWidth: { xs: 58, sm: 64, lg: 70 },
+                height: { xs: 30, sm: 33, lg: 36 },
+                px: { xs: 1, sm: 1.35, lg: 1.75 },
+                borderRadius: { xs: 1.5, lg: 2 },
+                border: "1px solid",
+                borderColor: isCurrent ? "transparent" : "#dbe3ef",
+                color: isCurrent ? "#fff" : isPassed ? "#16a34a" : "#334155",
+                background: isCurrent
+                  ? "linear-gradient(135deg, #2f6df6, #1d4ed8)"
+                  : "#fff",
                 fontWeight: 700,
-                ...chipStyles,
+                fontSize: { xs: 11.5, sm: 12.5, lg: 13.5 },
+                transition: "transform 160ms ease, box-shadow 160ms ease",
+                "&:hover": {
+                  transform: "translateY(-1px)",
+                },
               }}
-            />
+            >
+              {isPassed && !isCurrent ? (
+                <CheckCircleOutlineIcon sx={{ mr: 0.4, fontSize: { xs: 14, lg: 16 } }} />
+              ) : null}
+              Câu {i + 1}
+            </ButtonBase>
           );
         })}
       </Box>

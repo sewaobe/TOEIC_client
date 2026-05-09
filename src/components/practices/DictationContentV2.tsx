@@ -52,6 +52,8 @@ interface DictationContentV2Props {
   dictation: Dictation;
   initialDifficulty?: Difficulty;
   onBackToList?: () => void;
+  onNextLesson?: () => void;
+  hasNextLesson?: boolean;
 }
 
 const getBlankRatio = (level: Difficulty): number =>
@@ -306,6 +308,8 @@ export default function DictationContentV2({
   dictation,
   initialDifficulty = "hard",
   onBackToList,
+  onNextLesson,
+  hasNextLesson = false,
 }: DictationContentV2Props) {
   const navigate = useNavigate();
   const [difficulty, setDifficulty] = useState<Difficulty>(initialDifficulty);
@@ -327,10 +331,15 @@ export default function DictationContentV2({
     accuracy: 0,
     total: 0,
     avgTime: 0,
+    totalTime: 0,
+    totalWords: 0,
+    correctWords: 0,
+    completedItems: 0,
+    difficulty: initialDifficulty as Difficulty,
     logs: [] as DictationAttemptLog[],
   });
   const [loadingAI, setLoadingAI] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<unknown>(null);
   const [anchorSpeed, setAnchorSpeed] = useState<null | HTMLElement>(null);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isRunGuide, setIsRunGuide] = useState<boolean>(() => {
@@ -370,7 +379,17 @@ export default function DictationContentV2({
       setProgress(0);
       setAttemptLogs([]);
       setOpenComplete(false);
-      setSummary({ accuracy: 0, total: 0, avgTime: 0, logs: [] });
+      setSummary({
+        accuracy: 0,
+        total: 0,
+        avgTime: 0,
+        totalTime: 0,
+        totalWords: 0,
+        correctWords: 0,
+        completedItems: 0,
+        difficulty,
+        logs: [],
+      });
       setAiAnalysis(null);
       setStartedAt(Date.now());
       setLoadingSentences(false);
@@ -386,8 +405,13 @@ export default function DictationContentV2({
   const totalItems = sentences.length;
   const currentItem = sentences[currentIndex];
   const currentSegment = dictation.timings?.[currentIndex];
-  const blankIndices =
-    currentItem?.words.filter((word) => word.isBlank).map((word) => word.index) || [];
+  const blankIndices = useMemo(
+    () =>
+      currentItem?.words
+        .filter((word) => word.isBlank)
+        .map((word) => word.index) || [],
+    [currentItem]
+  );
 
   const passedIndices = useMemo(() => {
     return new Set(
@@ -634,6 +658,26 @@ export default function DictationContentV2({
     [currentSegment, dictation.duration]
   );
 
+  const rewindAudio = useCallback(
+    (seconds: number) => {
+      if (!audioRef.current || !currentSegment) return;
+
+      const { start, duration } = getSegmentBounds(
+        currentSegment,
+        dictation.duration,
+        audioRef.current.duration
+      );
+
+      if (duration <= 0) return;
+
+      const end = start + duration;
+      const nextTime = Math.max(start, audioRef.current.currentTime - seconds);
+      audioRef.current.currentTime = nextTime;
+      setProgress(((Math.min(nextTime, end) - start) / duration) * 100);
+    },
+    [currentSegment, dictation.duration]
+  );
+
   useEffect(() => {
     return () => {
       stopAudio();
@@ -767,8 +811,27 @@ export default function DictationContentV2({
             attemptLogs.reduce((sum, log) => sum + (log.duration || 0), 0) / total
           )
         : 0;
+      const totalTime = attemptLogs.reduce(
+        (sum, log) => sum + (log.duration || 0),
+        0
+      );
+      const totalWords = sentences.reduce(
+        (sum, sentence) => sum + splitWords(sentence.text).length,
+        0
+      );
+      const correctWords = Math.round((totalWords * accuracy) / 100);
 
-      setSummary({ accuracy, total, avgTime, logs: attemptLogs });
+      setSummary({
+        accuracy,
+        total,
+        avgTime,
+        totalTime,
+        totalWords,
+        correctWords,
+        completedItems: totalItems,
+        difficulty,
+        logs: attemptLogs,
+      });
       setOpenComplete(true);
     } catch {
       toast.error("Có lỗi xảy ra khi lưu kết quả luyện tập.");
@@ -837,14 +900,29 @@ export default function DictationContentV2({
       ? renderMediumTranscript()
       : renderTokens(currentEvaluation.correctTokens, currentEvaluation.correctMatches);
 
+  const currentBounds = currentSegment
+    ? getSegmentBounds(
+        currentSegment,
+        dictation.duration,
+        audioRef.current?.duration
+      )
+    : { start: 0, end: 0, duration: 0 };
+
   return (
     <Box
       sx={{
-        p: 4,
-        width: "min(980px, 95%)",
+        px: { xs: 1.25, sm: 2, md: 2.5, lg: 3, xl: 4 },
+        pb: { xs: 11, sm: 12, lg: 13 },
+        width: {
+          xs: "100%",
+          sm: "min(100%, 720px)",
+          md: "min(100%, 920px)",
+          lg: "min(100%, 1120px)",
+          xl: "min(100%, 1280px)",
+        },
         mx: "auto",
-        minHeight: "calc(100vh - 100px)",
-        overflowY: "auto",
+        minHeight: "100%",
+        overflowX: "hidden",
       }}
     >
       <DictationHeader
@@ -853,64 +931,77 @@ export default function DictationContentV2({
         totalItems={totalItems}
         completed={completed}
         overallProgress={overallProgress}
-        allowAnalyze={canAnalyze}
-        loadingAI={loadingAI}
-        onAnalyze={handleAnalyzeWithAI}
         onBack={onBackToList ?? (() => navigate("/practice-skill/dictation-v2"))}
         currentIndex={currentIndex}
         passedIndices={passedIndices}
         onJumpTo={handleJumpTo}
       />
 
-      <DictationMain
-        difficulty={difficulty}
-        sentence={currentItem}
-        currentIndex={currentIndex}
-        totalItems={totalItems}
-        currentAnswers={currentAnswers}
-        showAnswer={currentShowAnswer}
-        isPlaying={isPlaying}
-        progress={progress}
-        playbackRate={playbackRate}
-        autoNext={autoNext}
-        allFilled={allFilled}
-        isPassed={currentShowAnswer && currentPassed}
-        onPlay={handlePlay}
-        onSeek={seekAudio}
-        onOpenSpeedMenu={(event) => setAnchorSpeed(event.currentTarget)}
-        onCloseSpeedMenu={() => setAnchorSpeed(null)}
-        onSelectPlaybackRate={(rate) => setPlaybackRate(rate)}
-        anchorSpeed={anchorSpeed}
-        onWordChange={handleWordChange}
-        onAutoNextChange={(checked) => setAutoNext(checked)}
-        onCheck={handleCheck}
-        onRetry={handleRetry}
-        onPrev={handlePrev}
-        onNext={handleNext}
-        canComplete={canComplete}
-        onRestartGuide={() => {
-          localStorage.setItem("dictation_tour_seen", "false");
-          setIsRunGuide(false);
-          setTimeout(() => setIsRunGuide(true), 150);
-        }}
-      />
+      {!openComplete ? (
+        <>
+          <DictationMain
+            difficulty={difficulty}
+            sentence={currentItem}
+            currentIndex={currentIndex}
+            totalItems={totalItems}
+            currentAnswers={currentAnswers}
+            showAnswer={currentShowAnswer}
+            isPlaying={isPlaying}
+            progress={progress}
+            playbackRate={playbackRate}
+            autoNext={autoNext}
+            allFilled={allFilled}
+            isPassed={currentShowAnswer && currentPassed}
+            segmentStart={currentBounds.start}
+            segmentEnd={currentBounds.end}
+            onPlay={handlePlay}
+            onSeek={seekAudio}
+            onRewind={rewindAudio}
+            onOpenSpeedMenu={(event) => setAnchorSpeed(event.currentTarget)}
+            onCloseSpeedMenu={() => setAnchorSpeed(null)}
+            onSelectPlaybackRate={(rate) => setPlaybackRate(rate)}
+            anchorSpeed={anchorSpeed}
+            onWordChange={handleWordChange}
+            onAutoNextChange={(checked) => setAutoNext(checked)}
+            onCheck={handleCheck}
+            onRetry={handleRetry}
+            onPrev={handlePrev}
+            onNext={handleNext}
+            canComplete={canComplete}
+            onRestartGuide={() => {
+              localStorage.setItem("dictation_tour_seen", "false");
+              setIsRunGuide(false);
+              setTimeout(() => setIsRunGuide(true), 150);
+            }}
+          />
 
-      <DictationFeedbackPanel
-        showAnswer={currentShowAnswer}
-        accuracy={currentAccuracy}
-        passed={currentPassed}
-        userText={userText}
-        transcriptText={transcriptText}
-      />
+          <DictationFeedbackPanel
+            showAnswer={currentShowAnswer}
+            accuracy={currentAccuracy}
+            passed={currentPassed}
+            userText={userText}
+            transcriptText={transcriptText}
+          />
+        </>
+      ) : null}
 
       <DictationCompletionOverlay
         open={openComplete}
         accuracy={summary.accuracy}
-        total={summary.total}
-        avgTime={summary.avgTime}
+        completedItems={summary.completedItems}
+        totalItems={totalItems}
+        totalTime={summary.totalTime}
+        totalWords={summary.totalWords}
+        correctWords={summary.correctWords}
+        attemptCount={summary.total}
+        level={dictation.level}
+        difficulty={summary.difficulty}
+        loadingAI={loadingAI}
+        hasNextLesson={hasNextLesson}
+        onAnalyze={handleAnalyzeWithAI}
         onRetry={() => window.location.reload()}
-        onViewStats={() => setOpenComplete(false)}
-        onGoHome={() => navigate("/practice-skill/dictation-v2")}
+        onViewAnswers={() => setOpenComplete(false)}
+        onNextLesson={onNextLesson ?? (() => navigate("/practice-skill/dictation-v2"))}
       />
     </Box>
   );

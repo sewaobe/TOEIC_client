@@ -140,22 +140,12 @@ const privateRoutes: AppRoute[] = [
   },
   {
     path: "/practice-skill/dictation",
-    element: PracticeDictationPage,
-    guard: ProtectedRoute,
-  },
-  {
-    path: "/practice-skill/dictation-v2",
     element: PracticeDictationListPageV2,
     guard: ProtectedRoute,
   },
   {
-    path: "/practice-skill/dictation-v2/:id",
-    element: PracticeDictationPageV2,
-    guard: ProtectedRoute,
-  },
-  {
     path: "/practice-skill/dictation/:id",
-    element: PracticeDictationPage,
+    element: PracticeDictationPageV2,
     guard: ProtectedRoute,
   },
   {

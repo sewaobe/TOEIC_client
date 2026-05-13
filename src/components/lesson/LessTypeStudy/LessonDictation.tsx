@@ -93,6 +93,29 @@ const buildWords = async (
   }));
 };
 
+const getSegmentBounds = (
+  segment: Dictation["timings"][number],
+  fallbackDuration?: number,
+  audioDuration?: number
+) => {
+  const start = Math.max(0, segment.startTime ?? 0);
+  const fallbackEnd =
+    typeof fallbackDuration === "number" && fallbackDuration > start
+      ? fallbackDuration
+      : typeof audioDuration === "number" &&
+        Number.isFinite(audioDuration) &&
+        audioDuration > start
+      ? audioDuration
+      : start;
+  const end = segment.endTime > start ? segment.endTime : fallbackEnd;
+
+  return {
+    start,
+    end,
+    duration: Math.max(end - start, 0),
+  };
+};
+
 /* ===== Component ===== */
 export default function LessonDictation({
   dictation,
@@ -160,13 +183,29 @@ export default function LessonDictation({
 
   const handlePlay = useCallback(() => {
     if (!dictation.audio_url || !currentSegment) return;
-    const audio = audioRef.current ?? new Audio(dictation.audio_url);
+
+    const audioSrc = dictation.audio_url;
+    let audio = audioRef.current;
+
+    if (!audio || audio.getAttribute("src") !== audioSrc) {
+      audio?.pause();
+      audio = new Audio(audioSrc);
+      audioRef.current = audio;
+    }
+
     audioRef.current = audio;
 
-    const start = (currentSegment.startTime || 0) / 1000;
-    const end = (currentSegment.endTime || 0) / 1000;
-    const duration = end - start;
+    const { start, end, duration } = getSegmentBounds(
+      currentSegment,
+      dictation.duration,
+      audio.duration
+    );
 
+    if (duration <= 0) return;
+
+    audio.pause();
+    audio.ontimeupdate = null;
+    audio.onended = null;
     audio.currentTime = start;
     audio.playbackRate = playbackRate;
     setIsPlaying(true);
@@ -178,21 +217,34 @@ export default function LessonDictation({
         audio.pause();
         setIsPlaying(false);
         setProgress(100);
-        audio.removeEventListener("timeupdate", onTime);
+        audio.ontimeupdate = null;
+        audio.onended = null;
         return;
       }
       const p = ((current - start) / duration) * 100;
       setProgress(p);
     };
 
-    audio.addEventListener("timeupdate", onTime);
-    audio.play().catch(() => setIsPlaying(false));
-  }, [dictation.audio_url, currentSegment, playbackRate]);
+    audio.ontimeupdate = onTime;
+    audio.onended = () => {
+      setIsPlaying(false);
+      setProgress(100);
+      audio.ontimeupdate = null;
+      audio.onended = null;
+    };
+    audio.play().catch(() => {
+      setIsPlaying(false);
+      audio.ontimeupdate = null;
+      audio.onended = null;
+    });
+  }, [dictation.audio_url, dictation.duration, currentSegment, playbackRate]);
 
   useEffect(() => {
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current.ontimeupdate = null;
+        audioRef.current.onended = null;
         audioRef.current.src = "";
       }
     };
@@ -494,9 +546,12 @@ export default function LessonDictation({
           value={progress}
           onChange={(_, newValue) => {
             if (!audioRef.current || !currentSegment) return;
-            const start = (currentSegment.startTime || 0) / 1000;
-            const end = (currentSegment.endTime || 0) / 1000;
-            const duration = end - start;
+            const { start, duration } = getSegmentBounds(
+              currentSegment,
+              dictation.duration,
+              audioRef.current.duration
+            );
+            if (duration <= 0) return;
             const newTime = start + ((newValue as number) / 100) * duration;
             audioRef.current.currentTime = newTime;
             setProgress(newValue as number);

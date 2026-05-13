@@ -2,6 +2,14 @@ import { Dictation } from "../types/Dictation";
 import axiosClient from "./axiosClient";
 
 const BASE_URL = "/dictations";
+
+export interface DictationListResponse {
+  items: Dictation[];
+  total: number;
+  page: number;
+  pageCount: number;
+}
+
 export const dictationService = {
   /**
    * Lấy tất cả dictation để luyện tập
@@ -15,6 +23,29 @@ export const dictationService = {
     // Backend trả về ApiResponse { success, data, message }
     // Unwrap data nếu có, không thì trả res.data
     return res.data?.data || res.data;
+  },
+
+  async getAllDictationPage(
+    params?: Record<string, any>
+  ): Promise<DictationListResponse> {
+    const res = await axiosClient.get(`${BASE_URL}`, { params });
+    const payload = res.data || res;
+
+    if (Array.isArray(payload)) {
+      return {
+        items: payload,
+        total: payload.length,
+        page: params?.page || 1,
+        pageCount: 1,
+      };
+    }
+
+    return {
+      items: payload.items || [],
+      total: payload.total || 0,
+      page: payload.page || params?.page || 1,
+      pageCount: payload.pageCount || 1,
+    };
   },
 
   async getDictationById(id: string): Promise<Dictation> {

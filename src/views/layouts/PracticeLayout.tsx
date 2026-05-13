@@ -15,10 +15,11 @@ export default function PracticeLayout({
         <Box
             display="flex"
             flexDirection="column"
-            height="100vh"
+            height="100dvh"
             sx={{
                 backgroundColor: "#f5f9ff",
                 backgroundAttachment: "fixed",
+                overflow: "hidden",
                 ...sx,
             }}
         >
@@ -26,7 +27,16 @@ export default function PracticeLayout({
             < PracticeHeader />
 
             {/* Nội dung trang */}
-            <Box flex={1} className="custom-scrollbar overflow-x-hidden" >
+            <Box
+                flex={1}
+                minHeight={0}
+                className="custom-scrollbar overflow-x-hidden"
+                sx={{
+                    overflowY: "auto",
+                    overflowX: "hidden",
+                    position: "relative",
+                }}
+            >
                 {children}
             </Box>
         </Box>

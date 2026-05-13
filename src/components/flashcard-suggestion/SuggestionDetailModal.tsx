@@ -118,12 +118,21 @@ const SuggestionDetailModal: React.FC<SuggestionDetailModalProps> = ({
                   <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
                     Ví dụ
                   </Typography>
-                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                    The company decided to allocate more budget to marketing this quarter.
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: "text.secondary", fontStyle: "italic" }}>
-                    Cong ty quyet dinh phan bo them ngan sach cho marketing trong quy nay.
-                  </Typography>
+                  {detail.examples && detail.examples.length > 0
+                    ? detail.examples.map(example => {
+                      return <React.Fragment key={example.en}>
+                        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                          {example.en}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "text.secondary", fontStyle: "italic" }}>
+                          {example.vi}
+                        </Typography>
+                      </React.Fragment>
+                    })
+                    : <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      Chưa có ví dụ cho từ vựng này
+                    </Typography>
+                  }
                 </Stack>
               </Box>
             </Stack>

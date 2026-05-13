@@ -229,6 +229,10 @@ export interface SuggestionDetail {
   word: string;
   phonetic?: string;
   meaning?: string;
+  examples?: {
+    en: string,
+    vi: string
+  }[];
   topic_title?: string;
   level?: string;
   priority: SuggestionPriority;

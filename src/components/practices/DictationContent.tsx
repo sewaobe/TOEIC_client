@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   PlayArrow as PlayIcon,
   Replay as ReplayIcon,
@@ -37,12 +37,18 @@ import DictationAIAnalysis from "./DictationAIAnalysis";
 import SentenceRenderer from "./SetenceRenderer";
 import { loadStopWords } from "../../utils/stopWord";
 import DictationTourGuide from "../tour-guide/DictationTourGuide";
+import {
+  calculateWordSimilarity,
+  normalizeForDictation,
+  tokenizeForDictation,
+} from "../../utils/textSimilarity.util";
 
 /* ===== Types ===== */
 type Difficulty = "easy" | "medium" | "hard";
 
 interface DictationContentProps {
   dictation: Dictation;
+  initialDifficulty?: Difficulty;
 }
 
 export interface DictationWord {
@@ -52,15 +58,204 @@ export interface DictationWord {
 }
 
 /* ===== Helpers ===== */
-const normalize = (text: string): string =>
-  text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/gi, "") // xóa toàn bộ dấu câu, ký tự đặc biệt
-    .replace(/\s+/g, " ") // gộp khoảng trắng
-    .trim();
-
 const getBlankRatio = (level: Difficulty): number =>
   level === "easy" ? 0.2 : level === "hard" ? 0.55 : 0.35;
+
+const splitWords = (text: string): string[] =>
+  text.split(/\s+/).filter(Boolean);
+
+const normalizeToken = (value: string): string => normalizeForDictation(value);
+
+type TokenComparison = {
+  correctTokens: string[];
+  userTokens: string[];
+  correctMatches: boolean[];
+  userMatches: boolean[];
+};
+
+type EvaluationResult = TokenComparison & {
+  accuracy: number;
+  mistakes: string[];
+};
+
+const emptyEvaluation: EvaluationResult = {
+  accuracy: 0,
+  mistakes: [],
+  correctTokens: [],
+  userTokens: [],
+  correctMatches: [],
+  userMatches: [],
+};
+
+const compareTokensByPosition = (
+  correctTokens: string[],
+  userTokens: string[]
+): TokenComparison => {
+  const correctMatches = correctTokens.map((token, i) => {
+    const userToken = userTokens[i];
+    if (!userToken) return false;
+    return normalizeToken(token) === normalizeToken(userToken);
+  });
+
+  const userMatches = userTokens.map((token, i) => {
+    const correctToken = correctTokens[i];
+    if (!correctToken) return false;
+    return normalizeToken(token) === normalizeToken(correctToken);
+  });
+
+  return { correctTokens, userTokens, correctMatches, userMatches };
+};
+
+const alignTokens = (
+  correctTokens: string[],
+  userTokens: string[]
+): TokenComparison => {
+  const rows = userTokens.length + 1;
+  const cols = correctTokens.length + 1;
+  const dp = Array.from({ length: rows }, () => Array(cols).fill(0));
+
+  for (let i = 0; i < rows; i++) dp[i][0] = i;
+  for (let j = 0; j < cols; j++) dp[0][j] = j;
+
+  for (let i = 1; i < rows; i++) {
+    for (let j = 1; j < cols; j++) {
+      const cost = userTokens[i - 1] === correctTokens[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  const correctMatches = Array(correctTokens.length).fill(false);
+  const userMatches = Array(userTokens.length).fill(false);
+  let i = userTokens.length;
+  let j = correctTokens.length;
+
+  while (i > 0 || j > 0) {
+    const canSubstitute = i > 0 && j > 0;
+    const substitutionCost =
+      canSubstitute && userTokens[i - 1] === correctTokens[j - 1] ? 0 : 1;
+
+    if (
+      canSubstitute &&
+      dp[i][j] === dp[i - 1][j - 1] + substitutionCost
+    ) {
+      if (substitutionCost === 0) {
+        userMatches[i - 1] = true;
+        correctMatches[j - 1] = true;
+      }
+      i -= 1;
+      j -= 1;
+      continue;
+    }
+
+    if (i > 0 && dp[i][j] === dp[i - 1][j] + 1) {
+      userMatches[i - 1] = false;
+      i -= 1;
+      continue;
+    }
+
+    if (j > 0 && dp[i][j] === dp[i][j - 1] + 1) {
+      correctMatches[j - 1] = false;
+      j -= 1;
+    }
+  }
+
+  return { correctTokens, userTokens, correctMatches, userMatches };
+};
+
+const buildEasyEvaluation = (
+  sentence: { words: DictationWord[] },
+  userAnswers: Record<number, string>
+): EvaluationResult => {
+  const correctTokens = sentence.words.map((w) => w.word);
+  const userTokens = splitWords(userAnswers[0] || "");
+  const comparison = compareTokensByPosition(correctTokens, userTokens);
+  const correct = comparison.correctMatches.filter(Boolean).length;
+  const accuracy = correctTokens.length
+    ? Math.round((correct / correctTokens.length) * 100)
+    : 0;
+  const mistakes = correctTokens.filter((_, i) => !comparison.correctMatches[i]);
+
+  return { ...comparison, accuracy, mistakes };
+};
+
+const buildMediumEvaluation = (
+  sentence: { words: DictationWord[] },
+  userAnswers: Record<number, string>,
+  blankIndices: number[]
+): EvaluationResult => {
+  const correctTokens = sentence.words.map((w) => w.word);
+  const userTokens = sentence.words.map((w) =>
+    w.isBlank ? userAnswers[w.index] || "" : w.word
+  );
+  const correctMatches = sentence.words.map((w) =>
+    !w.isBlank
+      ? true
+      : normalizeToken(userAnswers[w.index] || "") === normalizeToken(w.word)
+  );
+  const userMatches = [...correctMatches];
+  const correct = blankIndices.reduce((sum, i) => {
+    const isCorrect =
+      normalizeToken(userAnswers[i] || "") ===
+      normalizeToken(sentence.words[i].word);
+    return sum + (isCorrect ? 1 : 0);
+  }, 0);
+  const accuracy = blankIndices.length
+    ? Math.round((correct / blankIndices.length) * 100)
+    : 0;
+  const mistakes = blankIndices
+    .filter(
+      (i) =>
+        normalizeToken(userAnswers[i] || "") !==
+        normalizeToken(sentence.words[i].word)
+    )
+    .map((i) => sentence.words[i].word);
+
+  return {
+    correctTokens,
+    userTokens,
+    correctMatches,
+    userMatches,
+    accuracy,
+    mistakes,
+  };
+};
+
+const buildHardEvaluation = (
+  sentence: { text: string },
+  userAnswers: Record<number, string>
+): EvaluationResult => {
+  const displayCorrectTokens = splitWords(sentence.text);
+  const displayUserTokens = splitWords(userAnswers[0] || "");
+  const normalizedCorrectTokens = tokenizeForDictation(sentence.text);
+  const normalizedUserTokens = tokenizeForDictation(userAnswers[0] || "");
+  const comparison = alignTokens(normalizedCorrectTokens, normalizedUserTokens);
+  const useDisplayTokens =
+    displayCorrectTokens.length === normalizedCorrectTokens.length &&
+    displayUserTokens.length === normalizedUserTokens.length;
+  const correctTokens = useDisplayTokens
+    ? displayCorrectTokens
+    : normalizedCorrectTokens;
+  const userTokens = useDisplayTokens
+    ? displayUserTokens
+    : normalizedUserTokens;
+  const accuracy = calculateWordSimilarity(sentence.text, userAnswers[0] || "");
+  const isExact =
+    normalizeForDictation(userAnswers[0] || "") ===
+    normalizeForDictation(sentence.text);
+  const mistakes = isExact ? [] : ["Câu chưa chính xác"];
+
+  return {
+    ...comparison,
+    correctTokens,
+    userTokens,
+    accuracy,
+    mistakes,
+  };
+};
 
 const buildWords = async (
   text: string,
@@ -94,10 +289,52 @@ const buildWords = async (
   }));
 };
 
+const getSegmentBounds = (
+  segment: Dictation["timings"][number],
+  fallbackDuration?: number,
+  audioDuration?: number
+) => {
+  const start = Math.max(0, segment.startTime ?? 0);
+  const fallbackEnd =
+    typeof fallbackDuration === "number" && fallbackDuration > start
+      ? fallbackDuration
+      : typeof audioDuration === "number" &&
+        Number.isFinite(audioDuration) &&
+        audioDuration > start
+        ? audioDuration
+        : start;
+  const end = segment.endTime > start ? segment.endTime : fallbackEnd;
+
+  return {
+    start,
+    end,
+    duration: Math.max(end - start, 0),
+  };
+};
+
+const PASS_THRESHOLD: Record<Difficulty, number> = {
+  easy: 100,
+  medium: 100,
+  hard: 85,
+};
+
+const DIFFICULTY_LABEL: Record<Difficulty, string> = {
+  easy: "Dễ",
+  medium: "Trung bình",
+  hard: "Khó",
+};
+
+const isPassedAccuracy = (difficulty: Difficulty, accuracy: number): boolean => {
+  return accuracy >= PASS_THRESHOLD[difficulty];
+};
+
 /* ===== Component ===== */
-export default function DictationContent({ dictation }: DictationContentProps) {
+export default function DictationContent({
+  dictation,
+  initialDifficulty = "hard",
+}: DictationContentProps) {
   // Dictation UI: force single mode (full-sentence input)
-  const [difficulty] = useState<Difficulty>("hard");
+  const [difficulty, setDifficulty] = useState<Difficulty>(initialDifficulty);
   const [sentences, setSentences] = useState<
     { id: number; text: string; words: DictationWord[] }[]
   >([]);
@@ -127,6 +364,10 @@ export default function DictationContent({ dictation }: DictationContentProps) {
   const [isRunGuide, setIsRunGuide] = useState<boolean>(() => {
     return localStorage.getItem("dictation_tour_seen") !== "true";
   });
+
+  useEffect(() => {
+    setDifficulty(initialDifficulty);
+  }, [initialDifficulty, dictation._id]);
 
   /* ===== Load sentences with stopwords filter ===== */
   useEffect(() => {
@@ -161,13 +402,29 @@ export default function DictationContent({ dictation }: DictationContentProps) {
   /* ===== Audio Logic ===== */
   const handlePlay = useCallback(() => {
     if (!dictation.audio_url || !currentSegment) return;
-    const audio = audioRef.current ?? new Audio(dictation.audio_url);
+
+    const audioSrc = dictation.audio_url;
+    let audio = audioRef.current;
+
+    if (!audio || audio.getAttribute("src") !== audioSrc) {
+      audio?.pause();
+      audio = new Audio(audioSrc);
+      audioRef.current = audio;
+    }
+
     audioRef.current = audio;
 
-    const start = (currentSegment.startTime || 0) / 1000;
-    const end = (currentSegment.endTime || 0) / 1000;
-    const duration = end - start;
+    const { start, end, duration } = getSegmentBounds(
+      currentSegment,
+      dictation.duration,
+      audio.duration
+    );
 
+    if (duration <= 0) return;
+
+    audio.pause();
+    audio.ontimeupdate = null;
+    audio.onended = null;
     audio.currentTime = start;
     audio.playbackRate = playbackRate;
     setIsPlaying(true);
@@ -179,21 +436,34 @@ export default function DictationContent({ dictation }: DictationContentProps) {
         audio.pause();
         setIsPlaying(false);
         setProgress(100);
-        audio.removeEventListener("timeupdate", onTime);
+        audio.ontimeupdate = null;
+        audio.onended = null;
         return;
       }
       const p = ((current - start) / duration) * 100;
       setProgress(p);
     };
 
-    audio.addEventListener("timeupdate", onTime);
-    audio.play().catch(() => setIsPlaying(false));
-  }, [dictation.audio_url, currentSegment, playbackRate]);
+    audio.ontimeupdate = onTime;
+    audio.onended = () => {
+      setIsPlaying(false);
+      setProgress(100);
+      audio.ontimeupdate = null;
+      audio.onended = null;
+    };
+    audio.play().catch(() => {
+      setIsPlaying(false);
+      audio.ontimeupdate = null;
+      audio.onended = null;
+    });
+  }, [dictation.audio_url, dictation.duration, currentSegment, playbackRate]);
 
   useEffect(() => {
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current.ontimeupdate = null;
+        audioRef.current.onended = null;
         audioRef.current.src = "";
       }
     };
@@ -210,52 +480,26 @@ export default function DictationContent({ dictation }: DictationContentProps) {
   const handleWordChange = (index: number, value: string) =>
     setUserAnswers((prev) => ({ ...prev, [index]: value }));
 
-  const calcAccuracy = useCallback((): number => {
-    if (!currentItem) return 0;
+  const evaluation = useMemo(() => {
+    if (!currentItem) return emptyEvaluation;
 
-    if (difficulty === "hard") {
-      const userText = normalize(userAnswers[0] || "");
-      const correctText = normalize(currentItem.text);
-      return userText === correctText ? 100 : 0;
+    if (difficulty === "medium") {
+      return buildMediumEvaluation(currentItem, userAnswers, blankIndices);
     }
 
     if (difficulty === "easy") {
-      const userSentence = normalize(userAnswers[0] || "");
-      const correctSentence = normalize(currentItem.text);
-      return userSentence === correctSentence ? 100 : 0;
+      return buildEasyEvaluation(currentItem, userAnswers);
     }
 
-    if (blankIndices.length === 0) return 0;
-    let correct = 0;
-    blankIndices.forEach((i) => {
-      const correctWord = normalize(currentItem.words[i].word);
-      const userWord = normalize(userAnswers[i] || "");
-      if (userWord === correctWord) correct++;
-    });
-    return Math.round((correct / blankIndices.length) * 100);
-  }, [currentItem, blankIndices, userAnswers, difficulty]);
+    return buildHardEvaluation(currentItem, userAnswers);
+  }, [blankIndices, currentItem, difficulty, userAnswers]);
 
   /* ===== Check logic ===== */
   const handleCheck = () => {
-    const acc = calcAccuracy();
+    const { accuracy: acc, mistakes } = evaluation;
     setShowAnswer(true);
     const finishedAt = Date.now();
     const duration = Math.round((finishedAt - startedAt) / 1000);
-    let mistakes: string[] = [];
-
-    if (difficulty === "medium") {
-      mistakes = blankIndices
-        .filter(
-          (i) =>
-            normalize(userAnswers[i] || "") !==
-            normalize(currentItem.words[i].word)
-        )
-        .map((i) => currentItem.words[i].word);
-    } else if (difficulty === "hard" || difficulty === "easy") {
-      const userText = normalize(userAnswers[0] || "");
-      const correctText = normalize(currentItem.text);
-      if (userText !== correctText) mistakes = ["Câu chưa chính xác"];
-    }
 
     const newLog: DictationAttemptLog = {
       index: currentIndex,
@@ -269,14 +513,16 @@ export default function DictationContent({ dictation }: DictationContentProps) {
     };
     setAttemptLogs((prev) => [...prev, newLog]);
 
-    if (acc === 100) {
+    if (isPassedAccuracy(difficulty, acc)) {
       setCompleted((prev) => Math.min(prev + 1, totalItems));
+
       if (autoNext && currentIndex < totalItems - 1) {
         setTimeout(() => {
           setCurrentIndex((i) => i + 1);
           setShowAnswer(false);
           setUserAnswers({});
           setProgress(0);
+          setStartedAt(Date.now());
         }, 1200);
       }
     }
@@ -290,7 +536,9 @@ export default function DictationContent({ dictation }: DictationContentProps) {
   };
 
   const handleNext = () => {
-    if (calcAccuracy() === 100 && currentIndex < totalItems - 1) {
+    const acc = evaluation.accuracy;
+
+    if (isPassedAccuracy(difficulty, acc) && currentIndex < totalItems - 1) {
       setCurrentIndex((i) => i + 1);
       setShowAnswer(false);
       setUserAnswers({});
@@ -315,7 +563,7 @@ export default function DictationContent({ dictation }: DictationContentProps) {
       : (userAnswers[0] || "").trim().length > 0;
 
   const overallProgress = Math.round((completed / totalItems) * 100);
-  const accuracy = calcAccuracy();
+  const accuracy = evaluation.accuracy;
 
   const handleSubmit = async () => {
     try {
@@ -498,9 +746,12 @@ export default function DictationContent({ dictation }: DictationContentProps) {
           value={progress}
           onChange={(_, newValue) => {
             if (!audioRef.current || !currentSegment) return;
-            const start = (currentSegment.startTime || 0) / 1000;
-            const end = (currentSegment.endTime || 0) / 1000;
-            const duration = end - start;
+            const { start, duration } = getSegmentBounds(
+              currentSegment,
+              dictation.duration,
+              audioRef.current.duration
+            );
+            if (duration <= 0) return;
             const newTime = start + ((newValue as number) / 100) * duration;
             audioRef.current.currentTime = newTime;
             setProgress(newValue as number);
@@ -548,10 +799,19 @@ export default function DictationContent({ dictation }: DictationContentProps) {
         mb={3}
         className="dictation-difficulty"
       >
-        <Box>
+        <Box display="flex" alignItems="center" gap={1}>
           <Typography variant="body2" color="text.secondary">
-            Chế độ: Điền nguyên câu
+            Chế độ:
           </Typography>
+          <Chip
+            size="small"
+            label={DIFFICULTY_LABEL[difficulty]}
+            sx={{
+              fontWeight: 700,
+              backgroundColor: "#eff6ff",
+              color: "#2563eb",
+            }}
+          />
         </Box>
 
         <Box display="flex" alignItems="center" gap={1}>
@@ -641,7 +901,7 @@ export default function DictationContent({ dictation }: DictationContentProps) {
           >
             Kiểm tra
           </Button>
-        ) : accuracy === 100 ? (
+        ) : isPassedAccuracy(difficulty, accuracy) ? (
           <Button
             variant="contained"
             color="success"
@@ -673,7 +933,7 @@ export default function DictationContent({ dictation }: DictationContentProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
           >
-            {accuracy === 100 ? (
+            {isPassedAccuracy(difficulty, accuracy) ? (
               <Alert
                 icon={<CheckCircleIcon />}
                 severity="success"
@@ -687,8 +947,7 @@ export default function DictationContent({ dictation }: DictationContentProps) {
                 severity="warning"
                 sx={{ mt: 1, borderRadius: 2 }}
               >
-                Bạn đúng khoảng {accuracy}% từ cần điền. Nghe lại đoạn này và
-                sửa những ô đỏ nhé.
+                Bạn đạt khoảng {accuracy}%. Nghe lại đoạn này và sửa những phần còn sai nhé.
               </Alert>
             )}
             {/* Hiển thị kết quả chi tiết người dùng nhập & transcript */}
@@ -710,6 +969,7 @@ export default function DictationContent({ dictation }: DictationContentProps) {
               </Typography>
               <Typography
                 variant="body1"
+                component="div"
                 sx={{
                   mt: 0.5,
                   color: "text.primary",
@@ -720,17 +980,63 @@ export default function DictationContent({ dictation }: DictationContentProps) {
                   fontStyle: userAnswers[0] ? "normal" : "italic",
                 }}
               >
-                {difficulty === "medium"
-                  ? currentItem.words
-                      .map((w) =>
-                        w.isBlank
-                          ? userAnswers[w.index]
-                            ? userAnswers[w.index]
-                            : "____"
-                          : w.word
-                      )
-                      .join(" ")
-                  : userAnswers[0] || "(Chưa nhập nội dung)"}
+                {difficulty === "medium" ? (
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                    {currentItem.words.map((w) => {
+                      const isBlank = w.isBlank;
+                      const userWord = userAnswers[w.index] || "";
+                      const isCorrect = evaluation.correctMatches[w.index] ?? false;
+                      const displayWord = isBlank ? userWord || "____" : w.word;
+
+                      return (
+                        <Box
+                          component="span"
+                          key={w.index}
+                          sx={{
+                            px: 0.5,
+                            borderRadius: 0.75,
+                            backgroundColor: isBlank
+                              ? isCorrect
+                                ? "#dcfce7"
+                                : "#fee2e2"
+                              : "transparent",
+                            color: isBlank
+                              ? isCorrect
+                                ? "#166534"
+                                : "#991b1b"
+                              : "text.primary",
+                            fontWeight: isBlank ? 700 : 500,
+                          }}
+                        >
+                          {displayWord}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                ) : evaluation.userTokens.length ? (
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                    {evaluation.userTokens.map((word, i) => {
+                      const isCorrect = evaluation.userMatches[i] === true;
+                      return (
+                        <Box
+                          component="span"
+                          key={`${word}-${i}`}
+                          sx={{
+                            px: 0.5,
+                            borderRadius: 0.75,
+                            backgroundColor: isCorrect ? "#dcfce7" : "#fee2e2",
+                            color: isCorrect ? "#166534" : "#991b1b",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {word}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                ) : (
+                  "(Chưa nhập nội dung)"
+                )}
               </Typography>
 
               <Typography
@@ -743,6 +1049,7 @@ export default function DictationContent({ dictation }: DictationContentProps) {
               </Typography>
               <Typography
                 variant="body1"
+                component="div"
                 sx={{
                   mt: 0.5,
                   color: "#1e3a8a",
@@ -752,7 +1059,60 @@ export default function DictationContent({ dictation }: DictationContentProps) {
                   border: "1px solid #c7d2fe",
                 }}
               >
-                {currentItem.text}
+                {difficulty === "medium" ? (
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                    {currentItem.words.map((w) => {
+                      const isBlank = w.isBlank;
+                      const isCorrect = evaluation.correctMatches[w.index] ?? false;
+                      const displayWord = w.word;
+
+                      return (
+                        <Box
+                          component="span"
+                          key={`${w.word}-${w.index}`}
+                          sx={{
+                            px: 0.5,
+                            borderRadius: 0.75,
+                            backgroundColor: isBlank
+                              ? isCorrect
+                                ? "#dcfce7"
+                                : "#fee2e2"
+                              : "transparent",
+                            color: isBlank
+                              ? isCorrect
+                                ? "#166534"
+                                : "#991b1b"
+                              : "#1e3a8a",
+                            fontWeight: isBlank ? 700 : 500,
+                          }}
+                        >
+                          {displayWord}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                ) : (
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                    {evaluation.correctTokens.map((word, i) => {
+                      const isCorrect = evaluation.correctMatches[i] === true;
+                      return (
+                        <Box
+                          component="span"
+                          key={`${word}-${i}`}
+                          sx={{
+                            px: 0.5,
+                            borderRadius: 0.75,
+                            backgroundColor: isCorrect ? "#dcfce7" : "#fee2e2",
+                            color: isCorrect ? "#166534" : "#991b1b",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {word}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                )}
               </Typography>
             </Box>
           </motion.div>

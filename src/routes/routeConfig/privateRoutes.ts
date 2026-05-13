@@ -28,6 +28,12 @@ const PracticeMiniTestPage = lazy(
 const PracticeDictationPage = lazy(
   () => import("../../views/pages/PracticeDictationPage"),
 );
+const PracticeDictationListPageV2 = lazy(
+  () => import("../../views/pages/PracticeDictationListPageV2"),
+);
+const PracticeDictationPageV2 = lazy(
+  () => import("../../views/pages/PracticeDictationPageV2"),
+);
 const PracticeChallengePage = lazy(
   () => import("../../views/pages/PracticeChallengePage"),
 );
@@ -134,12 +140,12 @@ const privateRoutes: AppRoute[] = [
   },
   {
     path: "/practice-skill/dictation",
-    element: PracticeDictationPage,
+    element: PracticeDictationListPageV2,
     guard: ProtectedRoute,
   },
   {
     path: "/practice-skill/dictation/:id",
-    element: PracticeDictationPage,
+    element: PracticeDictationPageV2,
     guard: ProtectedRoute,
   },
   {

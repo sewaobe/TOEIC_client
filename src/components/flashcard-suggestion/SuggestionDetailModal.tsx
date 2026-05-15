@@ -14,7 +14,6 @@ import {
 } from "@mui/material";
 import {
   AccessTime,
-  AutoAwesome,
   CalendarMonth,
   Close,
   ErrorOutline,
@@ -45,12 +44,6 @@ const severityBg: Record<SuggestionReason["severity"], string> = {
   low: "#eff6ff",
 };
 
-const priorityLabel = {
-  high: "Cao",
-  medium: "Trung bình",
-  low: "Thấp",
-};
-
 const SuggestionDetailModal: React.FC<SuggestionDetailModalProps> = ({
   open,
   detail,
@@ -63,6 +56,12 @@ const SuggestionDetailModal: React.FC<SuggestionDetailModalProps> = ({
   }
 
   const pRecallPercent = Math.round(detail.p_recall * 100);
+  const probabilityColor =
+    pRecallPercent < 25
+      ? "#ef4444"
+      : pRecallPercent < 65
+        ? "#f59e0b"
+        : "#10b981";
 
   return (
     <Dialog
@@ -189,8 +188,8 @@ const SuggestionDetailModal: React.FC<SuggestionDetailModalProps> = ({
               3. Chỉ số ghi nhớ
             </Typography>
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, rowGap: 1.2, columnGap: 2, mt: 1.2 }}>
-              <Metric icon={<AutoAwesome />} label="Độ ưu tiên" value={priorityLabel[detail.priority]} tone={severityColor[detail.priority]} />
-              <Metric icon={<ErrorOutline />} label="Xác suất nhớ" value={`${pRecallPercent}%`} tone={severityColor[detail.priority]} />
+              <Metric icon={<MenuBook />} label="Độ khó" value={`${detail.difficulty}/18`} tone="#2563eb" />
+              <Metric icon={<ErrorOutline />} label="Xác suất nhớ" value={`${pRecallPercent}%`} tone={probabilityColor} />
               <Metric icon={<AccessTime />} label="Half-life" value={`${detail.half_life_days} ngày`} />
               <Metric icon={<CalendarMonth />} label="Dự kiến ôn" value={formatDueLabel(detail.due_at)} tone="#f59e0b" />
               <Metric icon={<MenuBook />} label="Lần ôn gần nhất" value={formatRelativeDate(detail.last_reviewed_at)} />

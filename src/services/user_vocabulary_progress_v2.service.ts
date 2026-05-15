@@ -7,7 +7,6 @@ import {
   SuggestionBucket,
   SuggestionDetail,
   SuggestionFilterOptions,
-  SuggestionPriority,
   TodayReviewSummary,
 } from "../types/UserVocabularyProgressV2";
 
@@ -24,7 +23,6 @@ export interface GetSuggestedVocabularyParams {
   search?: string;
   topic?: string;
   level?: string;
-  priority?: SuggestionPriority | "all";
   bucket?: SuggestionBucket;
   sortBy?: "due_at" | "p_recall" | "word";
   sortOrder?: "asc" | "desc";

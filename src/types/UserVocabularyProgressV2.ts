@@ -3,12 +3,9 @@ export type VocabularyMemoryStatus = "learning" | "reviewing" | "mastered";
 export type MemoryUiBucket =
   | "mastered"
   | "active_reviewing"
-  | "at_risk"
   | "overdue";
 
 export type SuggestionBucket = "all" | "due_today" | MemoryUiBucket;
-
-export type SuggestionPriority = "high" | "medium" | "low";
 
 export type DhpRecallResult = "remembered" | "forgot";
 
@@ -132,7 +129,6 @@ export interface SspMmcPolicy {
 export interface TodayReviewSummary {
   total: number;
   dueToday: number;
-  atRisk: number;
   overdue: number;
   primaryReviewCount: number;
   overdueReviewCount: number;
@@ -160,8 +156,6 @@ export interface SuggestedVocabularyApiItem {
   type?: string;
   topic?: string;
   level?: string;
-  priority: SuggestionPriority;
-  priorityLabel: string;
   pRecallNow: number;
   dueAt: ISODateString | null;
   dueLabel: string;
@@ -184,7 +178,6 @@ export interface SuggestedVocabularyCounters {
   all: number;
   dueToday: number;
   activeReviewing: number;
-  atRisk: number;
   overdue: number;
   mastered: number;
 }
@@ -203,7 +196,6 @@ export interface SuggestionFilterOption {
 export interface SuggestionFilterOptions {
   topics: SuggestionFilterOption[];
   levels: SuggestionFilterOption[];
-  priorities: Array<SuggestionFilterOption & { value: SuggestionPriority }>;
 }
 
 export type SuggestionReasonCode =
@@ -235,7 +227,7 @@ export interface SuggestionDetail {
   }[];
   topic_title?: string;
   level?: string;
-  priority: SuggestionPriority;
+  difficulty: number;
   p_recall: number;
   half_life_days: number;
   last_reviewed_at: ISODateString | null;
@@ -274,8 +266,6 @@ export interface SuggestedVocabularyItem extends VocabularyDisplayInfo {
     | "last_recall_failure_score"
     | "last_dhp_recall_result"
   >;
-  priority: SuggestionPriority;
-  priorityLabel: string;
   pRecallNow: number;
   pRecallPercent: number;
   dueAt?: ISODateString | null;
@@ -285,7 +275,7 @@ export interface SuggestedVocabularyItem extends VocabularyDisplayInfo {
 }
 
 export interface SuggestionReviewStat {
-  key: "dueToday" | "atRisk" | "overdue";
+  key: "dueToday" | "overdue";
   label: string;
   value: number;
   color: string;

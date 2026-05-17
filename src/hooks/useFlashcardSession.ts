@@ -23,6 +23,57 @@ export interface Attempt {
     logs: Log[];
 }
 
+export interface FlashcardRepeatPolicy {
+    ratio: number;
+    min: number;
+    max: number;
+}
+
+export interface FlashcardMemorySnapshot {
+    difficulty: number;
+    half_life_days: number;
+    last_reviewed_at: string | null;
+    p_recall_now: number;
+}
+
+export interface FlashcardPreviewAction {
+    difficulty?: number;
+    half_life_days?: number;
+    interval_days?: number;
+    repeat_policy_key?: "vague" | "unknown_or_forgot";
+}
+
+export interface FlashcardNewCardPreview {
+    card_type: "NEW";
+    options: {
+        remember: FlashcardPreviewAction;
+        vague: FlashcardPreviewAction;
+        unknown: FlashcardPreviewAction;
+    };
+}
+
+export interface FlashcardReviewCardPreview {
+    card_type: "REVIEW";
+    memory_snapshot: FlashcardMemorySnapshot;
+    options: {
+        remember: FlashcardPreviewAction;
+        vague: FlashcardPreviewAction;
+        forgot: FlashcardPreviewAction;
+    };
+}
+
+export type FlashcardPreviewCard =
+    | FlashcardNewCardPreview
+    | FlashcardReviewCardPreview;
+
+export interface FlashcardPreviewMetadata {
+    repeat_policy: {
+        vague: FlashcardRepeatPolicy;
+        unknown_or_forgot: FlashcardRepeatPolicy;
+    };
+    cards: Record<string, FlashcardPreviewCard>;
+}
+
 interface UseFlashcardSessionProps {
     vocabularies: FlashcardItem[];
     topicId: string;
@@ -50,6 +101,7 @@ export const useFlashcardSession = ({
     const [openStats, setOpenStats] = useState(false);
     const [initialTotal, setInitialTotal] = useState(0);
     const [isFinished, setIsFinished] = useState(false);
+    const [previewMetadata, setPreviewMetadata] = useState<FlashcardPreviewMetadata | null>(null);
     const pendingStartIdempotencyKeyRef = useRef<string | null>(null);
 
     const getPendingStartIdempotencyKey = () => {
@@ -73,6 +125,7 @@ export const useFlashcardSession = ({
                 if (resumeSessionId) {
                     const res = await flashCardProgressService.getSession(resumeSessionId);
                     const progress = res.progress;
+                    setPreviewMetadata(res.preview_metadata ?? null);
 
                     // Map vocabularies theo id
                     const vocabMap = new Map(vocabularies.map((v) => [v._id ?? v.word, v]));
@@ -120,6 +173,7 @@ export const useFlashcardSession = ({
                         idempotencyKey
                     );
                     localStorage.setItem("flashcard_session_id", res.sessionId);
+                    setPreviewMetadata(res.preview_metadata ?? null);
                     pendingStartIdempotencyKeyRef.current = null;
                 }
             } catch (err: any) {
@@ -291,5 +345,6 @@ export const useFlashcardSession = ({
         handleEvaluate,
         initialTotal,
         remaining: queue.length,
+        previewMetadata,
     };
 };

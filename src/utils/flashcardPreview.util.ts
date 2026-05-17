@@ -36,17 +36,25 @@ function buildIntervalPreview(option: FlashcardReviewOptionPreview): string {
     return formatIntervalDays(option.interval_days ?? 0);
 }
 
+function resolveRepeatAfterCards(
+    option: FlashcardReviewOptionPreview,
+    repeatPolicy: FlashcardRepeatPolicy,
+    remainingCards: number
+): number | undefined {
+    if (!option.repeat_policy_key) {
+        return undefined;
+    }
+
+    return calculateRepeatAfterCards(remainingCards, repeatPolicy[option.repeat_policy_key]);
+}
+
 function buildRepeatPreview(
     option: FlashcardReviewOptionPreview,
     repeatPolicy: FlashcardRepeatPolicy,
     remainingCards: number
 ): string {
-    if (!option.repeat_policy_key) {
-        return formatRepeatAfterCards(0);
-    }
-
     return formatRepeatAfterCards(
-        calculateRepeatAfterCards(remainingCards, repeatPolicy[option.repeat_policy_key])
+        resolveRepeatAfterCards(option, repeatPolicy, remainingCards) ?? 0
     );
 }
 
@@ -58,6 +66,17 @@ export function buildCurrentFlashcardPreview(input: {
     const { cardPreview, repeatPolicy, remainingCards } = input;
 
     if (cardPreview.card_type === "NEW") {
+        const vagueRepeatAfterCards = resolveRepeatAfterCards(
+            cardPreview.options.vague,
+            repeatPolicy,
+            remainingCards
+        );
+        const unknownRepeatAfterCards = resolveRepeatAfterCards(
+            cardPreview.options.unknown,
+            repeatPolicy,
+            remainingCards
+        );
+
         return {
             card_type: "NEW",
             options: [
@@ -74,6 +93,7 @@ export function buildCurrentFlashcardPreview(input: {
                         repeatPolicy,
                         remainingCards
                     ),
+                    repeat_after_cards: vagueRepeatAfterCards,
                 },
                 {
                     key: "unknown",
@@ -83,11 +103,22 @@ export function buildCurrentFlashcardPreview(input: {
                         repeatPolicy,
                         remainingCards
                     ),
+                    repeat_after_cards: unknownRepeatAfterCards,
                 },
             ],
         };
     }
 
+    const vagueRepeatAfterCards = resolveRepeatAfterCards(
+        cardPreview.options.vague,
+        repeatPolicy,
+        remainingCards
+    );
+    const forgotRepeatAfterCards = resolveRepeatAfterCards(
+        cardPreview.options.forgot,
+        repeatPolicy,
+        remainingCards
+    );
     const vagueRepeatPreview = buildRepeatPreview(
         cardPreview.options.vague,
         repeatPolicy,
@@ -111,11 +142,13 @@ export function buildCurrentFlashcardPreview(input: {
                 key: "vague",
                 label: "Mơ hồ",
                 preview: `${buildIntervalPreview(cardPreview.options.vague)} · ${vagueRepeatPreview}`,
+                repeat_after_cards: vagueRepeatAfterCards,
             },
             {
                 key: "forgot",
                 label: "Quên",
                 preview: `${buildIntervalPreview(cardPreview.options.forgot)} · ${forgotRepeatPreview}`,
+                repeat_after_cards: forgotRepeatAfterCards,
             },
         ],
     };

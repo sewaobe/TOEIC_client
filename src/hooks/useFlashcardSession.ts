@@ -4,6 +4,7 @@ import { EvalType } from "../components/flashCardItem/EvaluationSection";
 import { FlashcardItem } from "../components/modals/CreateFlashcardItemModal";
 import { flashCardProgressService } from "../services/flashcard_progress.service";
 import {
+    FlashcardCurrentOptionPreview,
     FlashcardCurrentPreview,
     FlashcardPreviewMetadata,
 } from "../types/flashcardPreview";
@@ -27,6 +28,16 @@ export interface Attempt {
     total: number;
     logs: Log[];
 }
+
+const FLASHCARD_OPTION_TO_LEGACY_EVAL_TYPE: Record<
+    FlashcardCurrentOptionPreview["key"],
+    EvalType
+> = {
+    remember: "skip",
+    vague: "medium",
+    unknown: "hard",
+    forgot: "hard",
+};
 
 interface UseFlashcardSessionProps {
     vocabularies: FlashcardItem[];
@@ -140,16 +151,17 @@ export const useFlashcardSession = ({
 
     // 🧩 2. Đánh giá từng từ
     const handleEvaluate = useCallback(
-        (type: EvalType) => {
+        (option: FlashcardCurrentOptionPreview) => {
             if (!current) return;
 
             const endTime = Date.now();
             const duration = endTime - startTime;
+            const legacyEvalType = FLASHCARD_OPTION_TO_LEGACY_EVAL_TYPE[option.key];
 
             const newLog: Log = {
                 vocab_id: current._id ?? current.word,
                 vocab_word: current.word,
-                eval_type: type,
+                eval_type: legacyEvalType,
                 response_time: duration,
                 attempted_at: new Date().toISOString(),
             };
@@ -160,12 +172,8 @@ export const useFlashcardSession = ({
             const newQueue = [...queue];
             newQueue.shift();
 
-            if (type === "easy") newQueue.push(current);
-            else if (type === "medium") {
-                const pos = Math.min(newQueue.length, 5 + Math.floor(Math.random() * 6));
-                newQueue.splice(pos, 0, current);
-            } else if (type === "hard") {
-                const pos = Math.min(newQueue.length, 1 + Math.floor(Math.random() * 3));
+            if (option.key !== "remember") {
+                const pos = Math.min(option.repeat_after_cards ?? 0, newQueue.length);
                 newQueue.splice(pos, 0, current);
             }
             // skip → remove khỏi queue

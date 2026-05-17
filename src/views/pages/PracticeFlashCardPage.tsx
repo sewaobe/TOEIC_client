@@ -74,6 +74,7 @@ export default function PracticeFlashcardPage() {
     initialTotal,
     remaining,
     queue,
+    currentPreview,
   } = useFlashcardSession({
     vocabularies: words,
     topicId,
@@ -247,7 +248,10 @@ export default function PracticeFlashcardPage() {
         <div className="relative">
           <Flashcard word={current} voice={voice} />
           <SpeechOptions voice={voice} setVoice={setVoice} />
-          <EvaluationSection onNext={handleEvaluate} />
+          <EvaluationSection
+            currentPreview={currentPreview}
+            onSelectOption={handleEvaluate}
+          />
         </div>
       );
     }

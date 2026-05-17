@@ -61,6 +61,7 @@ export interface FlashcardCurrentOptionPreview {
     key: "remember" | "vague" | "unknown" | "forgot";
     label: string;
     preview: string;
+    repeat_after_cards?: number;
 }
 
 export interface FlashcardCurrentPreview {

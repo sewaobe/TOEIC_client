@@ -3,6 +3,11 @@ import { toast } from "sonner";
 import { EvalType } from "../components/flashCardItem/EvaluationSection";
 import { FlashcardItem } from "../components/modals/CreateFlashcardItemModal";
 import { flashCardProgressService } from "../services/flashcard_progress.service";
+import {
+    FlashcardCurrentPreview,
+    FlashcardPreviewMetadata,
+} from "../types/flashcardPreview";
+import { buildCurrentFlashcardPreview } from "../utils/flashcardPreview.util";
 // import { lessonFlashcardService } from "../services/lesson_flashcard.service"; // (future)
 
 export interface Log {
@@ -21,57 +26,6 @@ export interface Attempt {
     avg_time: number;
     total: number;
     logs: Log[];
-}
-
-export interface FlashcardRepeatPolicy {
-    ratio: number;
-    min: number;
-    max: number;
-}
-
-export interface FlashcardMemorySnapshot {
-    difficulty: number;
-    half_life_days: number;
-    last_reviewed_at: string | null;
-    p_recall_now: number;
-}
-
-export interface FlashcardPreviewAction {
-    difficulty?: number;
-    half_life_days?: number;
-    interval_days?: number;
-    repeat_policy_key?: "vague" | "unknown_or_forgot";
-}
-
-export interface FlashcardNewCardPreview {
-    card_type: "NEW";
-    options: {
-        remember: FlashcardPreviewAction;
-        vague: FlashcardPreviewAction;
-        unknown: FlashcardPreviewAction;
-    };
-}
-
-export interface FlashcardReviewCardPreview {
-    card_type: "REVIEW";
-    memory_snapshot: FlashcardMemorySnapshot;
-    options: {
-        remember: FlashcardPreviewAction;
-        vague: FlashcardPreviewAction;
-        forgot: FlashcardPreviewAction;
-    };
-}
-
-export type FlashcardPreviewCard =
-    | FlashcardNewCardPreview
-    | FlashcardReviewCardPreview;
-
-export interface FlashcardPreviewMetadata {
-    repeat_policy: {
-        vague: FlashcardRepeatPolicy;
-        unknown_or_forgot: FlashcardRepeatPolicy;
-    };
-    cards: Record<string, FlashcardPreviewCard>;
 }
 
 interface UseFlashcardSessionProps {
@@ -254,6 +208,23 @@ export const useFlashcardSession = ({
         };
     }, [logs, sessionStartedAt]);
 
+    const currentPreview: FlashcardCurrentPreview | null = useMemo(() => {
+        if (!current?._id || !previewMetadata) {
+            return null;
+        }
+
+        const cardPreview = previewMetadata.cards[current._id];
+        if (!cardPreview) {
+            return null;
+        }
+
+        return buildCurrentFlashcardPreview({
+            cardPreview,
+            repeatPolicy: previewMetadata.repeat_policy,
+            remainingCards: queue.length,
+        });
+    }, [current, previewMetadata, queue.length]);
+
     // 🧩 4. Autosave định kỳ
     useEffect(() => {
         const sessionId = localStorage.getItem("flashcard_session_id");
@@ -346,5 +317,6 @@ export const useFlashcardSession = ({
         initialTotal,
         remaining: queue.length,
         previewMetadata,
+        currentPreview,
     };
 };

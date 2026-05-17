@@ -6,11 +6,21 @@ const BASE_URL = "/flashcard-progress";
 
 export const flashCardProgressService = {
   // 🔹 1. Tạo session mới
-  startSession: async (topicId: string, orderQueue: string[]) => {
-    const res = await axiosClient.post(`${BASE_URL}/start`, {
-      topic_vocabulary_id: topicId,
-      order_queue: orderQueue,
-    });
+  startSession: async (
+    topicId: string,
+    orderQueue: string[],
+    idempotencyKey: string,
+  ) => {
+    const res = await axiosClient.post(
+      `${BASE_URL}/start`,
+      {
+        topic_vocabulary_id: topicId,
+        order_queue: orderQueue,
+      },
+      {
+        headers: { "Idempotency-Key": idempotencyKey },
+      },
+    );
     return res.data; // { session_id, progress }
   },
 

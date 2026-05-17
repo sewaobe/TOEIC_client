@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { EvalType } from "../components/flashCardItem/EvaluationSection";
 import { FlashcardItem } from "../components/modals/CreateFlashcardItemModal";
@@ -50,6 +50,18 @@ export const useFlashcardSession = ({
     const [openStats, setOpenStats] = useState(false);
     const [initialTotal, setInitialTotal] = useState(0);
     const [isFinished, setIsFinished] = useState(false);
+    const pendingStartIdempotencyKeyRef = useRef<string | null>(null);
+
+    const getPendingStartIdempotencyKey = () => {
+        if (!pendingStartIdempotencyKeyRef.current) {
+            pendingStartIdempotencyKeyRef.current =
+                typeof crypto !== "undefined" && "randomUUID" in crypto
+                    ? crypto.randomUUID()
+                    : `flashcard-start-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        }
+
+        return pendingStartIdempotencyKeyRef.current;
+    };
 
     // 🧩 1. Khởi tạo hoặc khôi phục session
     useEffect(() => {
@@ -101,8 +113,14 @@ export const useFlashcardSession = ({
 
                     const orderIds = sorted.map((v) => v._id ?? v.word);
 
-                    const res = await flashCardProgressService.startSession(topicId, orderIds);
+                    const idempotencyKey = getPendingStartIdempotencyKey();
+                    const res = await flashCardProgressService.startSession(
+                        topicId,
+                        orderIds,
+                        idempotencyKey
+                    );
                     localStorage.setItem("flashcard_session_id", res.sessionId);
+                    pendingStartIdempotencyKeyRef.current = null;
                 }
             } catch (err: any) {
                 toast.error("❌ Lỗi khởi tạo phiên học: " + err.message);

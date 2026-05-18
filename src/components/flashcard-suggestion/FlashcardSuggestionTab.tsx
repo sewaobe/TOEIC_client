@@ -7,9 +7,8 @@ import SuggestedVocabularySection from "./SuggestedVocabularySection";
 import { TodayReviewSummary } from "../../types/UserVocabularyProgressV2";
 import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
 
-const reviewStats: Array<{ key: keyof Pick<TodayReviewSummary, "dueToday" | "atRisk" | "overdue">; label: string; color: string }> = [
+const reviewStats: Array<{ key: keyof Pick<TodayReviewSummary, "dueToday" | "overdue">; label: string; color: string }> = [
   { key: "dueToday", label: "Đến hạn hôm nay", color: "#2563eb" },
-  { key: "atRisk", label: "Sắp quên", color: "#f59e0b" },
   { key: "overdue", label: "Quá hạn", color: "#ef4444" },
 ];
 
@@ -138,7 +137,7 @@ const FlashcardSuggestionTab: React.FC = () => {
                 Ôn tập hôm nay
               </Typography>
               <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                Ưu tiên các từ đến hạn, sắp quên và quá hạn theo lịch ghi nhớ của bạn.
+                Ưu tiên các từ đến hạn và quá hạn theo lịch ghi nhớ của bạn.
               </Typography>
             </Box>
           </Stack>
@@ -199,7 +198,7 @@ const FlashcardSuggestionTab: React.FC = () => {
                 <Box
                   sx={{
                     display: "grid",
-                    gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" },
+                    gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                     gap: 1.2,
                     minWidth: 0,
                   }}
@@ -233,7 +232,7 @@ const FlashcardSuggestionTab: React.FC = () => {
                   startIcon={<PlayArrow />}
                   sx={{ borderRadius: 2, fontWeight: 800, px: { xs: 2, sm: 3 }, whiteSpace: "nowrap", flexShrink: 0 }}
                 >
-                  Ôn hôm nay và sắp quên ({summary?.primaryReviewCount ?? 0} từ)
+                  Ôn hôm nay ({summary?.primaryReviewCount ?? 0} từ)
                 </Button>
                 <Button
                   variant="outlined"

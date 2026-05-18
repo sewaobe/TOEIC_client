@@ -9,17 +9,15 @@ const now = Date.now();
 const dayMs = 24 * 60 * 60 * 1000;
 
 export const todayReviewSummary = {
-  total: 28,
+  total: 19,
   dueToday: 12,
-  atRisk: 9,
   overdue: 7,
-  primaryReviewCount: 21,
+  primaryReviewCount: 12,
   overdueReviewCount: 7,
 };
 
 export const reviewStats: SuggestionReviewStat[] = [
   { key: "dueToday", label: "Đến hạn hôm nay", value: todayReviewSummary.dueToday, color: "#2563eb" },
-  { key: "atRisk", label: "Sắp quên", value: todayReviewSummary.atRisk, color: "#f59e0b" },
   { key: "overdue", label: "Quá hạn", value: todayReviewSummary.overdue, color: "#ef4444" },
 ];
 
@@ -35,8 +33,7 @@ export const schedulePoints: SuggestionSchedulePoint[] = [
 
 export const memoryStatuses: SuggestionMemoryStatus[] = [
   { bucket: "mastered", label: "Đã nắm vững", value: 236, percent: 48, color: "#10b981" },
-  { bucket: "active_reviewing", label: "Đang ôn", value: 206, percent: 42, color: "#2563eb" },
-  { bucket: "at_risk", label: "Sắp quên", value: 38, percent: 8, color: "#f59e0b" },
+  { bucket: "active_reviewing", label: "Đang ôn", value: 244, percent: 50, color: "#2563eb" },
   { bucket: "overdue", label: "Quá hạn", value: 20, percent: 2, color: "#ef4444" },
 ];
 
@@ -49,8 +46,6 @@ export const suggestedVocabularies: SuggestedVocabularyItem[] = [
     topic: "Business",
     topicColor: "#dbeafe",
     level: "B2",
-    priority: "high",
-    priorityLabel: "Cao",
     pRecallNow: 0.15,
     pRecallPercent: 15,
     dueAt: new Date(now).toISOString(),
@@ -82,14 +77,12 @@ export const suggestedVocabularies: SuggestedVocabularyItem[] = [
     topic: "Business",
     topicColor: "#dbeafe",
     level: "B2",
-    priority: "medium",
-    priorityLabel: "Trung bình",
     pRecallNow: 0.32,
     pRecallPercent: 32,
     dueAt: new Date(now + dayMs).toISOString(),
     dueLabel: "Ngày mai",
     dueTone: "warning",
-    memoryBucket: "at_risk",
+    memoryBucket: "active_reviewing",
     memory: {
       difficulty: 10,
       half_life_days: 3.8,
@@ -115,14 +108,12 @@ export const suggestedVocabularies: SuggestedVocabularyItem[] = [
     topic: "Culture",
     topicColor: "#dcfce7",
     level: "B2",
-    priority: "medium",
-    priorityLabel: "Trung bình",
     pRecallNow: 0.45,
     pRecallPercent: 45,
     dueAt: new Date(now + dayMs * 2).toISOString(),
     dueLabel: "2 ngày tới",
     dueTone: "warning",
-    memoryBucket: "at_risk",
+    memoryBucket: "active_reviewing",
     memory: {
       difficulty: 9,
       half_life_days: 5,
@@ -140,14 +131,12 @@ export const suggestedVocabularies: SuggestedVocabularyItem[] = [
     topic: "Work",
     topicColor: "#dcfce7",
     level: "B1",
-    priority: "high",
-    priorityLabel: "Cao",
     pRecallNow: 0.18,
     pRecallPercent: 18,
     dueAt: new Date(now + dayMs * 3).toISOString(),
     dueLabel: "3 ngày tới",
     dueTone: "danger",
-    memoryBucket: "at_risk",
+    memoryBucket: "active_reviewing",
     memory: {
       difficulty: 12,
       half_life_days: 1.8,
@@ -165,8 +154,6 @@ export const suggestedVocabularies: SuggestedVocabularyItem[] = [
     topic: "Economics",
     topicColor: "#ede9fe",
     level: "B1",
-    priority: "low",
-    priorityLabel: "Thấp",
     pRecallNow: 0.72,
     pRecallPercent: 72,
     dueAt: new Date(now + dayMs * 5).toISOString(),
@@ -190,8 +177,6 @@ export const suggestedVocabularies: SuggestedVocabularyItem[] = [
     topic: "Business",
     topicColor: "#dbeafe",
     level: "B2",
-    priority: "low",
-    priorityLabel: "Thấp",
     pRecallNow: 0.85,
     pRecallPercent: 85,
     dueAt: new Date(now + dayMs * 7).toISOString(),
@@ -215,8 +200,6 @@ export const suggestedVocabularies: SuggestedVocabularyItem[] = [
     topic: "Business",
     topicColor: "#dbeafe",
     level: "B2",
-    priority: "medium",
-    priorityLabel: "Trung bình",
     pRecallNow: 0.55,
     pRecallPercent: 55,
     dueAt: new Date(now + dayMs * 10).toISOString(),

@@ -1,37 +1,83 @@
 import { LearningFlashcard } from "../components/flashCard/LearningFlashcard";
-import { Log } from "../hooks/useFlashcardSession";
+import type { Log } from "../hooks/useFlashcardSession";
 import axiosClient from "./axiosClient";
+import type { FlashcardFeedbackAction } from "../types/flashcardFeedback";
+import type {
+  FlashcardCardPreview,
+  FlashcardPreviewMetadata,
+} from "../types/flashcardPreview";
 
 const BASE_URL = "/flashcard-progress";
 
+export interface FlashcardAnswerRequest {
+  vocabulary_id: string;
+  action: FlashcardFeedbackAction;
+  response_time: number;
+  attempted_at: string;
+}
+
+export interface FlashcardProgressResponse {
+  session_id: string;
+  order_queue: string[];
+  current_index?: number;
+  logs?: Log[];
+}
+
+export interface FlashcardAnswerResponse {
+  progress: FlashcardProgressResponse;
+  preview_metadata_patch?: {
+    cards?: Record<string, FlashcardCardPreview>;
+  } | null;
+}
+
+export interface FlashcardSessionStartResponse {
+  sessionId: string;
+  session?: FlashcardProgressResponse;
+  preview_metadata?: FlashcardPreviewMetadata;
+}
+
+export interface FlashcardSessionResumeResponse {
+  progress: FlashcardProgressResponse;
+  preview_metadata?: FlashcardPreviewMetadata;
+}
+
 export const flashCardProgressService = {
   // 🔹 1. Tạo session mới
-  startSession: async (topicId: string, orderQueue: string[]) => {
-    const res = await axiosClient.post(`${BASE_URL}/start`, {
-      topic_vocabulary_id: topicId,
-      order_queue: orderQueue,
-    });
+  startSession: async (
+    topicId: string,
+    orderQueue: string[],
+    idempotencyKey: string,
+  ): Promise<FlashcardSessionStartResponse> => {
+    const res = await axiosClient.post(
+      `${BASE_URL}/start`,
+      {
+        topic_vocabulary_id: topicId,
+        order_queue: orderQueue,
+      },
+      {
+        headers: { "Idempotency-Key": idempotencyKey },
+      },
+    );
     return res.data; // { session_id, progress }
   },
 
-  // 🔹 2. Cập nhật snapshot
-  updateSession: async (
+  answerSession: async (
     sessionId: string,
-    orderQueue: string[],
-    currentIndex: number,
-    logsDelta: Log[],
-  ) => {
-    const res = await axiosClient.patch(`${BASE_URL}/update`, {
-      session_id: sessionId,
-      order_queue: orderQueue,
-      current_index: currentIndex,
-      logs_delta: logsDelta,
-    });
-    return res.data; // { message, progress }
+    body: FlashcardAnswerRequest,
+    idempotencyKey: string,
+  ): Promise<FlashcardAnswerResponse> => {
+    const res = await axiosClient.post(
+      `${BASE_URL}/${sessionId}/answer`,
+      body,
+      {
+        headers: { "Idempotency-Key": idempotencyKey },
+      },
+    );
+    return res.data;
   },
 
   // 🔹 3. Lấy lại session (resume)
-  getSession: async (sessionId: string) => {
+  getSession: async (sessionId: string): Promise<FlashcardSessionResumeResponse> => {
     const res = await axiosClient.get(`${BASE_URL}/${sessionId}`);
     return res.data; // progress object
   },
@@ -66,7 +112,6 @@ export const flashCardProgressService = {
     accuracy: number,
     avgTime: number,
     total: number,
-    logs: Log[],
     startedAt: string,
     finishedAt: string,
   ) => {
@@ -75,7 +120,6 @@ export const flashCardProgressService = {
       accuracy,
       avg_time: avgTime,
       total,
-      logs,
       started_at: startedAt,
       finished_at: finishedAt,
     });

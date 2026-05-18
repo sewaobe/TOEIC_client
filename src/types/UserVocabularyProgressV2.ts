@@ -3,16 +3,11 @@ export type VocabularyMemoryStatus = "learning" | "reviewing" | "mastered";
 export type MemoryUiBucket =
   | "mastered"
   | "active_reviewing"
-  | "at_risk"
   | "overdue";
 
 export type SuggestionBucket = "all" | "due_today" | MemoryUiBucket;
 
-export type SuggestionPriority = "high" | "medium" | "low";
-
 export type DhpRecallResult = "remembered" | "forgot";
-
-export type FlashcardEvalType = "easy" | "medium" | "hard" | "skip";
 
 export type UserVocabularyMemoryId = string;
 
@@ -46,10 +41,10 @@ export interface UserVocabularyMemoryV2 {
   last_p_recall?: number;
   last_interval_days?: number;
   last_seen_count?: number;
-  last_hard_count?: number;
-  last_medium_count?: number;
-  last_easy_count?: number;
-  last_skip_count?: number;
+  last_remember_count?: number;
+  last_vague_count?: number;
+  last_unknown_count?: number;
+  last_forgot_count?: number;
   last_learning_effort?: number;
   last_response_time_avg?: number;
   last_recall_failure_score?: number;
@@ -57,63 +52,6 @@ export interface UserVocabularyMemoryV2 {
 
   created_at: ISODateString;
   updated_at: ISODateString;
-}
-
-export interface FlashcardSessionLogV2 {
-  vocab_id: VocabularyId;
-  vocab_word?: string;
-  eval_type: FlashcardEvalType;
-  response_time: number;
-  attempted_at: ISODateString;
-}
-
-export interface VocabularySessionSummaryV2 {
-  vocabularyId: VocabularyId;
-
-  seenCount: number;
-  hardCount: number;
-  mediumCount: number;
-  easyCount: number;
-  skipCount: number;
-
-  firstAttemptedAt: ISODateString;
-  lastAttemptedAt: ISODateString;
-
-  totalResponseTimeMs: number;
-  avgResponseTimeMs: number;
-
-  learningEffort: number;
-  initialDifficulty: number;
-
-  recallFailureScore: number;
-  dhpRecallResult: DhpRecallResult;
-}
-
-export interface VocabularyMemoryV2UpdateResult {
-  vocabularyId: VocabularyId;
-  isNewMemory: boolean;
-
-  previousDifficulty?: number;
-  previousHalfLifeDays?: number;
-
-  observedDifficulty: number;
-  nextDifficulty: number;
-
-  previousPRecall?: number;
-  nextHalfLifeDays: number;
-
-  nextIntervalDays: number;
-  dueAt: ISODateString;
-  status: VocabularyMemoryStatus;
-
-  seenCount: number;
-  hardCount: number;
-  mediumCount: number;
-  easyCount: number;
-  skipCount: number;
-  learningEffort: number;
-  recallFailureScore: number;
-  dhpRecallResult: DhpRecallResult;
 }
 
 export interface SspMmcPolicyEntry {
@@ -132,7 +70,6 @@ export interface SspMmcPolicy {
 export interface TodayReviewSummary {
   total: number;
   dueToday: number;
-  atRisk: number;
   overdue: number;
   primaryReviewCount: number;
   overdueReviewCount: number;
@@ -160,8 +97,6 @@ export interface SuggestedVocabularyApiItem {
   type?: string;
   topic?: string;
   level?: string;
-  priority: SuggestionPriority;
-  priorityLabel: string;
   pRecallNow: number;
   dueAt: ISODateString | null;
   dueLabel: string;
@@ -184,7 +119,6 @@ export interface SuggestedVocabularyCounters {
   all: number;
   dueToday: number;
   activeReviewing: number;
-  atRisk: number;
   overdue: number;
   mastered: number;
 }
@@ -203,7 +137,6 @@ export interface SuggestionFilterOption {
 export interface SuggestionFilterOptions {
   topics: SuggestionFilterOption[];
   levels: SuggestionFilterOption[];
-  priorities: Array<SuggestionFilterOption & { value: SuggestionPriority }>;
 }
 
 export type SuggestionReasonCode =
@@ -211,7 +144,7 @@ export type SuggestionReasonCode =
   | "DUE_TODAY"
   | "UPCOMING_DUE"
   | "LOW_RECALL_PROBABILITY"
-  | "LAST_SESSION_HARD"
+  | "LAST_SESSION_RECALL_FAILURE"
   | "LAST_DHP_FORGOT"
   | "HIGH_DIFFICULTY"
   | "REPEATED_IN_LAST_SESSION"
@@ -229,9 +162,13 @@ export interface SuggestionDetail {
   word: string;
   phonetic?: string;
   meaning?: string;
+  examples?: {
+    en: string,
+    vi: string
+  }[];
   topic_title?: string;
   level?: string;
-  priority: SuggestionPriority;
+  difficulty: number;
   p_recall: number;
   half_life_days: number;
   last_reviewed_at: ISODateString | null;
@@ -262,16 +199,14 @@ export interface SuggestedVocabularyItem extends VocabularyDisplayInfo {
     | "last_p_recall"
     | "last_interval_days"
     | "last_seen_count"
-    | "last_hard_count"
-    | "last_medium_count"
-    | "last_easy_count"
-    | "last_skip_count"
+    | "last_remember_count"
+    | "last_vague_count"
+    | "last_unknown_count"
+    | "last_forgot_count"
     | "last_learning_effort"
     | "last_recall_failure_score"
     | "last_dhp_recall_result"
   >;
-  priority: SuggestionPriority;
-  priorityLabel: string;
   pRecallNow: number;
   pRecallPercent: number;
   dueAt?: ISODateString | null;
@@ -281,7 +216,7 @@ export interface SuggestedVocabularyItem extends VocabularyDisplayInfo {
 }
 
 export interface SuggestionReviewStat {
-  key: "dueToday" | "atRisk" | "overdue";
+  key: "dueToday" | "overdue";
   label: string;
   value: number;
   color: string;

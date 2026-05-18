@@ -128,7 +128,6 @@ export const flashCardProgressService = {
     accuracy: number,
     avgTime: number,
     total: number,
-    logs: Log[],
     startedAt: string,
     finishedAt: string,
   ) => {
@@ -137,7 +136,6 @@ export const flashCardProgressService = {
       accuracy,
       avg_time: avgTime,
       total,
-      logs,
       started_at: startedAt,
       finished_at: finishedAt,
     });

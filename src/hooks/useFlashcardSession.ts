@@ -294,15 +294,7 @@ export const useFlashcardSession = ({
                     idempotencyKey
                 );
 
-                const newLog: Log = {
-                    vocab_id: vocabularyId,
-                    vocab_word: current.word,
-                    action: option.key,
-                    response_time: answerPayload.response_time,
-                    attempted_at: answerPayload.attempted_at,
-                };
-
-                setLogs((prev) => [...prev, newLog]);
+                setLogs((res.progress.logs ?? []) as Log[]);
                 mergePreviewMetadataPatch(res);
                 applyProgressQueue(res.progress);
                 setStartTime(Date.now());
@@ -388,7 +380,6 @@ export const useFlashcardSession = ({
                     currentAttempt.accuracy,
                     currentAttempt.avg_time,
                     currentAttempt.total,
-                    currentAttempt.logs,
                     currentAttempt.started_at,
                     currentAttempt.finished_at
                 ),

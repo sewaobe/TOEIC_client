@@ -2,9 +2,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Flashcard from "../../flashCardItem/FlashCard";
 import SpeechOptions from "../../flashCardItem/SpeechOptions";
-import EvaluationSection, {
-  EvalType,
-} from "../../flashCardItem/EvaluationSection";
+import EvaluationSection from "../../flashCardItem/EvaluationSection";
 import { StatisticsModal, Log } from "../../flashCardItem/StatisticsModal";
 import { toast } from "sonner";
 import { FlashcardHistoryModal } from "../../flashCardItem/FlashCardHistory";
@@ -12,6 +10,7 @@ import F5Modal from "../../modals/F5Modal";
 import { useNavigate } from "react-router-dom";
 import { FlashcardItem } from "../../modals/CreateFlashcardItemModal";
 import { learningPathActivityService } from "../../../services/learningPathActivity.service";
+import { LegacyFlashcardEvalType } from "../../../types/flashcardFeedback";
 
 export interface Word extends FlashcardItem {
   weight?: number; // dùng để sắp xếp ưu tiên học
@@ -160,7 +159,7 @@ export const LessonFlashcard: FC<LessonFlashcardProps> = ({
   }, [current, voice]);
 
   // Xử lý đánh giá
-  const handleEvaluate = (type: EvalType) => {
+  const handleEvaluate = (type: LegacyFlashcardEvalType) => {
     if (!current) return;
     const endTime = Date.now();
     const duration = endTime - startTime;
@@ -210,7 +209,7 @@ export const LessonFlashcard: FC<LessonFlashcardProps> = ({
               <SpeechOptions voice={voice} setVoice={setVoice} />
             </div>
             <EvaluationSection
-              onNext={(type: EvalType) => handleEvaluate(type)}
+              onNext={(type: LegacyFlashcardEvalType) => handleEvaluate(type)}
             />
           </motion.div>
         </AnimatePresence>

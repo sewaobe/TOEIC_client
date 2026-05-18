@@ -17,9 +17,7 @@ import {
 import MainLayout from "../layouts/MainLayout";
 import Flashcard from "../../components/flashCardItem/FlashCard";
 import SpeechOptions from "../../components/flashCardItem/SpeechOptions";
-import EvaluationSection, {
-  EvalType,
-} from "../../components/flashCardItem/EvaluationSection";
+import EvaluationSection from "../../components/flashCardItem/EvaluationSection";
 import { StatisticsModal } from "../../components/flashCardItem/StatisticsModal";
 import { toast } from "sonner";
 import PracticeCompletionCard from "../../components/flashCard/PracticeCompletionCard";
@@ -28,6 +26,7 @@ import hlrService, {
   HLRStats,
   ReviewQueueItem,
 } from "../../services/hlr.service";
+import { LegacyFlashcardEvalType } from "../../types/flashcardFeedback";
 
 /**
  * SmartReviewPage - Trang ôn tập thông minh sử dụng HLR
@@ -41,7 +40,7 @@ import hlrService, {
 interface ReviewLog {
   vocab_id: string;
   vocab_word: string;
-  eval_type: EvalType;
+  eval_type: LegacyFlashcardEvalType;
   response_time: number;
   attempted_at: string;
 }
@@ -119,13 +118,13 @@ export default function SmartReviewPage() {
   }, [current, voice]);
 
   // Map eval_type to is_correct
-  const mapEvalToCorrect = (evalType: EvalType): boolean => {
+  const mapEvalToCorrect = (evalType: LegacyFlashcardEvalType): boolean => {
     return evalType === "skip" || evalType === "easy";
   };
 
   // Handle evaluation
   const handleEvaluate = useCallback(
-    (type: EvalType) => {
+    (type: LegacyFlashcardEvalType) => {
       if (!current || !current.vocabulary) return;
 
       const vocabularyId =

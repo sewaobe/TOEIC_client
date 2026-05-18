@@ -1,3 +1,5 @@
+import { LegacyFlashcardEvalType } from "./flashcardFeedback";
+
 export type VocabularyMemoryStatus = "learning" | "reviewing" | "mastered";
 
 export type MemoryUiBucket =
@@ -9,7 +11,7 @@ export type SuggestionBucket = "all" | "due_today" | MemoryUiBucket;
 
 export type DhpRecallResult = "remembered" | "forgot";
 
-export type FlashcardEvalType = "easy" | "medium" | "hard" | "skip";
+export type FlashcardEvalType = LegacyFlashcardEvalType;
 
 export type UserVocabularyMemoryId = string;
 

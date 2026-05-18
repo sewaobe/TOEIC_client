@@ -17,12 +17,13 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { BarChart } from "@mui/x-charts/BarChart";
+import { LegacyFlashcardEvalType } from "../../types/flashcardFeedback";
 
 // Log type từ LessonFlashcard
 export interface Log {
     vocab_id: string;
     vocab_word: string;
-    eval_type: "easy" | "medium" | "hard" | "skip";
+    eval_type: LegacyFlashcardEvalType;
     response_time: number;
     attempted_at: string;
 }

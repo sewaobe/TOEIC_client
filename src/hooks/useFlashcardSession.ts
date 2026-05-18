@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { EvalType } from "../components/flashCardItem/EvaluationSection";
 import { FlashcardItem } from "../components/modals/CreateFlashcardItemModal";
 import { flashCardProgressService } from "../services/flashcard_progress.service";
+import {
+    FlashcardFeedbackAction,
+    LegacyFlashcardEvalType,
+} from "../types/flashcardFeedback";
 import {
     FlashcardCurrentOptionPreview,
     FlashcardCurrentPreview,
@@ -14,7 +17,7 @@ import { buildCurrentFlashcardPreview } from "../utils/flashcardPreview.util";
 export interface Log {
     vocab_id: string;
     vocab_word: string;
-    eval_type: EvalType;
+    eval_type: LegacyFlashcardEvalType;
     response_time: number;
     attempted_at: string;
 }
@@ -30,8 +33,8 @@ export interface Attempt {
 }
 
 const FLASHCARD_OPTION_TO_LEGACY_EVAL_TYPE: Record<
-    FlashcardCurrentOptionPreview["key"],
-    EvalType
+    FlashcardFeedbackAction,
+    LegacyFlashcardEvalType
 > = {
     remember: "skip",
     vague: "medium",

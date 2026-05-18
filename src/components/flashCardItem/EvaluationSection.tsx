@@ -9,11 +9,10 @@ import {
   FlashcardCurrentOptionPreview,
   FlashcardCurrentPreview,
 } from "../../types/flashcardPreview";
-
-export type EvalType = "easy" | "medium" | "hard" | "skip";
+import { LegacyFlashcardEvalType } from "../../types/flashcardFeedback";
 
 interface LegacyEvaluationSectionProps {
-  onNext: (type: EvalType) => void;
+  onNext: (type: LegacyFlashcardEvalType) => void;
   currentPreview?: never;
   onSelectOption?: never;
 }

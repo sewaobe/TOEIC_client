@@ -7,7 +7,6 @@ import FlashcardsHeader, {
   FlashcardPageTab,
 } from "../../components/flashCard/FlashCardHeader";
 import { VideoModal } from "../../components/modals/VideoModal";
-import SmartReviewBanner from "../../components/flashCard/SmartReviewBanner";
 import FlashcardSuggestionTab from "../../components/flashcard-suggestion/FlashcardSuggestionTab";
 // src/mock/flashcardMock.ts
 export interface FlashcardList {
@@ -40,9 +39,6 @@ const FlashcardsPage: React.FC = () => {
         <Box sx={{ maxWidth: "1200px", mx: "auto" }}>
           {/* Header */}
           <FlashcardsHeader activeTab={activeTab} onChangeTab={setActiveTab} />
-
-          {/* Smart Review Banner */}
-          {activeTab !== "suggestion" && <SmartReviewBanner />}
 
           {/* Content */}
           <Box

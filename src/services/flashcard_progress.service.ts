@@ -76,22 +76,6 @@ export const flashCardProgressService = {
     return res.data;
   },
 
-  // 🔹 2. Cập nhật snapshot
-  updateSession: async (
-    sessionId: string,
-    orderQueue: string[],
-    currentIndex: number,
-    logsDelta: Log[],
-  ) => {
-    const res = await axiosClient.patch(`${BASE_URL}/update`, {
-      session_id: sessionId,
-      order_queue: orderQueue,
-      current_index: currentIndex,
-      logs_delta: logsDelta,
-    });
-    return res.data; // { message, progress }
-  },
-
   // 🔹 3. Lấy lại session (resume)
   getSession: async (sessionId: string): Promise<FlashcardSessionResumeResponse> => {
     const res = await axiosClient.get(`${BASE_URL}/${sessionId}`);

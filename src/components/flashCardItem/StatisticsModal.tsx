@@ -17,13 +17,17 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { BarChart } from "@mui/x-charts/BarChart";
-import { LegacyFlashcardEvalType } from "../../types/flashcardFeedback";
+import {
+    FlashcardFeedbackAction,
+    LegacyFlashcardEvalType,
+} from "../../types/flashcardFeedback";
 
 // Log type từ LessonFlashcard
 export interface Log {
     vocab_id: string;
     vocab_word: string;
-    eval_type: LegacyFlashcardEvalType;
+    action?: FlashcardFeedbackAction;
+    eval_type?: LegacyFlashcardEvalType;
     response_time: number;
     attempted_at: string;
 }
@@ -49,6 +53,28 @@ const style = {
     p: 3,
 };
 
+const SEMANTIC_ACTION_LABELS: Record<FlashcardFeedbackAction, string> = {
+    remember: "Đã nhớ",
+    vague: "Mơ hồ",
+    unknown: "Chưa biết",
+    forgot: "Quên",
+};
+
+const legacyEvalToAction: Record<LegacyFlashcardEvalType, FlashcardFeedbackAction> = {
+    easy: "remember",
+    medium: "vague",
+    hard: "forgot",
+    skip: "remember",
+};
+
+const resolveLogAction = (log: Log): FlashcardFeedbackAction => {
+    if (log.action) {
+        return log.action;
+    }
+
+    return legacyEvalToAction[log.eval_type ?? "hard"];
+};
+
 export const StatisticsModal: FC<StatisticsModalProps> = ({
     open,
     onClose,
@@ -67,17 +93,18 @@ export const StatisticsModal: FC<StatisticsModalProps> = ({
     }, [logs]);
 
     const summary = useMemo(() => {
-        let easy = 0,
-            medium = 0,
-            hard = 0,
-            skip = 0,
+        let remember = 0,
+            vague = 0,
+            unknown = 0,
+            forgot = 0,
             total = logs.length,
             durations: number[] = [];
         logs.forEach((l) => {
-            if (l.eval_type === "easy") easy++;
-            if (l.eval_type === "medium") medium++;
-            if (l.eval_type === "hard") hard++;
-            if (l.eval_type === "skip") skip++;
+            const action = resolveLogAction(l);
+            if (action === "remember") remember++;
+            if (action === "vague") vague++;
+            if (action === "unknown") unknown++;
+            if (action === "forgot") forgot++;
             durations.push(l.response_time);
         });
         const avgTime = durations.length
@@ -85,12 +112,10 @@ export const StatisticsModal: FC<StatisticsModalProps> = ({
             : 0;
         const accuracy =
             total > 0
-                ? Math.round(
-                    ((skip * 1 + easy * 0.9 + medium * 0.6 + hard * 0.3) / total) * 100
-                )
+                ? Math.round((remember / total) * 100)
                 : 0;
 
-        return { easy, medium, hard, skip, total, avgTime, accuracy };
+        return { remember, vague, unknown, forgot, total, avgTime, accuracy };
     }, [logs]);
 
     return (
@@ -120,10 +145,10 @@ export const StatisticsModal: FC<StatisticsModalProps> = ({
                             series={[
                                 {
                                     data: [
-                                        summary.easy,
-                                        summary.medium,
-                                        summary.hard,
-                                        summary.skip,
+                                        summary.remember,
+                                        summary.vague,
+                                        summary.unknown,
+                                        summary.forgot,
                                     ],
                                     label: "Số lần",
                                     color: "#1976d2",
@@ -132,7 +157,12 @@ export const StatisticsModal: FC<StatisticsModalProps> = ({
                             xAxis={[{ label: "Số lượt" }]}
                             yAxis={[
                                 {
-                                    data: ["Easy", "Medium", "Hard", "Skip"],
+                                    data: [
+                                        SEMANTIC_ACTION_LABELS.remember,
+                                        SEMANTIC_ACTION_LABELS.vague,
+                                        SEMANTIC_ACTION_LABELS.unknown,
+                                        SEMANTIC_ACTION_LABELS.forgot,
+                                    ],
                                     scaleType: "band",
                                 },
                             ]}
@@ -229,21 +259,21 @@ export const StatisticsModal: FC<StatisticsModalProps> = ({
                             <TableHead>
                                 <TableRow>
                                     <TableCell>Từ</TableCell>
-                                    <TableCell align="center">Easy</TableCell>
-                                    <TableCell align="center">Medium</TableCell>
-                                    <TableCell align="center">Hard</TableCell>
-                                    <TableCell align="center">Skip</TableCell>
+                                    <TableCell align="center">{SEMANTIC_ACTION_LABELS.remember}</TableCell>
+                                    <TableCell align="center">{SEMANTIC_ACTION_LABELS.vague}</TableCell>
+                                    <TableCell align="center">{SEMANTIC_ACTION_LABELS.unknown}</TableCell>
+                                    <TableCell align="center">{SEMANTIC_ACTION_LABELS.forgot}</TableCell>
                                     <TableCell align="center">Lượt</TableCell>
                                     <TableCell align="center">⏱️ TB (s)</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {Object.entries(grouped).map(([id, { word, logs: arr }]) => {
-                                    const easy = arr.filter((l) => l.eval_type === "easy").length;
-                                    const medium = arr.filter((l) => l.eval_type === "medium")
+                                    const remember = arr.filter((l) => resolveLogAction(l) === "remember").length;
+                                    const vague = arr.filter((l) => resolveLogAction(l) === "vague")
                                         .length;
-                                    const hard = arr.filter((l) => l.eval_type === "hard").length;
-                                    const skip = arr.filter((l) => l.eval_type === "skip").length;
+                                    const unknown = arr.filter((l) => resolveLogAction(l) === "unknown").length;
+                                    const forgot = arr.filter((l) => resolveLogAction(l) === "forgot").length;
                                     const avgTime = arr.length
                                         ? Math.round(
                                             arr.reduce((a, b) => a + b.response_time, 0) /
@@ -254,10 +284,10 @@ export const StatisticsModal: FC<StatisticsModalProps> = ({
                                     return (
                                         <TableRow key={id}>
                                             <TableCell>{word}</TableCell>
-                                            <TableCell align="center">{easy}</TableCell>
-                                            <TableCell align="center">{medium}</TableCell>
-                                            <TableCell align="center">{hard}</TableCell>
-                                            <TableCell align="center">{skip}</TableCell>
+                                            <TableCell align="center">{remember}</TableCell>
+                                            <TableCell align="center">{vague}</TableCell>
+                                            <TableCell align="center">{unknown}</TableCell>
+                                            <TableCell align="center">{forgot}</TableCell>
                                             <TableCell align="center">{arr.length}</TableCell>
                                             <TableCell align="center">{avgTime}</TableCell>
                                         </TableRow>

@@ -1,23 +1,23 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { FlashcardItem } from "../components/modals/CreateFlashcardItemModal";
+import type {
+    FlashcardAnswerResponse,
+    FlashcardProgressResponse,
+} from "../services/flashcard_progress.service";
 import { flashCardProgressService } from "../services/flashcard_progress.service";
-import {
-    FlashcardFeedbackAction,
-    LegacyFlashcardEvalType,
-} from "../types/flashcardFeedback";
-import {
+import type { FlashcardFeedbackAction } from "../types/flashcardFeedback";
+import type {
     FlashcardCurrentOptionPreview,
     FlashcardCurrentPreview,
     FlashcardPreviewMetadata,
 } from "../types/flashcardPreview";
 import { buildCurrentFlashcardPreview } from "../utils/flashcardPreview.util";
-// import { lessonFlashcardService } from "../services/lesson_flashcard.service"; // (future)
 
 export interface Log {
     vocab_id: string;
     vocab_word: string;
-    eval_type: LegacyFlashcardEvalType;
+    action: FlashcardFeedbackAction;
     response_time: number;
     attempted_at: string;
 }
@@ -32,31 +32,58 @@ export interface Attempt {
     logs: Log[];
 }
 
-const FLASHCARD_OPTION_TO_LEGACY_EVAL_TYPE: Record<
-    FlashcardFeedbackAction,
-    LegacyFlashcardEvalType
-> = {
-    remember: "skip",
-    vague: "medium",
-    unknown: "hard",
-    forgot: "hard",
-};
-
 interface UseFlashcardSessionProps {
     vocabularies: FlashcardItem[];
     topicId: string;
     dayId?: string;
     activityId?: string;
-    resumeSessionId?: string; // 🔄 nếu có → load lại session
+    resumeSessionId?: string;
     withWeight?: boolean;
     onFinish?: () => void;
 }
+
+interface PendingAnswerFingerprint {
+    vocabularyId: string;
+    action: FlashcardFeedbackAction;
+}
+
+const createIdempotencyKey = (scope: string) =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `flashcard-${scope}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+const getErrorStatus = (error: unknown): number | undefined => {
+    const maybeError = error as {
+        response?: { status?: number };
+        status?: number;
+    };
+    return maybeError.response?.status ?? maybeError.status;
+};
+
+const getErrorMessage = (error: unknown): string => {
+    const maybeError = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+    };
+    return maybeError.response?.data?.message ?? maybeError.message ?? "Lỗi không xác định";
+};
+
+const isRetryableAnswerError = (error: unknown): boolean => {
+    const status = getErrorStatus(error);
+    return !status || status >= 500 || status === 408 || status === 429;
+};
+
+const hasSameFingerprint = (
+    current: PendingAnswerFingerprint | null,
+    next: PendingAnswerFingerprint
+) =>
+    current?.vocabularyId === next.vocabularyId && current?.action === next.action;
 
 export const useFlashcardSession = ({
     vocabularies,
     topicId,
     dayId,
-    activityId,
+    activityId: _activityId,
     resumeSessionId,
     withWeight = false,
     onFinish,
@@ -70,44 +97,96 @@ export const useFlashcardSession = ({
     const [initialTotal, setInitialTotal] = useState(0);
     const [isFinished, setIsFinished] = useState(false);
     const [previewMetadata, setPreviewMetadata] = useState<FlashcardPreviewMetadata | null>(null);
+    const [isAnswerSubmitting, setIsAnswerSubmitting] = useState(false);
     const pendingStartIdempotencyKeyRef = useRef<string | null>(null);
+    const pendingAnswerIdempotencyKeyRef = useRef<string | null>(null);
+    const pendingAnswerFingerprintRef = useRef<PendingAnswerFingerprint | null>(null);
+    const finalizeRequestedRef = useRef(false);
+
+    const vocabMap = useMemo(
+        () => new Map(vocabularies.map((v) => [v._id ?? v.word, v])),
+        [vocabularies]
+    );
+
+    const rebuildQueueFromProgress = useCallback(
+        (progress: FlashcardProgressResponse): FlashcardItem[] =>
+            (progress.order_queue ?? [])
+                .map((id: string) => vocabMap.get(id))
+                .filter((v: FlashcardItem | undefined): v is FlashcardItem => !!v),
+        [vocabMap]
+    );
+
+    const applyProgressQueue = useCallback(
+        (progress: FlashcardProgressResponse) => {
+            const orderedQueue = rebuildQueueFromProgress(progress);
+            setQueue(orderedQueue);
+            setCurrent(orderedQueue[0] ?? null);
+            return orderedQueue;
+        },
+        [rebuildQueueFromProgress]
+    );
+
+    const mergePreviewMetadataPatch = useCallback((response: FlashcardAnswerResponse) => {
+        const patchCards = response.preview_metadata_patch?.cards;
+        if (!patchCards || Object.keys(patchCards).length === 0) {
+            return;
+        }
+
+        setPreviewMetadata((prev) =>
+            prev
+                ? {
+                    ...prev,
+                    cards: {
+                        ...prev.cards,
+                        ...patchCards,
+                    },
+                }
+                : prev
+        );
+    }, []);
 
     const getPendingStartIdempotencyKey = () => {
         if (!pendingStartIdempotencyKeyRef.current) {
-            pendingStartIdempotencyKeyRef.current =
-                typeof crypto !== "undefined" && "randomUUID" in crypto
-                    ? crypto.randomUUID()
-                    : `flashcard-start-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            pendingStartIdempotencyKeyRef.current = createIdempotencyKey("start");
         }
 
         return pendingStartIdempotencyKeyRef.current;
     };
 
-    // 🧩 1. Khởi tạo hoặc khôi phục session
+    const getPendingAnswerIdempotencyKey = (fingerprint: PendingAnswerFingerprint) => {
+        const pendingFingerprint = pendingAnswerFingerprintRef.current;
+
+        if (
+            pendingAnswerIdempotencyKeyRef.current &&
+            pendingFingerprint &&
+            !hasSameFingerprint(pendingFingerprint, fingerprint)
+        ) {
+            pendingAnswerIdempotencyKeyRef.current = null;
+            pendingAnswerFingerprintRef.current = null;
+        }
+
+        if (!pendingAnswerIdempotencyKeyRef.current) {
+            pendingAnswerIdempotencyKeyRef.current = createIdempotencyKey("answer");
+            pendingAnswerFingerprintRef.current = fingerprint;
+        }
+
+        return pendingAnswerIdempotencyKeyRef.current;
+    };
+
     useEffect(() => {
-        if (!vocabularies.length || isFinished) return; // chặn khi đã hoàn thành
+        if (!vocabularies.length || isFinished) return;
 
         const initSession = async () => {
             try {
-                // Nếu có session_id => resume
                 if (resumeSessionId) {
                     const res = await flashCardProgressService.getSession(resumeSessionId);
                     const progress = res.progress;
+
                     setPreviewMetadata(res.preview_metadata ?? null);
-
-                    // Map vocabularies theo id
-                    const vocabMap = new Map(vocabularies.map((v) => [v._id ?? v.word, v]));
-
-                    const orderedQueue = progress.order_queue
-                        .map((id: string) => vocabMap.get(id))
-                        .filter((v: FlashcardItem | undefined): v is FlashcardItem => !!v);
-
-                    setQueue(orderedQueue);
-                    const restoredCurrent = orderedQueue[progress.current_index] ?? orderedQueue[0] ?? null;
+                    const orderedQueue = applyProgressQueue(progress);
                     const restoredStartTime = Date.now();
 
-                    setCurrent(restoredCurrent);
-                    setLogs(progress.logs ?? []);
+                    setLogs((progress.logs ?? []) as Log[]);
                     setInitialTotal(orderedQueue.length);
                     setStartTime(restoredStartTime);
                     setSessionStartedAt(
@@ -116,97 +195,133 @@ export const useFlashcardSession = ({
 
                     localStorage.setItem("flashcard_session_id", progress.session_id);
                     toast.success("Đã khôi phục phiên học trước đó");
-                } else {
-                    // Nếu không có → tạo session mới
-                    let sorted = [...vocabularies];
-                    sorted = withWeight
-                        ? sorted.sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0))
-                        : sorted.sort(() => Math.random() - 0.5);
-
-                    setQueue(sorted);
-                    const sessionStartTime = Date.now();
-
-                    setCurrent(sorted[0]);
-                    setLogs([]);
-                    setInitialTotal(sorted.length);
-                    setStartTime(sessionStartTime);
-                    setSessionStartedAt(new Date(sessionStartTime).toISOString());
-
-                    const orderIds = sorted.map((v) => v._id ?? v.word);
-
-                    const idempotencyKey = getPendingStartIdempotencyKey();
-                    const res = await flashCardProgressService.startSession(
-                        topicId,
-                        orderIds,
-                        idempotencyKey
-                    );
-                    localStorage.setItem("flashcard_session_id", res.sessionId);
-                    setPreviewMetadata(res.preview_metadata ?? null);
-                    pendingStartIdempotencyKeyRef.current = null;
+                    return;
                 }
-            } catch (err: any) {
-                toast.error("❌ Lỗi khởi tạo phiên học: " + err.message);
+
+                let sorted = [...vocabularies];
+                sorted = withWeight
+                    ? sorted.sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0))
+                    : sorted.sort(() => Math.random() - 0.5);
+
+                setQueue(sorted);
+                setCurrent(sorted[0] ?? null);
+                setLogs([]);
+                setInitialTotal(sorted.length);
+
+                const sessionStartTime = Date.now();
+                setStartTime(sessionStartTime);
+                setSessionStartedAt(new Date(sessionStartTime).toISOString());
+
+                const idempotencyKey = getPendingStartIdempotencyKey();
+                const res = await flashCardProgressService.startSession(
+                    topicId,
+                    sorted.map((v) => v._id ?? v.word),
+                    idempotencyKey
+                );
+
+                localStorage.setItem("flashcard_session_id", res.sessionId);
+                setPreviewMetadata(res.preview_metadata ?? null);
+                pendingStartIdempotencyKeyRef.current = null;
+            } catch (err: unknown) {
+                toast.error(`Lỗi khởi tạo phiên học: ${getErrorMessage(err)}`);
             }
         };
 
         initSession();
-    }, [vocabularies, withWeight, resumeSessionId]);
+    }, [vocabularies, withWeight, resumeSessionId, isFinished, topicId, applyProgressQueue]);
 
-    // 🧩 2. Đánh giá từng từ
     const handleEvaluate = useCallback(
-        (option: FlashcardCurrentOptionPreview) => {
-            if (!current) return;
+        async (option: FlashcardCurrentOptionPreview) => {
+            if (!current || isAnswerSubmitting) return;
 
-            const endTime = Date.now();
-            const duration = endTime - startTime;
-            const legacyEvalType = FLASHCARD_OPTION_TO_LEGACY_EVAL_TYPE[option.key];
+            const sessionId = localStorage.getItem("flashcard_session_id");
+            const vocabularyId = current._id ?? current.word;
+            if (!sessionId || !vocabularyId) {
+                toast.error("Không tìm thấy phiên học hiện tại");
+                return;
+            }
 
-            const newLog: Log = {
-                vocab_id: current._id ?? current.word,
-                vocab_word: current.word,
-                eval_type: legacyEvalType,
-                response_time: duration,
-                attempted_at: new Date().toISOString(),
+            const fingerprint: PendingAnswerFingerprint = {
+                vocabularyId,
+                action: option.key,
             };
 
-            setLogs((prev) => [...prev, newLog]);
-
-            // xử lý queue
-            const newQueue = [...queue];
-            newQueue.shift();
-
-            if (option.key !== "remember") {
-                const pos = Math.min(option.repeat_after_cards ?? 0, newQueue.length);
-                newQueue.splice(pos, 0, current);
+            if (
+                pendingAnswerIdempotencyKeyRef.current &&
+                pendingAnswerFingerprintRef.current &&
+                !hasSameFingerprint(pendingAnswerFingerprintRef.current, fingerprint)
+            ) {
+                toast.error("Đang xử lý câu trả lời trước đó. Vui lòng thử lại sau.");
+                return;
             }
-            // skip → remove khỏi queue
 
-            setQueue(newQueue);
-            setCurrent(newQueue[0] ?? null);
-            setStartTime(Date.now());
+            const responseTime = Date.now() - startTime;
+            const attemptedAt = new Date().toISOString();
+            const idempotencyKey = getPendingAnswerIdempotencyKey(fingerprint);
+
+            setIsAnswerSubmitting(true);
+
+            try {
+                const res = await flashCardProgressService.answerSession(
+                    sessionId,
+                    {
+                        vocabulary_id: vocabularyId,
+                        action: option.key,
+                        response_time: responseTime,
+                        attempted_at: attemptedAt,
+                    },
+                    idempotencyKey
+                );
+
+                const newLog: Log = {
+                    vocab_id: vocabularyId,
+                    vocab_word: current.word,
+                    action: option.key,
+                    response_time: responseTime,
+                    attempted_at: attemptedAt,
+                };
+
+                setLogs((prev) => [...prev, newLog]);
+                mergePreviewMetadataPatch(res);
+                applyProgressQueue(res.progress);
+                setStartTime(Date.now());
+
+                pendingAnswerIdempotencyKeyRef.current = null;
+                pendingAnswerFingerprintRef.current = null;
+
+                if ((res.progress.order_queue ?? []).length === 0) {
+                    setIsFinished(true);
+                }
+            } catch (err: unknown) {
+                if (!isRetryableAnswerError(err)) {
+                    pendingAnswerIdempotencyKeyRef.current = null;
+                    pendingAnswerFingerprintRef.current = null;
+                }
+                toast.error(`Không thể lưu câu trả lời: ${getErrorMessage(err)}`);
+            } finally {
+                setIsAnswerSubmitting(false);
+            }
         },
-        [queue, current, startTime]
+        [
+            current,
+            isAnswerSubmitting,
+            startTime,
+            mergePreviewMetadataPatch,
+            applyProgressQueue,
+        ]
     );
 
-    // 🧩 3. Tính toán thông số attempt hiện tại
     const currentAttempt: Attempt | null = useMemo(() => {
         if (logs.length === 0) return null;
+
         const started_at = sessionStartedAt ?? logs[0].attempted_at;
         const finished_at = logs[logs.length - 1].attempted_at;
         const total = logs.length;
-
-        const easy = logs.filter((l) => l.eval_type === "easy").length;
-        const medium = logs.filter((l) => l.eval_type === "medium").length;
-        const hard = logs.filter((l) => l.eval_type === "hard").length;
-        const skip = logs.filter((l) => l.eval_type === "skip").length;
-
+        const remember = logs.filter((l) => l.action === "remember").length;
         const avg_time = Math.round(
             logs.reduce((a, b) => a + b.response_time, 0) / total / 1000
         );
-
-        const accuracy = Math.round(
-            ((skip * 1 + easy * 0.9 + medium * 0.6 + hard * 0.3) / total) * 100
-        );
+        const accuracy = total > 0 ? Math.round((remember / total) * 100) : 0;
 
         return {
             _id: `attempt-${Date.now()}`,
@@ -232,90 +347,42 @@ export const useFlashcardSession = ({
         return buildCurrentFlashcardPreview({
             cardPreview,
             repeatPolicy: previewMetadata.repeat_policy,
-            remainingCards: queue.length,
+            remainingCards: Math.max(queue.length - 1, 0),
         });
     }, [current, previewMetadata, queue.length]);
 
-    // 🧩 4. Autosave định kỳ
     useEffect(() => {
+        if (!isFinished || logs.length === 0 || !currentAttempt || finalizeRequestedRef.current) return;
+
+        finalizeRequestedRef.current = true;
+        onFinish?.();
         const sessionId = localStorage.getItem("flashcard_session_id");
-        if (!sessionId || logs.length === 0 || dayId || isFinished) return;
 
-        let lastSavedCount = 0;
-
-        const interval = setInterval(() => {
-            if (isFinished) {
-                clearInterval(interval);
-                return;
-            }
-            if (logs.length > lastSavedCount) {
-                flashCardProgressService
-                    .updateSession(
-                        sessionId,
-                        queue.map((v) => v._id ?? v.word).filter((id): id is string => !!id),
-                        0,
-                        logs
-                    )
-                    .then(() => {
-                        lastSavedCount = logs.length;
-                        console.log(`[Autosave] Đã cập nhật ${logs.length} logs`);
-                    })
-                    .catch(() => console.warn("⚠️ Autosave thất bại"));
-            }
-        }, 10000);
-
-        const handleBeforeUnload = () => {
-            if (logs.length === 0 || isFinished) return;
-            const data = JSON.stringify({
-                session_id: sessionId,
-                order_queue: queue.map((q) => q._id ?? q.word).filter((id): id is string => !!id),
-                current_index: 0,
-                logs_delta: logs,
-            });
-            navigator.sendBeacon(`${import.meta.env.VITE_API_URL}/flashcard-progress/update`, data);
-        };
-
-        window.addEventListener("beforeunload", handleBeforeUnload);
-        return () => {
-            clearInterval(interval);
-            window.removeEventListener("beforeunload", handleBeforeUnload);
-        };
-    }, [queue, logs, dayId, isFinished]);
-
-    // 🧩 5. Kết thúc bài học
-    useEffect(() => {
-        if (!current && logs.length > 0 && currentAttempt) {
-            onFinish?.();
-            const sessionId = localStorage.getItem("flashcard_session_id");
-            setIsFinished(true);
-
-            if (!dayId) {
-                // luyện tập cá nhân
-                toast.promise(
-                    flashCardProgressService.finalizeSession(
-                        sessionId!,
-                        currentAttempt.accuracy,
-                        currentAttempt.avg_time,
-                        currentAttempt.total,
-                        currentAttempt.logs,
-                        currentAttempt.started_at,
-                        currentAttempt.finished_at
-                    ),
-                    {
-                        loading: "Đang lưu kết quả...",
-                        success: () => {
-                            localStorage.removeItem("flashcard_session_id");
-                            setOpenStats(true);
-                            return "Lưu thành công!";
-                        },
-                        error: "Lưu thất bại!",
-                    }
-                );
-            } else {
-                console.log("Finalize lesson session – dayId:", dayId);
-            }
+        if (!dayId && sessionId) {
+            toast.promise(
+                flashCardProgressService.finalizeSession(
+                    sessionId,
+                    currentAttempt.accuracy,
+                    currentAttempt.avg_time,
+                    currentAttempt.total,
+                    currentAttempt.logs,
+                    currentAttempt.started_at,
+                    currentAttempt.finished_at
+                ),
+                {
+                    loading: "Đang lưu kết quả...",
+                    success: () => {
+                        localStorage.removeItem("flashcard_session_id");
+                        setOpenStats(true);
+                        return "Lưu thành công!";
+                    },
+                    error: "Lưu thất bại!",
+                }
+            );
+        } else if (dayId) {
+            console.log("Finalize lesson session - dayId:", dayId);
         }
-    }, [current, logs, currentAttempt]);
+    }, [isFinished, logs.length, currentAttempt, onFinish, dayId]);
 
     return {
         queue,
@@ -329,5 +396,6 @@ export const useFlashcardSession = ({
         remaining: queue.length,
         previewMetadata,
         currentPreview,
+        isAnswerSubmitting,
     };
 };

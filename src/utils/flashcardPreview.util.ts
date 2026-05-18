@@ -33,6 +33,10 @@ export function formatRepeatAfterCards(cards: number): string {
 }
 
 function buildIntervalPreview(option: FlashcardReviewOptionPreview): string {
+    if (option.completion_text) {
+        return option.completion_text;
+    }
+
     return formatIntervalDays(option.interval_days ?? 0);
 }
 
@@ -63,7 +67,8 @@ export function buildCurrentFlashcardPreview(input: {
     repeatPolicy: FlashcardRepeatPolicy;
     remainingCards: number;
 }): FlashcardCurrentPreview {
-    const { cardPreview, repeatPolicy, remainingCards } = input;
+    const { cardPreview, repeatPolicy } = input;
+    const remainingCards = Math.max(input.remainingCards, 0);
 
     if (cardPreview.card_type === "NEW") {
         const vagueRepeatAfterCards = resolveRepeatAfterCards(
@@ -129,6 +134,31 @@ export function buildCurrentFlashcardPreview(input: {
         repeatPolicy,
         remainingCards
     );
+
+    if (cardPreview.card_type === "REVIEW_REINFORCEMENT") {
+        return {
+            card_type: "REVIEW_REINFORCEMENT",
+            options: [
+                {
+                    key: "remember",
+                    label: "Đã nhớ",
+                    preview: buildIntervalPreview(cardPreview.options.remember),
+                },
+                {
+                    key: "vague",
+                    label: "Mơ hồ",
+                    preview: vagueRepeatPreview,
+                    repeat_after_cards: vagueRepeatAfterCards,
+                },
+                {
+                    key: "forgot",
+                    label: "Quên",
+                    preview: forgotRepeatPreview,
+                    repeat_after_cards: forgotRepeatAfterCards,
+                },
+            ],
+        };
+    }
 
     return {
         card_type: "REVIEW",

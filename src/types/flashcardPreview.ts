@@ -16,6 +16,7 @@ export interface FlashcardReviewOptionPreview {
     half_life_days?: number;
     interval_days?: number;
     repeat_policy_key?: FlashcardRepeatPolicyKey;
+    completion_text?: string;
 }
 
 export interface FlashcardNewCardPreviewOptions {
@@ -48,9 +49,16 @@ export interface FlashcardReviewCardPreview {
     options: FlashcardReviewCardPreviewOptions;
 }
 
+export interface FlashcardReviewReinforcementCardPreview {
+    card_type: "REVIEW_REINFORCEMENT";
+    memory_snapshot?: FlashcardReviewMemorySnapshot;
+    options: FlashcardReviewCardPreviewOptions;
+}
+
 export type FlashcardCardPreview =
     | FlashcardNewCardPreview
-    | FlashcardReviewCardPreview;
+    | FlashcardReviewCardPreview
+    | FlashcardReviewReinforcementCardPreview;
 
 export interface FlashcardPreviewMetadata {
     repeat_policy: FlashcardRepeatPolicy;
@@ -65,6 +73,6 @@ export interface FlashcardCurrentOptionPreview {
 }
 
 export interface FlashcardCurrentPreview {
-    card_type: "NEW" | "REVIEW";
+    card_type: "NEW" | "REVIEW" | "REVIEW_REINFORCEMENT";
     options: FlashcardCurrentOptionPreview[];
 }

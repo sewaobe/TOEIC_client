@@ -1,8 +1,45 @@
 import { LearningFlashcard } from "../components/flashCard/LearningFlashcard";
-import { Log } from "../hooks/useFlashcardSession";
+import type { Log } from "../hooks/useFlashcardSession";
 import axiosClient from "./axiosClient";
+import type { FlashcardFeedbackAction } from "../types/flashcardFeedback";
+import type {
+  FlashcardCardPreview,
+  FlashcardPreviewMetadata,
+} from "../types/flashcardPreview";
 
 const BASE_URL = "/flashcard-progress";
+
+export interface FlashcardAnswerRequest {
+  vocabulary_id: string;
+  action: FlashcardFeedbackAction;
+  response_time: number;
+  attempted_at: string;
+}
+
+export interface FlashcardProgressResponse {
+  session_id: string;
+  order_queue: string[];
+  current_index?: number;
+  logs?: Log[];
+}
+
+export interface FlashcardAnswerResponse {
+  progress: FlashcardProgressResponse;
+  preview_metadata_patch?: {
+    cards?: Record<string, FlashcardCardPreview>;
+  } | null;
+}
+
+export interface FlashcardSessionStartResponse {
+  sessionId: string;
+  session?: FlashcardProgressResponse;
+  preview_metadata?: FlashcardPreviewMetadata;
+}
+
+export interface FlashcardSessionResumeResponse {
+  progress: FlashcardProgressResponse;
+  preview_metadata?: FlashcardPreviewMetadata;
+}
 
 export const flashCardProgressService = {
   // 🔹 1. Tạo session mới
@@ -10,7 +47,7 @@ export const flashCardProgressService = {
     topicId: string,
     orderQueue: string[],
     idempotencyKey: string,
-  ) => {
+  ): Promise<FlashcardSessionStartResponse> => {
     const res = await axiosClient.post(
       `${BASE_URL}/start`,
       {
@@ -22,6 +59,21 @@ export const flashCardProgressService = {
       },
     );
     return res.data; // { session_id, progress }
+  },
+
+  answerSession: async (
+    sessionId: string,
+    body: FlashcardAnswerRequest,
+    idempotencyKey: string,
+  ): Promise<FlashcardAnswerResponse> => {
+    const res = await axiosClient.post(
+      `${BASE_URL}/${sessionId}/answer`,
+      body,
+      {
+        headers: { "Idempotency-Key": idempotencyKey },
+      },
+    );
+    return res.data;
   },
 
   // 🔹 2. Cập nhật snapshot
@@ -41,7 +93,7 @@ export const flashCardProgressService = {
   },
 
   // 🔹 3. Lấy lại session (resume)
-  getSession: async (sessionId: string) => {
+  getSession: async (sessionId: string): Promise<FlashcardSessionResumeResponse> => {
     const res = await axiosClient.get(`${BASE_URL}/${sessionId}`);
     return res.data; // progress object
   },

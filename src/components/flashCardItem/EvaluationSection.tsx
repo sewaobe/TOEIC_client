@@ -20,6 +20,7 @@ interface LegacyEvaluationSectionProps {
 interface PreviewEvaluationSectionProps {
   currentPreview: FlashcardCurrentPreview | null;
   onSelectOption: (option: FlashcardCurrentOptionPreview) => void;
+  isAnswerSubmitting?: boolean;
   onNext?: never;
 }
 
@@ -53,14 +54,24 @@ export default function EvaluationSection(props: EvaluationSectionProps) {
       return null;
     }
 
+    const isDisabled = props.isAnswerSubmitting ?? false;
+
     return (
       <Card className="mt-6 p-3 overflow-x-auto">
         <div className="grid grid-cols-3 items-center gap-2 min-w-[520px] sm:min-w-0">
           {props.currentPreview.options.map((option) => (
             <div
               key={option.key}
-              className={`flex min-w-0 flex-col items-center cursor-pointer rounded p-2 ${previewHoverClassByKey[option.key]}`}
-              onClick={() => props.onSelectOption(option)}
+              className={`flex min-w-0 flex-col items-center rounded p-2 transition-opacity ${
+                isDisabled
+                  ? "cursor-not-allowed opacity-50"
+                  : `cursor-pointer ${previewHoverClassByKey[option.key]}`
+              }`}
+              onClick={() => {
+                if (!isDisabled) {
+                  props.onSelectOption(option);
+                }
+              }}
             >
               {previewIconByKey[option.key]}
 

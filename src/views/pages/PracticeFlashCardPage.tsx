@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import PracticeCompletionCard from "../../components/flashCard/PracticeCompletionCard";
 import { useLocation, useNavigate } from "react-router-dom";
 import F5Modal from "../../components/modals/F5Modal";
-import { flashCardProgressService } from "../../services/flashcard_progress.service";
 import { topicService } from "../../services/topic.service";
 import MatchingGame, {
   MatchingGameResult,
@@ -73,8 +72,8 @@ export default function PracticeFlashcardPage() {
     logs,
     initialTotal,
     remaining,
-    queue,
     currentPreview,
+    isAnswerSubmitting,
   } = useFlashcardSession({
     vocabularies: words,
     topicId,
@@ -251,6 +250,7 @@ export default function PracticeFlashcardPage() {
           <EvaluationSection
             currentPreview={currentPreview}
             onSelectOption={handleEvaluate}
+            isAnswerSubmitting={isAnswerSubmitting}
           />
         </div>
       );
@@ -371,18 +371,7 @@ export default function PracticeFlashcardPage() {
         <F5Modal
           title="Cảnh báo rời trang"
           content="Bạn có muốn lưu tiến độ học hiện tại trước khi rời trang không?"
-          onConfirm={async () => {
-            const sessionId = localStorage.getItem("flashcard_session_id");
-            if (sessionId) {
-              await flashCardProgressService.updateSession(
-                sessionId,
-                queue
-                  .map((q) => q._id)
-                  .filter((_id): _id is string => typeof _id === "string"),
-                0,
-                logs
-              );
-            }
+          onConfirm={() => {
             navigate(`/flash-cards/${topicId}`);
           }}
         />

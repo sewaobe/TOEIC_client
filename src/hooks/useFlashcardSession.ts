@@ -102,6 +102,12 @@ export const useFlashcardSession = ({
     const pendingAnswerIdempotencyKeyRef = useRef<string | null>(null);
     const pendingAnswerFingerprintRef = useRef<PendingAnswerFingerprint | null>(null);
     const finalizeRequestedRef = useRef(false);
+    const pendingAnswerPayloadRef = useRef<{
+        vocabulary_id: string;
+        action: FlashcardFeedbackAction;
+        response_time: number;
+        attempted_at: string;
+    } | null>(null);
 
     const vocabMap = useMemo(
         () => new Map(vocabularies.map((v) => [v._id ?? v.word, v])),
@@ -163,6 +169,7 @@ export const useFlashcardSession = ({
         ) {
             pendingAnswerIdempotencyKeyRef.current = null;
             pendingAnswerFingerprintRef.current = null;
+            pendingAnswerPayloadRef.current = null;
         }
 
         if (!pendingAnswerIdempotencyKeyRef.current) {
@@ -255,9 +262,23 @@ export const useFlashcardSession = ({
                 return;
             }
 
-            const responseTime = Date.now() - startTime;
-            const attemptedAt = new Date().toISOString();
             const idempotencyKey = getPendingAnswerIdempotencyKey(fingerprint);
+
+            const pendingPayload = pendingAnswerPayloadRef.current;
+
+            const answerPayload =
+                pendingPayload &&
+                    pendingPayload.vocabulary_id === vocabularyId &&
+                    pendingPayload.action === option.key
+                    ? pendingPayload
+                    : {
+                        vocabulary_id: vocabularyId,
+                        action: option.key,
+                        response_time: Date.now() - startTime,
+                        attempted_at: new Date().toISOString(),
+                    };
+
+            pendingAnswerPayloadRef.current = answerPayload;
 
             setIsAnswerSubmitting(true);
 
@@ -267,8 +288,8 @@ export const useFlashcardSession = ({
                     {
                         vocabulary_id: vocabularyId,
                         action: option.key,
-                        response_time: responseTime,
-                        attempted_at: attemptedAt,
+                        response_time: answerPayload.response_time,
+                        attempted_at: answerPayload.attempted_at,
                     },
                     idempotencyKey
                 );
@@ -277,8 +298,8 @@ export const useFlashcardSession = ({
                     vocab_id: vocabularyId,
                     vocab_word: current.word,
                     action: option.key,
-                    response_time: responseTime,
-                    attempted_at: attemptedAt,
+                    response_time: answerPayload.response_time,
+                    attempted_at: answerPayload.attempted_at,
                 };
 
                 setLogs((prev) => [...prev, newLog]);
@@ -288,6 +309,7 @@ export const useFlashcardSession = ({
 
                 pendingAnswerIdempotencyKeyRef.current = null;
                 pendingAnswerFingerprintRef.current = null;
+                pendingAnswerPayloadRef.current = null;
 
                 if ((res.progress.order_queue ?? []).length === 0) {
                     setIsFinished(true);
@@ -296,6 +318,7 @@ export const useFlashcardSession = ({
                 if (!isRetryableAnswerError(err)) {
                     pendingAnswerIdempotencyKeyRef.current = null;
                     pendingAnswerFingerprintRef.current = null;
+                    pendingAnswerPayloadRef.current = null;
                 }
                 toast.error(`Không thể lưu câu trả lời: ${getErrorMessage(err)}`);
             } finally {

@@ -370,7 +370,7 @@ export default function PracticeFlashcardPage() {
 
         <F5Modal
           title="Cảnh báo rời trang"
-          content="Bạn có muốn lưu tiến độ học hiện tại trước khi rời trang không?"
+          content="Bạn có chắc muốn rời khỏi phiên luyện tập hiện tại không?"
           onConfirm={() => {
             navigate(`/flash-cards/${topicId}`);
           }}

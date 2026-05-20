@@ -37,17 +37,10 @@ import {
   SuggestedVocabularyApiItem,
   SuggestionDueTone,
   SuggestionFilterOptions,
-  SuggestionPriority,
 } from "../../types/UserVocabularyProgressV2";
 import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
 import SuggestionDetailModal from "./SuggestionDetailModal";
 import { speakText } from "../../utils/tts.util";
-
-const priorityColor: Record<SuggestionPriority, string> = {
-  high: "#ef4444",
-  medium: "#f59e0b",
-  low: "#10b981",
-};
 
 const dueToneColor: Record<SuggestionDueTone, string> = {
   danger: "#ef4444",
@@ -94,7 +87,6 @@ const emptySuggestions: PaginatedSuggestions = {
     all: 0,
     dueToday: 0,
     activeReviewing: 0,
-    atRisk: 0,
     overdue: 0,
     mastered: 0,
   },
@@ -103,18 +95,13 @@ const emptySuggestions: PaginatedSuggestions = {
 const emptyFilterOptions: SuggestionFilterOptions = {
   topics: [],
   levels: [],
-  priorities: [
-    { value: "high", label: "Cao" },
-    { value: "medium", label: "Trung bình" },
-    { value: "low", label: "Thấp" },
-  ],
 };
 function resolveDueTone(item: SuggestedVocabularyApiItem): SuggestionDueTone {
-  if (item.memoryBucket === "overdue" || item.priority === "high") {
+  if (item.memoryBucket === "overdue") {
     return "danger";
   }
 
-  if (item.memoryBucket === "at_risk" || item.priority === "medium") {
+  if (item.dueLabel === "Hôm nay") {
     return "warning";
   }
 
@@ -148,14 +135,13 @@ const SuggestedVocabularySection: React.FC = () => {
   const [filterOptions, setFilterOptions] = useState<SuggestionFilterOptions>(emptyFilterOptions);
   const [topic, setTopic] = useState("all");
   const [level, setLevel] = useState("all");
-  const [priority, setPriority] = useState<SuggestionPriority | "all">("all");
 
   useEffect(() => {
     let isMounted = true;
 
     setIsLoadingSuggestions(true);
     userVocabularyProgressV2Service
-      .getSuggestedVocabulary({ page, limit, search, bucket, topic, level, priority })
+      .getSuggestedVocabulary({ page, limit, search, bucket, topic, level })
       .then((data) => {
         if (isMounted) {
           setSuggestions(data);
@@ -170,7 +156,7 @@ const SuggestedVocabularySection: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [page, limit, search, bucket, topic, level, priority]);
+  }, [page, limit, search, bucket, topic, level]);
 
   useEffect(() => {
     let isMounted = true;
@@ -208,7 +194,6 @@ const SuggestedVocabularySection: React.FC = () => {
     { value: "all", label: "Tất cả", count: suggestions.counters.all, bg: "#dbeafe" },
     { value: "active_reviewing", label: "Đang học", count: suggestions.counters.activeReviewing, bg: "#dbeafe" },
     { value: "due_today", label: "Cần ôn hôm nay", count: suggestions.counters.dueToday, bg: "#dbeafe" },
-    { value: "at_risk", label: "Sắp quên", count: suggestions.counters.atRisk, bg: "#fef3c7" },
     { value: "overdue", label: "Quá hạn", count: suggestions.counters.overdue, bg: "#fee2e2" },
     { value: "mastered", label: "Đã nắm vững", count: suggestions.counters.mastered, bg: "#dcfce7" },
   ];
@@ -266,7 +251,6 @@ const SuggestedVocabularySection: React.FC = () => {
   const handleResetFilters = () => {
     setTopic("all");
     setLevel("all");
-    setPriority("all");
     setPage(1);
   };
 
@@ -367,24 +351,6 @@ const SuggestedVocabularySection: React.FC = () => {
                 </MenuItem>
               ))}
             </Select>
-            <Select
-              size="small"
-              displayEmpty
-              value={priority}
-              disabled={isLoadingFilterOptions}
-              onChange={(event) => {
-                setPriority(event.target.value as SuggestionPriority | "all");
-                setPage(1);
-              }}
-              sx={filterSelectSx}
-            >
-              <MenuItem value="all">Độ ưu tiên</MenuItem>
-              {filterOptions.priorities.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
             <Button
               variant="outlined"
               startIcon={<FilterList sx={{ fontSize: 16 }} />}
@@ -427,7 +393,7 @@ const SuggestedVocabularySection: React.FC = () => {
             <TableHead>
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={7}
                   sx={{
                     bgcolor: selectedCount > 0 ? "#eff6ff" : "#f8fafc",
                     py: 0,
@@ -492,7 +458,7 @@ const SuggestedVocabularySection: React.FC = () => {
                 <TableCell padding="checkbox">
                   <Checkbox size="small" checked={isAllSelected} indeterminate={isPartiallySelected} onChange={handleToggleAll} />
                 </TableCell>
-                {["Từ vựng", "Nghĩa", "Chủ đề", "Cấp độ", "Ưu tiên ôn ngay", "Xác suất nhớ hiện tại", "Đến hạn"].map((head) => (
+                {["Từ vựng", "Nghĩa", "Chủ đề", "Cấp độ", "Xác suất nhớ hiện tại", "Đến hạn"].map((head) => (
                   <TableCell key={head} sx={{ fontWeight: 900, color: "#475569", whiteSpace: "nowrap" }}>
                     {head}
                   </TableCell>
@@ -510,14 +476,13 @@ const SuggestedVocabularySection: React.FC = () => {
                     <TableCell><Skeleton width={180} /></TableCell>
                     <TableCell><Skeleton variant="rounded" width={74} height={22} /></TableCell>
                     <TableCell><Skeleton variant="rounded" width={42} height={22} /></TableCell>
-                    <TableCell><Skeleton width={90} /></TableCell>
                     <TableCell><Skeleton width={160} /></TableCell>
                     <TableCell><Skeleton width={80} /></TableCell>
                   </TableRow>
                 ))
               ) : vocabularyItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} sx={{ py: 5, textAlign: "center", color: "text.secondary", fontWeight: 700 }}>
+                  <TableCell colSpan={7} sx={{ py: 5, textAlign: "center", color: "text.secondary", fontWeight: 700 }}>
                     Chưa có từ vựng gợi ý.
                   </TableCell>
                 </TableRow>
@@ -574,12 +539,6 @@ const SuggestedVocabularySection: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Chip label={item.level} size="small" sx={{ bgcolor: "#dbeafe", color: "#2563eb", fontWeight: 800 }} />
-                      </TableCell>
-                      <TableCell>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: priorityColor[item.priority], flexShrink: 0 }} />
-                          <Typography variant="body2">{item.priorityLabel}</Typography>
-                        </Stack>
                       </TableCell>
                       <TableCell sx={{ minWidth: 180 }}>
                         <Stack direction="row" spacing={1.2} alignItems="center">

@@ -7,10 +7,6 @@ const ProfilePage = lazy(() => import("../../views/pages/ProfilePage"));
 const PracticeFlashCardPage = lazy(
   () => import("../../views/pages/PracticeFlashCardPage"),
 );
-const SmartReviewPage = lazy(() => import("../../views/pages/SmartReviewPage"));
-const MemoryLibraryPage = lazy(
-  () => import("../../views/pages/MemoryLibraryPage"),
-);
 const FlashCardPage = lazy(() => import("../../views/pages/FlashCardPage"));
 const FlashCardDetailPage = lazy(
   () => import("../../views/pages/FlashcardDetailPage"),
@@ -96,16 +92,6 @@ const privateRoutes: AppRoute[] = [
   {
     path: "/flash-cards/:id/practice",
     element: PracticeFlashCardPage,
-    guard: ProtectedRoute,
-  },
-  {
-    path: "/flash-cards/smart-review",
-    element: SmartReviewPage,
-    guard: ProtectedRoute,
-  },
-  {
-    path: "/flash-cards/memory-library",
-    element: MemoryLibraryPage,
     guard: ProtectedRoute,
   },
   {

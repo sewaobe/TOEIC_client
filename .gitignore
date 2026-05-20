@@ -29,3 +29,7 @@ dist-ssr
 # analyze vite
 stats.html
 knip.json
+.claude
+AGENTS.md
+CLAUDE.md
+PERFORMANCE.md

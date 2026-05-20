@@ -6,7 +6,6 @@ import userVocabularyProgressV2Service from "../../services/user_vocabulary_prog
 const bucketColor: Record<MemoryUiBucket, string> = {
   mastered: "#10b981",
   active_reviewing: "#2563eb",
-  at_risk: "#f59e0b",
   overdue: "#ef4444",
 };
 

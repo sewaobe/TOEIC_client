@@ -3,18 +3,38 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../stores/store";
 import { setAnswer, toggleFlag } from "../../stores/answerSlice";
 
+interface ChoiceOption {
+  key: string;
+  text: string;
+}
+
 interface QuestionItemProps {
   id: string;
   name: number;
   text: string;
-  options: string[];
+  options: ChoiceOption[];
+  showText?: boolean;
+  choiceLabelMode?: "full" | "key-only";
 }
+
+const formatChoiceLabel = (
+  { key, text }: ChoiceOption,
+  mode: QuestionItemProps["choiceLabelMode"]
+) => {
+  if (mode === "key-only") return key;
+
+  const trimmedText = text.trim();
+  const startsWithKey = new RegExp(`^${key}[.)]\\s*`, "i").test(trimmedText);
+  return startsWithKey ? trimmedText : `${key}. ${trimmedText}`;
+};
 
 const QuestionItem: React.FC<QuestionItemProps> = ({
   id,
   name,
   text,
   options,
+  showText = true,
+  choiceLabelMode = "full",
 }) => {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -26,30 +46,31 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
       }
   );
 
-  const handleSelect = (opt: string) => {
-    dispatch(setAnswer({ question: name, answer: opt }));
+  const handleSelect = (optionKey: string) => {
+    dispatch(setAnswer({ question: name, answer: optionKey }));
   };
 
   const handleToggleFlag = () => {
     dispatch(toggleFlag({ question: name }));
   };
+
   return (
     <div className="w-full md:w-1/2">
       <h3 className="font-bold mb-4">{name}.</h3>
-      <p className="mb-4">{text}</p>
+      {showText && text && <p className="mb-4">{text}</p>}
 
       <ul className="space-y-2">
-        {options.map((opt, index) => (
-          <li key={index}>
+        {options.map((option) => (
+          <li key={option.key}>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
                 name={`q${id}`}
                 className="form-radio"
-                checked={answer.answer === opt}
-                onChange={() => handleSelect(opt)}
+                checked={answer.answer === option.key}
+                onChange={() => handleSelect(option.key)}
               />
-              {opt}
+              {formatChoiceLabel(option, choiceLabelMode)}
             </label>
           </li>
         ))}

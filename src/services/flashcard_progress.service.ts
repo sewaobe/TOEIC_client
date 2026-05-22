@@ -37,7 +37,7 @@ export interface FlashcardSessionStartResponse {
 }
 
 export interface FlashcardSessionResumeResponse {
-  progress: FlashcardProgressResponse;
+  progress: FlashcardProgressResponse | null;
   preview_metadata?: FlashcardPreviewMetadata;
 }
 
@@ -128,10 +128,8 @@ export const flashCardProgressService = {
 
   removeSession: async (sessionId: string) => {
     const res = await axiosClient.delete(`${BASE_URL}/remove/${sessionId}`);
-    if (res.success) {
-      await flashCardProgressService.getAllActiveSessionsByUser();
-      localStorage.removeItem("flashcard_session_id");
-    }
-    return res.data; // { message, session }
+    await flashCardProgressService.getAllActiveSessionsByUser();
+    localStorage.removeItem("flashcard_session_id");
+    return res.data;
   },
 };

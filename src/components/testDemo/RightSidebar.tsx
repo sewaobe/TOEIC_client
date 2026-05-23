@@ -34,12 +34,12 @@ const RightSidebar: FC<RightSidebarProps> = ({ isShow }) => {
           <div className="flex flex-wrap gap-2">
             {groupsOfPart.map((g) =>
               g.questions.map((q) => {
-                const question = q.name.replace(/^Question\s*/, "");
-                const a = answers.find(ans => ans.question === Number(question));
+                const question = q.questionNumber;
+                const a = answers.find(ans => ans.question === question);
                 return (
                   <QuestionChipRightBar
                     key={question}
-                    id={question}
+                    id={String(question)}
                     answered={!!a && a.answer !== ""}
                     isFlagged={!!a && a.isFlagged}
                     onClick={() =>

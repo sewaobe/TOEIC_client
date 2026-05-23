@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { ExamGroup } from '../types/Exam';
 import testService from '../services/test.service';
+import { normalizeTestToGroups } from '../utils/examDemoNormalize';
 
 // ----------------- Async thunk để fetch test -----------------
 interface FetchExamOptions {
@@ -19,8 +20,7 @@ export const fetchExamById = createAsyncThunk(
         parts: parts?.map(String), // chuyển mảng số sang mảng string
       });
 
-      const groups = formatTestToGroups(test);
-      console.log(groups)
+      const groups = normalizeTestToGroups(test);
       return { testId: test._id, groups };
     } catch (err: any) {
       return thunkAPI.rejectWithValue({
@@ -31,38 +31,6 @@ export const fetchExamById = createAsyncThunk(
     }
   }
 );
-
-function formatTestToGroups(test: any): ExamGroup[] {
-  const groups: ExamGroup[] = [];
-  const parts = Object.keys(test.questions || {});
-
-  parts.forEach((partName) => {
-    const partData = test.questions[partName];
-    const partGroups = partData.groups || [];
-
-    partGroups.forEach((g: any, gi: number) => {
-      const qs = g.questions || [];
-      groups.push({
-        _id: `${partName}-${gi}`, // unique id
-        part: Number(partName.match(/\d+/)),
-        audioUrl: g.audioUrl?.url || null,
-        imagesUrl: g.imagesUrl?.map((i: any) => i.url) || [],
-        transcriptEnglish: g.transcriptEnglish || "",
-        transcriptTranslation: g.transcriptTranslation || "",
-        questions: qs.map((q: any) => ({
-          _id: q._id,
-          name: q.name,
-          textQuestion: q.textQuestion,
-          choices: q.choices || {},
-          correctAnswer: q.correctAnswer,
-          explanation: q.explanation,
-        })),
-      });
-    });
-  });
-
-  return groups;
-}
 
 // ----------------- State -----------------
 interface ExamState {

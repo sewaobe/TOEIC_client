@@ -4,6 +4,7 @@ import { FlashcardItem } from "../components/modals/CreateFlashcardItemModal";
 import type {
     FlashcardAnswerResponse,
     FlashcardProgressResponse,
+    FlashcardSessionResumeResponse,
 } from "../services/flashcard_progress.service";
 import { flashCardProgressService } from "../services/flashcard_progress.service";
 import type { FlashcardFeedbackAction } from "../types/flashcardFeedback";
@@ -184,27 +185,7 @@ export const useFlashcardSession = ({
         if (!vocabularies.length || isFinished) return;
 
         const initSession = async () => {
-            try {
-                if (resumeSessionId) {
-                    const res = await flashCardProgressService.getSession(resumeSessionId);
-                    const progress = res.progress;
-
-                    setPreviewMetadata(res.preview_metadata ?? null);
-                    const orderedQueue = applyProgressQueue(progress);
-                    const restoredStartTime = Date.now();
-
-                    setLogs((progress.logs ?? []) as Log[]);
-                    setInitialTotal(orderedQueue.length);
-                    setStartTime(restoredStartTime);
-                    setSessionStartedAt(
-                        progress.logs?.[0]?.attempted_at ?? new Date(restoredStartTime).toISOString()
-                    );
-
-                    localStorage.setItem("flashcard_session_id", progress.session_id);
-                    toast.success("Đã khôi phục phiên học trước đó");
-                    return;
-                }
-
+            const startNewSession = async () => {
                 let sorted = [...vocabularies];
                 sorted = withWeight
                     ? sorted.sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0))
@@ -229,6 +210,44 @@ export const useFlashcardSession = ({
                 localStorage.setItem("flashcard_session_id", res.sessionId);
                 setPreviewMetadata(res.preview_metadata ?? null);
                 pendingStartIdempotencyKeyRef.current = null;
+            };
+
+            try {
+                if (resumeSessionId) {
+                    let res: FlashcardSessionResumeResponse;
+                    try {
+                        res = await flashCardProgressService.getSession(resumeSessionId);
+                    } catch {
+                        localStorage.removeItem("flashcard_session_id");
+                        toast.info("Phiên học cũ không còn khả dụng, bắt đầu phiên mới.");
+                        await startNewSession();
+                        return;
+                    }
+
+                    const progress = res.progress;
+                    if (!progress) {
+                        localStorage.removeItem("flashcard_session_id");
+                        await startNewSession();
+                        return;
+                    }
+
+                    setPreviewMetadata(res.preview_metadata ?? null);
+                    const orderedQueue = applyProgressQueue(progress);
+                    const restoredStartTime = Date.now();
+
+                    setLogs((progress.logs ?? []) as Log[]);
+                    setInitialTotal(orderedQueue.length);
+                    setStartTime(restoredStartTime);
+                    setSessionStartedAt(
+                        progress.logs?.[0]?.attempted_at ?? new Date(restoredStartTime).toISOString()
+                    );
+
+                    localStorage.setItem("flashcard_session_id", progress.session_id);
+                    toast.success("Đã khôi phục phiên học trước đó");
+                    return;
+                }
+
+                await startNewSession();
             } catch (err: unknown) {
                 toast.error(`Lỗi khởi tạo phiên học: ${getErrorMessage(err)}`);
             }

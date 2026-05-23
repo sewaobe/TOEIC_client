@@ -1,7 +1,5 @@
-import LandingPage from './views/pages/LandingPage';
+import LandingPage from "./views/pages/LandingPage";
 
 export default function LandingApp() {
-    return (
-        <LandingPage />
-    );
+  return <LandingPage />;
 }

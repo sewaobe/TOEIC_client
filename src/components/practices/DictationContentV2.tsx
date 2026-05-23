@@ -1083,7 +1083,7 @@ export default function DictationContentV2({
         totalItems={totalItems}
         completed={completed}
         overallProgress={overallProgress}
-        onBack={onBackToList ?? (() => navigate("/practice-skill/dictation-v2"))}
+        onBack={onBackToList ?? (() => navigate("/practice-skill/dictation"))}
         currentIndex={currentIndex}
         passedIndices={passedIndices}
         onJumpTo={handleJumpTo}
@@ -1152,7 +1152,7 @@ export default function DictationContentV2({
         onAnalyze={handleAnalyzeWithAI}
         onRetry={() => window.location.reload()}
         onViewAnswers={() => setOpenComplete(false)}
-        onNextLesson={onNextLesson ?? (() => navigate("/practice-skill/dictation-v2"))}
+        onNextLesson={onNextLesson ?? (() => navigate("/practice-skill/dictation"))}
       />
     </Box>
   );

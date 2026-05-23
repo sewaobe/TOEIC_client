@@ -70,12 +70,12 @@ const PracticeDictationPageV2 = () => {
 
   const handleNextLesson = () => {
     if (!nextLessonId) {
-      navigate("/practice-skill/dictation-v2");
+      navigate("/practice-skill/dictation");
       return;
     }
 
     navigate(
-      `/practice-skill/dictation-v2/${nextLessonId}?difficulty=${initialDifficulty}`
+      `/practice-skill/dictation/${nextLessonId}?difficulty=${initialDifficulty}`
     );
   };
 
@@ -95,7 +95,7 @@ const PracticeDictationPageV2 = () => {
           <DictationContentV2
             dictation={selectedLesson}
             initialDifficulty={initialDifficulty}
-            onBackToList={() => navigate("/practice-skill/dictation-v2")}
+            onBackToList={() => navigate("/practice-skill/dictation")}
             hasNextLesson={Boolean(nextLessonId)}
             onNextLesson={handleNextLesson}
           />

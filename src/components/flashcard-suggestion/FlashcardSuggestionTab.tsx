@@ -7,11 +7,6 @@ import SuggestedVocabularySection from "./SuggestedVocabularySection";
 import { TodayReviewSummary } from "../../types/UserVocabularyProgressV2";
 import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
 
-const reviewStats: Array<{ key: keyof Pick<TodayReviewSummary, "dueToday" | "overdue">; label: string; color: string }> = [
-  { key: "dueToday", label: "Đến hạn hôm nay", color: "#2563eb" },
-  { key: "overdue", label: "Quá hạn", color: "#ef4444" },
-];
-
 const CompactHeroPreview = () => (
   <Box
     sx={{
@@ -58,7 +53,7 @@ const CompactHeroPreview = () => (
         <StarBorder sx={{ fontSize: 18, color: "#cbd5e1" }} />
       </Box>
       <Typography sx={{ mt: 1, textAlign: "center", color: "#2563eb", fontWeight: 800, fontSize: { md: 18, xl: 20 } }}>
-        incentive
+        vocabulary
       </Typography>
       <Box sx={{ mt: 1.6, mx: "auto", width: "70%" }}>
         <Box sx={{ height: 6, borderRadius: 999, bgcolor: "#e5e7eb", mb: 0.8 }} />
@@ -94,14 +89,22 @@ const FlashcardSuggestionTab: React.FC = () => {
     };
   }, []);
 
-  const stats = reviewStats.map((stat) => ({
-    ...stat,
-    value: summary?.[stat.key] ?? 0,
-  }));
-  const totalReviewCount = summary?.total ?? 0;
-  const circleProgress = totalReviewCount > 0
-    ? Math.min(100, Math.round(((summary?.primaryReviewCount ?? 0) / totalReviewCount) * 100))
-    : 0;
+  const overdue = summary?.overdue ?? summary?.overdueReviewCount ?? 0;
+  const dueNow = summary?.dueNow ?? summary?.primaryReviewCount ?? 0;
+  const upcomingToday = summary?.upcomingToday ?? 0;
+  const totalReviewCount = summary?.total ?? overdue + dueNow + upcomingToday;
+  const reviewableNow = overdue + dueNow;
+  const stats = [
+    { key: "dueNow", label: "Đã tới hạn", value: dueNow, color: "#2563eb" },
+    { key: "overdue", label: "Quá hạn", value: overdue, color: "#ef4444" },
+  ];
+  const helperText =
+    upcomingToday > 0
+      ? `${upcomingToday} từ nữa sẽ tới hạn trong hôm nay`
+      : totalReviewCount > 0
+        ? "Không còn từ nào sắp tới hạn trong hôm nay"
+        : "Chưa có từ nào cần ôn hôm nay";
+  const circleProgress = totalReviewCount > 0 ? 100 : 0;
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
@@ -137,7 +140,7 @@ const FlashcardSuggestionTab: React.FC = () => {
                 Ôn tập hôm nay
               </Typography>
               <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                Ưu tiên các từ đến hạn và quá hạn theo lịch ghi nhớ của bạn.
+                Theo dõi các từ đã tới hạn, quá hạn và sắp tới hạn trong ngày hôm nay.
               </Typography>
             </Box>
           </Stack>
@@ -145,105 +148,160 @@ const FlashcardSuggestionTab: React.FC = () => {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) 250px", xl: "minmax(0, 1fr) 290px" },
-              gap: 2.5,
+              gridTemplateColumns: {
+                xs: "1fr",
+                md: "140px minmax(0, 1fr) 250px",
+                xl: "155px minmax(0, 1fr) 290px",
+              },
+              gap: { xs: 2, md: 2.5 },
               alignItems: "center",
               minWidth: 0,
             }}
           >
-            <Box sx={{ minWidth: 0 }}>
+            {/* LEFT: progress circle only */}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: { xs: "center", md: "flex-start" },
+                alignItems: "center",
+                minWidth: 0,
+              }}
+            >
               <Box
                 sx={{
-                  display: "grid",
-                  gridTemplateColumns: { xs: "1fr", sm: "128px minmax(0, 1fr)", xl: "140px minmax(0, 1fr)" },
-                  gap: 2,
+                  width: { xs: 112, sm: 122 },
+                  height: { xs: 112, sm: 122 },
+                  borderRadius: "50%",
+                  background: `conic-gradient(#2563eb 0 ${circleProgress}%, #bfdbfe ${circleProgress}% 100%)`,
+                  display: "flex",
                   alignItems: "center",
-                  mb: 2,
-                  minWidth: 0,
+                  justifyContent: "center",
+                  flexShrink: 0,
                 }}
               >
                 <Box
                   sx={{
-                    width: { xs: 112, sm: 122 },
-                    height: { xs: 112, sm: 122 },
+                    width: { xs: 88, sm: 96 },
+                    height: { xs: 88, sm: 96 },
                     borderRadius: "50%",
-                    background: `conic-gradient(#2563eb 0 ${circleProgress}%, #bfdbfe ${circleProgress}% 100%)`,
+                    bgcolor: "#eff6ff",
                     display: "flex",
+                    flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    mx: { xs: "auto", sm: 0 },
                   }}
                 >
-                  <Box
-                    sx={{
-                      width: { xs: 88, sm: 96 },
-                      height: { xs: 88, sm: 96 },
-                      borderRadius: "50%",
-                      bgcolor: "#eff6ff",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Typography variant="h4" sx={{ fontWeight: 900 }}>
-                      {isLoadingSummary ? <Skeleton width={44} /> : summary?.total ?? 0}
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      từ cần ôn
-                    </Typography>
-                  </Box>
-                </Box>
-
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
-                    gap: 1.2,
-                    minWidth: 0,
-                  }}
-                >
-                  {stats.map((stat) => (
-                    <Paper
-                      key={stat.key}
-                      elevation={0}
-                      sx={{ p: 1.35, borderRadius: 2, border: "1px solid #e2e8f0", minWidth: 0 }}
-                    >
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
-                        <Box sx={{ width: 9, height: 9, borderRadius: "50%", bgcolor: stat.color, flexShrink: 0 }} />
-                        <Typography
-                          variant="caption"
-                          sx={{ fontWeight: 700, color: "text.secondary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                        >
-                          {stat.label}
-                        </Typography>
-                      </Stack>
-                      <Typography variant="h6" sx={{ fontWeight: 900, mt: 0.3 }}>
-                        {isLoadingSummary ? <Skeleton width={32} /> : stat.value}
-                      </Typography>
-                    </Paper>
-                  ))}
+                  <Typography variant="h4" sx={{ fontWeight: 900 }}>
+                    {isLoadingSummary ? <Skeleton width={44} /> : totalReviewCount}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    từ cần ôn
+                  </Typography>
                 </Box>
               </Box>
+            </Box>
 
-              <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+            {/* CENTER: stats + buttons + helper */}
+            <Box sx={{ minWidth: 0 }}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                  },
+                  gap: 1.2,
+                  mb: 2,
+                  minWidth: 0,
+                }}
+              >
+                {stats.map((stat) => (
+                  <Paper
+                    key={stat.key}
+                    elevation={0}
+                    sx={{
+                      p: 1.35,
+                      borderRadius: 2,
+                      border: "1px solid #e2e8f0",
+                      minWidth: 0,
+                      bgcolor: "rgba(255,255,255,0.88)",
+                    }}
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+                      <Box
+                        sx={{
+                          width: 9,
+                          height: 9,
+                          borderRadius: "50%",
+                          bgcolor: stat.color,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontWeight: 700,
+                          color: "text.secondary",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {stat.label}
+                      </Typography>
+                    </Stack>
+                    <Typography variant="h6" sx={{ fontWeight: 900, mt: 0.3 }}>
+                      {isLoadingSummary ? <Skeleton width={32} /> : stat.value}
+                    </Typography>
+                  </Paper>
+                ))}
+              </Box>
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                 <Button
                   variant="contained"
                   startIcon={<PlayArrow />}
-                  sx={{ borderRadius: 2, fontWeight: 800, px: { xs: 2, sm: 3 }, whiteSpace: "nowrap", flexShrink: 0 }}
+                  sx={{
+                    borderRadius: 2,
+                    fontWeight: 800,
+                    px: { xs: 2, sm: 3 },
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}
                 >
-                  Ôn hôm nay ({summary?.primaryReviewCount ?? 0} từ)
+                  Ôn {dueNow} từ đã tới hạn
                 </Button>
+
                 <Button
                   variant="outlined"
                   startIcon={<PlayArrow />}
-                  sx={{ borderRadius: 2, fontWeight: 800, px: { xs: 2, sm: 3 }, whiteSpace: "nowrap", flexShrink: 0 }}
+                  sx={{
+                    borderRadius: 2,
+                    fontWeight: 800,
+                    px: { xs: 2, sm: 3 },
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    bgcolor: "rgba(255,255,255,0.72)",
+                  }}
                 >
-                  Ôn từ quá hạn ({summary?.overdueReviewCount ?? 0} từ)
+                  Ôn {overdue} từ quá hạn
                 </Button>
               </Stack>
+
+              <Typography
+                variant="caption"
+                sx={{
+                  display: "block",
+                  color: "text.secondary",
+                  fontWeight: 700,
+                  mt: 1,
+                }}
+              >
+                {isLoadingSummary ? <Skeleton width={210} /> : helperText}
+              </Typography>
             </Box>
 
+            {/* RIGHT: preview card only */}
             <CompactHeroPreview />
           </Box>
         </Box>

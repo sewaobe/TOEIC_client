@@ -70,6 +70,8 @@ export interface SspMmcPolicy {
 export interface TodayReviewSummary {
   total: number;
   dueToday: number;
+  dueNow: number;
+  upcomingToday: number;
   overdue: number;
   primaryReviewCount: number;
   overdueReviewCount: number;

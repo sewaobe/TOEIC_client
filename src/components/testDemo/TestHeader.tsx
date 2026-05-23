@@ -10,7 +10,7 @@ import {
   getPartFromQuestionNo as getPartFromQuestionNumber,
 } from "../../utils/mapAnswersToParts";
 import { ResultPayload } from "../modals/ToeicQuickResultModal";
-import { replace, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ConfirmModal from "../modals/ConfirmModal";
 import ToeicQuickResultModal from "../modals/ToeicQuickResultModal";
 import { setInitialAnswers } from "../../stores/answerSlice";
@@ -228,8 +228,10 @@ const TestHeader: FC<TestHeaderProps> = ({
                       ? qRaw._id
                       : qRaw._id.$oid ?? String(qRaw._id)
                     : undefined;
-                  const match = qRaw.name?.match(/\d+/);
-                  const qNo = match ? parseInt(match[0], 10) : fallback++;
+                  const qNo =
+                    typeof qRaw.questionNumber === "number"
+                      ? qRaw.questionNumber
+                      : fallback++;
                   if (rawId) qIdToNo.set(rawId, qNo);
                 }
               }
@@ -334,16 +336,9 @@ const TestHeader: FC<TestHeaderProps> = ({
     }
 
     // Build questionMetas với part từ group.part (không dùng questionNumber nữa)
-    let fallbackNumber = 1;
     const questionMetas = groups.flatMap((group) =>
       group.questions.map((q) => {
-        const match = q.name?.match(/\d+/);
-        const questionNumber = match
-          ? parseInt(match[0], 10)
-          : fallbackNumber++;
-        if (match) {
-          fallbackNumber = questionNumber + 1;
-        }
+        const questionNumber = q.questionNumber;
         const options = Object.keys(q.choices || {});
         // Lấy part từ group.part (mini test có sẵn), fallback dùng questionNumber cho full test
         const part = group.part ?? getPartFromQuestionNumber(questionNumber);

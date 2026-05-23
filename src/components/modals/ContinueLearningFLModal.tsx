@@ -37,12 +37,10 @@ const ContinueLearningFLModal: React.FC<ContinueLearningModalProps> = ({
       open={open}
       TransitionComponent={Transition}
       keepMounted
-      // Chặn tắt khi click ra ngoài hoặc nhấn ESC
-      onClose={(event, reason) => {
+      onClose={(_event, reason) => {
         if (reason === "backdropClick" || reason === "escapeKeyDown") return;
         onClose();
       }}
-      // Thêm an toàn nữa (tùy chọn):
       disableEscapeKeyDown
       aria-describedby="continue-learning-dialog-description"
       PaperProps={{
@@ -66,7 +64,6 @@ const ContinueLearningFLModal: React.FC<ContinueLearningModalProps> = ({
         <AnimatePresence>
           {open && (
             <motion.div
-              // ✅ Dùng 2 mốc với spring để tránh lỗi keyframes
               initial={{ scale: 0.8, rotate: -8, opacity: 0 }}
               animate={{ scale: 1, rotate: 0, opacity: 1 }}
               transition={{
@@ -81,16 +78,15 @@ const ContinueLearningFLModal: React.FC<ContinueLearningModalProps> = ({
           )}
         </AnimatePresence>
 
-        {/* ✅ Tránh h6 lồng trong h2: đổi component="span" */}
         <Typography variant="h6" component="span" fontWeight={700}>
-          Tiếp tục học?
+          Tiếp tục phiên học?
         </Typography>
       </DialogTitle>
 
       <DialogContent>
         <Typography id="continue-learning-dialog-description" sx={{ fontSize: "0.95rem" }}>
-          Bạn đang học dở <strong>{topicTitle}</strong>.{" "}
-          Bạn có muốn tiếp tục học không?
+          Bạn đang có phiên luyện tập trong hôm nay cho <strong>{topicTitle}</strong>.{" "}
+          Bạn muốn tiếp tục không?
         </Typography>
       </DialogContent>
 
@@ -100,7 +96,7 @@ const ContinueLearningFLModal: React.FC<ContinueLearningModalProps> = ({
           variant="outlined"
           sx={{ borderRadius: 2, textTransform: "none", px: 3 }}
         >
-          Không
+          Bỏ phiên cũ
         </Button>
 
         <Button
@@ -109,7 +105,7 @@ const ContinueLearningFLModal: React.FC<ContinueLearningModalProps> = ({
           color="primary"
           sx={{ borderRadius: 2, textTransform: "none", px: 3 }}
         >
-          Học tiếp tục
+          Học tiếp
         </Button>
       </DialogActions>
     </Dialog>

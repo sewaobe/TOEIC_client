@@ -58,7 +58,7 @@ export default function PracticeDictationListPageV2(): JSX.Element {
   const [selectedDifficulty, setSelectedDifficulty] = useState<DictationDifficulty>("easy");
 
   const navigate = useNavigate();
-  const handleBack = () => navigate(-1);
+  const handleBack = () => navigate('/practice-skill');
 
   const fetchSections = async () => {
     setLoading(true);
@@ -122,7 +122,7 @@ export default function PracticeDictationListPageV2(): JSX.Element {
     if (!selectedDictation) return;
 
     navigate(
-      `/practice-skill/dictation-v2/${selectedDictation._id}?difficulty=${selectedDifficulty}`
+      `/practice-skill/dictation/${selectedDictation._id}?difficulty=${selectedDifficulty}`
     );
     setSelectedDictation(null);
   };

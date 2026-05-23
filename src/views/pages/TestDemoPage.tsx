@@ -45,7 +45,6 @@ const TestDemoPage: FC = () => {
   const [isShowSideBar, setIsShowSideBar] = useState<boolean>(false);
   const [_, setStepIndex] = useState<number>(0);
   const [isTourRunning, setIsTourRunning] = useState<boolean>(true);
-  const [isPlanReady, setIsPlanReady] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const dispatch = useDispatch<AppDispatch>();
@@ -68,7 +67,7 @@ const TestDemoPage: FC = () => {
       const initialAnswers = groups.flatMap((g: ExamGroup) =>
         g.questions.map((q: ExamQuestion) => ({
           _id: q._id,
-          question: Number(q.name.replace(/^Question\s*/, "")),
+          question: q.questionNumber,
           answer: "",
           isFlagged: false,
         }))
@@ -103,7 +102,6 @@ const TestDemoPage: FC = () => {
         isTourRunning={isTourRunning}
         fromLesson={fromLesson}
         openModal={handleOpen}
-        onPlanReady={() => setIsPlanReady(true)}
         setIsSubmitted={setIsSubmitted}
         isSubmitted={isSubmitted}
       />

@@ -44,9 +44,9 @@ const CommentForm: React.FC<CommentFormProps> = ({ onSubmit, autoFocus }) => {
     >
       <Avatar
         sx={{ bgcolor: theme.palette.primary.main, width: 32, height: 32, mt: 0.5 }}
-        src={user.profile.avatar || undefined}
+        src={user?.profile?.avatar || undefined}
       >
-        {!user.profile.avatar && user.username?.[0]?.toUpperCase()}
+        {user?.profile?.avatar && user?.username?.[0]?.toUpperCase()}
       </Avatar>
 
       <TextField

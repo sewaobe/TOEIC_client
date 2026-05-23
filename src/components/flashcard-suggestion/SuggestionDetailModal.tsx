@@ -239,9 +239,29 @@ const Metric: React.FC<MetricProps> = ({ icon, label, value, tone = "#2563eb" })
 
 function formatDueLabel(date: string | null): string {
   if (!date) return "Chưa có lịch";
+
   const due = new Date(date);
+  if (Number.isNaN(due.getTime())) return "Không hợp lệ";
+
   const today = new Date();
-  return due.toDateString() === today.toDateString() ? "Hôm nay" : due.toLocaleDateString("vi-VN");
+
+  const timeText = due.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  if (due.toDateString() === today.toDateString()) {
+    return `Hôm nay, ${timeText}`;
+  }
+
+  const dateText = due.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
+  return `${dateText}, ${timeText}`;
 }
 
 function formatRelativeDate(date: string | null): string {

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, useLocation } from 'react-router-dom';
+import { BrowserRouter, matchPath, useLocation } from 'react-router-dom';
 import { AppRouter } from './routes/AppRouter.tsx';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState, store } from './stores/store.ts';
@@ -7,23 +7,13 @@ import { getUserThunk } from './stores/userSlice.ts';
 import GlobalSnackbar from './components/common/GlobalSnackbar.tsx';
 import { Toaster } from 'sonner';
 import { GlobalToastListener } from './components/common/GlobalToastListener.tsx';
-
-const PROTECTED_ROUTE_PREFIXES = [
-    '/native/home',
-    '/home',
-    '/profile',
-    '/flash-cards',
-    '/study-calendar',
-    '/practice-skill',
-    '/result-statistic',
-    '/learning-completion',
-    '/programs',
-    '/lesson',
-    '/credit',
-];
+import privateRoutes from './routes/routeConfig/privateRoutes.ts';
 
 const shouldBootstrapUser = (pathname: string) =>
-    PROTECTED_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+    privateRoutes.some((route) =>
+        route.guard &&
+        matchPath({ path: route.path, end: false }, pathname)
+    );
 
 
 const initSentryWhenIdle = () => {

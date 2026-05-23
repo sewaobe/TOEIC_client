@@ -33,7 +33,7 @@ const testService = {
         ...(options?.parts ? { parts: options.parts.join(",") } : {}),
       },
     });
-    const test = res.data;
+    const test = (res as any).data ?? res;
     return { test };
   },
   getTestDetail: async (testId: string, page = 1, limit = 5) => {

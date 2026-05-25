@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Box, Typography, useTheme } from "@mui/material";
+import { useLocation } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import AlertBox from "../../components/flashCardItem/AlertBox";
 import FlashcardsList from "../../components/flashCard/FlashcardList";
@@ -22,7 +23,11 @@ export interface FlashcardList {
 
 const FlashcardsPage: React.FC = () => {
   const theme = useTheme();
-  const [activeTab, setActiveTab] = useState<FlashcardPageTab>("myList");
+  const location = useLocation();
+  const initialTab =
+    (location.state as { activeTab?: FlashcardPageTab } | null)?.activeTab ??
+    (new URLSearchParams(location.search).get("tab") === "suggestion" ? "suggestion" : "myList");
+  const [activeTab, setActiveTab] = useState<FlashcardPageTab>(initialTab);
   const [openVideoModal, setOpenVideoModal] = useState(false);
   const handleOpen = () => setOpenVideoModal(true);
   const handleClose = () => setOpenVideoModal(false);

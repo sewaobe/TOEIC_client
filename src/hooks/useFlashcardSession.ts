@@ -14,6 +14,7 @@ import type {
     FlashcardPreviewMetadata,
 } from "../types/flashcardPreview";
 import { buildCurrentFlashcardPreview } from "../utils/flashcardPreview.util";
+import { createIdempotencyKey } from "../utils/idempotency.util";
 
 export interface Log {
     vocab_id: string;
@@ -39,19 +40,16 @@ interface UseFlashcardSessionProps {
     dayId?: string;
     activityId?: string;
     resumeSessionId?: string;
+    sessionMode?: "topic_practice" | "quick_review";
     withWeight?: boolean;
     onFinish?: () => void;
+    onSessionUnavailable?: () => void;
 }
 
 interface PendingAnswerFingerprint {
     vocabularyId: string;
     action: FlashcardFeedbackAction;
 }
-
-const createIdempotencyKey = (scope: string) =>
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `flashcard-${scope}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const getErrorStatus = (error: unknown): number | undefined => {
     const maybeError = error as {
@@ -86,8 +84,10 @@ export const useFlashcardSession = ({
     dayId,
     activityId: _activityId,
     resumeSessionId,
+    sessionMode = "topic_practice",
     withWeight = false,
     onFinish,
+    onSessionUnavailable,
 }: UseFlashcardSessionProps) => {
     const [queue, setQueue] = useState<FlashcardItem[]>([]);
     const [current, setCurrent] = useState<FlashcardItem | null>(null);
@@ -99,6 +99,7 @@ export const useFlashcardSession = ({
     const [isFinished, setIsFinished] = useState(false);
     const [previewMetadata, setPreviewMetadata] = useState<FlashcardPreviewMetadata | null>(null);
     const [isAnswerSubmitting, setIsAnswerSubmitting] = useState(false);
+    const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
     const pendingStartIdempotencyKeyRef = useRef<string | null>(null);
     const pendingAnswerIdempotencyKeyRef = useRef<string | null>(null);
     const pendingAnswerFingerprintRef = useRef<PendingAnswerFingerprint | null>(null);
@@ -186,6 +187,12 @@ export const useFlashcardSession = ({
 
         const initSession = async () => {
             const startNewSession = async () => {
+                if (sessionMode === "quick_review") {
+                    toast.error("Phien on tap goi y khong con kha dung.");
+                    onSessionUnavailable?.();
+                    return;
+                }
+
                 let sorted = [...vocabularies];
                 sorted = withWeight
                     ? sorted.sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0))
@@ -207,6 +214,7 @@ export const useFlashcardSession = ({
                     idempotencyKey
                 );
 
+                setActiveSessionId(res.sessionId);
                 localStorage.setItem("flashcard_session_id", res.sessionId);
                 setPreviewMetadata(res.preview_metadata ?? null);
                 pendingStartIdempotencyKeyRef.current = null;
@@ -218,7 +226,15 @@ export const useFlashcardSession = ({
                     try {
                         res = await flashCardProgressService.getSession(resumeSessionId);
                     } catch {
-                        localStorage.removeItem("flashcard_session_id");
+                        if (sessionMode === "quick_review") {
+                            toast.error("Phien on tap goi y khong con kha dung.");
+                            onSessionUnavailable?.();
+                            return;
+                        }
+
+                        if (sessionMode === "topic_practice") {
+                            localStorage.removeItem("flashcard_session_id");
+                        }
                         toast.info("Phiên học cũ không còn khả dụng, bắt đầu phiên mới.");
                         await startNewSession();
                         return;
@@ -226,7 +242,15 @@ export const useFlashcardSession = ({
 
                     const progress = res.progress;
                     if (!progress) {
-                        localStorage.removeItem("flashcard_session_id");
+                        if (sessionMode === "quick_review") {
+                            toast.error("Phien on tap goi y khong con kha dung.");
+                            onSessionUnavailable?.();
+                            return;
+                        }
+
+                        if (sessionMode === "topic_practice") {
+                            localStorage.removeItem("flashcard_session_id");
+                        }
                         await startNewSession();
                         return;
                     }
@@ -242,8 +266,11 @@ export const useFlashcardSession = ({
                         progress.logs?.[0]?.attempted_at ?? new Date(restoredStartTime).toISOString()
                     );
 
-                    localStorage.setItem("flashcard_session_id", progress.session_id);
-                    toast.success("Đã khôi phục phiên học trước đó");
+                    setActiveSessionId(progress.session_id);
+                    if (sessionMode === "topic_practice") {
+                        localStorage.setItem("flashcard_session_id", progress.session_id);
+                        toast.success("Đã khôi phục phiên học trước đó");
+                    }
                     return;
                 }
 
@@ -254,15 +281,14 @@ export const useFlashcardSession = ({
         };
 
         initSession();
-    }, [vocabularies, withWeight, resumeSessionId, isFinished, topicId, applyProgressQueue]);
+    }, [vocabularies, withWeight, resumeSessionId, isFinished, topicId, applyProgressQueue, sessionMode, onSessionUnavailable]);
 
     const handleEvaluate = useCallback(
         async (option: FlashcardCurrentOptionPreview) => {
             if (!current || isAnswerSubmitting) return;
 
-            const sessionId = localStorage.getItem("flashcard_session_id");
             const vocabularyId = current._id ?? current.word;
-            if (!sessionId || !vocabularyId) {
+            if (!activeSessionId || !vocabularyId) {
                 toast.error("Không tìm thấy phiên học hiện tại");
                 return;
             }
@@ -303,7 +329,7 @@ export const useFlashcardSession = ({
 
             try {
                 const res = await flashCardProgressService.answerSession(
-                    sessionId,
+                    activeSessionId,
                     {
                         vocabulary_id: vocabularyId,
                         action: option.key,
@@ -339,6 +365,7 @@ export const useFlashcardSession = ({
         [
             current,
             isAnswerSubmitting,
+            activeSessionId,
             startTime,
             mergePreviewMetadataPatch,
             applyProgressQueue,
@@ -390,12 +417,11 @@ export const useFlashcardSession = ({
 
         finalizeRequestedRef.current = true;
         onFinish?.();
-        const sessionId = localStorage.getItem("flashcard_session_id");
 
-        if (!dayId && sessionId) {
+        if (!dayId && activeSessionId) {
             toast.promise(
                 flashCardProgressService.finalizeSession(
-                    sessionId,
+                    activeSessionId,
                     currentAttempt.accuracy,
                     currentAttempt.avg_time,
                     currentAttempt.total,
@@ -405,7 +431,9 @@ export const useFlashcardSession = ({
                 {
                     loading: "Đang lưu kết quả...",
                     success: () => {
-                        localStorage.removeItem("flashcard_session_id");
+                        if (sessionMode === "topic_practice") {
+                            localStorage.removeItem("flashcard_session_id");
+                        }
                         setOpenStats(true);
                         return "Lưu thành công!";
                     },
@@ -415,7 +443,7 @@ export const useFlashcardSession = ({
         } else if (dayId) {
             console.log("Finalize lesson session - dayId:", dayId);
         }
-    }, [isFinished, logs.length, currentAttempt, onFinish, dayId]);
+    }, [isFinished, logs.length, currentAttempt, onFinish, dayId, activeSessionId, sessionMode]);
 
     return {
         queue,

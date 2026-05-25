@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Box, Button, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { Alarm, PlayArrow, StarBorder, VolumeUp } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import MemoryStatusCard from "./MemoryStatusCard";
 import ReviewScheduleCard from "./ReviewScheduleCard";
 import SuggestedVocabularySection from "./SuggestedVocabularySection";
 import { TodayReviewSummary } from "../../types/UserVocabularyProgressV2";
 import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
+import { flashCardProgressService, StartSuggestionReviewRequest } from "../../services/flashcard_progress.service";
+import { createIdempotencyKey } from "../../utils/idempotency.util";
 
 const CompactHeroPreview = () => (
   <Box
@@ -64,8 +68,10 @@ const CompactHeroPreview = () => (
 );
 
 const FlashcardSuggestionTab: React.FC = () => {
+  const navigate = useNavigate();
   const [summary, setSummary] = useState<TodayReviewSummary | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
+  const [startingMode, setStartingMode] = useState<StartSuggestionReviewRequest["mode"] | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -104,7 +110,25 @@ const FlashcardSuggestionTab: React.FC = () => {
       : totalReviewCount > 0
         ? "Không còn từ nào sắp tới hạn trong hôm nay"
         : "Chưa có từ nào cần ôn hôm nay";
-  const circleProgress = totalReviewCount > 0 ? 100 : 0;
+  const circleProgress = totalReviewCount > 0 ? Math.round((reviewableNow / totalReviewCount) * 100) : 0;
+
+  const handleStartSuggestionReview = async (body: StartSuggestionReviewRequest) => {
+    if (startingMode) return;
+
+    setStartingMode(body.mode);
+    try {
+      const result = await flashCardProgressService.startSuggestionReview(
+        body,
+        createIdempotencyKey(`suggestion-${body.mode}`)
+      );
+
+      navigate(`/flash-cards/practice-session/${result.sessionId}`);
+    } catch {
+      toast.error("Không thể bắt đầu phiên ôn tập gợi ý.");
+    } finally {
+      setStartingMode(null);
+    }
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
@@ -257,10 +281,12 @@ const FlashcardSuggestionTab: React.FC = () => {
                 ))}
               </Box>
 
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2.0}>
                 <Button
                   variant="contained"
                   startIcon={<PlayArrow />}
+                  disabled={dueNow <= 0 || Boolean(startingMode)}
+                  onClick={() => handleStartSuggestionReview({ mode: "due_now" })}
                   sx={{
                     borderRadius: 2,
                     fontWeight: 800,
@@ -275,13 +301,26 @@ const FlashcardSuggestionTab: React.FC = () => {
                 <Button
                   variant="outlined"
                   startIcon={<PlayArrow />}
+                  disabled={overdue <= 0 || Boolean(startingMode)}
+                  onClick={() => handleStartSuggestionReview({ mode: "overdue" })}
                   sx={{
                     borderRadius: 2,
-                    fontWeight: 800,
+                    fontWeight: 700,
                     px: { xs: 2, sm: 3 },
                     whiteSpace: "nowrap",
                     flexShrink: 0,
-                    bgcolor: "rgba(255,255,255,0.72)",
+                    color: "#dc2626",
+                    borderColor: "#fecaca",
+                    bgcolor: "rgba(254, 242, 242, 0.82)",
+                    "&:hover": {
+                      borderColor: "#fca5a5",
+                      bgcolor: "#fee2e2",
+                    },
+                    "&.Mui-disabled": {
+                      color: "rgba(220, 38, 38, 0.38)",
+                      borderColor: "rgba(252, 165, 165, 0.45)",
+                      bgcolor: "rgba(254, 242, 242, 0.45)",
+                    },
                   }}
                 >
                   Ôn {overdue} từ quá hạn
@@ -320,7 +359,16 @@ const FlashcardSuggestionTab: React.FC = () => {
         <MemoryStatusCard />
       </Box>
 
-      <SuggestedVocabularySection />
+      <SuggestedVocabularySection
+        onStartSelected={(vocabularyIds) =>
+          handleStartSuggestionReview({ mode: "custom", vocabulary_ids: vocabularyIds })
+        }
+        onStartSingle={(vocabularyId) =>
+          handleStartSuggestionReview({ mode: "single", vocabulary_ids: [vocabularyId] })
+        }
+        isStartingSelected={startingMode === "custom"}
+        isStartingSingle={startingMode === "single"}
+      />
     </Box>
   );
 };

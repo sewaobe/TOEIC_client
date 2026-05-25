@@ -41,6 +41,11 @@ export interface FlashcardSessionResumeResponse {
   preview_metadata?: FlashcardPreviewMetadata;
 }
 
+export interface StartSuggestionReviewRequest {
+  mode: "due_now" | "overdue" | "custom" | "single";
+  vocabulary_ids?: string[];
+}
+
 export const flashCardProgressService = {
   // 🔹 1. Tạo session mới
   startSession: async (
@@ -59,6 +64,22 @@ export const flashCardProgressService = {
       },
     );
     return res.data; // { session_id, progress }
+  },
+
+  startSuggestionReview: async (
+    body: StartSuggestionReviewRequest,
+    idempotencyKey?: string,
+  ): Promise<FlashcardSessionStartResponse> => {
+    const res = await axiosClient.post(
+      `${BASE_URL}/start-suggestion-review`,
+      body,
+      idempotencyKey
+        ? {
+          headers: { "Idempotency-Key": idempotencyKey },
+        }
+        : undefined,
+    );
+    return res.data;
   },
 
   answerSession: async (

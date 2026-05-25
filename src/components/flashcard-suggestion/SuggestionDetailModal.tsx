@@ -29,6 +29,8 @@ interface SuggestionDetailModalProps {
   detail: SuggestionDetail | null;
   isSelected?: boolean;
   onAddToSelection?: (vocabularyId: string) => void;
+  onStartSingle?: (vocabularyId: string) => void | Promise<void>;
+  isStartingSingle?: boolean;
   onClose: () => void;
 }
 
@@ -49,6 +51,8 @@ const SuggestionDetailModal: React.FC<SuggestionDetailModalProps> = ({
   detail,
   isSelected = false,
   onAddToSelection,
+  onStartSingle,
+  isStartingSingle = false,
   onClose,
 }) => {
   if (!detail) {
@@ -200,7 +204,13 @@ const SuggestionDetailModal: React.FC<SuggestionDetailModalProps> = ({
           <Divider />
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} justifyContent="flex-end">
-            <Button variant="contained" startIcon={<PlayArrow />} sx={{ borderRadius: 2, fontWeight: 700 }}>
+            <Button
+              variant="contained"
+              startIcon={<PlayArrow />}
+              disabled={isStartingSingle}
+              onClick={() => onStartSingle?.(detail.vocabulary_id)}
+              sx={{ borderRadius: 2, fontWeight: 700 }}
+            >
               Ôn từ này ngay
             </Button>
             <Button

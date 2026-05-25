@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useCallback, useState, useEffect, useMemo } from "react";
 import { Box, LinearProgress, Skeleton, Typography } from "@mui/material";
 import MainLayout from "../layouts/MainLayout";
 import Flashcard from "../../components/flashCardItem/FlashCard";
@@ -12,7 +12,7 @@ import { useFlashcardSession } from "../../hooks/useFlashcardSession";
 import { StatisticsModal } from "../../components/flashCardItem/StatisticsModal";
 import { toast } from "sonner";
 import PracticeCompletionCard from "../../components/flashCard/PracticeCompletionCard";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import F5Modal from "../../components/modals/F5Modal";
 import { topicService } from "../../services/topic.service";
 import MatchingGame, {
@@ -24,16 +24,24 @@ import WordRecallGame, {
 import MatchingGameCompletion from "../../components/flashCardItem/MatchingGameCompletion";
 import WordRecallCompletion from "../../components/flashCardItem/WordRecallCompletion";
 import { flashCardGameService } from "../../services/flashcard_game.service";
+import { flashCardProgressService } from "../../services/flashcard_progress.service";
+import userVocabularyProgressV2Service from "../../services/user_vocabulary_progress_v2.service";
 
 export default function PracticeFlashcardPage() {
-  const location = useLocation();
-  const topicId = location.pathname.split("/")[2] || "";
+  const { id, sessionId } = useParams<{ id?: string; sessionId?: string }>();
+  const topicId = id || "";
+  const isQuickReview = Boolean(sessionId);
+  const navigate = useNavigate();
   const [words, setWords] = useState<FlashcardItem[]>([]);
   const [voice, setVoice] = useState<"US" | "UK">("US");
   const [practiceMode, setPracticeMode] = useState<PracticeMode>("flashcard");
   const [gameResult, setGameResult] = useState<
     MatchingGameResult | WordRecallResult | null
   >(null);
+
+  const navigateToSuggestionTab = useCallback(() => {
+    navigate("/flash-cards?tab=suggestion", { state: { activeTab: "suggestion" } });
+  }, [navigate]);
 
   const fetchData = async (topicId: string) => {
     try {
@@ -50,7 +58,61 @@ export default function PracticeFlashcardPage() {
       toast.error("Lấy toàn bộ flashcards thất bại. Vui lòng thử lại.");
     }
   };
+  const fetchQuickReviewData = async (activeSessionId: string) => {
+    try {
+      const res = await flashCardProgressService.getSession(activeSessionId);
+      const progress = res.progress;
+
+      if (!progress || !progress.order_queue?.length) {
+        toast.error("Phiên ôn tập gợi ý không còn khả dụng.");
+        navigateToSuggestionTab();
+        return;
+      }
+
+      const details = await Promise.all(
+        progress.order_queue.map((vocabularyId) =>
+          userVocabularyProgressV2Service.getSuggestionDetail(vocabularyId)
+        )
+      );
+
+      const hydratedWords = details
+        .map<FlashcardItem | null>((detail) =>
+          detail.word
+            ? {
+              _id: detail.vocabulary_id,
+              word: detail.word,
+              definition: detail.meaning,
+              phonetic: detail.phonetic,
+              examples: detail.examples,
+            }
+            : null
+        )
+        .filter((item): item is FlashcardItem => Boolean(item));
+
+      if (hydratedWords.length !== progress.order_queue.length) {
+        toast.error("Không thể tải đầy đủ dữ liệu từ vựng cho phiên ôn tập.");
+        navigateToSuggestionTab();
+        return;
+      }
+
+      setWords(hydratedWords);
+    } catch {
+      toast.error("Phiên ôn tập gợi ý không còn khả dụng.");
+      navigateToSuggestionTab();
+    }
+  };
+
   useEffect(() => {
+    if (isQuickReview) {
+      if (!sessionId) {
+        navigateToSuggestionTab();
+        return;
+      }
+
+      fetchQuickReviewData(sessionId);
+      return;
+    }
+
     if (!topicId) {
       toast.error("Topic ID không hợp lệ.");
       return;
@@ -61,7 +123,7 @@ export default function PracticeFlashcardPage() {
     return () => {
       localStorage.removeItem("flashcard_session_id");
     };
-  }, []);
+  }, [isQuickReview, sessionId, topicId, navigateToSuggestionTab]);
 
   const {
     current,
@@ -78,7 +140,11 @@ export default function PracticeFlashcardPage() {
     vocabularies: words,
     topicId,
     withWeight: false,
-    resumeSessionId: localStorage.getItem("flashcard_session_id") || undefined,
+    resumeSessionId: isQuickReview
+      ? sessionId
+      : localStorage.getItem("flashcard_session_id") || undefined,
+    sessionMode: isQuickReview ? "quick_review" : "topic_practice",
+    onSessionUnavailable: isQuickReview ? navigateToSuggestionTab : undefined,
     onFinish: () => console.log("Hoàn thành luyện tập cá nhân!"),
   });
   const uniqueWords = useMemo(() => {
@@ -112,14 +178,14 @@ export default function PracticeFlashcardPage() {
   const total = initialTotal || 0;
   const completed = total - remaining; // số từ đã xong (đã bị loại)
   const progress = total ? Math.round((completed / total) * 100) : 0;
-  const navigate = useNavigate();
-
   // Xử lý khi hoàn thành game Matching
   const handleMatchingFinish = async (
     result: MatchingGameResult,
     startedAt: string,
     finishedAt: string
   ) => {
+    if (isQuickReview) return;
+
     setGameResult(result);
     toast.success(`🎮 Hoàn thành! Độ chính xác: ${result.accuracy}%`);
 
@@ -144,6 +210,8 @@ export default function PracticeFlashcardPage() {
     startedAt: string,
     finishedAt: string
   ) => {
+    if (isQuickReview) return;
+
     setGameResult(result);
     toast.success(`🧠 Hoàn thành! Điểm số: ${result.totalScore}`);
 
@@ -202,7 +270,7 @@ export default function PracticeFlashcardPage() {
     }
 
     // Chế độ Matching Game
-    if (practiceMode === "matching") {
+    if (!isQuickReview && practiceMode === "matching") {
       if (words.length < 2) {
         return (
           <Box sx={{ textAlign: "center", py: 6 }}>
@@ -222,7 +290,7 @@ export default function PracticeFlashcardPage() {
     }
 
     // Chế độ Word Recall
-    if (practiceMode === "recall") {
+    if (!isQuickReview && practiceMode === "recall") {
       if (words.length === 0) {
         return (
           <Box sx={{ textAlign: "center", py: 6 }}>
@@ -265,7 +333,7 @@ export default function PracticeFlashcardPage() {
           avgTime={currentAttempt.avg_time}
           onRetry={() => window.location.reload()}
           onViewStats={() => setOpenStats(true)}
-          onGoHome={() => navigate("/flash-cards")}
+          onGoHome={() => isQuickReview ? navigateToSuggestionTab() : navigate("/flash-cards")}
         />
       );
     }
@@ -324,10 +392,10 @@ export default function PracticeFlashcardPage() {
         style={{ minHeight: "calc(100vh - 180px)" }}
       >
         <Header />
-        <Menu currentMode={practiceMode} onModeChange={handleModeChange} />
+        {!isQuickReview && <Menu currentMode={practiceMode} onModeChange={handleModeChange} />}
 
         {/* Alert chỉ hiện ở chế độ flashcard */}
-        {practiceMode === "flashcard" && (
+        {!isQuickReview && practiceMode === "flashcard" && (
           <AlertBox
             severity="warning"
             variant="outlined"
@@ -372,6 +440,11 @@ export default function PracticeFlashcardPage() {
           title="Cảnh báo rời trang"
           content="Bạn có chắc muốn rời khỏi phiên luyện tập hiện tại không?"
           onConfirm={() => {
+            if (isQuickReview) {
+              navigateToSuggestionTab();
+              return;
+            }
+
             navigate(`/flash-cards/${topicId}`);
           }}
         />

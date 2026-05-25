@@ -95,6 +95,11 @@ const privateRoutes: AppRoute[] = [
     guard: ProtectedRoute,
   },
   {
+    path: "/flash-cards/practice-session/:sessionId",
+    element: PracticeFlashCardPage,
+    guard: ProtectedRoute,
+  },
+  {
     path: "/tests/:testId/result/:historyId",
     element: ResultTestPage,
     guard: ProtectedRoute,

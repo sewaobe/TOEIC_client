@@ -19,10 +19,10 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import {
-  FilterList,
   InfoOutlined,
   KeyboardArrowLeft,
   KeyboardArrowRight,
@@ -30,6 +30,7 @@ import {
   Search,
   VolumeUp,
 } from "@mui/icons-material";
+import RestartAlt from "@mui/icons-material/RestartAlt";
 import {
   PaginatedSuggestions,
   SuggestionBucket,
@@ -96,6 +97,14 @@ const emptyFilterOptions: SuggestionFilterOptions = {
   topics: [],
   levels: [],
 };
+
+interface SuggestedVocabularySectionProps {
+  onStartSelected?: (vocabularyIds: string[]) => void | Promise<void>;
+  onStartSingle?: (vocabularyId: string) => void | Promise<void>;
+  isStartingSelected?: boolean;
+  isStartingSingle?: boolean;
+}
+
 function resolveDueTone(item: SuggestedVocabularyApiItem): SuggestionDueTone {
   if (item.memoryBucket === "overdue") {
     return "danger";
@@ -120,7 +129,12 @@ function resolveTopicColor(topic?: string): string {
   return "#dbeafe";
 }
 
-const SuggestedVocabularySection: React.FC = () => {
+const SuggestedVocabularySection: React.FC<SuggestedVocabularySectionProps> = ({
+  onStartSelected,
+  onStartSingle,
+  isStartingSelected = false,
+  isStartingSingle = false,
+}) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<PaginatedSuggestions>(emptySuggestions);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(true);
@@ -260,6 +274,15 @@ const SuggestedVocabularySection: React.FC = () => {
     );
   };
 
+  const handleStartSelected = async () => {
+    if (selectedIds.length === 0 || isStartingSelected) return;
+
+    await onStartSelected?.(selectedIds);
+    setSelectedIds([]);
+  };
+
+  const hasActiveFilters = topic !== "all" || level != "all";
+
   return (
     <>
       <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 3, border: "1px solid #e2e8f0", minWidth: 0 }}>
@@ -308,7 +331,7 @@ const SuggestedVocabularySection: React.FC = () => {
           sx={{
             display: "flex",
             alignItems: "center",
-            gap: 1.5,
+            justifyContent: "space-between",
             mb: 2,
             overflowX: "auto",
             pb: 0.4,
@@ -351,18 +374,24 @@ const SuggestedVocabularySection: React.FC = () => {
                 </MenuItem>
               ))}
             </Select>
-            <Button
-              variant="outlined"
-              startIcon={<FilterList sx={{ fontSize: 16 }} />}
-              onClick={handleResetFilters}
-              sx={{
-                ...compactButtonSx,
-                minHeight: 30,
-                "& .MuiButton-startIcon": { mr: 0.5 },
-              }}
-            >
-              Bộ lọc
-            </Button>
+            <Tooltip title="Xóa bộ lọc">
+              <span>
+                <Button
+                  variant="outlined"
+                  onClick={handleResetFilters}
+                  disabled={!hasActiveFilters}
+                  sx={{
+                    ...compactButtonSx,
+                    minWidth: 32,
+                    width: 32,
+                    minHeight: 30,
+                    px: 0,
+                  }}
+                >
+                  <RestartAlt sx={{ fontSize: 18 }} />
+                </Button>
+              </span>
+            </Tooltip>
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, flexShrink: 0 }}>
@@ -389,7 +418,7 @@ const SuggestedVocabularySection: React.FC = () => {
         </Box>
 
         <TableContainer sx={{ border: "1px solid #e2e8f0", borderRadius: 3, overflowX: "auto" }}>
-          <Table size="small" sx={{ minWidth: 1040 }}>
+          <Table size="small" sx={{ minWidth: 1000 }}>
             <TableHead>
               <TableRow>
                 <TableCell
@@ -425,6 +454,8 @@ const SuggestedVocabularySection: React.FC = () => {
                       variant="contained"
                       size="small"
                       startIcon={<PlayArrow sx={{ fontSize: 15 }} />}
+                      disabled={selectedCount === 0 || isStartingSelected}
+                      onClick={handleStartSelected}
                       sx={{
                         height: 26,
                         borderRadius: 1.5,
@@ -527,7 +558,7 @@ const SuggestedVocabularySection: React.FC = () => {
                             <Typography variant="body2" sx={{ fontWeight: 900, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {item.word}
                             </Typography>
-                            <Typography variant="caption" sx={{ color: "text.secondary"}}>
+                            <Typography variant="caption" sx={{ color: "text.secondary" }}>
                               {item.phonetic}
                             </Typography>
                           </Box>
@@ -653,6 +684,8 @@ const SuggestedVocabularySection: React.FC = () => {
         detail={selectedDetail}
         isSelected={Boolean(selectedDetail && selectedIds.includes(selectedDetail.vocabulary_id))}
         onAddToSelection={handleAddToSelection}
+        onStartSingle={onStartSingle}
+        isStartingSingle={isStartingSingle}
         onClose={() => setDetailOpen(false)}
       />
     </>

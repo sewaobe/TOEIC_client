@@ -115,6 +115,10 @@ export const part6: ToeicPart = {
         "Câu hỏi điền câu vào đoạn văn",
         "Hình thức: Thư điện tử / Thư tay (Email / Letter)",
         "Hình thức: Thông báo / Văn bản hướng dẫn (Notice / Announcement)",
+ 	"Hình thức: Quảng cáo (Advertisement)",
+  	"Hình thức: Trang web (Web page)",
+  	"Hình thức: Bài viết / Đánh giá / Chứng thực (Article / Review / Testimonial)",
+  	"Hình thức: Thông tin / Hướng dẫn (Information / Instructions)"
     ],
 }
 

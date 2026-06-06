@@ -1,6 +1,12 @@
 import { ITestCard } from "../types/Test";
 import axiosClient from "./axiosClient";
 
+export type UserTestSubmitType =
+  | "practice"
+  | "initial_assessment"
+  | "mini_test"
+  | "full_test";
+
 const testService = {
   getTests: async (
     page = 1,
@@ -51,12 +57,14 @@ const testService = {
     answers: { question_id: string; selectedOption: string }[],
     duration: number,
     completedPart?: string,
+    submit_type?: UserTestSubmitType,
   ): Promise<{ score: number; answers: any[] }> => {
     const res = await axiosClient.post(`/tests/${testId}/submit`, {
       userId,
       answers,
       duration,
       ...(completedPart ? { completedPart } : {}),
+      ...(submit_type ? { submit_type } : {}),
     });
 
     if (isGuest) {

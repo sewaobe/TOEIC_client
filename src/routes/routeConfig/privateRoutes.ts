@@ -70,6 +70,7 @@ const NativeHumanHomePage = lazy(
 const DashboardDemo = lazy(() => import("../../views/pages/DashboardDemo"));
 const LessonPage = lazy(() => import("../../views/pages/LessonPage"));
 const CreditPage = lazy(() => import("../../views/pages/CreditPage"));
+const PlanWizardPage = lazy(() => import("../../views/pages/PlanWizardPage"));
 
 
 export interface AppRoute {
@@ -190,6 +191,7 @@ const privateRoutes: AppRoute[] = [
     guard: ProtectedRoute,
     hidden: isProd
   },
+  { path: "/plan", element: PlanWizardPage, guard: ProtectedRoute },
   { path: "/programs", element: DashboardDemo, guard: ProtectedRoute, hidden: isProd },
   { path: "/lesson", element: LessonPage, guard: ProtectedRoute, hidden: isProd },
   { path: "/credit", element: CreditPage, guard: ProtectedRoute },

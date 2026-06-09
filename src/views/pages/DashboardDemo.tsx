@@ -24,10 +24,11 @@ const missingRequirementLabel: Record<string, string> = {
 
 const unwrapApiData = (response: any) => response?.data ?? response;
 
-const toDashboardPlanFromV2Overview = (overview: any) => {
+const toDashboardPlanFromV2Overview = (overview: any, generationContext: any) => {
   const learningPath = overview?.learning_path;
   const weekStudies = overview?.week_studies ?? [];
   const currentCycle = overview?.current_cycle;
+  const entryScore = generationContext.latest_initial_test.score;
 
   const weekStudyIds =
     weekStudies.length > 0
@@ -50,6 +51,7 @@ const toDashboardPlanFromV2Overview = (overview: any) => {
   return {
     learningPath_id: {
       ...learningPath,
+      entry_score: entryScore,
       week_study_ids: weekStudyIds,
     },
     learning_path_v2: overview,
@@ -96,7 +98,7 @@ export default function DashboardDemo() {
       learningPathId
     );
     const overview = unwrapApiData(overviewResponse);
-    setPlan(toDashboardPlanFromV2Overview(overview));
+    setPlan(toDashboardPlanFromV2Overview(overview, context));
     setHasPlan(true);
     setOpen(false);
     return true;
@@ -137,15 +139,15 @@ export default function DashboardDemo() {
       setCreatingPath(true);
       await learningPathV2Service.initialGeneration(learningPathId);
 
+      const refreshedContext = await loadGenerationContext();
+
       const overviewResponse = await learningPathV2Service.getOverview(
         learningPathId
       );
       const overview = unwrapApiData(overviewResponse);
-      setPlan(toDashboardPlanFromV2Overview(overview));
+      setPlan(toDashboardPlanFromV2Overview(overview, refreshedContext));
       setHasPlan(true);
       setOpen(false);
-
-      await loadGenerationContext();
     } catch (error) {
       console.error("Tạo LearningPath v2 thất bại", error);
       alert("Không thể tạo lộ trình. Vui lòng thử lại.");

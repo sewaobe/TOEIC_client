@@ -322,8 +322,9 @@ export default function DashboardLearningPath({
     }));
   }
 
-  const TARGET = lp.target_score ?? 0;
-  const DAILY = `${lp.time_per_day ?? 0} phút/ngày`;
+  const ENTRY_SCORE = lp.entry_score;
+  const TARGET = lp.target_score;
+  const DAILY = `${lp.time_per_day} phút/ngày`;
   const REMAINING_TIME = formatRemainingTime(lp.target_completion_date);
   const WEEKS = lp.week_study_ids?.length ?? 0;
 
@@ -443,21 +444,28 @@ export default function DashboardLearningPath({
           {/* ===== Stat bar ===== */}
           <Section>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: 3 }}>
+                <StatItem
+                  icon={<SchoolIcon color="primary" />}
+                  label="Điểm đầu vào"
+                  value={ENTRY_SCORE}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 3 }}>
                 <StatItem
                   icon={<EmojiEventsIcon color="primary" />}
                   label="Mục tiêu điểm"
                   value={TARGET}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: 3 }}>
                 <StatItem
                   icon={<SpeedIcon color="secondary" />}
                   label="Thời gian còn lại"
                   value={REMAINING_TIME}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: 3 }}>
                 <StatItem
                   icon={<AccessTimeIcon color="success" />}
                   label="Thời lượng"

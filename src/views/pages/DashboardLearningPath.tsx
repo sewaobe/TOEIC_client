@@ -398,8 +398,13 @@ export default function DashboardLearningPath({
         }}
       >
         <Container
-          className="max-w-[1000px] mx-auto p-4 sm:p-6 flex-1"
+          className="mx-auto p-4 sm:p-6 flex-1"
           sx={{
+            maxWidth: {
+              xs: "100%",
+              lg: "1200px",
+              xl: "1480px",
+            },
             borderRadius: "36px",
             border: "1px solid rgba(0,0,0,0.06)",
             bgcolor: (t) =>

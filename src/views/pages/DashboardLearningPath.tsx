@@ -1,11 +1,6 @@
-// DashboardDemo.tsx
-// ===============================================
-// Imports
-// ===============================================
 import * as React from "react";
 import {
   Box,
-  Button,
   Card,
   CardContent,
   Chip,
@@ -15,9 +10,7 @@ import {
   Grid,
   Stack,
   Typography,
-  Tooltip,
   Paper,
-  Drawer,
   Dialog,
   IconButton,
   styled,
@@ -43,6 +36,7 @@ import FlagIcon from "@mui/icons-material/Flag";
 import BookIcon from "@mui/icons-material/Book";
 import useLocalStorage from "../../hooks/useLocalStorage";
 import { FeedbackLessonModal } from "../../components/modals/FeedbackLessonModal";
+import LearningPathRoadmapCanvas from "../../components/learningPath/LearningPathRoadmapCanvas";
 
 // Tạo một đối tượng chứa màu sắc để dễ dàng thay đổi và quản lý
 const studyDayColors = {
@@ -474,6 +468,10 @@ export default function DashboardLearningPath({
               </Grid>
             </Grid>
           </Section>
+
+          <Box sx={{ my: 2.5 }} />
+
+          <LearningPathRoadmapCanvas overview={plan.learning_path_v2} />
 
           <Box sx={{ my: 2.5 }} />
 

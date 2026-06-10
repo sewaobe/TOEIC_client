@@ -1,3 +1,4 @@
+import { GetLearningPathSkillMapParams } from "../types/user_skill";
 import axiosClient from "./axiosClient";
 
 export type LearningPathV2SetupPayload = {
@@ -576,6 +577,15 @@ const learningPathV2Service = {
     return axiosClient.get(
       `${BASE_URL}/${learningPathId}/nodes/${lessonManagerId}/detail`
     );
+  },
+
+  getSkillMap: async (
+    learningPathId: string,
+    params: GetLearningPathSkillMapParams = {}
+  ) => {
+    return axiosClient.get(`${BASE_URL}/${learningPathId}/skill-map`, {
+      params,
+    });
   },
 };
 

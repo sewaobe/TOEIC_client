@@ -25,6 +25,7 @@ import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import CheckIcon from "@mui/icons-material/Check";
 import LearningPathNodeDetailModal from "./LearningPathNodeDetailModal";
 import learningPathV2Service, { LearningPathNodeDetailResponse } from "../../services/learning_path_v2.service";
+import LearningPathSkillMapModal from "./LearningPathSkillMapModal";
 
 export type RoadmapUnitStatus = "completed" | "in_cycle" | "current" | "locked";
 
@@ -59,10 +60,6 @@ type PartRoadmap = {
 
 type LearningPathRoadmapCanvasProps = {
     overview: any;
-    onOpenSkillMap?: () => void;
-    onOpenStrategy?: () => void;
-    onOpenReason?: () => void;
-    onOpenCycleDetail?: () => void;
 };
 
 const activePartThemeColors = {
@@ -723,13 +720,11 @@ function CanvasLegend() {
 
 export default function LearningPathRoadmapCanvas({
     overview,
-    onOpenSkillMap,
-    onOpenStrategy,
-    onOpenReason,
-    onOpenCycleDetail,
 }: LearningPathRoadmapCanvasProps) {
     const partRoadmaps: PartRoadmap[] =
         overview?.selected_strategy_option?.part_roadmaps ?? [];
+
+    const learningPathId = overview.learning_path._id;
 
     const statusByLessonManagerId = React.useMemo(
         () => buildRoadmapCanvasStatusMap(overview),
@@ -762,7 +757,6 @@ export default function LearningPathRoadmapCanvas({
     const handleOpenNodeDetail = React.useCallback(
         async (unit: RoadmapUnit, status: RoadmapUnitStatus) => {
             console.log(overview);
-            const learningPathId = overview.learning_path._id;
 
             setNodeDetailModal({
                 open: true,
@@ -815,6 +809,8 @@ export default function LearningPathRoadmapCanvas({
             open: false,
         }));
     }, []);
+
+    const [skillMapOpen, setSkillMapOpen] = React.useState(false);
 
     return (
         <Paper
@@ -913,7 +909,7 @@ export default function LearningPathRoadmapCanvas({
                         <Button
                             variant="outlined"
                             startIcon={<MapOutlinedIcon />}
-                            onClick={onOpenSkillMap}
+                            onClick={() => setSkillMapOpen(true)}
                             sx={actionButtonSx}
                         >
                             Skill Map
@@ -921,7 +917,7 @@ export default function LearningPathRoadmapCanvas({
                         <Button
                             variant="outlined"
                             startIcon={<TrackChangesIcon />}
-                            onClick={onOpenStrategy}
+                            onClick={() => {}}
                             sx={actionButtonSx}
                         >
                             Chiến lược
@@ -929,7 +925,7 @@ export default function LearningPathRoadmapCanvas({
                         <Button
                             variant="outlined"
                             startIcon={<LightbulbOutlinedIcon />}
-                            onClick={onOpenReason}
+                            onClick={() => {}}
                             sx={actionButtonSx}
                         >
                             Vì sao?
@@ -937,7 +933,7 @@ export default function LearningPathRoadmapCanvas({
                         <Button
                             variant="outlined"
                             startIcon={<LayersOutlinedIcon />}
-                            onClick={onOpenCycleDetail}
+                            onClick={() => {}}
                             sx={actionButtonSx}
                         >
                             Chi tiết Cycle
@@ -1025,6 +1021,12 @@ export default function LearningPathRoadmapCanvas({
                 onPrimaryAction={() => {
                     console.log("Node detail primary action:", nodeDetailModal.detail);
                 }}
+            />
+
+            <LearningPathSkillMapModal
+                open={skillMapOpen}
+                learningPathId={learningPathId}
+                onClose={() => setSkillMapOpen(false)}
             />
         </Paper>
     );

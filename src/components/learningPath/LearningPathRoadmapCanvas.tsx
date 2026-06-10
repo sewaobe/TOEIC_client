@@ -10,6 +10,7 @@ import {
     Typography,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import MapOutlinedIcon from "@mui/icons-material/MapOutlined";
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
@@ -22,9 +23,10 @@ import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import AutoStoriesOutlinedIcon from "@mui/icons-material/AutoStoriesOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import CheckIcon from "@mui/icons-material/Check";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import LearningPathNodeDetailModal from "./LearningPathNodeDetailModal";
+import learningPathV2Service, { LearningPathNodeDetailResponse } from "../../services/learning_path_v2.service";
 
-type RoadmapUnitStatus = "completed" | "in_cycle" | "current" | "locked";
+export type RoadmapUnitStatus = "completed" | "in_cycle" | "current" | "locked";
 
 type RoadmapUnit = {
     lesson_manager_id: string;
@@ -36,6 +38,14 @@ type RoadmapUnit = {
     order: number;
     planned_minutes?: number;
     estimated_gain?: number;
+
+    // Optional nhưng nên có để service mock/BE future dùng.
+    score_band?: {
+        from?: number;
+        to?: number;
+    };
+    prerequisite_unit_ids?: string[];
+    next_unit_ids?: string[];
 };
 
 type PartRoadmap = {
@@ -55,6 +65,19 @@ type LearningPathRoadmapCanvasProps = {
     onOpenCycleDetail?: () => void;
 };
 
+const activePartThemeColors = {
+    color: "#2563EB",
+    soft: "#EEF5FF",
+    text: "#163B8F",
+};
+
+const inactivePartThemeColors = {
+    color: "#64748B",
+    soft: "#F8FAFC",
+    text: "#475569",
+    border: "rgba(148,163,184,0.18)",
+};
+
 const partTheme: Record<
     number,
     {
@@ -65,53 +88,37 @@ const partTheme: Record<
     }
 > = {
     1: {
-        color: "#2563EB",
-        soft: "#EEF5FF",
-        text: "#163B8F",
+        ...activePartThemeColors,
         icon: <ImageOutlinedIcon fontSize="small" />,
     },
     2: {
-        color: "#16A34A",
-        soft: "#ECFDF3",
-        text: "#126B37",
+        ...activePartThemeColors,
         icon: <HeadphonesOutlinedIcon fontSize="small" />,
     },
     3: {
-        color: "#F59E0B",
-        soft: "#FFF7E8",
-        text: "#9A5B00",
+        ...activePartThemeColors,
         icon: <ChatBubbleOutlineIcon fontSize="small" />,
     },
     4: {
-        color: "#6D5DF6",
-        soft: "#F1EFFF",
-        text: "#4338CA",
+        ...activePartThemeColors,
         icon: <FormatListBulletedIcon fontSize="small" />,
     },
     5: {
-        color: "#06A6B7",
-        soft: "#EAFBFD",
-        text: "#087887",
+        ...activePartThemeColors,
         icon: <ArticleOutlinedIcon fontSize="small" />,
     },
     6: {
-        color: "#6C3CF0",
-        soft: "#F3EEFF",
-        text: "#4C1D95",
+        ...activePartThemeColors,
         icon: <AutoStoriesOutlinedIcon fontSize="small" />,
     },
     7: {
-        color: "#7048E8",
-        soft: "#F2EDFF",
-        text: "#4C1D95",
+        ...activePartThemeColors,
         icon: <MenuBookOutlinedIcon fontSize="small" />,
     },
 };
 
 const fallbackTheme = {
-    color: "#2563EB",
-    soft: "#EEF5FF",
-    text: "#163B8F",
+    ...activePartThemeColors,
     icon: <MapOutlinedIcon fontSize="small" />,
 };
 
@@ -163,8 +170,8 @@ const roadmapLayout = {
     progressChipMinWidth: { xs: 42, sm: 48, md: 52, lg: 56, xl: 60 },
     nodeSlot: { xs: 92, sm: 100, md: 108, lg: 118, xl: 128 },
     nodeLabel: { xs: 86, sm: 94, md: 102, lg: 110, xl: 118 },
-    nodeSize: { xs: 28, sm: 28, md: 30, lg: 30, xl: 32 },
-    activeNodeSize: { xs: 34, sm: 36, md: 36, lg: 38, xl: 40 },
+    nodeSize: { xs: 26, sm: 26, md: 28, lg: 28, xl: 30 },
+    activeNodeSize: { xs: 32, sm: 34, md: 34, lg: 36, xl: 38 },
     activeInnerSize: { xs: 16, sm: 16, md: 17, lg: 18, xl: 18 },
     lineInset: { xs: 46, sm: 50, md: 54, lg: 59, xl: 64 },
     laneMinWidth: { xs: 520, sm: 580, md: 640, lg: 720, xl: 800 },
@@ -273,10 +280,12 @@ function RoadmapNode({
     unit,
     status,
     color,
+    onClick
 }: {
     unit: RoadmapUnit;
     status: RoadmapUnitStatus;
     color: string;
+    onClick?: () => void
 }) {
     const isCompleted = status === "completed";
     const isInCycle = status === "in_cycle";
@@ -296,6 +305,8 @@ function RoadmapNode({
                     lg: `0 0 ${roadmapLayout.nodeSlot.lg}px`,
                     xl: `0 0 ${roadmapLayout.nodeSlot.xl}px`,
                 },
+                height: roadmapLayout.activeNodeSize,
+                alignItems: "center",
                 display: "flex",
                 justifyContent: "center",
             }}
@@ -319,6 +330,7 @@ function RoadmapNode({
             )}
 
             <Box
+                onClick={onClick}
                 sx={{
                     width: isCurrent ? roadmapLayout.activeNodeSize : roadmapLayout.nodeSize,
                     height: isCurrent ? roadmapLayout.activeNodeSize : roadmapLayout.nodeSize,
@@ -360,9 +372,7 @@ function RoadmapNode({
                     },
                 }}
             >
-                {isLocked ? (
-                    <LockOutlinedIcon sx={{ fontSize: 14, color: ROADMAP_STATUS_COLORS.locked.text }} />
-                ) : isCompleted ? (
+                {isCompleted ? (
                     <CheckIcon sx={{ fontSize: 14 }} />
                 ) : isCurrent ? (
                     <Box
@@ -400,12 +410,12 @@ function RoadmapNode({
                 title={label}
                 sx={{
                     position: "absolute",
-                    top: { xs: 34, sm: 35, md: 36, lg: 38, xl: 40 },
+                    top: { xs: 36, sm: 37, md: 38, lg: 40, xl: 42 },
                     width: roadmapLayout.nodeLabel,
                     textAlign: "center",
                     color: isLocked ? ROADMAP_STATUS_COLORS.locked.text : "#0F1F4B",
                     ...roadmapTextSx.caption,
-                    fontWeight: isInCycle || isCurrent ? 800 : roadmapTextSx.caption.fontWeight,
+                    fontWeight: isCurrent ? 800 : roadmapTextSx.caption.fontWeight,
                     lineHeight: 1.25,
                     whiteSpace: "nowrap",
                     overflow: "hidden",
@@ -435,6 +445,7 @@ function RoadmapPartSummary({
         const status = statusByLessonManagerId.get(String(unit.lesson_manager_id));
         return status === "in_cycle" || status === "current";
     });
+    const summaryColors = hasInCycle ? activePartThemeColors : inactivePartThemeColors;
 
     return (
         <Stack
@@ -458,11 +469,10 @@ function RoadmapPartSummary({
                     display: "flex",
                     alignItems: "center",
                     gap: { xs: 0.8, sm: 0.9, md: 1, lg: 1.1, xl: 1.2 },
-                    bgcolor: hasInCycle ? theme.soft : "#F8FAFC",
-                    border: hasInCycle
-                        ? `1px solid ${theme.color}33`
-                        : "1px solid rgba(148,163,184,0.12)",
-                    boxShadow: hasInCycle ? `0 8px 18px ${theme.color}14` : "none",
+                    bgcolor: summaryColors.soft,
+                    border: `1px solid ${hasInCycle ? `${summaryColors.color}33` : inactivePartThemeColors.border
+                        }`,
+                    boxShadow: hasInCycle ? `0 8px 18px ${summaryColors.color}14` : "none",
                 }}
             >
                 <Box
@@ -472,9 +482,10 @@ function RoadmapPartSummary({
                         borderRadius: 1.5,
                         display: "grid",
                         placeItems: "center",
-                        color: theme.color,
+                        color: summaryColors.color,
                         bgcolor: "#FFFFFF",
-                        border: `1px solid ${theme.color}22`,
+                        border: `1px solid ${hasInCycle ? `${summaryColors.color}22` : inactivePartThemeColors.border
+                            }`,
                     }}
                 >
                     {theme.icon}
@@ -483,7 +494,7 @@ function RoadmapPartSummary({
                 <Typography
                     sx={{
                         ...roadmapTextSx.label,
-                        color: hasInCycle ? theme.text : "#0F172A",
+                        color: summaryColors.text,
                     }}
                 >
                     Part {roadmap.part_type}
@@ -498,9 +509,10 @@ function RoadmapPartSummary({
                     minWidth: roadmapLayout.progressChipMinWidth,
                     borderRadius: 999,
                     ...roadmapTextSx.label,
-                    color: theme.color,
-                    bgcolor: theme.soft,
-                    border: `1px solid ${theme.color}16`,
+                    color: summaryColors.color,
+                    bgcolor: summaryColors.soft,
+                    border: `1px solid ${hasInCycle ? `${summaryColors.color}16` : inactivePartThemeColors.border
+                        }`,
                 }}
             />
         </Stack>
@@ -511,10 +523,12 @@ function RoadmapLane({
     roadmap,
     statusByLessonManagerId,
     laneContentWidth,
+    onOpenNodeDetail,
 }: {
     roadmap: PartRoadmap;
     statusByLessonManagerId: Map<string, RoadmapUnitStatus>;
     laneContentWidth: ResponsiveNumber;
+    onOpenNodeDetail: (unit: RoadmapUnit, status: RoadmapUnitStatus) => void;
 }) {
     const theme = getPartTheme(roadmap.part_type);
     const units = roadmap.units ?? [];
@@ -576,16 +590,20 @@ function RoadmapLane({
                 />
 
                 <Stack direction="row" alignItems="center" sx={{ position: "relative", zIndex: 2 }}>
-                    {units.map((unit, index) => (
-                        <RoadmapNode
-                            key={unit.lesson_manager_id}
-                            unit={unit}
-                            status={
-                                statusByLessonManagerId.get(String(unit.lesson_manager_id)) ?? "locked"
-                            }
-                            color={theme.color}
-                        />
-                    ))}
+                    {units.map((unit) => {
+                        const status =
+                            statusByLessonManagerId.get(String(unit.lesson_manager_id)) ?? "locked";
+
+                        return (
+                            <RoadmapNode
+                                key={unit.lesson_manager_id}
+                                unit={unit}
+                                status={status}
+                                color={theme.color}
+                                onClick={() => onOpenNodeDetail(unit, status)}
+                            />
+                        );
+                    })}
                 </Stack>
             </Box>
         </Box>
@@ -680,10 +698,9 @@ function CanvasLegend() {
                         border: `1px solid ${ROADMAP_STATUS_COLORS.locked.main}`,
                     }}
                 >
-                    <LockOutlinedIcon sx={{ fontSize: 12, color: ROADMAP_STATUS_COLORS.locked.text }} />
                 </Box>
                 <Typography variant="body2" sx={{ ...roadmapTextSx.label, color: "#0F1F4B" }}>
-                    Khóa
+                    Dự kiến
                 </Typography>
             </Stack>
 
@@ -698,7 +715,7 @@ function CanvasLegend() {
                     minWidth: 260,
                 }}
             >
-                Các node trong cycle là nhóm bài học được chọn cho cycle hiện tại; node đang học là vị trí bạn đang làm dở.
+                Các node ngoài cycle là lộ trình dự kiến. Hệ thống sẽ tối ưu lại thứ tự hoặc thêm bài bổ trợ khi năng lực của bạn thay đổi.
             </Typography>
         </Stack>
     );
@@ -730,6 +747,75 @@ export default function LearningPathRoadmapCanvas({
         [sortedRoadmaps]
     );
 
+    const [nodeDetailModal, setNodeDetailModal] = React.useState<{
+        open: boolean;
+        loading: boolean;
+        errorMessage: string | null;
+        detail: LearningPathNodeDetailResponse | null;
+    }>({
+        open: false,
+        loading: false,
+        errorMessage: null,
+        detail: null,
+    });
+
+    const handleOpenNodeDetail = React.useCallback(
+        async (unit: RoadmapUnit, status: RoadmapUnitStatus) => {
+            console.log(overview);
+            const learningPathId = overview.learning_path._id;
+
+            setNodeDetailModal({
+                open: true,
+                loading: true,
+                errorMessage: null,
+                detail: null,
+            });
+
+            try {
+                if (!learningPathId) {
+                    throw new Error("Không tìm thấy learningPathId để lấy chi tiết bài học.");
+                }
+
+                const response = await learningPathV2Service.getNodeDetail(
+                    learningPathId,
+                    String(unit.lesson_manager_id),
+                    {
+                        unit,
+                        status,
+                        overview,
+                    }
+                );
+
+                setNodeDetailModal({
+                    open: true,
+                    loading: false,
+                    errorMessage: null,
+                    detail: response.data,
+                });
+            } catch (error) {
+                console.error("Get node detail failed:", error);
+
+                setNodeDetailModal({
+                    open: true,
+                    loading: false,
+                    errorMessage:
+                        error instanceof Error
+                            ? error.message
+                            : "Không thể tải chi tiết bài học.",
+                    detail: null,
+                });
+            }
+        },
+        [overview]
+    );
+
+    const handleCloseNodeDetail = React.useCallback(() => {
+        setNodeDetailModal((prev) => ({
+            ...prev,
+            open: false,
+        }));
+    }, []);
+
     return (
         <Paper
             variant="outlined"
@@ -754,20 +840,67 @@ export default function LearningPathRoadmapCanvas({
                         pb: { xs: 1.2, sm: 1.4, md: 1.5, lg: 1.7, xl: 1.8 },
                     }}
                 >
-                    <Stack direction="row" alignItems="center" spacing={1}>
+                    <Stack spacing={0.35} sx={{ minWidth: 0 }}>
+                        <Stack
+                            direction="row"
+                            alignItems="center"
+                            spacing={{ xs: 0.8, sm: 1 }}
+                            flexWrap="wrap"
+                            useFlexGap
+                        >
+                            <AutoAwesomeIcon
+                                sx={{
+                                    color: "#6D8CFF",
+                                    fontSize: 20,
+                                    flex: "0 0 auto",
+                                }}
+                            />
+
+                            <Typography
+                                variant="h5"
+                                sx={{
+                                    ...roadmapTextSx.title,
+                                    color: "#172554",
+                                    lineHeight: 1.2,
+                                }}
+                            >
+                                Bản đồ học tập thích ứng
+                            </Typography>
+
+                            <Tooltip title="Lộ trình sẽ được cập nhật lại sau mỗi Mini Test hoặc Full Test.">
+                                <Chip
+                                    icon={<InfoOutlinedIcon />}
+                                    label="Cập nhật sau Mini Test / Full Test"
+                                    size="small"
+                                    sx={{
+                                        height: 26,
+                                        borderRadius: 999,
+                                        bgcolor: "#EEF5FF",
+                                        border: "1px solid rgba(37,99,235,0.14)",
+                                        color: "#2563EB",
+                                        ...roadmapTextSx.caption,
+                                        "& .MuiChip-icon": {
+                                            color: "#2563EB",
+                                            fontSize: "15px !important",
+                                            ml: 0.75,
+                                        },
+                                        "& .MuiChip-label": {
+                                            px: 0.9,
+                                        },
+                                    }}
+                                />
+                            </Tooltip>
+                        </Stack>
+
                         <Typography
-                            variant="h5"
                             sx={{
-                                ...roadmapTextSx.title,
-                                color: "#071947",
+                                ...roadmapTextSx.helper,
+                                color: "#64748B",
+                                lineHeight: 1.45,
                             }}
                         >
-                            Canvas lộ trình tổng
+                            Lộ trình này là dự kiến theo chiến lược hiện tại và sẽ được tối ưu lại sau mỗi Mini Test / Full Test.
                         </Typography>
-
-                        <Tooltip title="7 roadmap Part song song. Cycle hiện tại là nhóm bài được chọn từ các roadmap này.">
-                            <InfoOutlinedIcon sx={{ color: "#7C8DB5", fontSize: 20 }} />
-                        </Tooltip>
                     </Stack>
 
                     <Stack
@@ -872,6 +1005,7 @@ export default function LearningPathRoadmapCanvas({
                                         roadmap={roadmap}
                                         statusByLessonManagerId={statusByLessonManagerId}
                                         laneContentWidth={laneContentWidth}
+                                        onOpenNodeDetail={handleOpenNodeDetail}
                                     />
                                 ))}
                             </Box>
@@ -881,6 +1015,17 @@ export default function LearningPathRoadmapCanvas({
 
                 <CanvasLegend />
             </Box>
+
+            <LearningPathNodeDetailModal
+                open={nodeDetailModal.open}
+                detail={nodeDetailModal.detail}
+                loading={nodeDetailModal.loading}
+                errorMessage={nodeDetailModal.errorMessage}
+                onClose={handleCloseNodeDetail}
+                onPrimaryAction={() => {
+                    console.log("Node detail primary action:", nodeDetailModal.detail);
+                }}
+            />
         </Paper>
     );
 }

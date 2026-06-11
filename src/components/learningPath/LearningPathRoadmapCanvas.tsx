@@ -14,7 +14,6 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import MapOutlinedIcon from "@mui/icons-material/MapOutlined";
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
-import LayersOutlinedIcon from "@mui/icons-material/LayersOutlined";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import HeadphonesOutlinedIcon from "@mui/icons-material/HeadphonesOutlined";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
@@ -26,6 +25,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import LearningPathNodeDetailModal from "./LearningPathNodeDetailModal";
 import learningPathV2Service, { LearningPathNodeDetailResponse } from "../../services/learning_path_v2.service";
 import LearningPathSkillMapModal from "./LearningPathSkillMapModal";
+import LearningPathStrategyModal from "./LearningPathStrategyModal";
 
 export type RoadmapUnitStatus = "completed" | "in_cycle" | "current" | "locked";
 
@@ -812,6 +812,8 @@ export default function LearningPathRoadmapCanvas({
 
     const [skillMapOpen, setSkillMapOpen] = React.useState(false);
 
+    const [strategyOpen, setStrategyOpen] = React.useState(false);
+
     return (
         <Paper
             variant="outlined"
@@ -917,7 +919,7 @@ export default function LearningPathRoadmapCanvas({
                         <Button
                             variant="outlined"
                             startIcon={<TrackChangesIcon />}
-                            onClick={() => {}}
+                            onClick={() => { setStrategyOpen(true) }}
                             sx={actionButtonSx}
                         >
                             Chiến lược
@@ -925,18 +927,10 @@ export default function LearningPathRoadmapCanvas({
                         <Button
                             variant="outlined"
                             startIcon={<LightbulbOutlinedIcon />}
-                            onClick={() => {}}
+                            onClick={() => { }}
                             sx={actionButtonSx}
                         >
                             Vì sao?
-                        </Button>
-                        <Button
-                            variant="outlined"
-                            startIcon={<LayersOutlinedIcon />}
-                            onClick={() => {}}
-                            sx={actionButtonSx}
-                        >
-                            Chi tiết Cycle
                         </Button>
                     </Stack>
                 </Stack>
@@ -1027,6 +1021,15 @@ export default function LearningPathRoadmapCanvas({
                 open={skillMapOpen}
                 learningPathId={learningPathId}
                 onClose={() => setSkillMapOpen(false)}
+            />
+
+            <LearningPathStrategyModal
+                open={strategyOpen}
+                learningPathId={learningPathId ? String(learningPathId) : null}
+                onClose={() => setStrategyOpen(false)}
+                onSelected={async () => {
+                    window.location.reload();
+                }}
             />
         </Paper>
     );

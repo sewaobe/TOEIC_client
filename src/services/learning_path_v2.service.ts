@@ -1,3 +1,4 @@
+import { LearningPathStrategyOverviewResponse, SelectLearningPathStrategyOptionResponse } from "../types/learning_strategy";
 import { GetLearningPathSkillMapParams } from "../types/user_skill";
 import axiosClient from "./axiosClient";
 
@@ -586,6 +587,19 @@ const learningPathV2Service = {
     return axiosClient.get(`${BASE_URL}/${learningPathId}/skill-map`, {
       params,
     });
+  },
+
+  getStrategy: async (learningPathId: string) => {
+    return axiosClient.get<LearningPathStrategyOverviewResponse>(
+      `${BASE_URL}/${learningPathId}/strategy`
+    );
+  },
+
+  selectStrategyOption: async (learningPathId: string, optionId: string) => {
+    return axiosClient.post<SelectLearningPathStrategyOptionResponse>(
+      `${BASE_URL}/${learningPathId}/strategy-options/${optionId}/select`,
+      {}
+    );
   },
 };
 

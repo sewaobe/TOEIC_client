@@ -4,7 +4,7 @@ import AppsIcon from "@mui/icons-material/Apps";
 import { useCountdown } from "../../hooks/useCountDown";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../stores/store";
-import testService from "./../../services/test.service";
+import testService, { UserTestSubmitType } from "./../../services/test.service";
 import {
   mapAnswersToParts,
   getPartFromQuestionNo as getPartFromQuestionNumber,
@@ -95,7 +95,7 @@ const TestHeader: FC<TestHeaderProps> = ({
       : 120 * 60; // full test mặc định 120 phút
 
   const shouldPause = isTourRunning || isSubmitted || groups.length === 0;
-  
+
   const { timeLeft, formatTime } = useCountdown(duration, shouldPause);
 
   // Format time hiển thị, nếu vô hạn thì hiển thị ∞
@@ -134,6 +134,11 @@ const TestHeader: FC<TestHeaderProps> = ({
       completedPart = parts;
     } else {
       completedPart = "full_test";
+    }
+
+    let submitType: UserTestSubmitType | undefined;
+    if (isDemoTest) {
+      submitType = "initial_assessment";
     }
 
     try {
@@ -185,6 +190,7 @@ const TestHeader: FC<TestHeaderProps> = ({
           answersMap,
           elapsed,
           completedPart,
+          submitType,
         );
       }
       console.log("Chi tiết từng câu:", result.answers);
@@ -270,6 +276,9 @@ const TestHeader: FC<TestHeaderProps> = ({
 
         // Chỉ lưu vào localStorage nếu KHÔNG phải mini test từ Lesson
         // (mini test sẽ lấy kết quả từ BE)
+        // LearningPath v2 không dùng localStorage để tạo lộ trình.
+        // Entry test đã được lưu ở BE dưới dạng UserTest(submit_type="initial_assessment").
+        // Các key cũ này tạm giữ lại cho những UI cũ còn phụ thuộc.
         if (!fromLesson) {
           const payload = {
             testId,
@@ -278,15 +287,6 @@ const TestHeader: FC<TestHeaderProps> = ({
             parts: partsSummary,
             submit_at: new Date().toISOString(),
           };
-
-          try {
-            localStorage.setItem("last_test_result", JSON.stringify(payload));
-            if (isDemoTest) {
-              localStorage.setItem("demo_test_result", JSON.stringify(payload));
-            }
-          } catch (e) {
-            console.warn("Không lưu được last_test_result vào localStorage", e);
-          }
         }
 
         // Nếu là mini test bắt nguồn từ Lesson (fromLesson=true), không hiện modal kết quả,

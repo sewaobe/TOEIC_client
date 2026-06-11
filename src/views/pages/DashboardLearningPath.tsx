@@ -1,11 +1,6 @@
-// DashboardDemo.tsx
-// ===============================================
-// Imports
-// ===============================================
 import * as React from "react";
 import {
   Box,
-  Button,
   Card,
   CardContent,
   Chip,
@@ -15,9 +10,7 @@ import {
   Grid,
   Stack,
   Typography,
-  Tooltip,
   Paper,
-  Drawer,
   Dialog,
   IconButton,
   styled,
@@ -43,6 +36,7 @@ import FlagIcon from "@mui/icons-material/Flag";
 import BookIcon from "@mui/icons-material/Book";
 import useLocalStorage from "../../hooks/useLocalStorage";
 import { FeedbackLessonModal } from "../../components/modals/FeedbackLessonModal";
+import LearningPathRoadmapCanvas from "../../components/learningPath/LearningPathRoadmapCanvas";
 
 // Tạo một đối tượng chứa màu sắc để dễ dàng thay đổi và quản lý
 const studyDayColors = {
@@ -282,6 +276,23 @@ function DayItem({ data, onOpen }: { data: Day; onOpen: (l: Day) => void }) {
 // ===============================================
 // Main: Dashboard
 // ===============================================
+function formatRemainingTime(targetDate?: string | Date | null): string {
+  if (!targetDate) return "Chưa đặt hạn";
+
+  const target = targetDate instanceof Date ? targetDate : new Date(targetDate);
+  if (Number.isNaN(target.getTime())) return "Chưa đặt hạn";
+
+  const now = new Date();
+  const diffMs = target.getTime() - now.getTime();
+  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (days <= 0) return "Đã tới hạn";
+  if (days === 1) return "1 ngày";
+  if (days < 30) return `${days} ngày`;
+
+  return `${Math.ceil(days / 7)} tuần`;
+}
+
 export default function DashboardLearningPath({
   plan,
 }: DashboardLearningPathProps) {
@@ -298,16 +309,17 @@ export default function DashboardLearningPath({
     return (week?.days || []).map((d: any, idx: number) => ({
       id: d._id,
       week: week.name,
-      title: d.title || `Ngày ${idx + 1}`,
+      title: d.title || `Stage ${idx + 1}`,
       no: d.dayOfWeek ?? 1,
       status: d.status ?? "locked",
       progress: d.progress ?? 0,
     }));
   }
 
-  const TARGET = lp.target_score ?? 0;
-  const DAILY = `${lp.time_per_day ?? 0} phút/ngày`;
-  const PACE = `${lp.days_per_week ?? 0} buổi/tuần`;
+  const ENTRY_SCORE = lp.entry_score;
+  const TARGET = lp.target_score;
+  const DAILY = `${lp.time_per_day} phút/ngày`;
+  const REMAINING_TIME = formatRemainingTime(lp.target_completion_date);
   const WEEKS = lp.week_study_ids?.length ?? 0;
 
   const WEEK_TOTAL = lp.week_study_ids?.[activeWeek]?.days?.length ?? 0;
@@ -386,8 +398,13 @@ export default function DashboardLearningPath({
         }}
       >
         <Container
-          className="max-w-[1000px] mx-auto p-4 sm:p-6 flex-1"
+          className="mx-auto p-4 sm:p-6 flex-1"
           sx={{
+            maxWidth: {
+              xs: "100%",
+              lg: "1200px",
+              xl: "1480px",
+            },
             borderRadius: "36px",
             border: "1px solid rgba(0,0,0,0.06)",
             bgcolor: (t) =>
@@ -426,21 +443,28 @@ export default function DashboardLearningPath({
           {/* ===== Stat bar ===== */}
           <Section>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: 3 }}>
+                <StatItem
+                  icon={<SchoolIcon color="primary" />}
+                  label="Điểm đầu vào"
+                  value={ENTRY_SCORE}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 3 }}>
                 <StatItem
                   icon={<EmojiEventsIcon color="primary" />}
                   label="Mục tiêu điểm"
                   value={TARGET}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: 3 }}>
                 <StatItem
                   icon={<SpeedIcon color="secondary" />}
-                  label="Nhịp độ"
-                  value={PACE}
+                  label="Thời gian còn lại"
+                  value={REMAINING_TIME}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: 3 }}>
                 <StatItem
                   icon={<AccessTimeIcon color="success" />}
                   label="Thời lượng"
@@ -449,6 +473,10 @@ export default function DashboardLearningPath({
               </Grid>
             </Grid>
           </Section>
+
+          <Box sx={{ my: 2.5 }} />
+
+          <LearningPathRoadmapCanvas overview={plan.learning_path_v2} />
 
           <Box sx={{ my: 2.5 }} />
 
@@ -461,7 +489,7 @@ export default function DashboardLearningPath({
                 justifyContent="space-between"
               >
                 <Typography variant="h6" fontWeight={800}>
-                  Tuần {activeWeek + 1} · {WEEK_DONE}/{WEEK_TOTAL} ngày
+                  Cycle {activeWeek + 1} · {WEEK_DONE}/{WEEK_TOTAL} stage
                 </Typography>
                 <Box sx={{ position: "relative", display: "inline-flex" }}>
                   <CircularProgress
@@ -502,7 +530,7 @@ export default function DashboardLearningPath({
                   return (
                     <Chip
                       key={i}
-                      label={`W${i + 1}`}
+                      label={`C${i + 1}`}
                       clickable
                       color={active ? "primary" : undefined}
                       variant={active ? "filled" : "outlined"}
@@ -526,12 +554,12 @@ export default function DashboardLearningPath({
               sx={{ mb: 1.5 }}
             >
               <Typography variant="h6" fontWeight={800}>
-                Danh sách ngày học
+                Danh sách stage
               </Typography>
               <Chip
                 size="small"
                 variant="outlined"
-                label={`Week ${activeWeek + 1}`}
+                label={`Cycle ${activeWeek + 1}`}
               />
             </Stack>
 

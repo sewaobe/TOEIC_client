@@ -2,11 +2,12 @@ import { Alert, Box, Slider, Stack, Typography } from "@mui/material";
 import InsightsIcon from "@mui/icons-material/Insights";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
-import useLocalStorage from "../../hooks/useLocalStorage";
 import { FC } from "react";
 
 interface ITargetScoreStep {
     score: number;
+    targetScore: number;
+    onTargetScoreChange: (value: number) => void;
 }
 const SCORE_MARKS = [450, 550, 650, 750, 850].map((v) => ({ value: v, label: String(v) }));
 
@@ -17,8 +18,12 @@ function getScoreHint(score: number) {
     return { icon: <EmojiEventsIcon sx={{ mr: 1 }} />, title: "Nâng cấp đỉnh cao", text: "Finetune chiến thuật, đề full ETS, từ vựng học thuật & bẫy ngữ pháp.", tone: "success" as const };
 }
 
-export const TargetScoreStep: FC<ITargetScoreStep> = ({ score }) => {
-    const [value, setValue] = useLocalStorage<number>("score_target_plan", score);
+export const TargetScoreStep: FC<ITargetScoreStep> = ({
+    score,
+    targetScore,
+    onTargetScoreChange,
+}) => {
+    const value = targetScore;
 
     const hint = getScoreHint(value);
     return (
@@ -36,7 +41,7 @@ export const TargetScoreStep: FC<ITargetScoreStep> = ({ score }) => {
                     step={5}
                     marks={SCORE_MARKS}
                     valueLabelDisplay="on"
-                    onChange={(_, v) => setValue(Array.isArray(v) ? v[0] : v)}
+                    onChange={(_, v) => onTargetScoreChange(Array.isArray(v) ? v[0] : v)}
                 />
                 {/* {!!error && <FormHelperText error sx={{ mt: 1 }}>{error}</FormHelperText>} */}
             </Box>

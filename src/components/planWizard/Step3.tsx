@@ -27,10 +27,9 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
-import useLocalStorage from "../../hooks/useLocalStorage";
 import { diffInWeeks } from "../../utils/date";
 import { getHoursNeeded } from "../../utils/estimatedStudyHour";
-import { WEEKDAYS, redistributeWeeks, redistributeDays } from "../../utils/planDistribution";
+import { WEEKDAYS, redistributeDays } from "../../utils/planDistribution";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { Weekday } from "../../types/PlanWizard";
 import { pieArcClasses, pieClasses } from "@mui/x-charts/PieChart";
@@ -123,18 +122,45 @@ const MAX_WEEK = 7 * 1440;
 //   );
 // };
 
-export const DetailedPlanStep = ({ startScore }: { startScore?: number }) => {
-  const [planEnd] = useLocalStorage<string>("plan_end", "");
-  const [planStart] = useLocalStorage<string>("plan_start", "");
-  const [targetScore] = useLocalStorage<number>("score_target_plan", 650);
+type DetailedPlanStepProps = {
+  startScore?: number;
+  planStart: Date | null;
+  planEnd: Date | null;
+  targetScore: number;
+  weeklyMinutesByDay: Record<string, number>;
+  onWeeklyMinutesByDayChange: (value: Record<string, number>) => void;
+};
 
-  const totalWeek = diffInWeeks(planStart, planEnd);
+const DAY_KEY_BY_WEEKDAY: Record<string, string> = {
+  Mon: "monday",
+  Tue: "tuesday",
+  Wed: "wednesday",
+  Thu: "thursday",
+  Fri: "friday",
+  Sat: "saturday",
+  Sun: "sunday",
+};
+
+const toISODate = (date: Date | null) =>
+  date ? date.toISOString().slice(0, 10) : "";
+
+export const DetailedPlanStep = ({
+  startScore,
+  planStart,
+  planEnd,
+  targetScore,
+  onWeeklyMinutesByDayChange,
+}: DetailedPlanStepProps) => {
+  const planEndISO = toISODate(planEnd);
+  const planStartISO = toISODate(planStart);
+
+  const totalWeek = diffInWeeks(planStartISO, planEndISO);
   const totalHours = getHoursNeeded(startScore ?? 400, targetScore);
   const totalMinutes = Math.max(0, Math.round(totalHours * 60));
   const weeklyHours = totalWeek > 0 ? parseFloat((totalHours / totalWeek).toFixed(1)) : 0;
 
-  const [weeklyTotals, setWeeklyTotals] = useLocalStorage<number[]>("weekly_totals", []);
-  const [weekDays, setWeekDays] = useLocalStorage<Record<string, any>>("weekly_days", {});
+  const [weeklyTotals, setWeeklyTotals] = useState<number[]>([]);
+  const [weekDays, setWeekDays] = useState<Record<string, any>>({});
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [tab, setTab] = useState(0);
   const [warning, setWarning] = useState<string>("");
@@ -143,6 +169,33 @@ export const DetailedPlanStep = ({ startScore }: { startScore?: number }) => {
   const [editingWeekTotals, setEditingWeekTotals] = useState<Record<number, string>>({});
   // locked weeks: when true, redistribution preserves that week
   const [lockedWeeks, setLockedWeeks] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    const weekPlans = Object.values(weekDays);
+    if (weekPlans.length === 0) {
+      onWeeklyMinutesByDayChange({
+        monday: 0,
+        tuesday: 0,
+        wednesday: 0,
+        thursday: 0,
+        friday: 0,
+        saturday: 0,
+        sunday: 0,
+      });
+      return;
+    }
+
+    const next: Record<string, number> = {};
+    WEEKDAYS.forEach((day) => {
+      const total = weekPlans.reduce(
+        (sum, plan: any) => sum + Number(plan?.[day] || 0),
+        0
+      );
+      next[DAY_KEY_BY_WEEKDAY[day]] = Math.round(total / weekPlans.length);
+    });
+
+    onWeeklyMinutesByDayChange(next);
+  }, [onWeeklyMinutesByDayChange, weekDays]);
 
   useEffect(() => {
     // Chỉ kiểm tra khi có dữ liệu
@@ -288,7 +341,7 @@ export const DetailedPlanStep = ({ startScore }: { startScore?: number }) => {
 
     const daysMap: Record<string, any> = {};
     totals.forEach((t, idx) => {
-      daysMap[String(idx)] = makeEvenWeekPlan(t);
+      daysMap[String(idx + 1)] = makeEvenWeekPlan(t);
     });
 
     setWeeklyTotals(totals);

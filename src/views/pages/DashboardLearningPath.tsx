@@ -307,7 +307,7 @@ export default function DashboardLearningPath({
   function mapDays(week: any): Day[] {
     console.log("Week", week);
     return (week?.days || []).map((d: any, idx: number) => ({
-      id: d._id,
+      id: String(d?._id ?? d?.id ?? `${week?._id ?? activeWeek}-day-${idx}`),
       week: week.name,
       title: d.title || `Stage ${idx + 1}`,
       no: d.dayOfWeek ?? 1,
@@ -335,7 +335,18 @@ export default function DashboardLearningPath({
     localStorage.setItem("current_day", JSON.stringify(d));
     localStorage.setItem("current_lesson", "");
     localStorage.setItem("vocabularies", "");
-    navigate(`/lesson?week=${activeWeek + 1}&day=${d.id}`);
+    if (lp?._id) {
+      localStorage.setItem("learning_path_v2_id", String(lp._id));
+    }
+    const activeWeekStudyId = lp.week_study_ids?.[activeWeek]?._id;
+    if (activeWeekStudyId) {
+      localStorage.setItem("learning_path_v2_week_study_id", String(activeWeekStudyId));
+    }
+    navigate(
+      `/lesson?week=${activeWeek + 1}&day=${d.id}${
+        lp?._id ? `&learningPathId=${lp._id}` : ""
+      }`
+    );
   };
   const [lastVisitDate, setLastVisitDate] = useLocalStorage<string>(
     "lastVisitDate",
@@ -572,8 +583,11 @@ export default function DashboardLearningPath({
               {(lp.week_study_ids?.[activeWeek]
                 ? mapDays(lp.week_study_ids[activeWeek])
                 : []
-              ).map((d) => (
-                <Grid size={{ xs: 12, sm: 6 }} key={d.id}>
+              ).map((d, index) => (
+                <Grid
+                  size={{ xs: 12, sm: 6 }}
+                  key={`${lp.week_study_ids?.[activeWeek]?._id ?? activeWeek}-${d.id}-${index}`}
+                >
                   <DayItem data={d} onOpen={openDay} />
                 </Grid>
               ))}

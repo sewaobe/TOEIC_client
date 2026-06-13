@@ -5,11 +5,20 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogContent,
   Divider,
-  Modal,
+  Paper,
   Stack,
   Typography,
 } from "@mui/material";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
+import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
+import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import DashboardLearningPath from "./DashboardLearningPath";
@@ -21,6 +30,86 @@ const missingRequirementLabel: Record<string, string> = {
   target_completion_date: "Thiếu deadline.",
   time_setup: "Thiếu thời gian học.",
 };
+
+const formatDateTime = (value?: string | Date | null) => {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const formatDate = (value?: string | Date | null) => {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+const formatDuration = (seconds?: number) => {
+  const value = Number(seconds ?? 0);
+  if (!Number.isFinite(value) || value <= 0) return "N/A";
+  const minutes = Math.floor(value / 60);
+  const remainingSeconds = Math.round(value % 60);
+  if (minutes <= 0) return `${remainingSeconds} giây`;
+  return `${minutes} phút ${remainingSeconds} giây`;
+};
+
+function MetricTile({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 1.5,
+        borderRadius: 2,
+        borderColor: "#DDE3F0",
+        bgcolor: "#F8FAFF",
+      }}
+    >
+      <Stack direction="row" spacing={1.25} alignItems="center">
+        <Box
+          sx={{
+            width: 34,
+            height: 34,
+            borderRadius: 1.5,
+            display: "grid",
+            placeItems: "center",
+            color: "#2653D9",
+            bgcolor: "#EEF4FF",
+            flex: "0 0 auto",
+          }}
+        >
+          {icon}
+        </Box>
+        <Box minWidth={0}>
+          <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#6A728C" }}>
+            {label}
+          </Typography>
+          <Typography sx={{ fontSize: 15, fontWeight: 900, color: "#101A3D" }}>
+            {value}
+          </Typography>
+        </Box>
+      </Stack>
+    </Paper>
+  );
+}
 
 const unwrapApiData = (response: any) => response?.data ?? response;
 
@@ -180,159 +269,237 @@ export default function DashboardDemo() {
 
   return (
     <MainLayout>
-      <Modal
+      <Dialog
         open={open}
         onClose={() => {
           if (!creatingPath) setOpen(false);
         }}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{
+          sx: {
+            borderRadius: 4,
+            overflow: "hidden",
+            border: "1px solid #DDE3F0",
+            boxShadow: "0 24px 70px rgba(16, 26, 61, 0.18)",
+          },
+        }}
       >
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            bgcolor: "background.paper",
-            p: 4,
-            borderRadius: 2,
-            boxShadow: 24,
-            minWidth: { xs: 320, sm: 560 },
-            maxWidth: 720,
-          }}
-        >
-          <Stack spacing={2.5}>
-            <Box textAlign="center">
-              <Typography variant="h6" gutterBottom>
-                Tạo lộ trình LearningPath v2
-              </Typography>
-              <Typography color="text.secondary">
-                Dữ liệu được lấy từ entry test và thiết lập đã lưu trong DB.
-              </Typography>
-            </Box>
+        <DialogContent sx={{ p: 0, bgcolor: "#F5F7FB" }}>
+          <Box
+            sx={{
+              px: { xs: 2.5, md: 4 },
+              py: { xs: 2.5, md: 3 },
+              bgcolor: "#FFFFFF",
+              borderBottom: "1px solid #DDE3F0",
+            }}
+          >
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              justifyContent="space-between"
+              alignItems={{ xs: "flex-start", sm: "center" }}
+            >
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    display: "grid",
+                    placeItems: "center",
+                    bgcolor: "#EEF4FF",
+                    color: "#2653D9",
+                  }}
+                >
+                  <AutoAwesomeIcon />
+                </Box>
+                <Box>
+                  <Typography sx={{ fontSize: 20, fontWeight: 900, color: "#101A3D" }}>
+                    Tạo lộ trình LearningPath v2
+                  </Typography>
+                  <Typography sx={{ fontSize: 14, color: "#4A5578", mt: 0.5 }}>
+                    Kiểm tra dữ liệu đầu vào trước khi hệ thống tạo cycle học cá nhân hóa.
+                  </Typography>
+                </Box>
+              </Stack>
+              <Chip
+                color={canGenerate ? "success" : "warning"}
+                variant="outlined"
+                icon={canGenerate ? <AssignmentTurnedInIcon /> : <ErrorOutlineIcon />}
+                label={canGenerate ? "Sẵn sàng tạo" : "Cần bổ sung dữ liệu"}
+                sx={{ fontWeight: 800, borderRadius: 999 }}
+              />
+            </Stack>
+          </Box>
 
-            {loadingGenerationContext ? (
-              <Box display="flex" justifyContent="center" py={3}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <>
-                <Stack spacing={1}>
-                  <Typography fontWeight={700}>Bài entry test gần nhất</Typography>
-                  {latestInitialTest ? (
-                    <Box>
-                      <Typography>
-                        Điểm: {latestInitialTest.score ?? "N/A"}
-                      </Typography>
-                      <Typography>
-                        Thời điểm nộp:{" "}
-                        {latestInitialTest.submit_at
-                          ? new Date(
-                              latestInitialTest.submit_at
-                            ).toLocaleString()
-                          : "N/A"}
-                      </Typography>
-                      <Typography>
-                        Thời lượng: {latestInitialTest.duration ?? 0} giây
-                      </Typography>
-                      <Stack direction="row" flexWrap="wrap" gap={1} mt={1}>
-                        {(latestInitialTest.parts ?? []).map((part: any) => (
-                          <Chip
-                            key={part.part_name}
-                            size="small"
-                            label={`${part.part_name}: ${Math.round(
-                              Number(part.accuracy || 0)
-                            )}%`}
-                          />
-                        ))}
+          <Box sx={{ p: { xs: 2.5, md: 4 } }}>
+            <Stack spacing={2.5}>
+              {loadingGenerationContext ? (
+                <Box display="flex" justifyContent="center" alignItems="center" py={8}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                      gap: 2,
+                    }}
+                  >
+                    <Paper
+                      variant="outlined"
+                      sx={{ p: 2.25, borderRadius: 3, borderColor: "#DDE3F0", bgcolor: "#FFFFFF" }}
+                    >
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+                        <TrackChangesIcon color="primary" />
+                        <Typography fontWeight={900} color="#101A3D">
+                          Bài entry test gần nhất
+                        </Typography>
                       </Stack>
-                    </Box>
-                  ) : (
-                    <Alert
-                      severity="warning"
-                      action={
-                        <Button
-                          color="inherit"
-                          size="small"
-                          onClick={() =>
-                            navigate("/overview-test?type=entry-test")
+                      {latestInitialTest ? (
+                        <Stack spacing={1.25}>
+                          <MetricTile
+                            icon={<AssignmentTurnedInIcon fontSize="small" />}
+                            label="Điểm đầu vào"
+                            value={latestInitialTest.score ?? "N/A"}
+                          />
+                          <MetricTile
+                            icon={<CalendarMonthOutlinedIcon fontSize="small" />}
+                            label="Thời điểm nộp"
+                            value={formatDateTime(latestInitialTest.submit_at)}
+                          />
+                          <MetricTile
+                            icon={<ScheduleOutlinedIcon fontSize="small" />}
+                            label="Thời lượng"
+                            value={formatDuration(latestInitialTest.duration)}
+                          />
+                          <Stack direction="row" flexWrap="wrap" gap={1} mt={0.5}>
+                            {(latestInitialTest.parts ?? []).map((part: any) => (
+                              <Chip
+                                key={part.part_name}
+                                size="small"
+                                label={`${part.part_name}: ${Math.round(Number(part.accuracy || 0))}%`}
+                                sx={{ borderRadius: 999, fontWeight: 700 }}
+                              />
+                            ))}
+                          </Stack>
+                        </Stack>
+                      ) : (
+                        <Alert
+                          severity="warning"
+                          action={
+                            <Button
+                              color="inherit"
+                              size="small"
+                              onClick={() => navigate("/overview-test?type=entry-test")}
+                            >
+                              Làm entry test
+                            </Button>
                           }
                         >
-                          Làm entry test
-                        </Button>
-                      }
+                          Bạn chưa có bài entry test. Hãy hoàn thành bài đánh giá đầu vào để hệ thống có dữ liệu năng lực ban đầu.
+                        </Alert>
+                      )}
+                    </Paper>
+
+                    <Paper
+                      variant="outlined"
+                      sx={{ p: 2.25, borderRadius: 3, borderColor: "#DDE3F0", bgcolor: "#FFFFFF" }}
                     >
-                      Bạn chưa có bài entry test.
-                    </Alert>
-                  )}
-                </Stack>
-
-                <Divider />
-
-                <Stack spacing={1}>
-                  <Typography fontWeight={700}>Thiết lập lộ trình</Typography>
-                  {learningPath ? (
-                    <Box>
-                      <Typography>
-                        Điểm mục tiêu: {learningPath.target_score ?? "N/A"}
-                      </Typography>
-                      <Typography>
-                        Hạn chót:{" "}
-                        {learningPath.target_completion_date
-                          ? new Date(
-                              learningPath.target_completion_date
-                            ).toLocaleDateString()
-                          : "N/A"}
-                      </Typography>
-                      <Typography>
-                        Thời gian/ngày: {learningPath.time_per_day ?? 0} phút
-                      </Typography>
-                      <Typography>
-                        Số ngày học/tuần: {learningPath.days_per_week ?? 0}
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Alert
-                      severity="warning"
-                      action={
-                        <Button
-                          color="inherit"
-                          size="small"
-                          onClick={() => navigate("/plan")}
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+                        <CalendarMonthOutlinedIcon color="primary" />
+                        <Typography fontWeight={900} color="#101A3D">
+                          Thiết lập lộ trình
+                        </Typography>
+                      </Stack>
+                      {learningPath ? (
+                        <Stack spacing={1.25}>
+                          <MetricTile
+                            icon={<TrackChangesIcon fontSize="small" />}
+                            label="Điểm mục tiêu"
+                            value={learningPath.target_score ?? "N/A"}
+                          />
+                          <MetricTile
+                            icon={<CalendarMonthOutlinedIcon fontSize="small" />}
+                            label="Hạn hoàn thành"
+                            value={formatDate(learningPath.target_completion_date)}
+                          />
+                          <MetricTile
+                            icon={<ScheduleOutlinedIcon fontSize="small" />}
+                            label="Nhịp học"
+                            value={`${learningPath.time_per_day ?? 0} phút/ngày · ${learningPath.days_per_week ?? 0} ngày/tuần`}
+                          />
+                        </Stack>
+                      ) : (
+                        <Alert
+                          severity="warning"
+                          action={
+                            <Button color="inherit" size="small" onClick={() => navigate("/plan")}>
+                              Thiết lập
+                            </Button>
+                          }
                         >
-                          Thiết lập
-                        </Button>
-                      }
+                          Bạn chưa thiết lập mục tiêu học. Hãy cấu hình điểm mục tiêu, deadline và thời gian học trước khi tạo lộ trình.
+                        </Alert>
+                      )}
+                    </Paper>
+                  </Box>
+
+                  {missingRequirements.length > 0 && (
+                    <Alert
+                      severity="info"
+                      sx={{ borderRadius: 2, border: "1px solid #B8D4FF", bgcolor: "#F3F8FF" }}
                     >
-                      Bạn chưa thiết lập mục tiêu học.
+                      <Typography fontWeight={800} sx={{ mb: 0.75 }}>
+                        Cần hoàn tất trước khi tạo lộ trình
+                      </Typography>
+                      <Stack spacing={0.75}>
+                        {missingRequirements.map((item: string) => (
+                          <Stack key={item} direction="row" spacing={1} alignItems="center">
+                            <ErrorOutlineIcon sx={{ fontSize: 16 }} />
+                            <span>{missingRequirementLabel[item] ?? item}</span>
+                          </Stack>
+                        ))}
+                      </Stack>
                     </Alert>
                   )}
-                </Stack>
+                </>
+              )}
 
-                {missingRequirements.length > 0 && (
-                  <Alert severity="info">
-                    <Stack spacing={0.5}>
-                      {missingRequirements.map((item: string) => (
-                        <span key={item}>
-                          {missingRequirementLabel[item] ?? item}
-                        </span>
-                      ))}
-                    </Stack>
-                  </Alert>
-                )}
-              </>
-            )}
+              <Divider />
 
-            <Button
-              variant="contained"
-              onClick={handleConfirm}
-              disabled={!canGenerate || creatingPath || loadingGenerationContext}
-              fullWidth
-            >
-              {creatingPath ? "Đang tạo lộ trình..." : "Tạo lộ trình ngay"}
-            </Button>
-          </Stack>
-        </Box>
-      </Modal>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                justifyContent="space-between"
+                alignItems={{ xs: "stretch", sm: "center" }}
+              >
+                <Typography sx={{ fontSize: 13, color: "#6A728C", maxWidth: 520 }}>
+                  Khi bấm tạo, hệ thống sẽ phân tích entry test, mục tiêu và thời gian học để sinh cycle đầu tiên cho LearningPath v2.
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={handleConfirm}
+                  disabled={!canGenerate || creatingPath || loadingGenerationContext}
+                  startIcon={creatingPath ? undefined : <PlayArrowRoundedIcon />}
+                  sx={{
+                    minWidth: { xs: "100%", sm: 220 },
+                    borderRadius: 2,
+                    py: 1.25,
+                    fontWeight: 900,
+                    bgcolor: "#2653D9",
+                    "&:hover": { bgcolor: "#1238C8" },
+                  }}
+                >
+                  {creatingPath ? "Đang tạo lộ trình..." : "Tạo lộ trình ngay"}
+                </Button>
+              </Stack>
+            </Stack>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

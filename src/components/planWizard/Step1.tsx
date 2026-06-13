@@ -8,6 +8,7 @@ interface ITargetScoreStep {
     score: number;
     targetScore: number;
     onTargetScoreChange: (value: number) => void;
+    validationMessage?: string;
 }
 const SCORE_MARKS = [450, 550, 650, 750, 850].map((v) => ({ value: v, label: String(v) }));
 
@@ -22,6 +23,7 @@ export const TargetScoreStep: FC<ITargetScoreStep> = ({
     score,
     targetScore,
     onTargetScoreChange,
+    validationMessage,
 }) => {
     const value = targetScore;
 
@@ -43,7 +45,11 @@ export const TargetScoreStep: FC<ITargetScoreStep> = ({
                     valueLabelDisplay="on"
                     onChange={(_, v) => onTargetScoreChange(Array.isArray(v) ? v[0] : v)}
                 />
-                {/* {!!error && <FormHelperText error sx={{ mt: 1 }}>{error}</FormHelperText>} */}
+                {validationMessage && (
+                    <Alert severity="warning" sx={{ mt: 2 }}>
+                        {validationMessage}
+                    </Alert>
+                )}
             </Box>
 
             {/* Hint */}

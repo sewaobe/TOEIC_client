@@ -52,6 +52,8 @@ const createEmptyWeeklyMinutes = () => ({
   sunday: 0,
 });
 
+const MAX_TARGET_SCORE_GAP = 300;
+
 export default function PlanWizardDemo() {
   const [searchParams] = useSearchParams();
   const scoreString = searchParams.get("score");
@@ -71,6 +73,22 @@ export default function PlanWizardDemo() {
   const [weeklyMinutesByDay, setWeeklyMinutesByDay] = React.useState<
     Record<string, number>
   >(createEmptyWeeklyMinutes);
+
+  const targetScoreValidationMessage = React.useMemo(() => {
+    if (!scoreNumber || scoreNumber <= 0) return "";
+
+    if (targetScore <= scoreNumber) {
+      return `Mục tiêu cần cao hơn điểm đầu vào (${scoreNumber}) để hệ thống có cơ sở thiết kế lộ trình tăng trưởng rõ ràng. Vui lòng chọn mục tiêu lớn hơn điểm hiện tại.`;
+    }
+
+    const maxAllowedTarget = Math.min(990, scoreNumber + MAX_TARGET_SCORE_GAP);
+    const minAllowedTarget = Math.min(990, scoreNumber + 5);
+    if (targetScore > maxAllowedTarget) {
+      return `Để lộ trình khả thi và đo lường được, hệ thống chỉ hỗ trợ mục tiêu cao hơn tối đa ${MAX_TARGET_SCORE_GAP} điểm so với điểm đầu vào. Với điểm hiện tại ${scoreNumber}, mục tiêu phù hợp nên nằm trong khoảng ${minAllowedTarget}–${maxAllowedTarget}.`;
+    }
+
+    return "";
+  }, [scoreNumber, targetScore]);
 
   const buildLearningPathV2SetupPayload = () => {
     if (!targetScore || targetScore <= 0) {
@@ -124,6 +142,10 @@ export default function PlanWizardDemo() {
   };
 
   const handleNext = async () => {
+    if (activeStep === 0 && targetScoreValidationMessage) {
+      return;
+    }
+
     if (activeStep < 2) {
       setActiveStep((prev) => prev + 1);
       return;
@@ -188,6 +210,7 @@ export default function PlanWizardDemo() {
                       score={scoreNumber}
                       targetScore={targetScore}
                       onTargetScoreChange={setTargetScore}
+                      validationMessage={targetScoreValidationMessage}
                     />
                   </Box>
                 </Grow>
@@ -240,7 +263,7 @@ export default function PlanWizardDemo() {
                 variant="contained"
                 size="large"
                 onClick={handleNext}
-                disabled={submitting}
+                disabled={submitting || (activeStep === 0 && Boolean(targetScoreValidationMessage))}
                 fullWidth
               >
                 {activeStep < 2

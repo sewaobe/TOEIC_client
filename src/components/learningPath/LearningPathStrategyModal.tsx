@@ -33,6 +33,7 @@ import learningPathV2Service from "../../services/learning_path_v2.service";
 import type {
     LearningPathStrategyOverviewResponse,
     LearningPathStrategyType,
+    SelectLearningPathStrategyOptionResponse,
     StrategyCyclePreview,
     StrategyHistoryItem,
     StrategyOptionView,
@@ -623,6 +624,7 @@ function StrategyCard({
     tooltip,
     recommended,
     selecting,
+    previewing,
     onPreview,
     onSelect,
 }: {
@@ -630,6 +632,7 @@ function StrategyCard({
     tooltip: string;
     recommended?: boolean;
     selecting: boolean;
+    previewing: boolean;
     onPreview: (option: StrategyOptionView) => void;
     onSelect: (option: StrategyOptionView) => void;
 }) {
@@ -779,9 +782,9 @@ function StrategyCard({
                 <Button
                     fullWidth
                     variant="outlined"
-                    startIcon={<VisibilityOutlinedIcon />}
+                    startIcon={previewing ? <CircularProgress size={16} /> : <VisibilityOutlinedIcon />}
                     onClick={() => onPreview(option)}
-                    disabled={!option.preview_cycle}
+                    disabled={selecting || previewing}
                     sx={{
                         height: 44,
                         borderRadius: "8px",
@@ -828,12 +831,14 @@ function PendingSelectionView({
     onPreview,
     onSelect,
     selectingOptionId,
+    previewingOptionId,
 }: {
     options: StrategyOptionView[];
     tooltip: string;
     onPreview: (option: StrategyOptionView) => void;
     onSelect: (option: StrategyOptionView) => void;
     selectingOptionId: string | null;
+    previewingOptionId: string | null;
 }) {
     return (
         <Stack spacing={2}>
@@ -855,6 +860,7 @@ function PendingSelectionView({
                         tooltip={tooltip}
                         recommended={option.strategy === "recommended"}
                         selecting={selectingOptionId === option.option_id}
+                        previewing={previewingOptionId === option.option_id}
                         onPreview={onPreview}
                         onSelect={onSelect}
                     />
@@ -1043,12 +1049,35 @@ function PreviewView({
                                                 unit.reason ||
                                                 "Bài học trong cycle"}
                                         </Typography>
+                                        <Stack
+                                            direction="row"
+                                            spacing={0.8}
+                                            justifyContent={{ xs: "flex-start", md: "flex-end" }}
+                                            flexWrap="wrap"
+                                            useFlexGap
+                                        >
+                                        {unit.unit_source === "alternative" && (
+                                            <Tooltip title="Main graph của Part này đã hết, hệ thống chọn bài cùng Part và gần năng lực hiện tại.">
+                                                <Chip
+                                                    label="Bài thay thế"
+                                                    size="small"
+                                                    sx={{
+                                                        height: 26,
+                                                        borderRadius: "8px",
+                                                        bgcolor: "#FFF4DE",
+                                                        border: "1px solid rgba(245,158,11,0.32)",
+                                                        color: "#8A4B00",
+                                                        fontSize: 12,
+                                                        fontWeight: 800,
+                                                    }}
+                                                />
+                                            </Tooltip>
+                                        )}
                                         <Chip
                                             icon={<AccessTimeOutlinedIcon />}
                                             label={formatMinutes(unit.planned_minutes)}
                                             size="small"
                                             sx={{
-                                                justifySelf: { xs: "flex-start", md: "end" },
                                                 height: 30,
                                                 borderRadius: "8px",
                                                 bgcolor: colors.surface,
@@ -1062,6 +1091,7 @@ function PreviewView({
                                                 },
                                             }}
                                         />
+                                        </Stack>
                                     </Box>
                                 ))}
                             </Stack>
@@ -1168,11 +1198,11 @@ function HistoryTab({ history }: { history: StrategyHistoryItem[] }) {
         );
     }
 
-    const selectedStrategy = history.find((item) => item.status === "selected");
-    const selectedStrategyName = selectedStrategy
+    const latestExpiredStrategy = history[0];
+    const latestExpiredStrategyName = latestExpiredStrategy
         ? getStrategyDisplayName(
-            selectedStrategy.strategy as LearningPathStrategyType,
-            selectedStrategy.strategy_label
+            latestExpiredStrategy.strategy as LearningPathStrategyType,
+            latestExpiredStrategy.strategy_label
         )
         : "Chưa có";
     const fullTestCount = history.filter(
@@ -1190,14 +1220,14 @@ function HistoryTab({ history }: { history: StrategyHistoryItem[] }) {
             >
                 <HistoryMetric
                     icon={<CalendarMonthOutlinedIcon />}
-                    label="Số lần cập nhật"
+                    label="Số lần thay thế"
                     value={`${history.length} lần`}
                     accent={strategyAccents.recommended}
                 />
                 <HistoryMetric
                     icon={<CheckCircleOutlineIcon />}
-                    label="Chiến lược đang áp dụng"
-                    value={selectedStrategyName}
+                    label="Lần gần nhất"
+                    value={latestExpiredStrategyName}
                     accent={strategyAccents.balanced}
                 />
                 <HistoryMetric
@@ -1311,6 +1341,11 @@ export default function LearningPathStrategyModal({
     const [selectingOptionId, setSelectingOptionId] = React.useState<string | null>(
         null
     );
+    const [previewingOptionId, setPreviewingOptionId] = React.useState<string | null>(
+        null
+    );
+    const [routeCompletedMessage, setRouteCompletedMessage] =
+        React.useState<string | null>(null);
 
     const loadData = React.useCallback(async () => {
         if (!open || !learningPathId) return;
@@ -1336,9 +1371,53 @@ export default function LearningPathStrategyModal({
         if (open) {
             setActiveTab("current");
             setPreviewOption(null);
+            setPreviewingOptionId(null);
+            setRouteCompletedMessage(null);
             loadData();
         }
     }, [open, loadData]);
+
+    const handlePreview = async (option: StrategyOptionView) => {
+        if (!learningPathId) return;
+
+        if (option.preview_cycle) {
+            setPreviewOption(option);
+            return;
+        }
+
+        try {
+            setPreviewingOptionId(option.option_id);
+            setErrorMessage(null);
+            setRouteCompletedMessage(null);
+
+            const response = await learningPathV2Service.getStrategyOptionPreview(
+                learningPathId,
+                option.option_id
+            );
+            const preview = getApiPayload<StrategyCyclePreview>(response);
+            const nextOption = { ...option, preview_cycle: preview };
+
+            setData((current) => {
+                if (!current) return current;
+                return {
+                    ...current,
+                    pending_options: current.pending_options.map((item) =>
+                        item.option_id === option.option_id ? nextOption : item
+                    ),
+                    current_option:
+                        current.current_option?.option_id === option.option_id
+                            ? nextOption
+                            : current.current_option,
+                };
+            });
+            setPreviewOption(nextOption);
+        } catch (error) {
+            console.error("Táº£i cycle dá»± kiáº¿n tháº¥t báº¡i", error);
+            setErrorMessage("KhÃ´ng thá»ƒ táº£i cycle dá»± kiáº¿n. Vui lÃ²ng thá»­ láº¡i.");
+        } finally {
+            setPreviewingOptionId(null);
+        }
+    };
 
     const handleSelect = async (option: StrategyOptionView) => {
         if (!learningPathId) return;
@@ -1346,11 +1425,22 @@ export default function LearningPathStrategyModal({
         try {
             setSelectingOptionId(option.option_id);
             setErrorMessage(null);
+            setRouteCompletedMessage(null);
 
-            await learningPathV2Service.selectStrategyOption(
+            const response = await learningPathV2Service.selectStrategyOption(
                 learningPathId,
                 option.option_id
             );
+            const payload =
+                getApiPayload<SelectLearningPathStrategyOptionResponse>(response);
+
+            if (payload.cycle_status === "route_completed") {
+                setRouteCompletedMessage(
+                    "Hệ thống không còn đủ bài học phù hợp với năng lực hiện tại. Vui lòng liên hệ quản trị viên để bổ sung nội dung hoặc điều chỉnh lộ trình."
+                );
+                await loadData();
+                return;
+            }
 
             await loadData();
             setPreviewOption(null);
@@ -1388,6 +1478,14 @@ export default function LearningPathStrategyModal({
             );
         }
 
+        if (routeCompletedMessage) {
+            return (
+                <Alert severity="warning" sx={{ borderRadius: "10px", fontSize: 14 }}>
+                    {routeCompletedMessage}
+                </Alert>
+            );
+        }
+
         if (!data) {
             return (
                 <Alert severity="info" sx={{ borderRadius: "10px", fontSize: 14 }}>
@@ -1417,9 +1515,10 @@ export default function LearningPathStrategyModal({
                 <PendingSelectionView
                     options={data.pending_options ?? []}
                     tooltip={data.copy?.estimated_gain_tooltip ?? ""}
-                    onPreview={setPreviewOption}
+                    onPreview={handlePreview}
                     onSelect={handleSelect}
                     selectingOptionId={selectingOptionId}
+                    previewingOptionId={previewingOptionId}
                 />
             );
         }

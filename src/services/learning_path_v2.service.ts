@@ -1,4 +1,4 @@
-import { LearningPathStrategyOverviewResponse, SelectLearningPathStrategyOptionResponse } from "../types/learning_strategy";
+import { LearningPathStrategyOverviewResponse, SelectLearningPathStrategyOptionResponse, StrategyCyclePreview } from "../types/learning_strategy";
 import { GetLearningPathSkillMapParams } from "../types/user_skill";
 import axiosClient from "./axiosClient";
 
@@ -7,6 +7,20 @@ export type LearningPathV2SetupPayload = {
   target_completion_date: string | Date;
   time_per_day: number;
   days_per_week: number;
+};
+
+export type LearningPathV2AssessmentType = "mini_test" | "full_test";
+
+export type SubmitLearningPathV2AssessmentPayload = {
+  test_id: string;
+  answers: {
+    question_id: string;
+    selectedOption: string;
+  }[];
+  duration: number;
+  assessment_type: LearningPathV2AssessmentType;
+  week_study_id?: string;
+  day_study_id?: string;
 };
 
 const BASE_URL = "/learning-path-v2";
@@ -525,6 +539,16 @@ const learningPathV2Service = {
     return axiosClient.post(`${BASE_URL}/${learningPathId}/initial-generation`, {});
   },
 
+  submitAssessment: async (
+    learningPathId: string,
+    payload: SubmitLearningPathV2AssessmentPayload
+  ) => {
+    return axiosClient.post(
+      `${BASE_URL}/${learningPathId}/assessments/submit`,
+      payload
+    );
+  },
+
   getCurrentCycle: async (learningPathId: string) => {
     return axiosClient.get(`${BASE_URL}/${learningPathId}/current-cycle`);
   },
@@ -592,6 +616,12 @@ const learningPathV2Service = {
   getStrategy: async (learningPathId: string) => {
     return axiosClient.get<LearningPathStrategyOverviewResponse>(
       `${BASE_URL}/${learningPathId}/strategy`
+    );
+  },
+
+  getStrategyOptionPreview: async (learningPathId: string, optionId: string) => {
+    return axiosClient.get<StrategyCyclePreview>(
+      `${BASE_URL}/${learningPathId}/strategy-options/${optionId}/preview`
     );
   },
 

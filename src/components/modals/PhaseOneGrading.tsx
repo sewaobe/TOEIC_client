@@ -6,6 +6,7 @@ import { CheckIcon } from '../common/Icons.tsx';
 
 interface PhaseOneProps {
     onComplete: () => void;
+    initialPayload?: any | null;
 }
 
 interface QuestionStatus {
@@ -13,58 +14,66 @@ interface QuestionStatus {
     status: 'pending' | 'scanning' | 'correct' | 'incorrect';
 }
 
-const TOTAL_QUESTIONS = 100;
 const SCAN_DURATION_MS = 40; // Slower speed: ~8 seconds total for 100 items
 
-const PhaseOneGrading: React.FC<PhaseOneProps> = ({ onComplete }) => {
-    const [questions, setQuestions] = useState<QuestionStatus[]>(
-        Array.from({ length: TOTAL_QUESTIONS }, (_, i) => ({
-            id: i + 1,
-            status: 'pending',
-        }))
-    );
+const PhaseOneGrading: React.FC<PhaseOneProps> = ({ onComplete, initialPayload = null }) => {
+    const [questions, setQuestions] = useState<QuestionStatus[]>([]);
 
-    const [totalQuestions, setTotalQuestions] = useState<number>(TOTAL_QUESTIONS);
+    const [totalQuestions, setTotalQuestions] = useState<number>(0);
     const [scanningIndex, setScanningIndex] = useState(0);
     const [startScanning, setStartScanning] = useState(false);
     const [serverResults, setServerResults] = useState<('correct' | 'incorrect' | null)[] | null>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const appliedPayloadKeyRef = useRef<string | null>(null);
+
+    const applySubmittedPayload = (payload: any) => {
+        try {
+            const detailed = payload?.detailedAnswers;
+            const total = payload?.totalQuestions ?? (Array.isArray(detailed) ? detailed.length : undefined);
+            const payloadKey =
+                payload?.userTestId ??
+                `${payload?.assessment_type ?? 'assessment'}-${total ?? 0}-${Array.isArray(detailed) ? detailed.length : 0}`;
+
+            if (appliedPayloadKeyRef.current === payloadKey) return;
+
+            if (Array.isArray(detailed) && total) {
+                appliedPayloadKeyRef.current = payloadKey;
+                setTotalQuestions(total);
+
+                const results = detailed.map((d: any) => {
+                    if (typeof d.isCorrect === 'boolean') return d.isCorrect ? 'correct' : 'incorrect';
+                    return null;
+                });
+
+                setQuestions(Array.from({ length: total }, (_, i) => ({ id: i + 1, status: 'pending' })));
+                setServerResults(results as any);
+                setScanningIndex(0);
+                setStartScanning(true);
+            }
+        } catch (err) {
+            console.warn('Failed to process assessment submitted payload', err);
+        }
+    };
 
     // Socket: wait for server grading result before starting per-question animation
     useEffect(() => {
+        if (initialPayload) {
+            applySubmittedPayload(initialPayload);
+        }
+
         const sock = getSocket() || initSocket();
 
         const handleMiniTest = (payload: any) => {
-            try {
-                const detailed = payload?.detailedAnswers;
-                const total = payload?.totalQuestions ?? (Array.isArray(detailed) ? detailed.length : undefined);
-
-                if (Array.isArray(detailed) && total) {
-                    setTotalQuestions(total);
-
-                    const results = detailed.map((d: any) => {
-                        if (typeof d.isCorrect === 'boolean') return d.isCorrect ? 'correct' : 'incorrect';
-                        return null;
-                    });
-
-                    // initialize question list (pending) and set server results
-                    setQuestions(Array.from({ length: total }, (_, i) => ({ id: i + 1, status: 'pending' })));
-                    setServerResults(results as any);
-                    setScanningIndex(0);
-                    setStartScanning(true);
-                }
-            } catch (err) {
-                console.warn('Failed to process mini_test_submitted payload', err);
-            }
+            applySubmittedPayload(payload);
         };
 
-        sock?.off('mini_test_submitted', handleMiniTest);
-        sock?.on('mini_test_submitted', handleMiniTest);
+        sock?.off('learning_path_assessment_submitted', handleMiniTest);
+        sock?.on('learning_path_assessment_submitted', handleMiniTest);
 
         return () => {
-            sock?.off('mini_test_submitted', handleMiniTest);
+            sock?.off('learning_path_assessment_submitted', handleMiniTest);
         };
-    }, [onComplete]);
+    }, [onComplete, initialPayload]);
 
     // Animation & Scroll Logic
     useEffect(() => {

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Dialog from '@mui/material/Dialog';
 import { AnimatePresence, motion } from 'framer-motion';
 import PhaseOneGrading from './PhaseOneGrading';
@@ -20,11 +20,14 @@ export enum Phase {
 const AssessmentModal: React.FC<AssessmentModalProps> = ({ open, onClose }) => {
     const [phase, setPhase] = useState<Phase>(Phase.GRADING);
     const [initialAbilitiesPayload, setInitialAbilitiesPayload] = useState<any | null>(null);
+    const [initialSubmittedPayload, setInitialSubmittedPayload] = useState<any | null>(null);
 
     // Reset phase when modal opens
     useEffect(() => {
         if (open) {
             setPhase(Phase.GRADING);
+            setInitialAbilitiesPayload(null);
+            setInitialSubmittedPayload(null);
         }
     }, [open]);
 
@@ -34,38 +37,45 @@ const AssessmentModal: React.FC<AssessmentModalProps> = ({ open, onClose }) => {
             const sock = getSocket() || initSocket();
 
             // Capture abilities early in modal so PhaseTwo won't miss emits
-            const handleMiniTest = (payload: any) => {
+            const handleAbilities = (payload: any) => {
                 try {
                     // store whatever payload for PhaseTwo to consume
                     setInitialAbilitiesPayload(payload);
                 } catch (err) {
-                    console.warn('Failed to capture mini_test payload in AssessmentModal', err);
+                    console.warn('Failed to capture assessment payload in AssessmentModal', err);
+                }
+            };
+            const handleSubmitted = (payload: any) => {
+                try {
+                    setInitialSubmittedPayload(payload);
+                } catch (err) {
+                    console.warn('Failed to capture assessment submitted payload in AssessmentModal', err);
                 }
             };
 
-            sock?.off('mini_test_abilities', handleMiniTest);
-            sock?.on('mini_test_abilities', handleMiniTest);
-            sock?.off('mini_test_submitted', handleMiniTest);
-            sock?.on('mini_test_submitted', handleMiniTest);
+            sock?.off('learning_path_assessment_abilities', handleAbilities);
+            sock?.on('learning_path_assessment_abilities', handleAbilities);
+            sock?.off('learning_path_assessment_submitted', handleSubmitted);
+            sock?.on('learning_path_assessment_submitted', handleSubmitted);
             return () => {
                 // keep socket alive globally; do not disconnect here
-                sock?.off('mini_test_abilities', handleMiniTest);
-                sock?.off('mini_test_submitted', handleMiniTest);
+                sock?.off('learning_path_assessment_abilities', handleAbilities);
+                sock?.off('learning_path_assessment_submitted', handleSubmitted);
             };
         }
     }, [open]);
 
-    const handleGradingComplete = () => {
+    const handleGradingComplete = useCallback(() => {
         // Add a small delay before switching for dramatic effect
         setTimeout(() => {
             setPhase(Phase.ANALYSIS);
         }, 500);
-    };
+    }, []);
 
-    const handleAnalysisComplete = () => {
+    const handleAnalysisComplete = useCallback(() => {
         setPhase(Phase.COMPLETE);
         // Optional: enable close button here
-    };
+    }, []);
 
     return (
         <Dialog
@@ -111,7 +121,7 @@ const AssessmentModal: React.FC<AssessmentModalProps> = ({ open, onClose }) => {
                                 exit={{ opacity: 0, x: -20, transition: { duration: 0.3 } }}
                                 className="absolute inset-0"
                             >
-                                <PhaseOneGrading onComplete={handleGradingComplete} />
+                                <PhaseOneGrading onComplete={handleGradingComplete} initialPayload={initialSubmittedPayload} />
                             </motion.div>
                         )}
 

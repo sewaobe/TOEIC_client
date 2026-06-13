@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrainIcon, CheckIcon, LayersIcon, BookIcon, HeadphonesIcon, SearchIcon } from '../common/Icons';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -11,7 +11,17 @@ interface PhaseTwoProps {
     initialPayload?: any | null;
 }
 
-// STAGE 1 DATA: 7 Exam Parts with more detail
+const PART_LABELS_BY_TYPE: Record<number, { id: string; name: string }> = {
+    1: { id: 'Part 1', name: 'Photographs' },
+    2: { id: 'Part 2', name: 'Q&A' },
+    3: { id: 'Part 3', name: 'Conversations' },
+    4: { id: 'Part 4', name: 'Talks' },
+    5: { id: 'Part 5', name: 'Incomplete Sentences' },
+    6: { id: 'Part 6', name: 'Text Completion' },
+    7: { id: 'Part 7', name: 'Reading Comp' },
+};
+
+// Initial placeholder until the backend ability payload arrives.
 const PARTS_DATA = [
     { id: 'Part 1', name: 'Photographs', score: 85, status: 'Strong' },
     { id: 'Part 2', name: 'Q&A', score: 65, status: 'Average' },
@@ -48,7 +58,8 @@ const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete, initialPayload 
     const [scannedPartIndex, setScannedPartIndex] = useState(-1);
     const [retrieving, setRetrieving] = useState(false);
     const [distributedCount, setDistributedCount] = useState(-1);
-    const [partsData, setPartsData] = useState(PARTS_DATA);
+    const [partsData, setPartsData] = useState<typeof PARTS_DATA>([]);
+    const appliedAbilityPayloadKeyRef = useRef<string | null>(null);
 
     // Responsive Checks
     const isMobile = useMediaQuery('(max-width:768px)');
@@ -59,10 +70,56 @@ const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete, initialPayload 
     const handleClickSeenNewWeek = () => {
         navigate('/programs');
     }
+
+    const applyAssessmentPayload = (payload: any) => {
+        const partAbilities =
+            payload?.user_skill_parts ??
+            payload?.part_abilities ??
+            payload?.ability_profile?.part_abilities;
+        if (!Array.isArray(partAbilities) || partAbilities.length === 0) return;
+        const payloadKey = `${payload?.trigger_type ?? 'assessment'}-${payload?.assessment_type ?? 'unknown'}-${partAbilities
+            .map((part: any) => `${part.part_type}:${part.ability}:${part.status ?? ''}`)
+            .join('|')}`;
+        if (appliedAbilityPayloadKeyRef.current === payloadKey) return;
+        appliedAbilityPayloadKeyRef.current = payloadKey;
+
+        const mapped = [...partAbilities]
+            .map((part: any) => ({
+                ...part,
+                part_type: Number(part.part_type),
+            }))
+            .filter((part: any) => Number.isInteger(part.part_type) && part.part_type >= 1 && part.part_type <= 7)
+            .sort((a: any, b: any) => a.part_type - b.part_type)
+            .map((found: any) => {
+            const partMeta = PART_LABELS_BY_TYPE[found.part_type] ?? {
+                id: `Part ${found.part_type}`,
+                name: `Part ${found.part_type}`,
+            };
+            const ability = Number(found.ability);
+            const score = Math.round(Math.max(0, Math.min(100, ability * 100)));
+            const status =
+                found.status === 'weak'
+                    ? 'Weak'
+                    : found.status === 'strong'
+                        ? 'Strong'
+                        : score >= 70
+                            ? 'Strong'
+                            : score >= 50
+                                ? 'Good'
+                                : score >= 30
+                                    ? 'Average'
+                                    : 'Weak';
+
+            return { ...partMeta, score, status };
+        });
+        setScannedPartIndex(-1);
+        setPartsData(mapped);
+    };
     // --- ORCHESTRATION ---
     useEffect(() => {
         // 1. SCANNING SEQUENCE
         if (scene === 'scan') {
+            if (partsData.length === 0) return;
             const interval = setInterval(() => {
                 setScannedPartIndex(prev => {
                     if (prev >= partsData.length - 1) {
@@ -103,109 +160,34 @@ const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete, initialPayload 
             }, 2000); // 2 seconds per day (Slowed down as requested)
             return () => clearInterval(interval);
         }
-    }, [scene, onComplete]);
+    }, [scene, onComplete, partsData.length]);
 
-    // Socket: update partsData from server abilities or parts payload
+    // Socket: update partsData from LearningPath v2 ability payload.
     useEffect(() => {
-        // If AssessmentModal captured an initial payload, apply it right away
         if (initialPayload) {
             try {
-                const thetaByPart = initialPayload?.abilities?.thetaByPart ?? initialPayload?.thetaByPart;
-                if (thetaByPart && typeof thetaByPart === 'object') {
-                    const MIN_THETA = -5;
-                    const MAX_THETA = 5;
-                    const mapped = PARTS_DATA.map((base, idx) => {
-                        const partNum = idx + 1;
-                        const raw = thetaByPart[partNum] ?? thetaByPart[String(partNum)];
-                        const theta = Number(raw);
-                        if (!Number.isFinite(theta)) return { ...base };
-                        const rawPercent = ((theta - MIN_THETA) / (MAX_THETA - MIN_THETA)) * 100;
-                        const score = Math.round(Math.max(0, Math.min(100, rawPercent)));
-                        let status = 'Average';
-                        if (score < 30) status = 'Weak';
-                        else if (score < 50) status = 'Average';
-                        else if (score < 70) status = 'Good';
-                        else status = 'Strong';
-                        return { ...base, score, status };
-                    });
-                    setPartsData(mapped);
-                }
+                applyAssessmentPayload(initialPayload);
             } catch (err) {
                 console.warn('Failed to apply initialPayload in PhaseTwoAnalysis', err);
             }
         }
         const sock = getSocket() || initSocket();
 
-        const handleMiniTest = (payload: any) => {
+        const handleAbilities = (payload: any) => {
             try {
-                const thetaByPart = payload?.abilities?.thetaByPart ?? payload?.thetaByPart;
-
-                // If thetaByPart present, map to percent and preserve names/ids
-                if (thetaByPart && typeof thetaByPart === 'object') {
-                    const MIN_THETA = -5;
-                    const MAX_THETA = 5;
-
-                    const mapped = PARTS_DATA.map((base, idx) => {
-                        const partNum = idx + 1;
-                        const raw = thetaByPart[partNum] ?? thetaByPart[String(partNum)];
-                        const theta = Number(raw);
-
-                        if (!Number.isFinite(theta)) return { ...base };
-
-                        const rawPercent = ((theta - MIN_THETA) / (MAX_THETA - MIN_THETA)) * 100;
-                        const score = Math.round(Math.max(0, Math.min(100, rawPercent)));
-
-                        let status = 'Average';
-                        if (score < 30) status = 'Weak';
-                        else if (score < 50) status = 'Average';
-                        else if (score < 70) status = 'Good';
-                        else status = 'Strong';
-
-                        return { ...base, score, status };
-                    });
-
-                    setPartsData(mapped);
-                    return;
-                }
-
-                // Fallback: server may send per-part accuracy in payload.parts
-                const parts = payload?.parts;
-                if (Array.isArray(parts) && parts.length > 0) {
-                    // Build map from part name or number to accuracy
-                    const mapped = PARTS_DATA.map(base => {
-                        // try to find by part_name or id
-                        const found = parts.find((p: any) => p.part_name === base.id || p.part_name === base.name || p.part === base.id || p.part === base.name);
-                        if (!found) return { ...base };
-                        const acc = Number(found.accuracy ?? found.accuracy_percent ?? 0);
-                        const score = Math.round(Math.max(0, Math.min(100, acc)));
-                        let status = 'Average';
-                        if (score < 30) status = 'Weak';
-                        else if (score < 50) status = 'Average';
-                        else if (score < 70) status = 'Good';
-                        else status = 'Strong';
-                        return { ...base, score, status };
-                    });
-
-                    setPartsData(mapped);
-                    return;
-                }
+                applyAssessmentPayload(payload);
             } catch (err) {
                 console.warn('Failed to update partsData from socket payload', err);
             }
         };
 
-        sock?.off('mini_test_abilities', handleMiniTest);
-        sock?.on('mini_test_abilities', handleMiniTest);
-
-        // Also listen to submitted event if server sends theta there
-        sock?.off('mini_test_submitted', handleMiniTest);
-        sock?.on('mini_test_submitted', handleMiniTest);
+        sock?.off('learning_path_assessment_abilities', handleAbilities);
+        sock?.on('learning_path_assessment_abilities', handleAbilities);
 
         return () => {
-            sock?.off('mini_test_abilities', handleMiniTest);
-            sock?.off('mini_test_submitted', handleMiniTest);
+            sock?.off('learning_path_assessment_abilities', handleAbilities);
         };
-    }, []);
+    }, [initialPayload]);
 
     // Helper for Status Badge Color
     const getStatusColor = (status: string) => {
@@ -412,6 +394,11 @@ const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete, initialPayload 
                             </span>
                         </div>
                         <div className="p-2 space-y-1">
+                            {partsData.length === 0 && (
+                                <div className="p-4 text-center text-xs xl:text-sm text-slate-500">
+                                    Waiting for assessment ability profile...
+                                </div>
+                            )}
                             {partsData.map((part, idx) => {
                                 const isScanned = idx <= scannedPartIndex;
                                 const isCurrent = idx === scannedPartIndex;

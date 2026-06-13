@@ -5,7 +5,8 @@ export type LessonType =
   | "dictation"
   | "quiz"
   | "lesson"
-  | "mini_test";
+  | "mini_test"
+  | "full_test";
 
 export interface LessonItem {
   id: string;

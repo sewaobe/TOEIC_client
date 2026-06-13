@@ -14,7 +14,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import ConfirmModal from "../modals/ConfirmModal";
 import ToeicQuickResultModal from "../modals/ToeicQuickResultModal";
 import { setInitialAnswers } from "../../stores/answerSlice";
-import { IRT_SERVICE } from "../../services/irt.service";
+import learningPathV2Service, {
+  LearningPathV2AssessmentType,
+} from "../../services/learning_path_v2.service";
 
 interface TestHeaderProps {
   setIsShowSideBar: React.Dispatch<React.SetStateAction<boolean>>;
@@ -43,6 +45,10 @@ const initialState: State = {
   scoreOpen: false,
   score: 0,
 };
+
+const DEFAULT_FULL_TEST_QUICK_SUBMIT_WEAK_PARTS = [1, 2, 5];
+const QUICK_SUBMIT_WEAK_RATIO = { min: 0.1, max: 0.2 };
+const QUICK_SUBMIT_STRONG_RATIO = { min: 0.5, max: 0.6 };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -87,6 +93,7 @@ const TestHeader: FC<TestHeaderProps> = ({
   const timeLimitParam = searchParams.get("timeLimit"); // phút
   const parts = searchParams.get("parts"); // nếu có parts thì là practice
   const isDemoTest = searchParams.get("demo_test") === "true";
+  const quickWeakPartsParam = searchParams.get("quickWeakParts");
 
   const duration = timeLimitParam
     ? parseInt(timeLimitParam, 10) * 60 // practice có giới hạn
@@ -109,6 +116,50 @@ const TestHeader: FC<TestHeaderProps> = ({
   const [startTime] = useState(Date.now());
 
   type AnswerItem = RootState["answer"]["answers"][number];
+  type LearningPathAssessmentReturn = {
+    dayId?: string;
+    week?: string | number;
+    testId?: string;
+    learningPathId?: string;
+    weekStudyId?: string;
+    dayStudyId?: string;
+    assessmentType?: LearningPathV2AssessmentType;
+  };
+
+  const getLearningPathAssessmentReturn = (): LearningPathAssessmentReturn | null => {
+    const raw = localStorage.getItem("learning_path_assessment_return");
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        console.warn("Không parse được learning_path_assessment_return", e);
+      }
+    }
+
+    const learningPathId = searchParams.get("learningPathId") || undefined;
+    if (!learningPathId) return null;
+
+    const assessmentTypeParam = searchParams.get("assessmentType");
+    const assessmentType: LearningPathV2AssessmentType =
+      assessmentTypeParam === "full_test" ? "full_test" : "mini_test";
+
+    return {
+      learningPathId,
+      testId: testId || undefined,
+      assessmentType,
+    };
+  };
+
+  const buildLessonReturnUrl = (returnInfo: LearningPathAssessmentReturn): string => {
+    const params = new URLSearchParams();
+    if (returnInfo.dayId) params.set("day", String(returnInfo.dayId));
+    if (returnInfo.week) params.set("week", String(returnInfo.week));
+    if (returnInfo.learningPathId) {
+      params.set("learningPathId", returnInfo.learningPathId);
+    }
+
+    return `/lesson?${params.toString()}`;
+  };
 
   const submitPreparedAnswers = async (preparedAnswers: AnswerItem[]) => {
     if (!testId) {
@@ -147,39 +198,45 @@ const TestHeader: FC<TestHeaderProps> = ({
         answers: any[];
       } = { score: 0, answers: [] };
       if (fromLesson) {
-        // Đánh dấu cần hiển thị AssessmentModal ở LessonPage ngay khi bắt đầu chấm
+        // Mark LessonPage to open the LearningPath v2 assessment animation.
         try {
-          localStorage.setItem("mini_test_show_assessment", "true");
+          localStorage.setItem("learning_path_assessment_show", "true");
         } catch (e) {
-          console.warn("Không lưu được mini_test_show_assessment", e);
+          console.warn("Không lưu được learning_path_assessment_show", e);
         }
 
-        // Lấy day_study_id từ localStorage để trigger auto unlock
-        let dayStudyId: string | undefined;
-        try {
-          const returnInfo = localStorage.getItem("mini_test_return");
-          if (returnInfo) {
-            const parsed = JSON.parse(returnInfo);
-            dayStudyId = parsed.dayId;
-          }
-        } catch (e) {
-          console.warn("Không parse được mini_test_return", e);
+        const assessmentReturn = getLearningPathAssessmentReturn();
+        if (!assessmentReturn?.learningPathId) {
+          console.error("Thiếu learningPathId để nộp LearningPath v2 assessment.");
+          dispatchLocal({ type: "CLOSE_SUBMIT" });
+          setIsSubmitted(false);
+          return;
         }
 
-        // Gọi IRT ở background, không chặn UI; kết quả chi tiết dùng cho plan ở Lesson
+        const dayStudyId = assessmentReturn.dayStudyId ?? assessmentReturn.dayId;
+        const assessmentType =
+          assessmentReturn.assessmentType ?? ("mini_test" as LearningPathV2AssessmentType);
+
         (async () => {
           try {
-            result = await IRT_SERVICE.generateWeeklyPlan(
-              testId,
-              answersMap,
-              elapsed,
-              dayStudyId
+            const response = await learningPathV2Service.submitAssessment(
+              assessmentReturn.learningPathId,
+              {
+                test_id: testId,
+                answers: answersMap,
+                duration: elapsed,
+                assessment_type: assessmentType,
+                week_study_id: assessmentReturn.weekStudyId,
+                day_study_id: dayStudyId,
+              }
             );
 
-            // Nếu cần, có thể lưu weeklyPlanResult vào localStorage để LessonPage đọc
-            // localStorage.setItem("mini_test_weekly_plan", JSON.stringify(weeklyPlanResult));
+            result = {
+              score: response.data?.score ?? 0,
+              answers: response.data?.detailedAnswers ?? [],
+            };
           } catch (e) {
-            console.error("generateWeeklyPlan failed", e);
+            console.error("learning path assessment submit failed", e);
           }
         })();
       } else {
@@ -292,11 +349,10 @@ const TestHeader: FC<TestHeaderProps> = ({
         // Nếu là mini test bắt nguồn từ Lesson (fromLesson=true), không hiện modal kết quả,
         // thay vào đó điều hướng ngay về LessonPage để hiển thị kết quả trong context của lộ trình học.
         if (fromLesson) {
-          const returnInfo = localStorage.getItem("mini_test_return");
+          const returnInfo = localStorage.getItem("learning_path_assessment_return");
           try {
             if (returnInfo) {
-              const { dayId, week } = JSON.parse(returnInfo);
-              navigate(`/lesson?day=${dayId}&week=${week}`);
+              navigate(buildLessonReturnUrl(JSON.parse(returnInfo)));
             } else {
               navigate("/home");
             }
@@ -327,6 +383,56 @@ const TestHeader: FC<TestHeaderProps> = ({
       [cloned[i], cloned[j]] = [cloned[j], cloned[i]];
     }
     return cloned;
+  };
+
+  const parseQuickSubmitWeakParts = (value: string | null): number[] => {
+    if (!value) return DEFAULT_FULL_TEST_QUICK_SUBMIT_WEAK_PARTS;
+
+    const parsed = value
+      .split(",")
+      .map((part) => Number(part.trim()))
+      .filter((part) => Number.isInteger(part) && part >= 1 && part <= 7);
+
+    return parsed.length > 0
+      ? Array.from(new Set(parsed))
+      : DEFAULT_FULL_TEST_QUICK_SUBMIT_WEAK_PARTS;
+  };
+
+  const buildQuickSubmitCorrectSetByPart = (
+    questionMetas: Array<{ questionNumber: number; part: number }>,
+    weakParts: number[],
+  ): Set<number> => {
+    const weakPartSet = new Set(weakParts);
+    const questionsByPart: Map<number, number[]> = new Map();
+
+    questionMetas.forEach((meta) => {
+      if (!questionsByPart.has(meta.part)) {
+        questionsByPart.set(meta.part, []);
+      }
+      questionsByPart.get(meta.part)!.push(meta.questionNumber);
+    });
+
+    console.log(
+      "Quick submit questions per part:",
+      Array.from(questionsByPart.entries()).map(
+        ([part, questions]) => `Part ${part}: ${questions.length} câu`
+      )
+    );
+
+    const correctQuestions: number[] = [];
+    questionsByPart.forEach((questions, part) => {
+      const ratioRange = weakPartSet.has(part)
+        ? QUICK_SUBMIT_WEAK_RATIO
+        : QUICK_SUBMIT_STRONG_RATIO;
+      const ratio =
+        ratioRange.min + Math.random() * (ratioRange.max - ratioRange.min);
+      const targetCorrect = Math.max(0, Math.round(questions.length * ratio));
+      const shuffled = shuffleArray(questions);
+
+      correctQuestions.push(...shuffled.slice(0, targetCorrect));
+    });
+
+    return new Set(correctQuestions);
   };
 
   const handleQuickSubmit = async () => {
@@ -418,15 +524,10 @@ const TestHeader: FC<TestHeaderProps> = ({
         `Mini test quick submit: Part 4,5,7 → 10-20% | Part 1,2,3,6 → 50-60%`
       );
     } else {
-      // === FULL TEST / PRACTICE: giữ nguyên logic cũ (~40-42% đúng) ===
-      const questionNumbers = questionMetas.map((q) => q.questionNumber);
-      const correctRatio = 0.4 + Math.random() * 0.02; // ~400-420 điểm
-      const targetCorrect = Math.max(
-        1,
-        Math.round(questionMetas.length * correctRatio)
-      );
-      const shuffledNumbers = shuffleArray(questionNumbers);
-      correctSet = new Set(shuffledNumbers.slice(0, targetCorrect));
+      const weakParts = parseQuickSubmitWeakParts(quickWeakPartsParam);
+
+      correctSet = buildQuickSubmitCorrectSetByPart(questionMetas, weakParts);
+      console.log("Full test quick submit weak parts:", weakParts);
     }
 
     const autoFilledAnswers: AnswerItem[] = answers.map((item) => {
@@ -479,14 +580,13 @@ const TestHeader: FC<TestHeaderProps> = ({
     }
 
     if (fromLesson) {
-      const returnInfo = localStorage.getItem("mini_test_return");
+      const returnInfo = localStorage.getItem("learning_path_assessment_return");
       try {
-        console.log("mini_test_return:", returnInfo);
+        console.log("learning_path_assessment_return:", returnInfo);
       } catch (e) { }
       if (returnInfo) {
-        const { dayId, week } = JSON.parse(returnInfo);
         // LessonPage is mounted at `/lesson` route
-        navigate(`/lesson?day=${dayId}&week=${week}`, { replace: true });
+        navigate(buildLessonReturnUrl(JSON.parse(returnInfo)), { replace: true });
       } else {
         navigate("/home", { replace: true });
       }

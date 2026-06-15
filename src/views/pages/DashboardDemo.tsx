@@ -211,6 +211,15 @@ export default function DashboardDemo() {
     fetchPlan();
   }, [loadGenerationContext, loadV2OverviewIfReady]);
 
+  const refreshLearningPathV2Overview = React.useCallback(async () => {
+    const refreshedContext = await loadGenerationContext();
+    const loadedV2 = await loadV2OverviewIfReady(refreshedContext);
+
+    if (!loadedV2) {
+      setOpen(true);
+    }
+  }, [loadGenerationContext, loadV2OverviewIfReady]);
+
   const handleConfirm = async () => {
     const learningPathId = generationContext?.learning_path?._id;
 
@@ -260,7 +269,14 @@ export default function DashboardDemo() {
     );
   }
 
-  if (hasPlan && plan) return <DashboardLearningPath plan={plan} />;
+  if (hasPlan && plan) {
+    return (
+      <DashboardLearningPath
+        plan={plan}
+        onRefresh={refreshLearningPathV2Overview}
+      />
+    );
+  }
 
   const latestInitialTest = generationContext?.latest_initial_test;
   const learningPath = generationContext?.learning_path;

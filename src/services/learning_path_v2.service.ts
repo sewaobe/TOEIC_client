@@ -557,6 +557,10 @@ const learningPathV2Service = {
     return axiosClient.get(`${BASE_URL}/${learningPathId}/overview`);
   },
 
+  mockLearning: async (learningPathId: string) => {
+    return axiosClient.post(`${BASE_URL}/${learningPathId}/mock-learning`, {});
+  },
+
   /**
    * Node Detail API contract for FE Modal.
    *

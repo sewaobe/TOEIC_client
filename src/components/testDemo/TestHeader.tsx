@@ -5,10 +5,7 @@ import { useCountdown } from "../../hooks/useCountDown";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../stores/store";
 import testService, { UserTestSubmitType } from "./../../services/test.service";
-import {
-  mapAnswersToParts,
-  getPartFromQuestionNo as getPartFromQuestionNumber,
-} from "../../utils/mapAnswersToParts";
+import { getPartFromQuestionNo as getPartFromQuestionNumber } from "../../utils/mapAnswersToParts";
 import { ResultPayload } from "../modals/ToeicQuickResultModal";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ConfirmModal from "../modals/ConfirmModal";
@@ -46,9 +43,49 @@ const initialState: State = {
   score: 0,
 };
 
-const DEFAULT_FULL_TEST_QUICK_SUBMIT_WEAK_PARTS = [1, 2, 5];
-const QUICK_SUBMIT_WEAK_RATIO = { min: 0.1, max: 0.2 };
-const QUICK_SUBMIT_STRONG_RATIO = { min: 0.5, max: 0.6 };
+type QuickSubmitPartConfig = {
+  targetCorrectTotal: number;
+  partCorrectCounts: Partial<Record<1 | 2 | 3 | 4 | 5 | 6 | 7, number>>;
+  defaultCorrectCount: number;
+  partWeights?: Partial<Record<1 | 2 | 3 | 4 | 5 | 6 | 7, number>>;
+  defaultWeight?: number;
+};
+
+type QuickSubmitConfig = {
+  full_test: QuickSubmitPartConfig;
+  mini_test: QuickSubmitPartConfig;
+};
+
+const QUICK_SUBMIT_CONFIG: QuickSubmitConfig = {
+  full_test: {
+    targetCorrectTotal: 90,
+    partCorrectCounts: {
+      1: 4,
+      2: 12,
+      3: 18,
+      4: 16,
+      5: 10,
+      6: 12,
+      7: 18,
+    },
+    defaultCorrectCount: 12,
+  },
+  mini_test: {
+    targetCorrectTotal: 36,
+    partCorrectCounts: {},
+    defaultCorrectCount: 0,
+    partWeights: {
+      1: 0.8,
+      2: 0.8,
+      3: 1.2,
+      4: 0.6,
+      5: 0.6,
+      6: 1.1,
+      7: 0.6,
+    },
+    defaultWeight: 1,
+  },
+};
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -93,7 +130,6 @@ const TestHeader: FC<TestHeaderProps> = ({
   const timeLimitParam = searchParams.get("timeLimit"); // phút
   const parts = searchParams.get("parts"); // nếu có parts thì là practice
   const isDemoTest = searchParams.get("demo_test") === "true";
-  const quickWeakPartsParam = searchParams.get("quickWeakParts");
 
   const duration = timeLimitParam
     ? parseInt(timeLimitParam, 10) * 60 // practice có giới hạn
@@ -206,7 +242,8 @@ const TestHeader: FC<TestHeaderProps> = ({
         }
 
         const assessmentReturn = getLearningPathAssessmentReturn();
-        if (!assessmentReturn?.learningPathId) {
+        const learningPathId = assessmentReturn?.learningPathId;
+        if (!learningPathId) {
           console.error("Thiếu learningPathId để nộp LearningPath v2 assessment.");
           dispatchLocal({ type: "CLOSE_SUBMIT" });
           setIsSubmitted(false);
@@ -219,8 +256,9 @@ const TestHeader: FC<TestHeaderProps> = ({
 
         (async () => {
           try {
+
             const response = await learningPathV2Service.submitAssessment(
-              assessmentReturn.learningPathId,
+              learningPathId,
               {
                 test_id: testId,
                 answers: answersMap,
@@ -259,111 +297,21 @@ const TestHeader: FC<TestHeaderProps> = ({
           question_no: index + 1,
         })),
       });
-      // --- Persist a lightweight summary (parts accuracy + score) to localStorage ---
-      try {
-        // Prefer server-provided parts summary if available
-        let partsSummary: { part_name: string; accuracy: number }[] = [];
-
-        if (
-          result &&
-          Array.isArray((result as any).parts) &&
-          (result as any).parts.length > 0
-        ) {
-          partsSummary = (result as any).parts.map((p: any) => {
-            const name = p?.part_name ?? p?.name ?? p?.part ?? "";
-            let acc = typeof p?.accuracy === "number" ? p.accuracy : 0;
-            // normalize fraction -> percent
-            if (acc <= 1) acc = acc * 100;
-            return { part_name: String(name), accuracy: acc };
-          });
-        } else if (result && Array.isArray((result as any).answers)) {
-          // Fallback: try to map answers to parts using local exam `groups` to find question numbers
-          try {
-            // build map questionId -> question_no using groups if available
-            const qIdToNo = new Map<string, number>();
-            if (groups && Array.isArray(groups)) {
-              let fallback = 1;
-              for (const g of groups) {
-                for (const q of (g.questions || []) as any[]) {
-                  const qRaw: any = q;
-                  const rawId = qRaw._id
-                    ? typeof qRaw._id === "string"
-                      ? qRaw._id
-                      : qRaw._id.$oid ?? String(qRaw._id)
-                    : undefined;
-                  const qNo =
-                    typeof qRaw.questionNumber === "number"
-                      ? qRaw.questionNumber
-                      : fallback++;
-                  if (rawId) qIdToNo.set(rawId, qNo);
-                }
-              }
-            }
-
-            const rawAnswers = ((result as any).answers as any[]).map(
-              (a, idx) => {
-                const qidObj = a.question_id;
-                const qid =
-                  typeof qidObj === "string"
-                    ? qidObj
-                    : qidObj?.$oid ?? qidObj?._id ?? undefined;
-                const question_no = qIdToNo.get(qid) ?? idx + 1;
-                return {
-                  question_id: qid,
-                  question_no,
-                  selectedOption: a.selectedOption,
-                  isCorrect: !!a.isCorrect,
-                  tags: a.tags || undefined,
-                } as any;
-              }
-            );
-
-            const partsMap = mapAnswersToParts(rawAnswers as any);
-            partsSummary = Object.keys(partsMap).map((p) => {
-              const arr = partsMap[Number(p) as 1 | 2 | 3 | 4 | 5 | 6 | 7];
-              const total = arr.length;
-              const correct = arr.filter((a) => !!a.isCorrect).length;
-              const accuracy = total > 0 ? (correct / total) * 100 : 0;
-              return { part_name: `Part ${p}`, accuracy };
-            });
-          } catch (e) {
-            console.warn("Fallback mapping answers->parts failed", e);
-          }
-        }
-
-        // Chỉ lưu vào localStorage nếu KHÔNG phải mini test từ Lesson
-        // (mini test sẽ lấy kết quả từ BE)
-        // LearningPath v2 không dùng localStorage để tạo lộ trình.
-        // Entry test đã được lưu ở BE dưới dạng UserTest(submit_type="initial_assessment").
-        // Các key cũ này tạm giữ lại cho những UI cũ còn phụ thuộc.
-        if (!fromLesson) {
-          const payload = {
-            testId,
-            userId,
-            score: result.score,
-            parts: partsSummary,
-            submit_at: new Date().toISOString(),
-          };
-        }
-
-        // Nếu là mini test bắt nguồn từ Lesson (fromLesson=true), không hiện modal kết quả,
-        // thay vào đó điều hướng ngay về LessonPage để hiển thị kết quả trong context của lộ trình học.
-        if (fromLesson) {
-          const returnInfo = localStorage.getItem("learning_path_assessment_return");
-          try {
-            if (returnInfo) {
-              navigate(buildLessonReturnUrl(JSON.parse(returnInfo)));
-            } else {
-              navigate("/home");
-            }
-          } catch (e) {
-            console.warn("Error navigating back to lesson after mini_test", e);
+      // Nếu là mini test bắt nguồn từ Lesson (fromLesson=true), không hiện modal kết quả,
+      // thay vào đó điều hướng ngay về LessonPage để hiển thị kết quả trong context của lộ trình học.
+      if (fromLesson) {
+        const returnInfo = localStorage.getItem("learning_path_assessment_return");
+        try {
+          if (returnInfo) {
+            navigate(buildLessonReturnUrl(JSON.parse(returnInfo)));
+          } else {
             navigate("/home");
           }
-          return; // skip opening the modal
+        } catch (e) {
+          console.warn("Error navigating back to lesson after mini_test", e);
+          navigate("/home");
         }
-      } catch (e) {
-        console.warn("Tính toán parts summary thất bại", e);
+        return; // skip opening the modal
       }
       dispatchLocal({ type: "OPEN_SCORE", payload: result.score });
     } catch (err) {
@@ -385,24 +333,10 @@ const TestHeader: FC<TestHeaderProps> = ({
     return cloned;
   };
 
-  const parseQuickSubmitWeakParts = (value: string | null): number[] => {
-    if (!value) return DEFAULT_FULL_TEST_QUICK_SUBMIT_WEAK_PARTS;
-
-    const parsed = value
-      .split(",")
-      .map((part) => Number(part.trim()))
-      .filter((part) => Number.isInteger(part) && part >= 1 && part <= 7);
-
-    return parsed.length > 0
-      ? Array.from(new Set(parsed))
-      : DEFAULT_FULL_TEST_QUICK_SUBMIT_WEAK_PARTS;
-  };
-
   const buildQuickSubmitCorrectSetByPart = (
     questionMetas: Array<{ questionNumber: number; part: number }>,
-    weakParts: number[],
+    config: QuickSubmitPartConfig,
   ): Set<number> => {
-    const weakPartSet = new Set(weakParts);
     const questionsByPart: Map<number, number[]> = new Map();
 
     questionMetas.forEach((meta) => {
@@ -419,14 +353,76 @@ const TestHeader: FC<TestHeaderProps> = ({
       )
     );
 
+    const partEntries = Array.from(questionsByPart.entries());
+    const correctCountByPart = new Map<number, number>();
+
+    if (config.partWeights) {
+      const targetTotal = Math.min(
+        Math.max(0, config.targetCorrectTotal),
+        partEntries.reduce((sum, [, questions]) => sum + questions.length, 0)
+      );
+
+      const weightedParts = partEntries.map(([part, questions]) => {
+        const weight = config.partWeights?.[part as 1 | 2 | 3 | 4 | 5 | 6 | 7] ??
+          config.defaultWeight ?? 1;
+        return {
+          part,
+          questionCount: questions.length,
+          weight,
+        };
+      });
+
+      const weightSum = weightedParts.reduce((sum, item) => sum + item.weight, 0);
+      const allocation = weightedParts.map((item) => {
+        const exact = weightSum > 0 ? (targetTotal * item.weight) / weightSum : 0;
+        const base = Math.floor(exact);
+        return {
+          part: item.part,
+          questionCount: item.questionCount,
+          base: Math.min(base, item.questionCount),
+          remainder: exact - base,
+        };
+      });
+
+      let remaining = targetTotal - allocation.reduce((sum, item) => sum + item.base, 0);
+      const sortedByRemainder = [...allocation].sort((left, right) => {
+        if (right.remainder !== left.remainder) return right.remainder - left.remainder;
+        return left.part - right.part;
+      });
+
+      while (remaining > 0) {
+        let progressed = false;
+        for (const item of sortedByRemainder) {
+          if (remaining <= 0) break;
+          if (item.base >= item.questionCount) continue;
+          item.base += 1;
+          remaining -= 1;
+          progressed = true;
+        }
+
+        if (!progressed) break;
+      }
+
+      allocation.forEach((item) => {
+        correctCountByPart.set(item.part, item.base);
+      });
+    } else {
+      partEntries.forEach(([part, questions]) => {
+        const targetCorrect = Math.max(
+          0,
+          Math.min(
+            questions.length,
+            config.partCorrectCounts[part as 1 | 2 | 3 | 4 | 5 | 6 | 7] ??
+              config.defaultCorrectCount
+          )
+        );
+        correctCountByPart.set(part, targetCorrect);
+      });
+    }
+
     const correctQuestions: number[] = [];
     questionsByPart.forEach((questions, part) => {
-      const ratioRange = weakPartSet.has(part)
-        ? QUICK_SUBMIT_WEAK_RATIO
-        : QUICK_SUBMIT_STRONG_RATIO;
-      const ratio =
-        ratioRange.min + Math.random() * (ratioRange.max - ratioRange.min);
-      const targetCorrect = Math.max(0, Math.round(questions.length * ratio));
+      const targetCorrect = correctCountByPart.get(part) ?? 0;
       const shuffled = shuffleArray(questions);
 
       correctQuestions.push(...shuffled.slice(0, targetCorrect));
@@ -477,12 +473,7 @@ const TestHeader: FC<TestHeaderProps> = ({
     let correctSet: Set<number>;
 
     if (fromLesson) {
-      // === MINI TEST: Part 4,5,7 yếu (10-20% đúng), Part 1,2,3,6 khá (50-60% đúng) ===
-      const weakParts = new Set([4, 5, 7]); // Parts điểm yếu
-      const weakMinRatio = 0.1; // 10%
-      const weakMaxRatio = 0.2; // 20%
-      const strongMinRatio = 0.5; // 50%
-      const strongMaxRatio = 0.6; // 60%
+      const quickSubmitConfig = QUICK_SUBMIT_CONFIG.mini_test;
 
       // Nhóm câu hỏi theo part (DÙNG meta.part từ group, không dùng getPartFromQuestionNumber)
       const questionsByPart: Map<number, number[]> = new Map();
@@ -496,38 +487,25 @@ const TestHeader: FC<TestHeaderProps> = ({
 
       // Log thống kê để debug
       console.log(
-        "📊 Questions per part:",
+        "📊 Mini test questions per part:",
         Array.from(questionsByPart.entries()).map(
           ([p, qs]) => `Part ${p}: ${qs.length} câu`
         )
       );
 
-      // Chọn câu đúng cho từng part theo tỷ lệ ngẫu nhiên trong khoảng
-      const correctQuestions: number[] = [];
-      questionsByPart.forEach((questions, part) => {
-        let ratio: number;
-        if (weakParts.has(part)) {
-          // Part yếu: random 10-20%
-          ratio = weakMinRatio + Math.random() * (weakMaxRatio - weakMinRatio);
-        } else {
-          // Part khá: random 50-60%
-          ratio =
-            strongMinRatio + Math.random() * (strongMaxRatio - strongMinRatio);
-        }
-        const targetCorrect = Math.max(0, Math.round(questions.length * ratio));
-        const shuffled = shuffleArray(questions);
-        correctQuestions.push(...shuffled.slice(0, targetCorrect));
+      correctSet = buildQuickSubmitCorrectSetByPart(questionMetas, quickSubmitConfig);
+      console.log("Mini test quick submit config:", {
+        targetCorrectTotal: quickSubmitConfig.targetCorrectTotal,
+        partWeights: quickSubmitConfig.partWeights,
       });
-
-      correctSet = new Set(correctQuestions);
-      console.log(
-        `Mini test quick submit: Part 4,5,7 → 10-20% | Part 1,2,3,6 → 50-60%`
-      );
     } else {
-      const weakParts = parseQuickSubmitWeakParts(quickWeakPartsParam);
+      const quickSubmitConfig = QUICK_SUBMIT_CONFIG.full_test;
 
-      correctSet = buildQuickSubmitCorrectSetByPart(questionMetas, weakParts);
-      console.log("Full test quick submit weak parts:", weakParts);
+      correctSet = buildQuickSubmitCorrectSetByPart(questionMetas, quickSubmitConfig);
+      console.log("Full test quick submit config:", {
+        targetCorrectTotal: quickSubmitConfig.targetCorrectTotal,
+        partCorrectCounts: quickSubmitConfig.partCorrectCounts,
+      });
     }
 
     const autoFilledAnswers: AnswerItem[] = answers.map((item) => {

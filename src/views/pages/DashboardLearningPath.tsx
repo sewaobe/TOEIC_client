@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -37,6 +38,7 @@ import BookIcon from "@mui/icons-material/Book";
 import useLocalStorage from "../../hooks/useLocalStorage";
 import { FeedbackLessonModal } from "../../components/modals/FeedbackLessonModal";
 import LearningPathRoadmapCanvas from "../../components/learningPath/LearningPathRoadmapCanvas";
+import learningPathV2Service from "../../services/learning_path_v2.service";
 
 // Tạo một đối tượng chứa màu sắc để dễ dàng thay đổi và quản lý
 const studyDayColors = {
@@ -293,15 +295,28 @@ function formatRemainingTime(targetDate?: string | Date | null): string {
   return `${Math.ceil(days / 7)} tuần`;
 }
 
+const normalizeDayStatus = (status?: string): DayStatus => {
+  if (status === "completed" || status === "done") return "done";
+  if (status === "in_progress" || status === "progress") return "progress";
+  if (status === "lock" || status === "locked") return "lock";
+  if (status === "todo") return "todo";
+  return "lock";
+};
+
 export default function DashboardLearningPath({
   plan,
-}: DashboardLearningPathProps) {
+  onRefresh,
+}: DashboardLearningPathProps & { onRefresh?: () => Promise<void> }) {
   const navigate = useNavigate();
   // support both old shape { learningPath_id: LearningPath } and new shape LearningPath
   const lp = (plan && (plan.learningPath_id ?? plan)) || {};
   const [activeWeek, setActiveWeek] = React.useState<number>(
     (lp.current_week ?? 1) - 1
   );
+  const [mockLearningLoading, setMockLearningLoading] = React.useState(false);
+  const canShowMockLearning =
+    import.meta.env.DEV ||
+    import.meta.env.VITE_ENABLE_LEARNING_PATH_MOCK === "true";
   console.log("plan:", plan);
   // map days từ backend
   function mapDays(week: any): Day[] {
@@ -311,7 +326,7 @@ export default function DashboardLearningPath({
       week: week.name,
       title: d.title || `Stage ${idx + 1}`,
       no: d.dayOfWeek ?? 1,
-      status: d.status ?? "locked",
+      status: normalizeDayStatus(d.status),
       progress: d.progress ?? 0,
     }));
   }
@@ -325,11 +340,34 @@ export default function DashboardLearningPath({
   const WEEK_TOTAL = lp.week_study_ids?.[activeWeek]?.days?.length ?? 0;
   const WEEK_DONE =
     lp.week_study_ids?.[activeWeek]?.days?.filter(
-      (d: any) => d.status === "done"
+      (d: any) => normalizeDayStatus(d.status) === "done"
     ).length ?? 0;
   const weekPercent = WEEK_TOTAL
     ? Math.round((WEEK_DONE / WEEK_TOTAL) * 100)
     : 0;
+
+  const handleMockLearning = async () => {
+    if (!lp?._id || mockLearningLoading) {
+      return;
+    }
+
+    try {
+      setMockLearningLoading(true);
+      const response = await learningPathV2Service.mockLearning(String(lp._id));
+      await onRefresh?.();
+      alert(
+        response?.data?.message ??
+          "Đã hoàn thành nhanh các bài học trong tuần. Bài kiểm tra cuối đã sẵn sàng."
+      );
+    } catch (error: any) {
+      alert(
+        error?.response?.data?.message ??
+          "Không thể mock learning cho cycle hiện tại."
+      );
+    } finally {
+      setMockLearningLoading(false);
+    }
+  };
 
   const openDay = (d: Day) => {
     localStorage.setItem("current_day", JSON.stringify(d));
@@ -567,11 +605,24 @@ export default function DashboardLearningPath({
               <Typography variant="h6" fontWeight={800}>
                 Danh sách stage
               </Typography>
-              <Chip
-                size="small"
-                variant="outlined"
-                label={`Cycle ${activeWeek + 1}`}
-              />
+              <Stack direction="row" spacing={1} alignItems="center">
+                {canShowMockLearning && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={handleMockLearning}
+                    disabled={!lp?._id || mockLearningLoading}
+                    sx={{ borderRadius: 999, fontWeight: 800 }}
+                  >
+                    {mockLearningLoading ? "Đang mock..." : "Mock học nhanh"}
+                  </Button>
+                )}
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={`Cycle ${activeWeek + 1}`}
+                />
+              </Stack>
             </Stack>
 
             <Grid container spacing={1.5}>

@@ -1,5 +1,18 @@
 import React, { FC, useEffect, useReducer, useState } from "react";
-import { Button, useTheme } from "@mui/material";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  Slider,
+  Stack,
+  Switch,
+  Typography,
+  useTheme,
+} from "@mui/material";
 import AppsIcon from "@mui/icons-material/Apps";
 import { useCountdown } from "../../hooks/useCountDown";
 import { useDispatch, useSelector } from "react-redux";
@@ -43,50 +56,6 @@ const initialState: State = {
   score: 0,
 };
 
-type QuickSubmitPartConfig = {
-  targetCorrectTotal: number;
-  partCorrectCounts: Partial<Record<1 | 2 | 3 | 4 | 5 | 6 | 7, number>>;
-  defaultCorrectCount: number;
-  partWeights?: Partial<Record<1 | 2 | 3 | 4 | 5 | 6 | 7, number>>;
-  defaultWeight?: number;
-};
-
-type QuickSubmitConfig = {
-  full_test: QuickSubmitPartConfig;
-  mini_test: QuickSubmitPartConfig;
-};
-
-const QUICK_SUBMIT_CONFIG: QuickSubmitConfig = {
-  full_test: {
-    targetCorrectTotal: 90,
-    partCorrectCounts: {
-      1: 4,
-      2: 8,
-      3: 15,
-      4: 13,
-      5: 8,
-      6: 12,
-      7: 25,
-    },
-    defaultCorrectCount: 12,
-  },
-  mini_test: {
-    targetCorrectTotal: 46,
-    partCorrectCounts: {},
-    defaultCorrectCount: 0,
-    partWeights: {
-      1: 0.8,
-      2: 0.8,
-      3: 1.2,
-      4: 1,
-      5: 1,
-      6: 1.1,
-      7: 1,
-    },
-    defaultWeight: 1,
-  },
-};
-
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "OPEN_SUBMIT":
@@ -119,6 +88,10 @@ const TestHeader: FC<TestHeaderProps> = ({
     score: 0,
     answers: [],
   });
+  const [isMockDialogOpen, setIsMockDialogOpen] = useState(false);
+  const [mockAccuracy, setMockAccuracy] = useState(60);
+  const [customPartAccuracy, setCustomPartAccuracy] = useState(false);
+  const [partAccuracies, setPartAccuracies] = useState<Record<number, number>>({});
   const navigate = useNavigate();
   const theme = useTheme();
   const dispatch = useDispatch<AppDispatch>();
@@ -334,9 +307,9 @@ const TestHeader: FC<TestHeaderProps> = ({
     return cloned;
   };
 
-  const buildQuickSubmitCorrectSetByPart = (
+  const buildMockCorrectSetByPart = (
     questionMetas: Array<{ questionNumber: number; part: number }>,
-    config: QuickSubmitPartConfig,
+    correctCountByPart: Map<number, number>,
   ): Set<number> => {
     const questionsByPart: Map<number, number[]> = new Map();
 
@@ -346,80 +319,6 @@ const TestHeader: FC<TestHeaderProps> = ({
       }
       questionsByPart.get(meta.part)!.push(meta.questionNumber);
     });
-
-    console.log(
-      "Quick submit questions per part:",
-      Array.from(questionsByPart.entries()).map(
-        ([part, questions]) => `Part ${part}: ${questions.length} câu`
-      )
-    );
-
-    const partEntries = Array.from(questionsByPart.entries());
-    const correctCountByPart = new Map<number, number>();
-
-    if (config.partWeights) {
-      const targetTotal = Math.min(
-        Math.max(0, config.targetCorrectTotal),
-        partEntries.reduce((sum, [, questions]) => sum + questions.length, 0)
-      );
-
-      const weightedParts = partEntries.map(([part, questions]) => {
-        const weight = config.partWeights?.[part as 1 | 2 | 3 | 4 | 5 | 6 | 7] ??
-          config.defaultWeight ?? 1;
-        return {
-          part,
-          questionCount: questions.length,
-          weight,
-        };
-      });
-
-      const weightSum = weightedParts.reduce((sum, item) => sum + item.weight, 0);
-      const allocation = weightedParts.map((item) => {
-        const exact = weightSum > 0 ? (targetTotal * item.weight) / weightSum : 0;
-        const base = Math.floor(exact);
-        return {
-          part: item.part,
-          questionCount: item.questionCount,
-          base: Math.min(base, item.questionCount),
-          remainder: exact - base,
-        };
-      });
-
-      let remaining = targetTotal - allocation.reduce((sum, item) => sum + item.base, 0);
-      const sortedByRemainder = [...allocation].sort((left, right) => {
-        if (right.remainder !== left.remainder) return right.remainder - left.remainder;
-        return left.part - right.part;
-      });
-
-      while (remaining > 0) {
-        let progressed = false;
-        for (const item of sortedByRemainder) {
-          if (remaining <= 0) break;
-          if (item.base >= item.questionCount) continue;
-          item.base += 1;
-          remaining -= 1;
-          progressed = true;
-        }
-
-        if (!progressed) break;
-      }
-
-      allocation.forEach((item) => {
-        correctCountByPart.set(item.part, item.base);
-      });
-    } else {
-      partEntries.forEach(([part, questions]) => {
-        const targetCorrect = Math.max(
-          0,
-          Math.min(
-            questions.length,
-            config.partCorrectCounts[part as 1 | 2 | 3 | 4 | 5 | 6 | 7] ??
-              config.defaultCorrectCount
-          )
-        );
-        correctCountByPart.set(part, targetCorrect);
-      });
-    }
 
     const correctQuestions: number[] = [];
     questionsByPart.forEach((questions, part) => {
@@ -432,11 +331,50 @@ const TestHeader: FC<TestHeaderProps> = ({
     return new Set(correctQuestions);
   };
 
-  const handleQuickSubmit = async () => {
+  const getQuestionCountsByPart = (): Map<number, number> => {
+    const counts = new Map<number, number>();
+    groups.forEach((group) => {
+      const part = group.part ?? getPartFromQuestionNumber(group.questions[0]?.questionNumber ?? 1);
+      counts.set(part, (counts.get(part) ?? 0) + group.questions.length);
+    });
+    return counts;
+  };
+
+  const openMockDialog = () => {
+    if (!groups || groups.length === 0) {
+      console.warn("Chưa có dữ liệu câu hỏi để cấu hình mock");
+      return;
+    }
+    const nextPartAccuracies = Object.fromEntries(
+      Array.from(getQuestionCountsByPart().keys()).map((part) => [part, mockAccuracy])
+    );
+    setPartAccuracies(nextPartAccuracies);
+    setCustomPartAccuracy(false);
+    setIsMockDialogOpen(true);
+  };
+
+  const applyMockPreset = (accuracy: number) => {
+    setMockAccuracy(accuracy);
+    setPartAccuracies(
+      Object.fromEntries(
+        Array.from(getQuestionCountsByPart().keys()).map((part) => [part, accuracy])
+      )
+    );
+  };
+
+  const stopActiveMedia = () => {
+    document.querySelectorAll<HTMLMediaElement>("audio, video").forEach((media) => {
+      media.pause();
+    });
+  };
+
+  const handleMockSubmit = async () => {
     if (!groups || groups.length === 0 || !answers || answers.length === 0) {
       console.warn("Chưa có dữ liệu câu hỏi để nộp nhanh");
       return;
     }
+
+    stopActiveMedia();
 
     // Build questionMetas với part từ group.part (không dùng questionNumber nữa)
     const questionMetas = groups.flatMap((group) =>
@@ -471,26 +409,23 @@ const TestHeader: FC<TestHeaderProps> = ({
       });
     });
 
-    let correctSet: Set<number>;
+    const questionCountsByPart = getQuestionCountsByPart();
+    const correctCountByPart = new Map<number, number>();
+    questionCountsByPart.forEach((questionCount, part) => {
+      const accuracy = customPartAccuracy
+        ? (partAccuracies[part] ?? mockAccuracy)
+        : mockAccuracy;
+      correctCountByPart.set(part, Math.round((questionCount * accuracy) / 100));
+    });
 
-    const quickSubmitConfig =
-      fromLesson && assessmentTypeParam === "full_test"
-        ? QUICK_SUBMIT_CONFIG.full_test
-        : fromLesson
-          ? QUICK_SUBMIT_CONFIG.mini_test
-          : QUICK_SUBMIT_CONFIG.full_test;
-
-    correctSet = buildQuickSubmitCorrectSetByPart(questionMetas, quickSubmitConfig);
+    const correctSet = buildMockCorrectSetByPart(questionMetas, correctCountByPart);
     console.log(
-      fromLesson && assessmentTypeParam === "full_test"
-        ? "Lesson full test quick submit config:"
-        : fromLesson
-          ? "Lesson mini test quick submit config:"
-          : "Full test quick submit config:",
+      "Mock assessment config:",
       {
-        targetCorrectTotal: quickSubmitConfig.targetCorrectTotal,
-        partCorrectCounts: quickSubmitConfig.partCorrectCounts,
-        partWeights: quickSubmitConfig.partWeights,
+        overallAccuracy: mockAccuracy,
+        customPartAccuracy,
+        partAccuracies,
+        correctCountByPart: Object.fromEntries(correctCountByPart),
       }
     );
 
@@ -518,8 +453,22 @@ const TestHeader: FC<TestHeaderProps> = ({
     });
 
     dispatch(setInitialAnswers(autoFilledAnswers));
+    setIsMockDialogOpen(false);
     await submitPreparedAnswers(autoFilledAnswers);
   };
+
+  const isMockFullTest = !fromLesson || assessmentTypeParam === "full_test";
+  const mockPresets = isMockFullTest
+    ? [
+      { label: "Dưới mục tiêu", accuracy: 40 },
+      { label: "Gần mục tiêu", accuracy: 60 },
+      { label: "Kết quả cao", accuracy: 80 },
+    ]
+    : [
+      { label: "Plateau", accuracy: 30 },
+      { label: "Tiến bộ", accuracy: 85 },
+      { label: "Kết quả cao", accuracy: 100 },
+    ];
 
   useEffect(() => {
     if (timeLeft === 0) {
@@ -596,9 +545,9 @@ const TestHeader: FC<TestHeaderProps> = ({
             variant="outlined"
             color="primary"
             className="rounded-lg px-4 py-2 font-semibold"
-            onClick={handleQuickSubmit}
+            onClick={openMockDialog}
           >
-            Nộp nhanh (mock)
+            Nộp mock
           </Button>
         )}
 
@@ -637,6 +586,79 @@ const TestHeader: FC<TestHeaderProps> = ({
         testId={testId}
         practicedParts={parts ? parts.split(",").map(Number) : undefined}
       />
+      <Dialog
+        open={isMockDialogOpen}
+        onClose={() => setIsMockDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          Cấu hình nộp mock {isMockFullTest ? "Full Test" : "Mini Test"}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Đáp án được sinh từ đúng đề đang hiển thị. Bạn có thể chọn preset hoặc điều chỉnh tỷ lệ câu đúng.
+          </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 3 }}>
+            {mockPresets.map((preset) => (
+              <Button
+                key={preset.label}
+                variant={mockAccuracy === preset.accuracy ? "contained" : "outlined"}
+                onClick={() => applyMockPreset(preset.accuracy)}
+              >
+                {preset.label} ({preset.accuracy}%)
+              </Button>
+            ))}
+          </Stack>
+          <Typography fontWeight={700}>Tỷ lệ đúng tổng: {mockAccuracy}%</Typography>
+          <Slider
+            value={mockAccuracy}
+            onChange={(_, value) => {
+              const accuracy = value as number;
+              setMockAccuracy(accuracy);
+              if (!customPartAccuracy) applyMockPreset(accuracy);
+            }}
+            valueLabelDisplay="auto"
+            min={0}
+            max={100}
+            step={5}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={customPartAccuracy}
+                onChange={(event) => setCustomPartAccuracy(event.target.checked)}
+              />
+            }
+            label="Tùy chỉnh tỷ lệ đúng theo từng Part"
+          />
+          {customPartAccuracy && (
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              {Array.from(getQuestionCountsByPart().entries()).map(([part, questionCount]) => (
+                <Box key={part}>
+                  <Typography variant="body2" fontWeight={600}>
+                    Part {part} · {questionCount} câu · {partAccuracies[part] ?? mockAccuracy}% đúng
+                  </Typography>
+                  <Slider
+                    value={partAccuracies[part] ?? mockAccuracy}
+                    onChange={(_, value) =>
+                      setPartAccuracies((current) => ({ ...current, [part]: value as number }))
+                    }
+                    valueLabelDisplay="auto"
+                    min={0}
+                    max={100}
+                    step={5}
+                  />
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setIsMockDialogOpen(false)}>Hủy</Button>
+          <Button variant="contained" onClick={handleMockSubmit}>Tạo đáp án và nộp</Button>
+        </DialogActions>
+      </Dialog>
     </header>
   );
 };

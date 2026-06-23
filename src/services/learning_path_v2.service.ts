@@ -34,7 +34,7 @@ const BASE_URL = "/learning-path-v2";
  * thì đổi flag này về false, hoặc dùng env:
  * const USE_MOCK_NODE_DETAIL = import.meta.env.VITE_MOCK_LEARNING_PATH_NODE_DETAIL === "true";
  */
-const USE_MOCK_NODE_DETAIL = true;
+const USE_MOCK_NODE_DETAIL = false;
 
 export type RoadmapUnitStatus = "completed" | "in_cycle" | "current" | "locked";
 
@@ -603,9 +603,17 @@ const learningPathV2Service = {
       });
     }
 
-    return axiosClient.get(
+    const response = await axiosClient.get<{
+      success: boolean;
+      data: LearningPathNodeDetailResponse | null;
+      message: string;
+    }>(
       `${BASE_URL}/${learningPathId}/nodes/${lessonManagerId}/detail`
     );
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Không thể lấy chi tiết bài học.");
+    }
+    return { data: response.data };
   },
 
   getSkillMap: async (

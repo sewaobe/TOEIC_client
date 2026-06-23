@@ -14,6 +14,7 @@ import {
   Paper,
   Dialog,
   IconButton,
+  Alert,
   styled,
 } from "@mui/material";
 import SchoolIcon from "@mui/icons-material/School";
@@ -39,6 +40,8 @@ import useLocalStorage from "../../hooks/useLocalStorage";
 import { FeedbackLessonModal } from "../../components/modals/FeedbackLessonModal";
 import LearningPathRoadmapCanvas from "../../components/learningPath/LearningPathRoadmapCanvas";
 import learningPathV2Service from "../../services/learning_path_v2.service";
+import learningPathService from "../../services/learningPath.service";
+import { InactiveLearningPathModal } from "../../components/modals/InactiveLearningPathModal";
 
 // Tạo một đối tượng chứa màu sắc để dễ dàng thay đổi và quản lý
 const studyDayColors = {
@@ -112,26 +115,6 @@ interface Day {
   status: DayStatus;
   progress?: number;
 }
-
-// const TARGET = 750;
-// const PACE = "5 buổi/tuần";
-// const DAILY = "~90’/ngày";
-
-// const WEEKS = 8;
-// const ACTIVE_WEEK = 0; // W2 (0-based)
-
-// const WEEK_DONE = 3;
-// const WEEK_TOTAL = 5;
-
-// const DAYS: Day[] = [
-//     { id: "mon", week: 1, title: "Thứ 2", type: "core", status: "done", progress: 100 },
-//     { id: "tue", week: 1, title: "Thứ 3", type: "core", status: "progress", progress: 60 },
-//     { id: "wed", week: 1, title: "Thứ 4", type: "core", status: "todo" },
-//     { id: "thu", week: 1, title: "Thứ 5", type: "core", status: "locked" },
-//     { id: "fri", week: 1, title: "Thứ 6", type: "core", status: "locked" },
-//     { id: "sat", week: 1, title: "Thứ 7", type: "core", status: "locked" },
-//     { id: "sun", week: 1, title: "Chủ nhật", type: "quiz", status: "locked" },
-// ];
 
 interface DashboardLearningPathProps {
   plan: any; // TODO: define đúng type từ backend
@@ -392,7 +375,41 @@ export default function DashboardLearningPath({
   );
   const [isFirstVisitToday, setIsFirstVisitToday] = React.useState(false);
   const [isDayComplete, setIsDayComplete] = React.useState(false);
+  const [inactiveLearning, setInactiveLearning] = React.useState<{
+    lastAttempt: string;
+    inactiveDays: number;
+  } | null>(null);
+  const [learningInactivity, setLearningInactivity] = React.useState<number | null>(null);
   const feedbackTimerRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    const checkLearningInactivity = async () => {
+      try {
+        const response = await learningPathService.getLearningProgress();
+        const lastAttempt = response?.data?.last_attempt;
+        if (!response?.success || !lastAttempt) return;
+
+        const lastAttemptDate = new Date(lastAttempt);
+        if (Number.isNaN(lastAttemptDate.getTime())) return;
+
+        const today = new Date();
+        const inactiveDays = Math.floor(
+          (Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) -
+            Date.UTC(lastAttemptDate.getFullYear(), lastAttemptDate.getMonth(), lastAttemptDate.getDate())) /
+            86_400_000
+        );
+        if (inactiveDays >= 8 && inactiveDays <= 14) {
+          setLearningInactivity(inactiveDays);
+        }
+        if (inactiveDays > 14) setInactiveLearning({ lastAttempt, inactiveDays });
+      } catch (error) {
+        // Progress is supplementary to the dashboard; avoid blocking it on a failed check.
+        console.error("Unable to check learning inactivity:", error);
+      }
+    };
+
+    checkLearningInactivity();
+  }, []);
 
   React.useEffect(() => {
     // Lấy ngày hôm nay theo định dạng 'YYYY-MM-DD'
@@ -488,6 +505,33 @@ export default function DashboardLearningPath({
               Chương trình học
             </Typography>
           </Stack>
+
+          <Alert
+            severity={
+              learningInactivity === null
+                ? "info"
+                : learningInactivity >= 14
+                  ? "error"
+                  : "warning"
+            }
+            sx={{
+              mb: 2,
+              borderRadius: 2,
+              alignItems: "center",
+              "& .MuiAlert-message": { width: "100%" },
+            }}
+          >
+            <Typography fontWeight={700} variant="body2">
+              {learningInactivity === null
+                ? "Duy trì học tập đều đặn để bảo toàn lộ trình của bạn."
+                : learningInactivity === 14
+                  ? "Hôm nay là ngày cuối cùng để tiếp tục lộ trình hiện tại."
+                  : `Bạn đã gián đoạn ${learningInactivity} ngày, còn ${14 - learningInactivity} ngày để tiếp tục lộ trình.`}
+            </Typography>
+            <Typography variant="caption" display="block" sx={{ mt: 0.25 }}>
+              Theo quy định, lộ trình sẽ hết hạn khi thời gian gián đoạn vượt quá 14 ngày.
+            </Typography>
+          </Alert>
 
           {/* ===== Stat bar ===== */}
           <Section>
@@ -688,6 +732,15 @@ export default function DashboardLearningPath({
         }}
         dayId={isDayComplete ? JSON.parse(localStorage.getItem('day_study_completed') || '{}').day_id : ''}
       />
+      {inactiveLearning && (
+        <InactiveLearningPathModal
+          open
+          lastAttempt={inactiveLearning.lastAttempt}
+          inactiveDays={inactiveLearning.inactiveDays}
+          onCreateNewPath={() => navigate("/overview-test?testId=68af851b1918226d4c424e7f&demo_test=true")}
+          onGoHome={() => navigate("/home")}
+        />
+      )}
     </MainLayout>
   );
 }

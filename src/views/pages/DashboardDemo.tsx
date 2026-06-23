@@ -122,19 +122,19 @@ const toDashboardPlanFromV2Overview = (overview: any, generationContext: any) =>
   const weekStudyIds =
     weekStudies.length > 0
       ? weekStudies.map((week: any) => ({
-          ...week,
-          days:
-            currentCycle?.week_study?._id === week._id
-              ? currentCycle?.day_studies ?? week.days ?? []
-              : week.days ?? [],
-        }))
+        ...week,
+        days:
+          currentCycle?.week_study?._id === week._id
+            ? currentCycle?.day_studies ?? week.days ?? []
+            : week.days ?? [],
+      }))
       : currentCycle?.week_study
         ? [
-            {
-              ...currentCycle.week_study,
-              days: currentCycle.day_studies ?? [],
-            },
-          ]
+          {
+            ...currentCycle.week_study,
+            days: currentCycle.day_studies ?? [],
+          },
+        ]
         : [];
 
   return {
@@ -452,7 +452,7 @@ export default function DashboardDemo() {
                         <Alert
                           severity="warning"
                           action={
-                            <Button color="inherit" size="small" onClick={() => navigate("/plan")}>
+                            <Button color="inherit" size="small" onClick={() => navigate(`/plan?score=${latestInitialTest.score}`)}>
                               Thiết lập
                             </Button>
                           }

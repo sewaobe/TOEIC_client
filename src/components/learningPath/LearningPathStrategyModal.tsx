@@ -77,10 +77,10 @@ const colors = {
 };
 
 const textSx = {
-    title: { fontSize: 20, fontWeight: 900, lineHeight: 1.25, color: colors.navy },
+    title: { fontSize: 20, fontWeight: 800, lineHeight: 1.25, color: colors.navy },
     body: { fontSize: 14, fontWeight: 500, lineHeight: 1.55, color: colors.text },
-    label: { fontSize: 14, fontWeight: 800, lineHeight: 1.35, color: colors.navy },
-    caption: { fontSize: 12, fontWeight: 700, lineHeight: 1.35, color: colors.muted },
+    label: { fontSize: 14, fontWeight: 700, lineHeight: 1.35, color: colors.navy },
+    caption: { fontSize: 12, fontWeight: 600, lineHeight: 1.35, color: colors.muted },
 };
 
 const strategyAccents: Record<LearningPathStrategyType, Accent> = {
@@ -623,6 +623,7 @@ function StrategyCard({
     option,
     tooltip,
     recommended,
+    isSelecting,
     selecting,
     previewing,
     onPreview,
@@ -631,6 +632,7 @@ function StrategyCard({
     option: StrategyOptionView;
     tooltip: string;
     recommended?: boolean;
+    isSelecting: boolean;
     selecting: boolean;
     previewing: boolean;
     onPreview: (option: StrategyOptionView) => void;
@@ -695,7 +697,7 @@ function StrategyCard({
                     {accent.icon}
                 </Box>
                 <Box sx={{ minWidth: 0 }}>
-                    <Typography sx={{ ...textSx.title, color: accent.dark }}>
+                    <Typography sx={{ ...textSx.title, color: accent.dark, whiteSpace: "nowrap" }}>
                         {getStrategyDisplayName(option.strategy, option.strategy_label)}
                     </Typography>
                     <Typography sx={{ ...textSx.body, mt: 0.4 }}>
@@ -780,17 +782,18 @@ function StrategyCard({
 
             <Stack direction="row" spacing={1.2} sx={{ mt: 1.8 }}>
                 <Button
-                    fullWidth
                     variant="outlined"
-                    startIcon={previewing ? <CircularProgress size={16} /> : <VisibilityOutlinedIcon />}
+                    startIcon={previewing ? <CircularProgress size={14} /> : <VisibilityOutlinedIcon />}
                     onClick={() => onPreview(option)}
-                    disabled={selecting || previewing}
+                    disabled={isSelecting || selecting || previewing}
                     sx={{
+                        flex: 6,
                         height: 44,
                         borderRadius: "8px",
+                        whiteSpace: "nowrap",
                         textTransform: "none",
                         fontSize: 14,
-                        fontWeight: 850,
+                        fontWeight: 700,
                         color: accent.dark,
                         borderColor: accent.border,
                         "&:hover": {
@@ -802,17 +805,18 @@ function StrategyCard({
                     Xem cycle dự kiến
                 </Button>
                 <Button
-                    fullWidth
                     variant="contained"
                     endIcon={<ArrowForwardIcon />}
                     onClick={() => onSelect(option)}
-                    disabled={selecting}
+                    disabled={isSelecting || selecting}
                     sx={{
+                        flex: 4,
                         height: 44,
                         borderRadius: "8px",
+                        whiteSpace: "nowrap",
                         textTransform: "none",
                         fontSize: 14,
-                        fontWeight: 900,
+                        fontWeight: 800,
                         bgcolor: accent.color,
                         boxShadow: `0 12px 22px ${accent.color}33`,
                         "&:hover": { bgcolor: accent.dark },
@@ -840,6 +844,8 @@ function PendingSelectionView({
     selectingOptionId: string | null;
     previewingOptionId: string | null;
 }) {
+    const isSelecting = selectingOptionId !== null;
+
     return (
         <Stack spacing={2}>
             <InfoNote>
@@ -859,6 +865,7 @@ function PendingSelectionView({
                         option={option}
                         tooltip={tooltip}
                         recommended={option.strategy === "recommended"}
+                        isSelecting={isSelecting}
                         selecting={selectingOptionId === option.option_id}
                         previewing={previewingOptionId === option.option_id}
                         onPreview={onPreview}
@@ -1056,41 +1063,41 @@ function PreviewView({
                                             flexWrap="wrap"
                                             useFlexGap
                                         >
-                                        {unit.unit_source === "alternative" && (
-                                            <Tooltip title="Main graph của Part này đã hết, hệ thống chọn bài cùng Part và gần năng lực hiện tại.">
-                                                <Chip
-                                                    label="Bài thay thế"
-                                                    size="small"
-                                                    sx={{
-                                                        height: 26,
-                                                        borderRadius: "8px",
-                                                        bgcolor: "#FFF4DE",
-                                                        border: "1px solid rgba(245,158,11,0.32)",
-                                                        color: "#8A4B00",
-                                                        fontSize: 12,
-                                                        fontWeight: 800,
-                                                    }}
-                                                />
-                                            </Tooltip>
-                                        )}
-                                        <Chip
-                                            icon={<AccessTimeOutlinedIcon />}
-                                            label={formatMinutes(unit.planned_minutes)}
-                                            size="small"
-                                            sx={{
-                                                height: 30,
-                                                borderRadius: "8px",
-                                                bgcolor: colors.surface,
-                                                border: `1px solid ${colors.borderStrong}`,
-                                                color: colors.text,
-                                                fontSize: 12,
-                                                fontWeight: 800,
-                                                "& .MuiChip-icon": {
-                                                    color: colors.muted,
-                                                    fontSize: "16px !important",
-                                                },
-                                            }}
-                                        />
+                                            {unit.unit_source === "alternative" && (
+                                                <Tooltip title="Main graph của Part này đã hết, hệ thống chọn bài cùng Part và gần năng lực hiện tại.">
+                                                    <Chip
+                                                        label="Bài thay thế"
+                                                        size="small"
+                                                        sx={{
+                                                            height: 26,
+                                                            borderRadius: "8px",
+                                                            bgcolor: "#FFF4DE",
+                                                            border: "1px solid rgba(245,158,11,0.32)",
+                                                            color: "#8A4B00",
+                                                            fontSize: 12,
+                                                            fontWeight: 800,
+                                                        }}
+                                                    />
+                                                </Tooltip>
+                                            )}
+                                            <Chip
+                                                icon={<AccessTimeOutlinedIcon />}
+                                                label={formatMinutes(unit.planned_minutes)}
+                                                size="small"
+                                                sx={{
+                                                    height: 30,
+                                                    borderRadius: "8px",
+                                                    bgcolor: colors.surface,
+                                                    border: `1px solid ${colors.borderStrong}`,
+                                                    color: colors.text,
+                                                    fontSize: 12,
+                                                    fontWeight: 800,
+                                                    "& .MuiChip-icon": {
+                                                        color: colors.muted,
+                                                        fontSize: "16px !important",
+                                                    },
+                                                }}
+                                            />
                                         </Stack>
                                     </Box>
                                 ))}

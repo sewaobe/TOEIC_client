@@ -171,9 +171,9 @@ const roadmapLayout = {
         lg: "208px minmax(0, 1fr)",
         xl: "224px minmax(0, 1fr)",
     },
-    partCardWidth: { xs: 96, sm: 112, md: 128, lg: 140, xl: 150 },
-    partIconSize: { xs: 28, sm: 30, md: 30, lg: 32, xl: 32 },
-    progressChipMinWidth: { xs: 42, sm: 48, md: 52, lg: 56, xl: 60 },
+    partCardWidth: { xs: 90, sm: 106, md: 122, lg: 134, xl: 144 },
+    partIconSize: { xs: 26, sm: 28, md: 28, lg: 30, xl: 30 },
+    progressChipMinWidth: { xs: 44, sm: 50, md: 54, lg: 58, xl: 62 },
     nodeSlot: { xs: 92, sm: 100, md: 108, lg: 118, xl: 128 },
     nodeLabel: { xs: 86, sm: 94, md: 102, lg: 110, xl: 118 },
     nodeSize: { xs: 26, sm: 26, md: 28, lg: 28, xl: 30 },
@@ -203,24 +203,16 @@ const buildResponsiveLaneWidth = (unitCount: number): ResponsiveNumber => ({
     xl: Math.max(roadmapLayout.laneMinWidth.xl, unitCount * roadmapLayout.nodeSlot.xl),
 });
 
-const buildResponsiveProgressWidth = (progressPercent: number) =>
-    progressPercent <= 0
+const buildResponsiveNodeSpanWidth = (spanCount: number) =>
+    spanCount <= 0
         ? 0
         : {
-            xs: `calc(${progressPercent}% - ${roadmapLayout.lineInset.xs}px)`,
-            sm: `calc(${progressPercent}% - ${roadmapLayout.lineInset.sm}px)`,
-            md: `calc(${progressPercent}% - ${roadmapLayout.lineInset.md}px)`,
-            lg: `calc(${progressPercent}% - ${roadmapLayout.lineInset.lg}px)`,
-            xl: `calc(${progressPercent}% - ${roadmapLayout.lineInset.xl}px)`,
+            xs: spanCount * roadmapLayout.nodeSlot.xs,
+            sm: spanCount * roadmapLayout.nodeSlot.sm,
+            md: spanCount * roadmapLayout.nodeSlot.md,
+            lg: spanCount * roadmapLayout.nodeSlot.lg,
+            xl: spanCount * roadmapLayout.nodeSlot.xl,
         };
-
-const responsiveTrackMaxWidth = {
-    xs: `calc(100% - ${roadmapLayout.lineInset.xs * 2}px)`,
-    sm: `calc(100% - ${roadmapLayout.lineInset.sm * 2}px)`,
-    md: `calc(100% - ${roadmapLayout.lineInset.md * 2}px)`,
-    lg: `calc(100% - ${roadmapLayout.lineInset.lg * 2}px)`,
-    xl: `calc(100% - ${roadmapLayout.lineInset.xl * 2}px)`,
-};
 
 const getPartTheme = (partType: number) => partTheme[partType] ?? fallbackTheme;
 
@@ -384,7 +376,7 @@ function RoadmapNode({
                             ? `3px solid ${ROADMAP_STATUS_COLORS.current.main}`
                             : isInCycle
                                 ? `3px solid ${ROADMAP_STATUS_COLORS.inCycle.main}`
-                                : `2px solid ${color}`,
+                                : `1px solid gray`,
 
                     boxShadow: isCurrent
                         ? `0 0 0 2px ${ROADMAP_STATUS_COLORS.current.soft}, 0 0 0 8px ${ROADMAP_STATUS_COLORS.current.ring}, 0 10px 22px ${ROADMAP_STATUS_COLORS.current.ring}`
@@ -492,7 +484,7 @@ function RoadmapPartSummary({
                 sx={{
                     width: roadmapLayout.partCardWidth,
                     height: { xs: 44, sm: 46, md: 48, lg: 50, xl: 52 },
-                    px: { xs: 1, sm: 1.1, md: 1.25, lg: 1.4, xl: 1.5 },
+                    px: { xs: 0.9, sm: 1.0, md: 1.15, lg: 1.3, xl: 1.4 },
                     borderRadius: 2.5,
                     display: "flex",
                     alignItems: "center",
@@ -565,11 +557,10 @@ function RoadmapLane({
         statusByLessonManagerId
     );
 
-    const progressPercent =
-        units.length > 1
-            ? (Math.min(completedCount, units.length - 1) /
-                Math.max(units.length - 1, 1)) *
-            100
+    const trackSpanCount = Math.max(0, units.length - 1);
+    const completedSpanCount =
+        completedCount > 0
+            ? Math.max(0, Math.min(completedCount, units.length) - 1)
             : 0;
 
     return (
@@ -593,8 +584,8 @@ function RoadmapLane({
                     sx={{
                         position: "absolute",
                         left: roadmapLayout.lineInset,
-                        right: roadmapLayout.lineInset,
                         top: "50%",
+                        width: buildResponsiveNodeSpanWidth(trackSpanCount),
                         height: 2,
                         bgcolor: "rgba(148,163,184,0.28)",
                         transform: "translateY(-50%)",
@@ -607,8 +598,7 @@ function RoadmapLane({
                         position: "absolute",
                         left: roadmapLayout.lineInset,
                         top: "50%",
-                        width: buildResponsiveProgressWidth(progressPercent),
-                        maxWidth: responsiveTrackMaxWidth,
+                        width: buildResponsiveNodeSpanWidth(completedSpanCount),
                         height: 3,
                         bgcolor: ROADMAP_STATUS_COLORS.completed.main,
                         transform: "translateY(-50%)",

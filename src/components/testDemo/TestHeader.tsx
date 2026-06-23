@@ -61,27 +61,27 @@ const QUICK_SUBMIT_CONFIG: QuickSubmitConfig = {
     targetCorrectTotal: 90,
     partCorrectCounts: {
       1: 4,
-      2: 12,
-      3: 18,
-      4: 16,
-      5: 10,
+      2: 8,
+      3: 15,
+      4: 13,
+      5: 8,
       6: 12,
-      7: 18,
+      7: 25,
     },
     defaultCorrectCount: 12,
   },
   mini_test: {
-    targetCorrectTotal: 36,
+    targetCorrectTotal: 46,
     partCorrectCounts: {},
     defaultCorrectCount: 0,
     partWeights: {
       1: 0.8,
       2: 0.8,
       3: 1.2,
-      4: 0.6,
-      5: 0.6,
+      4: 1,
+      5: 1,
       6: 1.1,
-      7: 0.6,
+      7: 1,
     },
     defaultWeight: 1,
   },
@@ -130,6 +130,7 @@ const TestHeader: FC<TestHeaderProps> = ({
   const timeLimitParam = searchParams.get("timeLimit"); // phút
   const parts = searchParams.get("parts"); // nếu có parts thì là practice
   const isDemoTest = searchParams.get("demo_test") === "true";
+  const assessmentTypeParam = searchParams.get("assessmentType");
 
   const duration = timeLimitParam
     ? parseInt(timeLimitParam, 10) * 60 // practice có giới hạn
@@ -472,41 +473,26 @@ const TestHeader: FC<TestHeaderProps> = ({
 
     let correctSet: Set<number>;
 
-    if (fromLesson) {
-      const quickSubmitConfig = QUICK_SUBMIT_CONFIG.mini_test;
+    const quickSubmitConfig =
+      fromLesson && assessmentTypeParam === "full_test"
+        ? QUICK_SUBMIT_CONFIG.full_test
+        : fromLesson
+          ? QUICK_SUBMIT_CONFIG.mini_test
+          : QUICK_SUBMIT_CONFIG.full_test;
 
-      // Nhóm câu hỏi theo part (DÙNG meta.part từ group, không dùng getPartFromQuestionNumber)
-      const questionsByPart: Map<number, number[]> = new Map();
-      questionMetas.forEach((meta) => {
-        const part = meta.part; // Lấy trực tiếp từ meta.part
-        if (!questionsByPart.has(part)) {
-          questionsByPart.set(part, []);
-        }
-        questionsByPart.get(part)!.push(meta.questionNumber);
-      });
-
-      // Log thống kê để debug
-      console.log(
-        "📊 Mini test questions per part:",
-        Array.from(questionsByPart.entries()).map(
-          ([p, qs]) => `Part ${p}: ${qs.length} câu`
-        )
-      );
-
-      correctSet = buildQuickSubmitCorrectSetByPart(questionMetas, quickSubmitConfig);
-      console.log("Mini test quick submit config:", {
-        targetCorrectTotal: quickSubmitConfig.targetCorrectTotal,
-        partWeights: quickSubmitConfig.partWeights,
-      });
-    } else {
-      const quickSubmitConfig = QUICK_SUBMIT_CONFIG.full_test;
-
-      correctSet = buildQuickSubmitCorrectSetByPart(questionMetas, quickSubmitConfig);
-      console.log("Full test quick submit config:", {
+    correctSet = buildQuickSubmitCorrectSetByPart(questionMetas, quickSubmitConfig);
+    console.log(
+      fromLesson && assessmentTypeParam === "full_test"
+        ? "Lesson full test quick submit config:"
+        : fromLesson
+          ? "Lesson mini test quick submit config:"
+          : "Full test quick submit config:",
+      {
         targetCorrectTotal: quickSubmitConfig.targetCorrectTotal,
         partCorrectCounts: quickSubmitConfig.partCorrectCounts,
-      });
-    }
+        partWeights: quickSubmitConfig.partWeights,
+      }
+    );
 
     const autoFilledAnswers: AnswerItem[] = answers.map((item) => {
       const meta = metaMap.get(item.question);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import {
@@ -13,6 +13,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material/styles";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import userTestService from "../../services/user_test.service";
 import { questionService } from "../../services/question.service";
@@ -24,6 +25,7 @@ import ConfirmModal from "../../components/modals/ConfirmModal";
 import ToeicQuickResultModal, { ResultPayload } from "../../components/modals/ToeicQuickResultModal";
 import { useSelector } from "react-redux";
 import { RootState } from "../../stores/store";
+import { clearChatRouteState, compactQuestionText, setChatRouteState } from "../../utils/chatRouteState";
 
 type GroupWithAnswers = ExamGroup & {
   answersInGroup: RawAnswer[];
@@ -47,10 +49,19 @@ const RetryWrongAnswersPage = () => {
   const [resultOpen, setResultOpen] = useState(false);
   const [resultData, setResultData] = useState<ResultPayload>({ answers: [] });
   const [submitted, setSubmitted] = useState(false);
+  const [focusedQuestionId, setFocusedQuestionId] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const userId = useSelector((s: RootState) => s.user.user?._id);
   const [startTime] = useState(Date.now());
+  const selectedQuestionId = useMemo(
+    () => new URLSearchParams(location.search).get("questionId") ?? undefined,
+    [location.search]
+  );
+  const focusTs = useMemo(
+    () => new URLSearchParams(location.search).get("focusTs") ?? undefined,
+    [location.search]
+  );
 
   // Fetch history + title
   useEffect(() => {
@@ -62,7 +73,9 @@ const RetryWrongAnswersPage = () => {
           try {
             const { test } = await testService.getTestById(testId);
             setTestTitle(test?.title || "");
-          } catch { }
+          } catch {
+            // Title is optional for this retry page.
+          }
         }
         const data = await userTestService.getTestHistoryDetail(historyId);
         // only wrong or skipped
@@ -75,7 +88,7 @@ const RetryWrongAnswersPage = () => {
       }
     };
     run();
-  }, [historyId]);
+  }, [historyId, testId]);
 
   // Fetch groups for these answers
   useEffect(() => {
@@ -130,26 +143,87 @@ const RetryWrongAnswersPage = () => {
     return map;
   }, [groups]);
 
+  const questionRefs = useMemo(() => {
+    const questionText = new Map<string, string | undefined>();
+    groups.forEach((g) => {
+      g.questions.forEach((q) => questionText.set(q._id, q.textQuestion));
+    });
+    return answers.map((answer) => ({
+      questionNumber: answer.question_no,
+      questionId: answer.question_id,
+      textPreview: compactQuestionText(questionText.get(answer.question_id)),
+    }));
+  }, [answers, groups]);
+
+  useEffect(() => {
+    const selectedAnswer = selectedQuestionId
+      ? answers.find((answer) => answer.question_id === selectedQuestionId)
+      : undefined;
+    setChatRouteState({
+      attemptId: historyId,
+      questionId: selectedQuestionId,
+      currentQuestionNumber: selectedAnswer?.question_no,
+      questionRefs,
+    });
+    return clearChatRouteState;
+  }, [historyId, selectedQuestionId, answers, questionRefs]);
+
   const scrollToPart = (part: number) => {
     setActivePart(part);
     const el = containerRef.current?.querySelector(`#part-${part}`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const scrollToQuestion = (qno: number) => {
-    const ans = answers.find((a) => a.question_no === qno);
-    const part = ans ? questionIdToPart.get(ans.question_id) : undefined;
+  const syncQuestionQuery = useCallback((questionId: string) => {
+    const params = new URLSearchParams(location.search);
+    params.set("questionId", questionId);
+    params.set("focusTs", String(Date.now()));
+    navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+  }, [location.pathname, location.search, navigate]);
+
+  const findQuestionElement = useCallback(
+    (questionId: string) =>
+      containerRef.current?.querySelector(`[data-question-id="${questionId}"]`),
+    []
+  );
+
+  const focusQuestionElement = useCallback((questionId: string) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = findQuestionElement(questionId);
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setFocusedQuestionId(questionId);
+        window.setTimeout(() => {
+          setFocusedQuestionId((current) => (current === questionId ? null : current));
+        }, 1800);
+      });
+    });
+  }, [findQuestionElement]);
+
+  const scrollToQuestionId = useCallback((questionId: string, options?: { updateQuery?: boolean }) => {
+    const part = questionIdToPart.get(questionId);
+    if (options?.updateQuery !== false) {
+      syncQuestionQuery(questionId);
+    }
     if (part && activePart !== part) {
       setActivePart(part);
-      setTimeout(() => {
-        const el = containerRef.current?.querySelector(`#q-${qno}`);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 60);
-    } else {
-      const el = containerRef.current?.querySelector(`#q-${qno}`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.setTimeout(() => focusQuestionElement(questionId), 80);
+      return;
     }
+    focusQuestionElement(questionId);
+  }, [activePart, focusQuestionElement, questionIdToPart, syncQuestionQuery]);
+
+  const scrollToQuestion = (qno: number) => {
+    const ans = answers.find((a) => a.question_no === qno);
+    if (ans) scrollToQuestionId(ans.question_id);
   };
+
+  useEffect(() => {
+    if (!selectedQuestionId || !answers.length || !groups.length) return;
+    if (!answers.some((answer) => answer.question_id === selectedQuestionId)) return;
+    scrollToQuestionId(selectedQuestionId, { updateQuery: false });
+  }, [selectedQuestionId, focusTs, answers, groups, scrollToQuestionId]);
 
   const setChoice = (qid: string, value: string) =>
     setChoiceMap((prev) => ({ ...prev, [qid]: value }));
@@ -181,7 +255,7 @@ const RetryWrongAnswersPage = () => {
       );
       setResultData({
         score: result.score,
-        answers: result.answers.map((a: any, idx: number) => ({
+        answers: result.answers.map((a: RawAnswer, idx: number) => ({
           ...a,
           question_no: idx + 1,
         })),
@@ -281,6 +355,7 @@ const RetryWrongAnswersPage = () => {
                             answer={answers.find((a) => a.question_id === q._id)!}
                             selected={choiceMap[q._id] || ""}
                             onSelect={(v) => setChoice(q._id, v)}
+                            focused={focusedQuestionId === q._id}
                           />
                         ))}
                     </Box>
@@ -324,7 +399,7 @@ const RetryWrongAnswersPage = () => {
                     {qs.map((a) => {
                       const selected = choiceMap[a.question_id];
                       // Border-only status: green border when answered, otherwise gray
-                      let sxStyle: any = { minWidth: 36, p: 0, fontSize: 12, borderColor: "#D1D5DB", color: "#4B5563", bgcolor: "#fff" };
+                      let sxStyle: SxProps<Theme> = { minWidth: 36, p: 0, fontSize: 12, borderColor: "#D1D5DB", color: "#4B5563", bgcolor: "#fff" };
                       if (selected) {
                         sxStyle = { ...sxStyle, borderColor: "#10B981", color: "#065F46", bgcolor: "#F8FFFB" };
                       }
@@ -377,9 +452,35 @@ const RetryWrongAnswersPage = () => {
   );
 };
 
-function RetryQuestionBlock({ q, answer, selected, onSelect }: { q: ExamQuestion; answer: RawAnswer; selected: string; onSelect: (v: string) => void }) {
+function RetryQuestionBlock({
+  q,
+  answer,
+  selected,
+  onSelect,
+  focused,
+}: {
+  q: ExamQuestion;
+  answer: RawAnswer;
+  selected: string;
+  onSelect: (v: string) => void;
+  focused?: boolean;
+}) {
   return (
-    <Box id={`q-${answer.question_no}`} sx={{ mb: 2, p: 2, borderRadius: 2, border: "1px solid #eee", bgcolor: "#fafafa" }}>
+    <Box
+      id={`q-${answer.question_no}`}
+      data-question-id={answer.question_id}
+      sx={{
+        mb: 2,
+        p: 2,
+        scrollMarginTop: "96px",
+        borderRadius: 2,
+        border: "1px solid #eee",
+        bgcolor: "#fafafa",
+        transition: "box-shadow 0.25s ease, transform 0.25s ease",
+        boxShadow: focused ? "0 0 0 3px rgba(37, 99, 235, 0.35)" : "none",
+        transform: focused ? "translateY(-2px)" : "none",
+      }}
+    >
       <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
         {answer.question_no}. {q.textQuestion || ""}
       </Typography>

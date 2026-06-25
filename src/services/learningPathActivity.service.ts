@@ -115,6 +115,11 @@ export const learningPathActivityService = {
       learned_words?: string[];
       time_spent?: number;
       day_study_id: string;
+      results?: {
+        vocabulary_id: string;
+        eval_type: string;
+        response_time: number;
+      }[];
     }
   ) => {
     const res = await axiosClient.post(`/flashcards-learningpath/${topicId}/submit`, payload);

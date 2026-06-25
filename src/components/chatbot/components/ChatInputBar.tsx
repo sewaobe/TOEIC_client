@@ -113,8 +113,11 @@ export function ChatInputBar({
 
 
     const menuActions = [
-        { icon: <FileUpload />, label: "Upload File", value: "file" },
+        { icon: <FileUpload />, label: "Tải tệp lên", value: "file" },
     ];
+
+    const selectedTypeLabel =
+        questionTypes.find((type) => type.value === selectedType)?.label ?? selectedType;
 
     return (
         <>
@@ -145,13 +148,13 @@ export function ChatInputBar({
                         >
                             <CloudUpload sx={{ fontSize: 48, color: "#2563eb" }} />
                             <p className="text-sm text-blue-700 font-medium mt-2">
-                                Drop your file here
+                                Thả tệp vào đây
                             </p>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                {/* mode chip → click để đổi type */}
+                {/* Chip chế độ: bấm để đổi loại chat */}
                 <motion.div
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -159,7 +162,7 @@ export function ChatInputBar({
                     onClick={() => setOpenTypeDialog(true)}
                     className="absolute -top-7 left-4 bg-blue-100 text-blue-700 px-3 py-0.5 rounded-full text-xs font-medium shadow-sm cursor-pointer hover:bg-blue-200 transition"
                 >
-                    Mode: {selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}
+                    Chế độ: {selectedTypeLabel}
                 </motion.div>
 
                 {/* context question chip */}
@@ -175,8 +178,8 @@ export function ChatInputBar({
                                 <Chip
                                     label={
                                         contextQuestion.text.length > 70
-                                            ? `Context: ${contextQuestion.text.slice(0, 70)}...`
-                                            : `Context: ${contextQuestion.text}`
+                                            ? `Ngữ cảnh: ${contextQuestion.text.slice(0, 70)}...`
+                                            : `Ngữ cảnh: ${contextQuestion.text}`
                                     }
                                     onDelete={onClearContext}
                                     sx={{
@@ -210,7 +213,7 @@ export function ChatInputBar({
                             <InsertDriveFile sx={{ fontSize: 18, color: "#2563eb" }} />
                             <span className="truncate">{selectedFile.name}</span>
                         </div>
-                        <Tooltip title="Remove file">
+                        <Tooltip title="Xóa tệp">
                             <IconButton
                                 size="small"
                                 onClick={() => setSelectedFile(null)}
@@ -241,7 +244,7 @@ export function ChatInputBar({
                                     onSend();
                                 }
                             }}
-                            placeholder="Type your message or drop a file here..."
+                            placeholder="Nhập tin nhắn hoặc kéo thả tệp vào đây..."
                             rows={1}
                             className="w-full resize-none border-none bg-transparent focus:outline-none text-[0.95rem] text-slate-700 leading-relaxed max-h-[140px] z-auto"
                             style={{
@@ -301,7 +304,7 @@ export function ChatInputBar({
                 </div>
             </motion.div>
 
-            {/* Popover chỉ còn Upload File */}
+            {/* Popover chỉ còn tải tệp */}
             <Popover
                 open={Boolean(anchorEl)}
                 anchorEl={anchorEl}
@@ -347,7 +350,7 @@ export function ChatInputBar({
                 </List>
             </Popover>
 
-            {/* Dialog chọn Practice Type → bật khi click chip Mode */}
+            {/* Dialog chọn loại chat khi bấm chip chế độ */}
             <AnimatePresence>
                 {openTypeDialog && (
                     <Dialog
@@ -373,7 +376,7 @@ export function ChatInputBar({
                                 pb: 1,
                             }}
                         >
-                            Choose what you want to ask the assistant about
+                            Bạn muốn hỏi trợ lý về nội dung nào?
                         </DialogTitle>
                         <DialogContent>
                             <motion.div

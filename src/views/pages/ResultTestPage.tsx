@@ -12,7 +12,7 @@ import { OverallAnalysis } from "../../components/testResult/OverallAnalysis";
 import { getPartFromTags, RawAnswer } from "../../utils/mapAnswersToParts";
 import DetailAnalysis from "../../components/testResult/DetailAnalysis";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import userTestService from "../../services/user_test.service";
 import { AnswerListSection } from "../../components/testResult/AnswerListSection";
 import Comments from "../../components/testDetail/Comments";
@@ -23,6 +23,7 @@ import {
   disableHighlightPopup,
   enableHighlightPopup,
 } from "../../stores/highlightPopupSlice";
+import { clearChatRouteState, setChatRouteState } from "../../utils/chatRouteState";
 
 const ResultTestPage = () => {
   const location = useLocation();
@@ -100,6 +101,25 @@ const ResultTestPage = () => {
       dispatch(disableHighlightPopup());
     };
   }, []);
+
+  const questionRefs = useMemo(
+    () =>
+      (testDetail?.answers ?? []).map((answer) => ({
+        questionNumber: answer.question_no,
+        questionId: answer.question_id,
+      })),
+    [testDetail?.answers]
+  );
+
+  useEffect(() => {
+    setChatRouteState({
+      attemptId: historyId,
+      questionId: selectedAnswer?.question_id,
+      currentQuestionNumber: selectedAnswer?.question_no,
+      questionRefs,
+    });
+    return clearChatRouteState;
+  }, [historyId, selectedAnswer, questionRefs]);
 
   return (
     <MainLayout>

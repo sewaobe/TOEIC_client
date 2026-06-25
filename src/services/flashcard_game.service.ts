@@ -19,8 +19,9 @@ export interface WordRecallGameResult {
   correctWords: number;
   wrongWords: number;
   totalScore: number;
-  combo: number;
-  wrongList: string[]; // danh sách từ sai
+  combo?: number;
+  accuracy?: number;
+  wrongList: Array<string | { word: string; definition: string }>; // danh sách từ sai
   timeSpent: number; // seconds
   // HLR data
   correctWordIds?: string[];

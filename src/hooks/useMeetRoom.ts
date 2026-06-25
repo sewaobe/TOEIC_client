@@ -63,7 +63,7 @@ export function useMeetRoom() {
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const speakingRafRef = useRef<number | null>(null);
-    const remoteAnalysersRef = useRef<Map<string, { analyser: AnalyserNode; dataArray: Uint8Array<ArrayBuffer> }>>(new Map());
+    const remoteAnalysersRef = useRef<Map<string, { analyser: AnalyserNode; dataArray: Uint8Array }>>(new Map());
     const remoteSpeakingStateRef = useRef<Map<string, boolean>>(new Map());
     const remoteSpeakingRafRef = useRef<number | null>(null);
 
@@ -181,7 +181,7 @@ export function useMeetRoom() {
         }
 
         const analyser = analyserRef.current!;
-        const dataArray: Uint8Array<ArrayBuffer> = new Uint8Array(analyser.frequencyBinCount) as Uint8Array<ArrayBuffer>;
+        const dataArray: Uint8Array = new Uint8Array(analyser.frequencyBinCount);
 
         const update = () => {
             analyser.getByteTimeDomainData(dataArray);
@@ -257,7 +257,7 @@ export function useMeetRoom() {
         const source = audioContext.createMediaStreamSource(stream);
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = 512;
-        const dataArray: Uint8Array<ArrayBuffer> = new Uint8Array(analyser.frequencyBinCount) as Uint8Array<ArrayBuffer>;
+        const dataArray: Uint8Array = new Uint8Array(analyser.frequencyBinCount);
         source.connect(analyser);
 
         remoteAnalysersRef.current.set(peerSocketId, { analyser, dataArray });

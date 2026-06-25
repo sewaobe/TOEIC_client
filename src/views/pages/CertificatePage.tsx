@@ -42,8 +42,6 @@ export interface ToeicCertificateData {
     };
 }
 
-import { useReactToPrint } from 'react-to-print';
-
 // printable component (render ẩn, không scale)
 const CertificatePrintable = React.forwardRef<HTMLDivElement, { data: ToeicCertificateData }>(
     ({ data }, ref) => {
@@ -186,7 +184,6 @@ const CertificatePage: React.FC = () => {
     const [isPortrait, setIsPortrait] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
-    const printRef = useRef<HTMLDivElement>(null);
 
     // Sample Data (for demo purposes)
     const data: ToeicCertificateData = {
@@ -266,20 +263,9 @@ const CertificatePage: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const reactToPrintFn = useReactToPrint({
-        contentRef: printRef,
-        documentTitle: `${data.certificateNo}-${data.student.fullName}`,
-        pageStyle: `
-      @page { size: A4 landscape; margin: 0; }
-      html, body { margin: 0 !important; padding: 0 !important; }
-      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    `,
-    });
-
     const handlePrint = () => {
         setMenuOpen(false);
-
-        reactToPrintFn && reactToPrintFn();
+        window.print();
     };
 
     const handleGenerateQR = () => {
@@ -453,9 +439,6 @@ const CertificatePage: React.FC = () => {
                 </button>
             </div>
             {/* Hidden printable area (không ảnh hưởng UI) */}
-            <div style={{ position: 'fixed', left: -99999, top: 0 }}>
-                <CertificatePrintable ref={printRef} data={data} />
-            </div>
         </div>
     );
 };

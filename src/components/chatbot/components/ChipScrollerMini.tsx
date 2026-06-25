@@ -18,16 +18,16 @@ export default function ChipScrollerMini({
     onChipClick?: (type: ChatType) => void;
 }) {
     const QUESTION_TYPES: PracticeModeOption[] = [
-        { value: "question", label: "Let’s practice short listening!", icon: CheckCircleOutline },
-        { value: "reading", label: "Improve your reading flow!", icon: Headphones },
-        { value: "dictation", label: "Train your dictation skill!", icon: Mic },
-        { value: "shadowing", label: "Shadow my pronunciation!", icon: MenuBook },
-        { value: "question", label: "Listen and guess the meaning!", icon: Hearing },
-        { value: "lesson", label: "Quick TOEIC mini test", icon: Description },
-        { value: "reading", label: "Read and find main ideas", icon: Brush },
-        { value: "shadowing", label: "Repeat after me naturally", icon: LibraryBooks },
-        { value: "dictation", label: "Can you write what you hear?", icon: VolumeUp },
-        { value: "lesson", label: "Mock exam challenge", icon: EmojiEvents },
+        { value: "question", label: "Luyện nghe câu ngắn", icon: CheckCircleOutline },
+        { value: "reading", label: "Cải thiện tốc độ đọc", icon: Headphones },
+        { value: "dictation", label: "Luyện nghe chép chính tả", icon: Mic },
+        { value: "shadowing", label: "Luyện shadowing phát âm", icon: MenuBook },
+        { value: "question", label: "Nghe và đoán nghĩa", icon: Hearing },
+        { value: "lesson", label: "Mini test TOEIC nhanh", icon: Description },
+        { value: "reading", label: "Đọc tìm ý chính", icon: Brush },
+        { value: "shadowing", label: "Lặp lại tự nhiên", icon: LibraryBooks },
+        { value: "dictation", label: "Viết lại câu nghe được", icon: VolumeUp },
+        { value: "lesson", label: "Thử thách đề mô phỏng", icon: EmojiEvents },
     ];
 
     const rows = [

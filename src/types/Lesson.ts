@@ -14,6 +14,8 @@ export interface LessonItem {
   type: LessonType;
   status: LessonStatus;
 }
+
+export type CurrentLesson = LessonItem;
 export interface LessonResponse {
   accuracy_overall: number;
   sessions: {

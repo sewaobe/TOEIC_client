@@ -40,7 +40,7 @@ export const CORE_CHECK: QCQuestion[] = [
 export function getQuestionSet(lesson: CurrentLesson | null): QCQuestion[] {
     if (!lesson) return [];
     if (lesson.type === "quiz") return QUIZ_A;
-    if (lesson.type === "mini") return MINI_TEST_1;
+    if (lesson.type === "mini_test") return MINI_TEST_1;
     return [];
 }
 
@@ -53,6 +53,6 @@ export function grade(questions: QCQuestion[], answers: Record<string, string>):
 export function getDurationMinutes(lesson: CurrentLesson | null): number {
     if (!lesson) return 0;
     if (lesson.type === "quiz") return 1;
-    if (lesson.type === "mini") return 25;
+    if (lesson.type === "mini_test") return 25;
     return 0;
 }

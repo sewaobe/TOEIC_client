@@ -37,6 +37,7 @@ import BookIcon from "@mui/icons-material/Book";
 import useLocalStorage from "../../hooks/useLocalStorage";
 import { FeedbackLessonModal } from "../../components/modals/FeedbackLessonModal";
 import LearningPathRoadmapCanvas from "../../components/learningPath/LearningPathRoadmapCanvas";
+import { clearChatRouteState, setChatRouteState } from "../../utils/chatRouteState";
 
 // Tạo một đối tượng chứa màu sắc để dễ dàng thay đổi và quản lý
 const studyDayColors = {
@@ -321,6 +322,10 @@ export default function DashboardLearningPath({
   const DAILY = `${lp.time_per_day} phút/ngày`;
   const REMAINING_TIME = formatRemainingTime(lp.target_completion_date);
   const WEEKS = lp.week_study_ids?.length ?? 0;
+  const roadmapId =
+    lp?._id ??
+    lp?.learning_path_v2?._id ??
+    lp?.learningPath_id?._id;
 
   const WEEK_TOTAL = lp.week_study_ids?.[activeWeek]?.days?.length ?? 0;
   const WEEK_DONE =
@@ -385,6 +390,13 @@ export default function DashboardLearningPath({
     if (newWeek !== activeWeek) setActiveWeek(newWeek);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan]);
+
+  React.useEffect(() => {
+    setChatRouteState({
+      roadmapId,
+    });
+    return clearChatRouteState;
+  }, [roadmapId]);
 
   return (
     <MainLayout>

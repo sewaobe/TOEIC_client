@@ -1,4 +1,3 @@
-import { LearningPathStrategyOverviewResponse, SelectLearningPathStrategyOptionResponse, StrategyCyclePreview } from "../types/learning_strategy";
 import { GetLearningPathSkillMapParams } from "../types/user_skill";
 import axiosClient from "./axiosClient";
 
@@ -625,24 +624,6 @@ const learningPathV2Service = {
     });
   },
 
-  getStrategy: async (learningPathId: string) => {
-    return axiosClient.get<LearningPathStrategyOverviewResponse>(
-      `${BASE_URL}/${learningPathId}/strategy`
-    );
-  },
-
-  getStrategyOptionPreview: async (learningPathId: string, optionId: string) => {
-    return axiosClient.get<StrategyCyclePreview>(
-      `${BASE_URL}/${learningPathId}/strategy-options/${optionId}/preview`
-    );
-  },
-
-  selectStrategyOption: async (learningPathId: string, optionId: string) => {
-    return axiosClient.post<SelectLearningPathStrategyOptionResponse>(
-      `${BASE_URL}/${learningPathId}/strategy-options/${optionId}/select`,
-      {}
-    );
-  },
 };
 
 export default learningPathV2Service;

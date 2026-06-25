@@ -12,7 +12,6 @@ import {
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import MapOutlinedIcon from "@mui/icons-material/MapOutlined";
-import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import HeadphonesOutlinedIcon from "@mui/icons-material/HeadphonesOutlined";
@@ -25,7 +24,6 @@ import CheckIcon from "@mui/icons-material/Check";
 import LearningPathNodeDetailModal from "./LearningPathNodeDetailModal";
 import learningPathV2Service, { LearningPathNodeDetailResponse } from "../../services/learning_path_v2.service";
 import LearningPathSkillMapModal from "./LearningPathSkillMapModal";
-import LearningPathStrategyModal from "./LearningPathStrategyModal";
 
 export type RoadmapUnitStatus = "completed" | "in_cycle" | "current" | "locked";
 
@@ -126,13 +124,6 @@ const roadmapTextSx = {
     label: { fontSize: 14, fontWeight: 700 },
     caption: { fontSize: 12, fontWeight: 600 },
     helper: { fontSize: 12, fontWeight: 500 },
-};
-
-const strategySelectionOverlayCopy = {
-    title: "Ch\u1ecdn chi\u1ebfn l\u01b0\u1ee3c m\u1edbi \u0111\u1ec3 ti\u1ebfp t\u1ee5c",
-    description:
-        "B\u1ea1n v\u1eeba ho\u00e0n th\u00e0nh Full Test. H\u1ec7 th\u1ed1ng \u0111\u00e3 t\u1ea1o c\u00e1c h\u01b0\u1edbng h\u1ecdc m\u1edbi; h\u00e3y ch\u1ecdn m\u1ed9t chi\u1ebfn l\u01b0\u1ee3c \u0111\u1ec3 t\u1ea1o cycle ti\u1ebfp theo.",
-    action: "M\u1edf l\u1ef1a ch\u1ecdn chi\u1ebfn l\u01b0\u1ee3c",
 };
 
 const ROADMAP_STATUS_COLORS = {
@@ -746,10 +737,6 @@ export default function LearningPathRoadmapCanvas({
         overview?.roadmap_canvas?.part_roadmaps ?? [];
 
     const learningPathId = overview?.learning_path?._id;
-    const requiresStrategySelection = Boolean(
-        overview?.roadmap_canvas?.requires_strategy_selection
-    );
-
     const statusByLessonManagerId = React.useMemo(
         () => buildRoadmapCanvasStatusMap(overview),
         [overview]
@@ -835,8 +822,6 @@ export default function LearningPathRoadmapCanvas({
     }, []);
 
     const [skillMapOpen, setSkillMapOpen] = React.useState(false);
-
-    const [strategyOpen, setStrategyOpen] = React.useState(false);
 
     return (
         <Paper
@@ -942,14 +927,6 @@ export default function LearningPathRoadmapCanvas({
                         </Button>
                         <Button
                             variant="outlined"
-                            startIcon={<TrackChangesIcon />}
-                            onClick={() => { setStrategyOpen(true) }}
-                            sx={actionButtonSx}
-                        >
-                            Chiến lược
-                        </Button>
-                        <Button
-                            variant="outlined"
                             startIcon={<LightbulbOutlinedIcon />}
                             onClick={() => { }}
                             sx={actionButtonSx}
@@ -1030,78 +1007,6 @@ export default function LearningPathRoadmapCanvas({
                 <CanvasLegend />
             </Box>
 
-            {requiresStrategySelection && (
-                <Box
-                    sx={{
-                        position: "absolute",
-                        inset: 0,
-                        zIndex: 3,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        px: { xs: 2, sm: 3 },
-                        py: { xs: 3, sm: 4 },
-                        bgcolor: "rgba(248,250,252,0.78)",
-                        backdropFilter: "blur(2px)",
-                    }}
-                >
-                    <Stack
-                        spacing={1.5}
-                        alignItems="center"
-                        sx={{
-                            width: "min(560px, 100%)",
-                            p: { xs: 2, sm: 2.5 },
-                            borderRadius: 3,
-                            border: "1px solid rgba(37,99,235,0.18)",
-                            bgcolor: "rgba(255,255,255,0.94)",
-                            boxShadow: "0 18px 46px rgba(15,23,42,0.12)",
-                            textAlign: "center",
-                        }}
-                    >
-                        <Box
-                            sx={{
-                                width: 52,
-                                height: 52,
-                                borderRadius: "16px",
-                                display: "grid",
-                                placeItems: "center",
-                                color: "#1D4ED8",
-                                bgcolor: "#EEF5FF",
-                            }}
-                        >
-                            <TrackChangesIcon />
-                        </Box>
-
-                        <Typography sx={{ ...roadmapTextSx.title, color: "#172554" }}>
-                            {strategySelectionOverlayCopy.title}
-                        </Typography>
-
-                        <Typography sx={{ ...roadmapTextSx.label, color: "#475569", maxWidth: 460 }}>
-                            {strategySelectionOverlayCopy.description}
-                        </Typography>
-
-                        <Button
-                            variant="contained"
-                            startIcon={<TrackChangesIcon />}
-                            onClick={() => setStrategyOpen(true)}
-                            sx={{
-                                height: 44,
-                                px: 2.4,
-                                borderRadius: 2,
-                                textTransform: "none",
-                                fontSize: 14,
-                                fontWeight: 800,
-                                bgcolor: "#1D4ED8",
-                                boxShadow: "0 12px 24px rgba(37,99,235,0.22)",
-                                "&:hover": { bgcolor: "#1E40AF" },
-                            }}
-                        >
-                            {strategySelectionOverlayCopy.action}
-                        </Button>
-                    </Stack>
-                </Box>
-            )}
-
             <LearningPathNodeDetailModal
                 open={nodeDetailModal.open}
                 detail={nodeDetailModal.detail}
@@ -1119,14 +1024,6 @@ export default function LearningPathRoadmapCanvas({
                 onClose={() => setSkillMapOpen(false)}
             />
 
-            <LearningPathStrategyModal
-                open={strategyOpen}
-                learningPathId={learningPathId ? String(learningPathId) : null}
-                onClose={() => setStrategyOpen(false)}
-                onSelected={async () => {
-                    window.location.reload();
-                }}
-            />
         </Paper>
     );
 }

@@ -24,7 +24,6 @@ import {
 } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import { diffInWeeks } from "../../utils/date";
@@ -56,6 +55,7 @@ const MIN_DAY = 0;
 const MAX_DAY = 24*60;
 const MIN_WEEK = 7 * MIN_DAY;
 const MAX_WEEK = 7 * 1440;
+const MAX_WEEKLY_STUDY_HOURS = 32;
 
 // const TimeInput = ({
 //   value,
@@ -163,7 +163,6 @@ export const DetailedPlanStep = ({
   const [weekDays, setWeekDays] = useState<Record<string, any>>({});
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [tab, setTab] = useState(0);
-  const [warning, setWarning] = useState<string>("");
   // editing buffers so typing isn't clamped and to allow commit onBlur/Enter
   const [editingCells, setEditingCells] = useState<Record<string, string>>({});
   const [editingWeekTotals, setEditingWeekTotals] = useState<Record<number, string>>({});
@@ -196,29 +195,6 @@ export const DetailedPlanStep = ({
 
     onWeeklyMinutesByDayChange(next);
   }, [onWeeklyMinutesByDayChange, weekDays]);
-
-  useEffect(() => {
-    // Chỉ kiểm tra khi có dữ liệu
-    if (!weeklyTotals || weeklyTotals.length === 0) {
-      setWarning("");
-      return;
-    }
-
-    // Tìm số phút học cao nhất trong tất cả các tuần
-    const maxMinutesInAnyWeek = Math.max(...weeklyTotals);
-    const maxHoursInAnyWeek = maxMinutesInAnyWeek / 60;
-
-    // So sánh với ngưỡng đã định nghĩa
-    if (maxHoursInAnyWeek > 32) {
-      setWarning(
-        `Khối lượng học ${weeklyHours} giờ/tuần vượt quá mức tối đa 32 giờ/tuần. Bạn nên nới lỏng thời gian học để đạt được hiệu quả tốt nhất.`
-      );
-    } else {
-      // Nếu không có tuần nào vượt ngưỡng, xóa cảnh báo
-      setWarning("");
-    }
-
-  }, [weeklyTotals]);
 
   const makeEvenWeekPlan = (weekTotal: number) => {
     const per = Math.max(MIN_DAY, Math.round(weekTotal / 7));
@@ -360,6 +336,9 @@ export const DetailedPlanStep = ({
     : Math.round(weeklyHours * 60);
 
   const avgDailyMinutes = Math.ceil(avgWeeklyMinutes / 7);
+  const maxWeeklyMinutes = weeklyTotals.length ? Math.max(...weeklyTotals) : 0;
+  const maxWeeklyHours = maxWeeklyMinutes / 60;
+  const isWeeklyLoadTooHigh = maxWeeklyHours > MAX_WEEKLY_STUDY_HOURS;
 
   // const handleWeekChange = (index: number, newVal: number) => {
   //   if (!weeklyTotals.length) return;
@@ -540,10 +519,13 @@ export const DetailedPlanStep = ({
         </Button>
       </Paper>
 
-      <Collapse in={!!warning}>
-        {/* Dùng !!warning để chuyển chuỗi thành boolean (true/false) */}
-        <Alert severity="warning" variant="filled" sx={{ borderRadius: 2, mb: warning ? 3 : 0 }}>
-          {warning}
+      <Collapse in={isWeeklyLoadTooHigh}>
+        <Alert
+          severity="warning"
+          variant="filled"
+          sx={{ borderRadius: 2, mb: isWeeklyLoadTooHigh ? 3 : 0 }}
+        >
+          Khối lượng học {maxWeeklyHours.toFixed(1)} giờ/tuần vượt quá mức tối đa 32 giờ/tuần. Bạn nên nới lỏng thời gian học để đạt được hiệu quả tốt nhất.
         </Alert>
       </Collapse>
       {/* Tabs */}
@@ -713,43 +695,6 @@ export const DetailedPlanStep = ({
           {/* (Removed compact edit panel — edits now happen inline in the table) */}
         </Grid>
       )}
-      <Grid size={{ xs: 12, md: 12 }}>
-        <Card variant="outlined" className="rounded-2xl">
-          <CardContent className="p-4 sm:p-5">
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-              <TipsAndUpdatesIcon color="primary" />
-              <Typography variant="h6" fontWeight={800}>
-                Vì sao gợi ý như vậy?
-              </Typography>
-            </Stack>
-            <Stack spacing={1.25}>
-              {["Giữ cân bằng tổng thời gian", "Phân bổ hợp lý từng ngày", "Tối ưu hiệu suất học", "Dễ dàng điều chỉnh"].map(
-                (text, idx) => (
-                  <Paper
-                    key={idx}
-                    elevation={0}
-                    className="rounded-xl"
-                    sx={{
-                      p: 1.25,
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 1,
-                      border: "1px solid rgba(255,255,255,.15)",
-                      bgcolor: "rgba(255,255,255,.08)",
-                      backdropFilter: "blur(8px)",
-                    }}
-                  >
-                    <Chip size="small" color="primary" label={idx + 1} sx={{ fontWeight: 700, minWidth: 28 }} />
-                    <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
-                      {text}
-                    </Typography>
-                  </Paper>
-                )
-              )}
-            </Stack>
-          </CardContent>
-        </Card>
-      </Grid>
     </Stack>
   );
 };

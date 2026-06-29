@@ -62,6 +62,7 @@ export const EndDateStep: FC<IEndDateStep> = ({
     { label: "4 tuần", addDays: 28 },
     { label: "8 tuần", addDays: 56 },
     { label: "12 tuần", addDays: 84 },
+    { label: "24 tuần", addDays: 168 },
   ];
 
   return (

@@ -25,8 +25,14 @@ import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurned
 import QuizOutlinedIcon from "@mui/icons-material/QuizOutlined";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import LearningPathNodeDetailModal from "./LearningPathNodeDetailModal";
-import learningPathV2Service, { LearningPathNodeDetailResponse } from "../../services/learning_path_v2.service";
+import learningPathV2Service, {
+    LearningPathCycleExplanationResponse,
+    LearningPathNodeDetailResponse,
+} from "../../services/learning_path_v2.service";
 import LearningPathSkillMapModal from "./LearningPathSkillMapModal";
+import LearningPathCycleExplanationModal, {
+    unwrapCycleExplanationPayload,
+} from "./LearningPathCycleExplanationModal";
 
 export type RoadmapUnitStatus = "completed" | "in_cycle" | "current" | "locked";
 
@@ -1087,6 +1093,61 @@ export default function LearningPathRoadmapCanvas({
     }, []);
 
     const [skillMapOpen, setSkillMapOpen] = React.useState(false);
+    const [cycleExplanationModal, setCycleExplanationModal] = React.useState<{
+        open: boolean;
+        loading: boolean;
+        errorMessage: string | null;
+        data: LearningPathCycleExplanationResponse | null;
+    }>({
+        open: false,
+        loading: false,
+        errorMessage: null,
+        data: null,
+    });
+
+    const handleOpenCycleExplanation = React.useCallback(async () => {
+        setCycleExplanationModal({
+            open: true,
+            loading: true,
+            errorMessage: null,
+            data: null,
+        });
+
+        try {
+            if (!learningPathId) {
+                throw new Error("Không tìm thấy learningPathId để lấy giải thích cycle.");
+            }
+
+            const response = await learningPathV2Service.getCurrentCycleExplanation(
+                learningPathId
+            );
+            const payload = unwrapCycleExplanationPayload(response);
+
+            setCycleExplanationModal({
+                open: true,
+                loading: false,
+                errorMessage: null,
+                data: payload,
+            });
+        } catch (error) {
+            setCycleExplanationModal({
+                open: true,
+                loading: false,
+                errorMessage:
+                    error instanceof Error
+                        ? error.message
+                        : "Không thể tải giải thích cycle hiện tại.",
+                data: null,
+            });
+        }
+    }, [learningPathId]);
+
+    const handleCloseCycleExplanation = React.useCallback(() => {
+        setCycleExplanationModal((prev) => ({
+            ...prev,
+            open: false,
+        }));
+    }, []);
 
     return (
         <Paper
@@ -1193,7 +1254,7 @@ export default function LearningPathRoadmapCanvas({
                         <Button
                             variant="outlined"
                             startIcon={<LightbulbOutlinedIcon />}
-                            onClick={() => { }}
+                            onClick={handleOpenCycleExplanation}
                             sx={actionButtonSx}
                         >
                             Vì sao?
@@ -1289,6 +1350,14 @@ export default function LearningPathRoadmapCanvas({
                 open={skillMapOpen}
                 learningPathId={learningPathId}
                 onClose={() => setSkillMapOpen(false)}
+            />
+
+            <LearningPathCycleExplanationModal
+                open={cycleExplanationModal.open}
+                data={cycleExplanationModal.data}
+                loading={cycleExplanationModal.loading}
+                errorMessage={cycleExplanationModal.errorMessage}
+                onClose={handleCloseCycleExplanation}
             />
 
         </Paper>

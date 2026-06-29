@@ -22,6 +22,98 @@ export type SubmitLearningPathV2AssessmentPayload = {
   day_study_id?: string;
 };
 
+export type LearningPathCycleExplanationResponse = {
+  has_current_cycle: boolean;
+  message?: string;
+  generated_from_current_cycle_log?: boolean;
+  cycle?: {
+    week_id: string;
+    cycle_no: number;
+    status: string;
+    expected_completion_at?: string | Date;
+    focus_part_type: number;
+    primary_focus_skill_key: string;
+    primary_focus_skill_label: string;
+    covered_skill_keys: string[];
+    covered_skill_labels: string[];
+    cycle_mode: string;
+    cycle_mode_label: string;
+    expected_skill_gain: number;
+    expected_roi_per_hour: number;
+    assessment_type?: "mini_test" | "full_test" | null;
+    assessment_estimated_minutes?: number;
+  };
+  decision?: {
+    log_id: string;
+    created_at?: string | Date;
+    trigger_type: string;
+    trigger_label: string;
+    strategy?: string;
+    strategy_label: string;
+    scenario?: string;
+    scenario_label?: string;
+    reasons: string[];
+    raw_reasons: string[];
+    warnings: string[];
+  } | null;
+  evidence?: {
+    current_score?: number | null;
+    target_score?: number | null;
+    weekly_available_minutes?: number | null;
+    weekly_available_label?: string | null;
+    test_type?: string | null;
+    test_type_label?: string | null;
+    focus_part?: {
+      part_type: number;
+      ability_percent: number | null;
+      status?: "weak" | "medium" | "strong";
+      trend?: string;
+    } | null;
+    focus_skill?: {
+      skill_key: string;
+      skill_label: string;
+      part_type?: number;
+      ability_percent: number | null;
+      status?: "weak" | "medium" | "strong";
+      trend?: string;
+    } | null;
+    selected_projection?: {
+      skill_ability_before_percent: number | null;
+      skill_ability_after_percent: number | null;
+      part_ability_before_percent: number | null;
+      part_ability_after_percent: number | null;
+    } | null;
+    top_candidates: Array<{
+      skill_key: string;
+      skill_label: string;
+      part_type?: number;
+      current_ability_percent: number | null;
+      expected_skill_gain?: number;
+      expected_roi_per_hour?: number;
+      is_selected: boolean;
+    }>;
+  };
+  decision_trace: Array<{
+    log_id: string;
+    created_at?: string | Date;
+    trigger_type: string;
+    trigger_label: string;
+    scenario?: string;
+    scenario_label?: string;
+    generated_week_id?: string | null;
+    cycle_no?: number | null;
+    focus_part_type?: number | null;
+    primary_focus_skill_key?: string | null;
+    primary_focus_skill_label?: string | null;
+    cycle_mode?: string | null;
+    cycle_mode_label?: string | null;
+    expected_skill_gain?: number | null;
+    expected_roi_per_hour?: number | null;
+    assessment_type?: "mini_test" | "full_test" | null;
+    reason_summary?: string;
+  }>;
+};
+
 const BASE_URL = "/learning-path-v2";
 
 /**
@@ -550,6 +642,14 @@ const learningPathV2Service = {
 
   getCurrentCycle: async (learningPathId: string) => {
     return axiosClient.get(`${BASE_URL}/${learningPathId}/current-cycle`);
+  },
+
+  getCurrentCycleExplanation: async (learningPathId: string) => {
+    return axiosClient.get<{
+      success: boolean;
+      data: LearningPathCycleExplanationResponse;
+      message?: string;
+    }>(`${BASE_URL}/${learningPathId}/current-cycle/explanation`);
   },
 
   getOverview: async (learningPathId: string) => {

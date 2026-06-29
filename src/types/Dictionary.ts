@@ -1,31 +1,52 @@
 export interface DictionaryData {
-  englishWord: string;                     // Từ tiếng Anh chính
-  phonetic?: string;                       // Phiên âm chính
-  phonetics?: PhoneticInfo[];              // Danh sách các phiên âm kèm audio
-  translations: TranslationEntry[];        // Danh sách các nghĩa (theo từ loại)
-  imageKeywords?: string[];                // Gợi ý từ khóa hình ảnh
-  imageUrls?: string[];                    // Danh sách URL hình ảnh minh họa
-}
-
-export interface PhoneticInfo {
-  text?: string;                           // Dạng phiên âm (IPA)
-  audio?: string;                          // Link phát âm
+  englishWord: string;
+  phonetic_uk?: string;
+  phonetic_us?: string;
+  audio_uk?: string;
+  audio_us?: string;
+  translations: TranslationEntry[];
+  examples?: ExamplePair[];
+  synonyms?: RelatedWord[];
+  antonyms?: RelatedWord[];
+  word_family?: WordFamilyItem[];
+  collocations?: CollocationItem[];
+  imageKeywords?: string[];
+  imageUrls?: string[];
+  metadata?: DictionaryMetadata;
 }
 
 export interface TranslationEntry {
-  partOfSpeech: string;                    // Từ loại (N, V, Adj, Adv, ...)
-  translatedDefinitions: TranslatedDefinition[]; // Danh sách định nghĩa song ngữ
-  examples?: ExamplePair[];                // Ví dụ (Anh - Việt)
-  synonyms?: string[];                     // Từ đồng nghĩa
-  antonyms?: string[];                     // Từ trái nghĩa
+  partOfSpeech: string;
+  meanings: TranslatedDefinition[];
 }
 
 export interface TranslatedDefinition {
-  en: string;                              // Nghĩa tiếng Anh
-  vi: string;                              // Nghĩa tiếng Việt
+  en: string;
+  vi: string;
 }
 
 export interface ExamplePair {
-  en: string;                              // Ví dụ tiếng Anh
-  vi: string;                              // Dịch tiếng Việt
+  en: string;
+  vi: string;
+}
+
+export interface RelatedWord {
+  word: string;
+  meaning: string;
+}
+
+export interface WordFamilyItem {
+  word: string;
+  partOfSpeech: string;
+}
+
+export interface CollocationItem {
+  phrase: string;
+  meaning: string;
+}
+
+export interface DictionaryMetadata {
+  source?: string;
+  enrichedByAI?: boolean;
+  missingFieldsFilledByAI?: string[];
 }

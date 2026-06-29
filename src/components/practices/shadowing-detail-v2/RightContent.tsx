@@ -70,6 +70,7 @@ interface RightContentProps {
 	onToggleShowTranslation: () => void;
 	onStartRecording: () => void;
 	onStopRecording: () => void;
+	onRetryRecording: () => void;
 	onSetActiveTranscriptId: (id: number) => void;
 	onToggleVideoPlayback: () => void;
 	onHandleNext: () => void;
@@ -287,6 +288,7 @@ export default function RightContent({
 	onToggleShowTranslation,
 	onStartRecording,
 	onStopRecording,
+	onRetryRecording,
 	onSetActiveTranscriptId,
 	onToggleVideoPlayback,
 	onHandleNext,
@@ -1038,9 +1040,21 @@ export default function RightContent({
 											</p>
 										</div>
 
-										<button className="w-full py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium rounded-xl flex items-center justify-center gap-2 transition-colors border border-indigo-100">
-											<Sparkles className="w-4 h-4" /> Ask AI for Pronunciation Feedback
-										</button>
+										<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+											<button
+												type="button"
+												onClick={onRetryRecording}
+												className="w-full py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-xl flex items-center justify-center gap-2 transition-colors border border-gray-200"
+											>
+												<RotateCcw className="w-4 h-4" /> Try Again
+											</button>
+											<button
+												type="button"
+												className="w-full py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium rounded-xl flex items-center justify-center gap-2 transition-colors border border-indigo-100"
+											>
+												<Sparkles className="w-4 h-4" /> Ask AI for Pronunciation Feedback
+											</button>
+										</div>
 									</motion.div>
 								)}
 							</AnimatePresence>

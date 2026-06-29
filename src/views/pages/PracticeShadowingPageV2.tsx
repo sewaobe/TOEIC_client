@@ -298,10 +298,8 @@ export default function PracticeShadowingV2Page() {
   }, [resolvedShadowingId, shadowingData]);
 
   useEffect(() => {
-    if (canUseVideo) {
-      setMediaMode('video');
-    }
-  }, []);
+    setMediaMode(canUseVideo ? 'video' : 'audio');
+  }, [canUseVideo]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
@@ -417,6 +415,12 @@ export default function PracticeShadowingV2Page() {
       recorderRef.current.stop();
     }
     setRecordTimer(0);
+  };
+
+  const handleRetryRecording = () => {
+    setCurrentFeedback(null);
+    setRecordTimer(0);
+    setAppState('idle');
   };
 
   const handleRecordingResult = async (blob: Blob) => {
@@ -890,6 +894,7 @@ export default function PracticeShadowingV2Page() {
             onToggleShowTranslation={() => setShowTranslation(!showTranslation)}
             onStartRecording={handleStartRecording}
             onStopRecording={handleStopRecording}
+            onRetryRecording={handleRetryRecording}
             onSetActiveTranscriptId={setActiveTranscriptId}
             onToggleVideoPlayback={toggleVideoPlayback}
             onHandleNext={handleNext}

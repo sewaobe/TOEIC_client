@@ -24,6 +24,12 @@ import testService from "../../services/test.service";
 import type { RawAnswer } from "../../utils/mapAnswersToParts";
 import type { ExamGroup, ExamQuestion } from "../../types/Exam";
 import { clearChatRouteState, compactQuestionText, setChatRouteState } from "../../utils/chatRouteState";
+import { useDispatch } from "react-redux";
+import type { AppDispatch } from "../../stores/store";
+import {
+  disableHighlightPopup,
+  enableHighlightPopup,
+} from "../../stores/highlightPopupSlice";
 
 type GroupWithAnswers = ExamGroup & {
   answersInGroup: RawAnswer[];
@@ -38,6 +44,7 @@ const AnswerDetailPage = () => {
   }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
 
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<RawAnswer[]>([]);
@@ -63,6 +70,14 @@ const AnswerDetailPage = () => {
     if (answerFilter !== "wrong") return answers;
     return answers.filter((answer) => answer.selectedOption === "" || answer.isCorrect === false);
   }, [answers, answerFilter]);
+
+  useEffect(() => {
+    dispatch(enableHighlightPopup());
+
+    return () => {
+      dispatch(disableHighlightPopup());
+    };
+  }, [dispatch]);
 
   // Fetch answers first
   useEffect(() => {

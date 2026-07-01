@@ -28,6 +28,7 @@ import {
 } from "../../utils/chatErrors";
 import { prepareChatPayload } from "../../utils/chatIntentHint";
 import { hasSessionExpired } from "../../services/sessionManager";
+import { createIdempotencyKey } from "../../utils/idempotency.util";
 
 const chatTypeLabels: Record<ChatType, string> = {
     question: "Hỏi đáp câu hỏi TOEIC",
@@ -324,14 +325,6 @@ export function ChatbotDrawer({
 
         handledQuickRequestRef.current = quickQuestionRequest.requestId;
         setPendingQuickRequest(quickQuestionRequest);
-        setContextQuestion({
-            id: quickQuestionRequest.questionId,
-            text:
-                quickQuestionRequest.textPreview ||
-                (quickQuestionRequest.questionNumber
-                    ? `Câu ${quickQuestionRequest.questionNumber}`
-                    : "Câu hỏi đang chọn"),
-        });
 
         if (!selectedSession) {
             (async () => {
@@ -381,10 +374,6 @@ export function ChatbotDrawer({
             const preparedPayload = prepareChatPayload({
                 userText: text,
                 routeContext,
-                contextQuestion: {
-                    id: pendingQuickRequest.questionId,
-                    text: pendingQuickRequest.textPreview || "",
-                },
                 selectedText: pendingQuickRequest.textPreview,
                 clientContext: {
                     userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -414,7 +403,6 @@ export function ChatbotDrawer({
                 return;
             }
             setPendingQuickRequest(null);
-            setContextQuestion(null);
         })();
     }, [pendingQuickRequest, selectedSession?._id, sendMessage]);
 
@@ -489,11 +477,12 @@ export function ChatbotDrawer({
     };
 
     /* ---------- GỬI TIN NHẮN ---------- */
-    const handleSendMessage = async () => {
-        if (!input.trim() || !selectedSession?._id) return;
+    const handleSendMessage = async (override?: { text?: string; clientContext?: Record<string, unknown> }) => {
+        const messageText = override?.text ?? input;
+        if (!messageText.trim() || !selectedSession?._id) return;
 
-        const text = input.trim();
-        setInput("");
+        const text = messageText.trim();
+        if (!override?.text) setInput("");
 
         try {
             const routeContext = buildRouteContext({
@@ -513,6 +502,8 @@ export function ChatbotDrawer({
                 selectedText: window.getSelection()?.toString() || undefined,
                 clientContext: {
                     userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    clientRequestId: createIdempotencyKey("chat-flashcard"),
+                    ...(override?.clientContext ?? {}),
                 },
             });
             console.info("chat.route.clientPayload", {
@@ -529,12 +520,9 @@ export function ChatbotDrawer({
                 routeContext: preparedPayload.routeContext,
                 clientContext: preparedPayload.clientContext,
             });
-            if (sent && contextQuestion) {
-                setContextQuestion(null);
-            }
             if (!sent) {
                 if (contextQuestion) setContextQuestion(contextQuestion);
-                setInput(text);
+                if (!override?.text) setInput(text);
                 if (hasSessionExpired()) return;
                 const message = chatErrorMessages.SOCKET_DISCONNECTED;
                 toast.error(message);

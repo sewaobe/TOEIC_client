@@ -1,113 +1,74 @@
 import { io, Socket } from "socket.io-client";
-import { normalizeSocketConnectError } from "../utils/chatErrors";
-import {
-  markSessionInvalid,
-  onSessionInvalid,
-  recoverSession,
-} from "./sessionManager";
 
 let socket: Socket | null = null;
-let reconnectedAfterRecovery = false;
-let removeSessionInvalidHandler: (() => void) | null = null;
 
-type SocketWithOnAny = Socket & {
-  onAny?: (handler: (event: string, ...args: unknown[]) => void) => void;
-};
+const resolveSocketUrl = () => {
+  const explicitSocketUrl = import.meta.env.VITE_SOCKET_URL?.trim();
+  if (explicitSocketUrl) return explicitSocketUrl;
 
-const getSocketUrl = () => {
-  const socketUrl = import.meta.env.VITE_SOCKET_URL;
-  if (socketUrl) return socketUrl;
+  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-  const apiUrl = import.meta.env.VITE_API_URL;
-  if (apiUrl) return apiUrl.replace(/\/api\/?$/, "");
-
-  return "http://localhost:5000";
-};
-
-async function handleAuthRequiredConnectError() {
-  if (!socket) return;
-
-  if (reconnectedAfterRecovery) {
-    markSessionInvalid();
-    return;
+  try {
+    const url = new URL(apiUrl);
+    url.pathname = url.pathname.replace(/\/api\/?$/, "");
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return apiUrl.replace(/\/api\/?$/, "");
   }
-
-  const recovery = await recoverSession();
-
-  if (recovery === "RECOVERED") {
-    reconnectedAfterRecovery = true;
-    socket.connect();
-    return;
-  }
-
-  if (recovery === "SESSION_INVALID") return;
-
-  console.warn("Socket auth recovery failed transiently; waiting for reconnect.");
-}
-
-function registerSessionInvalidSocketHandler() {
-  removeSessionInvalidHandler?.();
-  removeSessionInvalidHandler = onSessionInvalid(() => {
-    if (!socket) return;
-    socket.disconnect();
-  });
-}
+};
 
 export const initSocket = () => {
   if (socket && socket.connected) {
-    console.log("Socket da duoc khoi tao, bo qua.");
+    console.log("⚠️ Socket đã được khởi tạo, bỏ qua.");
     return socket;
   }
 
-  socket = io(getSocketUrl(), {
+  socket = io(resolveSocketUrl(), {
     withCredentials: true,
     transports: ["websocket"],
   });
-  registerSessionInvalidSocketHandler();
 
   socket.on("connect", () => {
-    reconnectedAfterRecovery = false;
-    console.log("Socket da ket noi:", socket?.id);
+    console.log("✅ Socket connected:", socket?.id);
   });
 
   socket.on("disconnect", (reason) => {
-    console.log("Socket da ngat ket noi:", reason);
+    console.log("❌ Socket disconnected:", reason);
   });
 
   socket.on("connect_error", (err) => {
-    const normalized = normalizeSocketConnectError(err);
-    console.error("Loi ket noi socket:", err.message);
-
-    if (normalized.errorType === "AUTH_REQUIRED") {
-      void handleAuthRequiredConnectError();
-      return;
-    }
-
-    // Non-auth socket errors are usually transient. Let Socket.IO retry.
+    console.error("⚠️ Socket connect error:", err.message);
   });
 
+  // Forward any socket event to window as a CustomEvent so other parts
+  // of the app (e.g., topbar) can trigger lightweight reloads.
+  // We intentionally filter out very noisy events if needed later.
   try {
-    (socket as SocketWithOnAny).onAny?.((event: string, ...args: unknown[]) => {
+    // `onAny` exists on socket.io-client v3+
+    (socket as any).onAny((event: string, ...args: any[]) => {
       window.dispatchEvent(
         new CustomEvent("socket:any", { detail: { event, args } })
       );
     });
-  } catch {
+  } catch (err) {
     // If onAny isn't available, ignore silently.
   }
 
   return socket;
 };
 
+/**
+ * Ngắt kết nối socket (khi logout)
+ */
 export const disconnectSocket = () => {
   if (socket) {
     socket.disconnect();
     socket = null;
-    reconnectedAfterRecovery = false;
-    removeSessionInvalidHandler?.();
-    removeSessionInvalidHandler = null;
-    console.log("Da ngat ket noi socket thu cong");
+    console.log("🔌 Socket disconnected manually");
   }
 };
 
+/**
+ * Trả về instance socket (nếu đã connect)
+ */
 export const getSocket = () => socket;

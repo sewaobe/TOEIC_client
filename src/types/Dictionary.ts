@@ -1,31 +1,81 @@
 export interface DictionaryData {
-  englishWord: string;                     // Từ tiếng Anh chính
-  phonetic?: string;                       // Phiên âm chính
-  phonetics?: PhoneticInfo[];              // Danh sách các phiên âm kèm audio
-  translations: TranslationEntry[];        // Danh sách các nghĩa (theo từ loại)
-  imageKeywords?: string[];                // Gợi ý từ khóa hình ảnh
-  imageUrls?: string[];                    // Danh sách URL hình ảnh minh họa
+  englishWord: string;
+  phonetic?: string;
+  phonetic_uk?: string;
+  phonetic_us?: string;
+  audio_uk?: string;
+  audio_us?: string;
+  phonetics?: PhoneticInfo[];
+  examples?: ExamplePair[];
+  synonyms?: SynonymMeaning[];
+  antonyms?: SynonymMeaning[];
+  word_family?: WordFamilyEntry[];
+  collocations?: CollocationEntry[];
+  translations: TranslationEntry[];
+  imageKeywords?: string[];
+  imageUrls?: string[];
+  source?: DictionarySource;
+  fallback?: DictionaryFallback;
+  metadata?: DictionaryMetadata;
+  cached?: boolean;
+  model?: string;
+}
+
+export type DictionarySource =
+  | "gemini-core"
+  | "gemini+dictionaryapi"
+  | "gemini+dictionaryapi+datamuse"
+  | "dictionaryapi.dev"
+  | string;
+
+export interface DictionaryFallback {
+  used: boolean;
+  reason?: string;
+  missingFields?: string[];
+}
+
+export interface DictionaryMetadata {
+  source?: string;
+  enrichedByAI?: boolean;
+  missingFieldsFilledByAI?: string[];
+  [key: string]: unknown;
 }
 
 export interface PhoneticInfo {
-  text?: string;                           // Dạng phiên âm (IPA)
-  audio?: string;                          // Link phát âm
+  text?: string;
+  audio?: string;
 }
 
 export interface TranslationEntry {
-  partOfSpeech: string;                    // Từ loại (N, V, Adj, Adv, ...)
-  translatedDefinitions: TranslatedDefinition[]; // Danh sách định nghĩa song ngữ
-  examples?: ExamplePair[];                // Ví dụ (Anh - Việt)
-  synonyms?: string[];                     // Từ đồng nghĩa
-  antonyms?: string[];                     // Từ trái nghĩa
+  partOfSpeech: string;
+  meanings?: TranslatedDefinition[];
+  translatedDefinitions: TranslatedDefinition[];
+  examples?: ExamplePair[];
+  synonyms?: string[];
+  antonyms?: string[];
 }
 
 export interface TranslatedDefinition {
-  en: string;                              // Nghĩa tiếng Anh
-  vi: string;                              // Nghĩa tiếng Việt
+  en: string;
+  vi: string;
 }
 
 export interface ExamplePair {
-  en: string;                              // Ví dụ tiếng Anh
-  vi: string;                              // Dịch tiếng Việt
+  en: string;
+  vi: string;
+}
+
+export interface SynonymMeaning {
+  word: string;
+  meaning: string;
+}
+
+export interface WordFamilyEntry {
+  word: string;
+  partOfSpeech: string;
+}
+
+export interface CollocationEntry {
+  phrase: string;
+  meaning: string;
 }

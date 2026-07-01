@@ -15,19 +15,33 @@ function fromQuery(search: string | undefined, key: string) {
     return new URLSearchParams(search).get(key) ?? undefined;
 }
 
+function matchResultRoute(pathname: string) {
+    const match = pathname.match(/^\/tests\/([^/]+)\/result\/([^/]+)(?:\/answers)?$/);
+    if (!match) return null;
+    return {
+        testIdFromPath: match[1],
+        attemptIdFromPath: match[2],
+    };
+}
+
 export function buildRouteContext({
     pathname,
     search,
     params = {},
     pageState = {},
 }: BuildRouteContextInput): ChatRouteContext {
+    const resultRouteMatch = matchResultRoute(pathname);
     const attemptId =
         pageState.attemptId ??
         params.historyId ??
         params.attemptId ??
+        resultRouteMatch?.attemptIdFromPath ??
         fromQuery(search, "attemptId") ??
         fromQuery(search, "historyId");
-    const testId = params.testId ?? fromQuery(search, "testId");
+    const testId =
+        params.testId ??
+        resultRouteMatch?.testIdFromPath ??
+        fromQuery(search, "testId");
 
     const questionId =
         pageState.questionId ??

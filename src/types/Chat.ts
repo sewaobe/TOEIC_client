@@ -64,6 +64,8 @@ export interface ChatClientContext {
     currentAudioTime?: number;
     userTimezone?: string;
     sourceAction?: "quick_question_explain" | string;
+    actionPayload?: Record<string, unknown>;
+    clientRequestId?: string;
     testTitle?: string;
     intentHint?: ChatIntentHint;
 }
@@ -117,8 +119,10 @@ export type ChatActionType =
     | "open_question_review"
     | "review_mistakes"
     | "start_practice"
+    | "recommend_similar_practice"
     | "show_roadmap"
     | "open_flashcards"
+    | "open_flashcard_deck"
     | "replay_audio"
     | "request_roadmap_recompute";
 
@@ -207,6 +211,21 @@ export type ChatStructuredView =
         nextStep?: string;
     }
     | {
+        type: "ability_map_summary";
+        title: string;
+        subtitle?: string;
+        stats: ChatStructuredStatItem[];
+        parts: Array<{
+            label: string;
+            domain?: string;
+            abilityPercent: number;
+            status: string;
+            trend?: string;
+            isFocusPart?: boolean;
+        }>;
+        highlights?: ChatStructuredListItem[];
+    }
+    | {
         type: "test_attempt_analysis";
         title: string;
         subtitle?: string;
@@ -226,6 +245,52 @@ export type ChatStructuredView =
         correctAnswer?: string;
         answer?: string;
         reminder?: string;
+    }
+    | {
+        type: "similar_practice_recommendations";
+        title: string;
+        subtitle?: string;
+        sourceTags: string[];
+        items: Array<{
+            lessonManagerId: string;
+            title: string;
+            part?: number;
+            targetTags: string[];
+            weight?: number;
+            fitScore?: number;
+            activities: Array<{
+                id: string;
+                type: "vocabulary" | "dictation" | "shadowing" | "quiz";
+                title: string;
+                estimatedMinutes?: number;
+                action: ChatAction;
+            }>;
+        }>;
+    }
+    | {
+        type: "flashcard_supply";
+        title: string;
+        subtitle?: string;
+        requestedCount: number;
+        returnedCount: number;
+        suppliedBy: {
+            systemCatalog: number;
+            gemini: number;
+        };
+        policyReason:
+            | "DB_ENOUGH"
+            | "FILL_FROM_GEMINI"
+            | "STRICT_SOURCE_LIMIT"
+            | "PARTIAL_DB_ONLY"
+            | "PARTIAL_AFTER_GENERATION"
+            | "REUSED_EXISTING_DECK";
+        words: Array<{
+            word: string;
+            type?: string;
+            definition?: string;
+            source: "systemCatalog" | "gemini";
+        }>;
+        action: ChatAction;
     }
     | {
         type: "navigation_support";

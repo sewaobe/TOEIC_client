@@ -68,6 +68,10 @@ export interface LearningProgressResponse {
   overview: LearningProgressOverview;
   weeks: WeekProgress[];
   current_week: number;
+  /** ISO timestamp of the latest learning activity; null when no activity exists. */
+  last_attempt: string | null;
+  status: "active" | "completed" | "expired";
+  reason: string | null;
 }
 
 export interface SessionItem {

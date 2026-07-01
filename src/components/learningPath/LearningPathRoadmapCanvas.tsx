@@ -12,7 +12,6 @@ import {
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import MapOutlinedIcon from "@mui/icons-material/MapOutlined";
-import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import HeadphonesOutlinedIcon from "@mui/icons-material/HeadphonesOutlined";
@@ -25,7 +24,6 @@ import CheckIcon from "@mui/icons-material/Check";
 import LearningPathNodeDetailModal from "./LearningPathNodeDetailModal";
 import learningPathV2Service, { LearningPathNodeDetailResponse } from "../../services/learning_path_v2.service";
 import LearningPathSkillMapModal from "./LearningPathSkillMapModal";
-import LearningPathStrategyModal from "./LearningPathStrategyModal";
 
 export type RoadmapUnitStatus = "completed" | "in_cycle" | "current" | "locked";
 
@@ -39,6 +37,8 @@ type RoadmapUnit = {
     order: number;
     planned_minutes?: number;
     estimated_gain?: number;
+    unit_source?: "strategy" | "alternative";
+    source_reason?: string;
 
     // Optional nhưng nên có để service mock/BE future dùng.
     score_band?: {
@@ -162,9 +162,9 @@ const roadmapLayout = {
         lg: "208px minmax(0, 1fr)",
         xl: "224px minmax(0, 1fr)",
     },
-    partCardWidth: { xs: 96, sm: 112, md: 128, lg: 140, xl: 150 },
-    partIconSize: { xs: 28, sm: 30, md: 30, lg: 32, xl: 32 },
-    progressChipMinWidth: { xs: 42, sm: 48, md: 52, lg: 56, xl: 60 },
+    partCardWidth: { xs: 90, sm: 106, md: 122, lg: 134, xl: 144 },
+    partIconSize: { xs: 26, sm: 28, md: 28, lg: 30, xl: 30 },
+    progressChipMinWidth: { xs: 44, sm: 50, md: 54, lg: 58, xl: 62 },
     nodeSlot: { xs: 92, sm: 100, md: 108, lg: 118, xl: 128 },
     nodeLabel: { xs: 86, sm: 94, md: 102, lg: 110, xl: 118 },
     nodeSize: { xs: 26, sm: 26, md: 28, lg: 28, xl: 30 },
@@ -194,24 +194,16 @@ const buildResponsiveLaneWidth = (unitCount: number): ResponsiveNumber => ({
     xl: Math.max(roadmapLayout.laneMinWidth.xl, unitCount * roadmapLayout.nodeSlot.xl),
 });
 
-const buildResponsiveProgressWidth = (progressPercent: number) =>
-    progressPercent <= 0
+const buildResponsiveNodeSpanWidth = (spanCount: number) =>
+    spanCount <= 0
         ? 0
         : {
-            xs: `calc(${progressPercent}% - ${roadmapLayout.lineInset.xs}px)`,
-            sm: `calc(${progressPercent}% - ${roadmapLayout.lineInset.sm}px)`,
-            md: `calc(${progressPercent}% - ${roadmapLayout.lineInset.md}px)`,
-            lg: `calc(${progressPercent}% - ${roadmapLayout.lineInset.lg}px)`,
-            xl: `calc(${progressPercent}% - ${roadmapLayout.lineInset.xl}px)`,
+            xs: spanCount * roadmapLayout.nodeSlot.xs,
+            sm: spanCount * roadmapLayout.nodeSlot.sm,
+            md: spanCount * roadmapLayout.nodeSlot.md,
+            lg: spanCount * roadmapLayout.nodeSlot.lg,
+            xl: spanCount * roadmapLayout.nodeSlot.xl,
         };
-
-const responsiveTrackMaxWidth = {
-    xs: `calc(100% - ${roadmapLayout.lineInset.xs * 2}px)`,
-    sm: `calc(100% - ${roadmapLayout.lineInset.sm * 2}px)`,
-    md: `calc(100% - ${roadmapLayout.lineInset.md * 2}px)`,
-    lg: `calc(100% - ${roadmapLayout.lineInset.lg * 2}px)`,
-    xl: `calc(100% - ${roadmapLayout.lineInset.xl * 2}px)`,
-};
 
 const getPartTheme = (partType: number) => partTheme[partType] ?? fallbackTheme;
 
@@ -289,6 +281,7 @@ function RoadmapNode({
     const isLocked = status === "locked";
     const isCurrent = status === "current";
     const label = shortenUnitLabel(unit);
+    const isAlternative = unit.unit_source === "alternative";
 
     return (
         <Box
@@ -326,6 +319,27 @@ function RoadmapNode({
                 />
             )}
 
+            {isAlternative && !isCurrent && (
+                <Tooltip title="Main graph của Part này đã hết, hệ thống chọn bài cùng Part và gần năng lực hiện tại.">
+                    <Chip
+                        label="Bài thay thế"
+                        size="small"
+                        sx={{
+                            position: "absolute",
+                            top: { xs: -30, sm: -31, md: -32, lg: -33, xl: -34 },
+                            height: 24,
+                            borderRadius: 999,
+                            ...roadmapTextSx.caption,
+                            color: "#8A4B00",
+                            bgcolor: "#FFF4DE",
+                            border: "1px solid rgba(245,158,11,0.32)",
+                            boxShadow: "0 8px 18px rgba(245,158,11,0.14)",
+                            "& .MuiChip-label": { px: 1.1 },
+                        }}
+                    />
+                </Tooltip>
+            )}
+
             <Box
                 onClick={onClick}
                 sx={{
@@ -353,7 +367,7 @@ function RoadmapNode({
                             ? `3px solid ${ROADMAP_STATUS_COLORS.current.main}`
                             : isInCycle
                                 ? `3px solid ${ROADMAP_STATUS_COLORS.inCycle.main}`
-                                : `2px solid ${color}`,
+                                : `1px solid gray`,
 
                     boxShadow: isCurrent
                         ? `0 0 0 2px ${ROADMAP_STATUS_COLORS.current.soft}, 0 0 0 8px ${ROADMAP_STATUS_COLORS.current.ring}, 0 10px 22px ${ROADMAP_STATUS_COLORS.current.ring}`
@@ -461,7 +475,7 @@ function RoadmapPartSummary({
                 sx={{
                     width: roadmapLayout.partCardWidth,
                     height: { xs: 44, sm: 46, md: 48, lg: 50, xl: 52 },
-                    px: { xs: 1, sm: 1.1, md: 1.25, lg: 1.4, xl: 1.5 },
+                    px: { xs: 0.9, sm: 1.0, md: 1.15, lg: 1.3, xl: 1.4 },
                     borderRadius: 2.5,
                     display: "flex",
                     alignItems: "center",
@@ -499,7 +513,7 @@ function RoadmapPartSummary({
             </Box>
 
             <Chip
-                label={`${completedCount}/${units.length}`}
+                label={units.length > 0 ? `${completedCount}/${units.length}` : "0 bài"}
                 size="small"
                 sx={{
                     height: 32,
@@ -534,11 +548,10 @@ function RoadmapLane({
         statusByLessonManagerId
     );
 
-    const progressPercent =
-        units.length > 1
-            ? (Math.min(completedCount, units.length - 1) /
-                Math.max(units.length - 1, 1)) *
-            100
+    const trackSpanCount = Math.max(0, units.length - 1);
+    const completedSpanCount =
+        completedCount > 0
+            ? Math.max(0, Math.min(completedCount, units.length) - 1)
             : 0;
 
     return (
@@ -562,8 +575,8 @@ function RoadmapLane({
                     sx={{
                         position: "absolute",
                         left: roadmapLayout.lineInset,
-                        right: roadmapLayout.lineInset,
                         top: "50%",
+                        width: buildResponsiveNodeSpanWidth(trackSpanCount),
                         height: 2,
                         bgcolor: "rgba(148,163,184,0.28)",
                         transform: "translateY(-50%)",
@@ -576,8 +589,7 @@ function RoadmapLane({
                         position: "absolute",
                         left: roadmapLayout.lineInset,
                         top: "50%",
-                        width: buildResponsiveProgressWidth(progressPercent),
-                        maxWidth: responsiveTrackMaxWidth,
+                        width: buildResponsiveNodeSpanWidth(completedSpanCount),
                         height: 3,
                         bgcolor: ROADMAP_STATUS_COLORS.completed.main,
                         transform: "translateY(-50%)",
@@ -722,10 +734,9 @@ export default function LearningPathRoadmapCanvas({
     overview,
 }: LearningPathRoadmapCanvasProps) {
     const partRoadmaps: PartRoadmap[] =
-        overview?.selected_strategy_option?.part_roadmaps ?? [];
+        overview?.roadmap_canvas?.part_roadmaps ?? [];
 
-    const learningPathId = overview.learning_path._id;
-
+    const learningPathId = overview?.learning_path?._id;
     const statusByLessonManagerId = React.useMemo(
         () => buildRoadmapCanvasStatusMap(overview),
         [overview]
@@ -811,8 +822,6 @@ export default function LearningPathRoadmapCanvas({
     }, []);
 
     const [skillMapOpen, setSkillMapOpen] = React.useState(false);
-
-    const [strategyOpen, setStrategyOpen] = React.useState(false);
 
     return (
         <Paper
@@ -918,14 +927,6 @@ export default function LearningPathRoadmapCanvas({
                         </Button>
                         <Button
                             variant="outlined"
-                            startIcon={<TrackChangesIcon />}
-                            onClick={() => { setStrategyOpen(true) }}
-                            sx={actionButtonSx}
-                        >
-                            Chiến lược
-                        </Button>
-                        <Button
-                            variant="outlined"
                             startIcon={<LightbulbOutlinedIcon />}
                             onClick={() => { }}
                             sx={actionButtonSx}
@@ -1023,14 +1024,6 @@ export default function LearningPathRoadmapCanvas({
                 onClose={() => setSkillMapOpen(false)}
             />
 
-            <LearningPathStrategyModal
-                open={strategyOpen}
-                learningPathId={learningPathId ? String(learningPathId) : null}
-                onClose={() => setStrategyOpen(false)}
-                onSelected={async () => {
-                    window.location.reload();
-                }}
-            />
         </Paper>
     );
 }

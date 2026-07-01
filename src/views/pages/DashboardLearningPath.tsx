@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -13,6 +14,7 @@ import {
   Paper,
   Dialog,
   IconButton,
+  Alert,
   styled,
 } from "@mui/material";
 import SchoolIcon from "@mui/icons-material/School";
@@ -38,6 +40,9 @@ import useLocalStorage from "../../hooks/useLocalStorage";
 import { FeedbackLessonModal } from "../../components/modals/FeedbackLessonModal";
 import LearningPathRoadmapCanvas from "../../components/learningPath/LearningPathRoadmapCanvas";
 import { clearChatRouteState, setChatRouteState } from "../../utils/chatRouteState";
+import learningPathV2Service from "../../services/learning_path_v2.service";
+import learningPathService from "../../services/learningPath.service";
+import { InactiveLearningPathModal } from "../../components/modals/InactiveLearningPathModal";
 
 // Tạo một đối tượng chứa màu sắc để dễ dàng thay đổi và quản lý
 const studyDayColors = {
@@ -111,26 +116,6 @@ interface Day {
   status: DayStatus;
   progress?: number;
 }
-
-// const TARGET = 750;
-// const PACE = "5 buổi/tuần";
-// const DAILY = "~90’/ngày";
-
-// const WEEKS = 8;
-// const ACTIVE_WEEK = 0; // W2 (0-based)
-
-// const WEEK_DONE = 3;
-// const WEEK_TOTAL = 5;
-
-// const DAYS: Day[] = [
-//     { id: "mon", week: 1, title: "Thứ 2", type: "core", status: "done", progress: 100 },
-//     { id: "tue", week: 1, title: "Thứ 3", type: "core", status: "progress", progress: 60 },
-//     { id: "wed", week: 1, title: "Thứ 4", type: "core", status: "todo" },
-//     { id: "thu", week: 1, title: "Thứ 5", type: "core", status: "locked" },
-//     { id: "fri", week: 1, title: "Thứ 6", type: "core", status: "locked" },
-//     { id: "sat", week: 1, title: "Thứ 7", type: "core", status: "locked" },
-//     { id: "sun", week: 1, title: "Chủ nhật", type: "quiz", status: "locked" },
-// ];
 
 interface DashboardLearningPathProps {
   plan: any; // TODO: define đúng type từ backend
@@ -294,25 +279,38 @@ function formatRemainingTime(targetDate?: string | Date | null): string {
   return `${Math.ceil(days / 7)} tuần`;
 }
 
+const normalizeDayStatus = (status?: string): DayStatus => {
+  if (status === "completed" || status === "done") return "done";
+  if (status === "in_progress" || status === "progress") return "progress";
+  if (status === "lock" || status === "locked") return "lock";
+  if (status === "todo") return "todo";
+  return "lock";
+};
+
 export default function DashboardLearningPath({
   plan,
-}: DashboardLearningPathProps) {
+  onRefresh,
+}: DashboardLearningPathProps & { onRefresh?: () => Promise<void> }) {
   const navigate = useNavigate();
   // support both old shape { learningPath_id: LearningPath } and new shape LearningPath
   const lp = (plan && (plan.learningPath_id ?? plan)) || {};
   const [activeWeek, setActiveWeek] = React.useState<number>(
     (lp.current_week ?? 1) - 1
   );
+  const [mockLearningLoading, setMockLearningLoading] = React.useState(false);
+  const canShowMockLearning =
+    import.meta.env.DEV ||
+    import.meta.env.VITE_ENABLE_LEARNING_PATH_MOCK === "true";
   console.log("plan:", plan);
   // map days từ backend
   function mapDays(week: any): Day[] {
     console.log("Week", week);
     return (week?.days || []).map((d: any, idx: number) => ({
-      id: d._id,
+      id: String(d?._id ?? d?.id ?? `${week?._id ?? activeWeek}-day-${idx}`),
       week: week.name,
       title: d.title || `Stage ${idx + 1}`,
       no: d.dayOfWeek ?? 1,
-      status: d.status ?? "locked",
+      status: normalizeDayStatus(d.status),
       progress: d.progress ?? 0,
     }));
   }
@@ -330,17 +328,51 @@ export default function DashboardLearningPath({
   const WEEK_TOTAL = lp.week_study_ids?.[activeWeek]?.days?.length ?? 0;
   const WEEK_DONE =
     lp.week_study_ids?.[activeWeek]?.days?.filter(
-      (d: any) => d.status === "done"
+      (d: any) => normalizeDayStatus(d.status) === "done"
     ).length ?? 0;
   const weekPercent = WEEK_TOTAL
     ? Math.round((WEEK_DONE / WEEK_TOTAL) * 100)
     : 0;
 
+  const handleMockLearning = async () => {
+    if (!lp?._id || mockLearningLoading) {
+      return;
+    }
+
+    try {
+      setMockLearningLoading(true);
+      const response = await learningPathV2Service.mockLearning(String(lp._id));
+      await onRefresh?.();
+      alert(
+        response?.data?.message ??
+          "Đã hoàn thành nhanh các bài học trong tuần. Bài kiểm tra cuối đã sẵn sàng."
+      );
+    } catch (error: any) {
+      alert(
+        error?.response?.data?.message ??
+          "Không thể mock learning cho cycle hiện tại."
+      );
+    } finally {
+      setMockLearningLoading(false);
+    }
+  };
+
   const openDay = (d: Day) => {
     localStorage.setItem("current_day", JSON.stringify(d));
     localStorage.setItem("current_lesson", "");
     localStorage.setItem("vocabularies", "");
-    navigate(`/lesson?week=${activeWeek + 1}&day=${d.id}`);
+    if (lp?._id) {
+      localStorage.setItem("learning_path_v2_id", String(lp._id));
+    }
+    const activeWeekStudyId = lp.week_study_ids?.[activeWeek]?._id;
+    if (activeWeekStudyId) {
+      localStorage.setItem("learning_path_v2_week_study_id", String(activeWeekStudyId));
+    }
+    navigate(
+      `/lesson?week=${activeWeek + 1}&day=${d.id}${
+        lp?._id ? `&learningPathId=${lp._id}` : ""
+      }`
+    );
   };
   const [lastVisitDate, setLastVisitDate] = useLocalStorage<string>(
     "lastVisitDate",
@@ -348,7 +380,41 @@ export default function DashboardLearningPath({
   );
   const [isFirstVisitToday, setIsFirstVisitToday] = React.useState(false);
   const [isDayComplete, setIsDayComplete] = React.useState(false);
+  const [inactiveLearning, setInactiveLearning] = React.useState<{
+    lastAttempt: string;
+    inactiveDays: number;
+  } | null>(null);
+  const [learningInactivity, setLearningInactivity] = React.useState<number | null>(null);
   const feedbackTimerRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    const checkLearningInactivity = async () => {
+      try {
+        const response = await learningPathService.getLearningProgress();
+        const lastAttempt = response?.data?.last_attempt;
+        if (!response?.success || !lastAttempt) return;
+
+        const lastAttemptDate = new Date(lastAttempt);
+        if (Number.isNaN(lastAttemptDate.getTime())) return;
+
+        const today = new Date();
+        const inactiveDays = Math.floor(
+          (Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) -
+            Date.UTC(lastAttemptDate.getFullYear(), lastAttemptDate.getMonth(), lastAttemptDate.getDate())) /
+            86_400_000
+        );
+        if (inactiveDays >= 8 && inactiveDays <= 14) {
+          setLearningInactivity(inactiveDays);
+        }
+        if (inactiveDays > 14) setInactiveLearning({ lastAttempt, inactiveDays });
+      } catch (error) {
+        // Progress is supplementary to the dashboard; avoid blocking it on a failed check.
+        console.error("Unable to check learning inactivity:", error);
+      }
+    };
+
+    checkLearningInactivity();
+  }, []);
 
   React.useEffect(() => {
     // Lấy ngày hôm nay theo định dạng 'YYYY-MM-DD'
@@ -451,6 +517,33 @@ export default function DashboardLearningPath({
               Chương trình học
             </Typography>
           </Stack>
+
+          <Alert
+            severity={
+              learningInactivity === null
+                ? "info"
+                : learningInactivity >= 14
+                  ? "error"
+                  : "warning"
+            }
+            sx={{
+              mb: 2,
+              borderRadius: 2,
+              alignItems: "center",
+              "& .MuiAlert-message": { width: "100%" },
+            }}
+          >
+            <Typography fontWeight={700} variant="body2">
+              {learningInactivity === null
+                ? "Duy trì học tập đều đặn để bảo toàn lộ trình của bạn."
+                : learningInactivity === 14
+                  ? "Hôm nay là ngày cuối cùng để tiếp tục lộ trình hiện tại."
+                  : `Bạn đã gián đoạn ${learningInactivity} ngày, còn ${14 - learningInactivity} ngày để tiếp tục lộ trình.`}
+            </Typography>
+            <Typography variant="caption" display="block" sx={{ mt: 0.25 }}>
+              Theo quy định, lộ trình sẽ hết hạn khi thời gian gián đoạn vượt quá 14 ngày.
+            </Typography>
+          </Alert>
 
           {/* ===== Stat bar ===== */}
           <Section>
@@ -568,11 +661,24 @@ export default function DashboardLearningPath({
               <Typography variant="h6" fontWeight={800}>
                 Danh sách stage
               </Typography>
-              <Chip
-                size="small"
-                variant="outlined"
-                label={`Cycle ${activeWeek + 1}`}
-              />
+              <Stack direction="row" spacing={1} alignItems="center">
+                {canShowMockLearning && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={handleMockLearning}
+                    disabled={!lp?._id || mockLearningLoading}
+                    sx={{ borderRadius: 999, fontWeight: 800 }}
+                  >
+                    {mockLearningLoading ? "Đang mock..." : "Mock học nhanh"}
+                  </Button>
+                )}
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={`Cycle ${activeWeek + 1}`}
+                />
+              </Stack>
             </Stack>
 
             <Grid container spacing={1.5}>
@@ -584,8 +690,11 @@ export default function DashboardLearningPath({
               {(lp.week_study_ids?.[activeWeek]
                 ? mapDays(lp.week_study_ids[activeWeek])
                 : []
-              ).map((d) => (
-                <Grid size={{ xs: 12, sm: 6 }} key={d.id}>
+              ).map((d, index) => (
+                <Grid
+                  size={{ xs: 12, sm: 6 }}
+                  key={`${lp.week_study_ids?.[activeWeek]?._id ?? activeWeek}-${d.id}-${index}`}
+                >
                   <DayItem data={d} onOpen={openDay} />
                 </Grid>
               ))}
@@ -635,6 +744,15 @@ export default function DashboardLearningPath({
         }}
         dayId={isDayComplete ? JSON.parse(localStorage.getItem('day_study_completed') || '{}').day_id : ''}
       />
+      {inactiveLearning && (
+        <InactiveLearningPathModal
+          open
+          lastAttempt={inactiveLearning.lastAttempt}
+          inactiveDays={inactiveLearning.inactiveDays}
+          onCreateNewPath={() => navigate("/overview-test?testId=68af851b1918226d4c424e7f&demo_test=true")}
+          onGoHome={() => navigate("/home")}
+        />
+      )}
     </MainLayout>
   );
 }

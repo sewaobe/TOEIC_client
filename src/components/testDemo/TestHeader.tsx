@@ -1,20 +1,32 @@
 import React, { FC, useEffect, useReducer, useState } from "react";
-import { Button, useTheme } from "@mui/material";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  Slider,
+  Stack,
+  Switch,
+  Typography,
+  useTheme,
+} from "@mui/material";
 import AppsIcon from "@mui/icons-material/Apps";
 import { useCountdown } from "../../hooks/useCountDown";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../stores/store";
 import testService, { UserTestSubmitType } from "./../../services/test.service";
-import {
-  mapAnswersToParts,
-  getPartFromQuestionNo as getPartFromQuestionNumber,
-} from "../../utils/mapAnswersToParts";
+import { getPartFromQuestionNo as getPartFromQuestionNumber } from "../../utils/mapAnswersToParts";
 import { ResultPayload } from "../modals/ToeicQuickResultModal";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ConfirmModal from "../modals/ConfirmModal";
 import ToeicQuickResultModal from "../modals/ToeicQuickResultModal";
 import { setInitialAnswers } from "../../stores/answerSlice";
-import { IRT_SERVICE } from "../../services/irt.service";
+import learningPathV2Service, {
+  LearningPathV2AssessmentType,
+} from "../../services/learning_path_v2.service";
 
 interface TestHeaderProps {
   setIsShowSideBar: React.Dispatch<React.SetStateAction<boolean>>;
@@ -76,6 +88,10 @@ const TestHeader: FC<TestHeaderProps> = ({
     score: 0,
     answers: [],
   });
+  const [isMockDialogOpen, setIsMockDialogOpen] = useState(false);
+  const [mockAccuracy, setMockAccuracy] = useState(60);
+  const [customPartAccuracy, setCustomPartAccuracy] = useState(false);
+  const [partAccuracies, setPartAccuracies] = useState<Record<number, number>>({});
   const navigate = useNavigate();
   const theme = useTheme();
   const dispatch = useDispatch<AppDispatch>();
@@ -87,6 +103,7 @@ const TestHeader: FC<TestHeaderProps> = ({
   const timeLimitParam = searchParams.get("timeLimit"); // phút
   const parts = searchParams.get("parts"); // nếu có parts thì là practice
   const isDemoTest = searchParams.get("demo_test") === "true";
+  const assessmentTypeParam = searchParams.get("assessmentType");
 
   const duration = timeLimitParam
     ? parseInt(timeLimitParam, 10) * 60 // practice có giới hạn
@@ -109,6 +126,50 @@ const TestHeader: FC<TestHeaderProps> = ({
   const [startTime] = useState(Date.now());
 
   type AnswerItem = RootState["answer"]["answers"][number];
+  type LearningPathAssessmentReturn = {
+    dayId?: string;
+    week?: string | number;
+    testId?: string;
+    learningPathId?: string;
+    weekStudyId?: string;
+    dayStudyId?: string;
+    assessmentType?: LearningPathV2AssessmentType;
+  };
+
+  const getLearningPathAssessmentReturn = (): LearningPathAssessmentReturn | null => {
+    const raw = localStorage.getItem("learning_path_assessment_return");
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        console.warn("Không parse được learning_path_assessment_return", e);
+      }
+    }
+
+    const learningPathId = searchParams.get("learningPathId") || undefined;
+    if (!learningPathId) return null;
+
+    const assessmentTypeParam = searchParams.get("assessmentType");
+    const assessmentType: LearningPathV2AssessmentType =
+      assessmentTypeParam === "full_test" ? "full_test" : "mini_test";
+
+    return {
+      learningPathId,
+      testId: testId || undefined,
+      assessmentType,
+    };
+  };
+
+  const buildLessonReturnUrl = (returnInfo: LearningPathAssessmentReturn): string => {
+    const params = new URLSearchParams();
+    if (returnInfo.dayId) params.set("day", String(returnInfo.dayId));
+    if (returnInfo.week) params.set("week", String(returnInfo.week));
+    if (returnInfo.learningPathId) {
+      params.set("learningPathId", returnInfo.learningPathId);
+    }
+
+    return `/lesson?${params.toString()}`;
+  };
 
   const submitPreparedAnswers = async (preparedAnswers: AnswerItem[]) => {
     if (!testId) {
@@ -147,39 +208,47 @@ const TestHeader: FC<TestHeaderProps> = ({
         answers: any[];
       } = { score: 0, answers: [] };
       if (fromLesson) {
-        // Đánh dấu cần hiển thị AssessmentModal ở LessonPage ngay khi bắt đầu chấm
+        // Mark LessonPage to open the LearningPath v2 assessment animation.
         try {
-          localStorage.setItem("mini_test_show_assessment", "true");
+          localStorage.setItem("learning_path_assessment_show", "true");
         } catch (e) {
-          console.warn("Không lưu được mini_test_show_assessment", e);
+          console.warn("Không lưu được learning_path_assessment_show", e);
         }
 
-        // Lấy day_study_id từ localStorage để trigger auto unlock
-        let dayStudyId: string | undefined;
-        try {
-          const returnInfo = localStorage.getItem("mini_test_return");
-          if (returnInfo) {
-            const parsed = JSON.parse(returnInfo);
-            dayStudyId = parsed.dayId;
-          }
-        } catch (e) {
-          console.warn("Không parse được mini_test_return", e);
+        const assessmentReturn = getLearningPathAssessmentReturn();
+        const learningPathId = assessmentReturn?.learningPathId;
+        if (!learningPathId) {
+          console.error("Thiếu learningPathId để nộp LearningPath v2 assessment.");
+          dispatchLocal({ type: "CLOSE_SUBMIT" });
+          setIsSubmitted(false);
+          return;
         }
 
-        // Gọi IRT ở background, không chặn UI; kết quả chi tiết dùng cho plan ở Lesson
+        const dayStudyId = assessmentReturn.dayStudyId ?? assessmentReturn.dayId;
+        const assessmentType =
+          assessmentReturn.assessmentType ?? ("mini_test" as LearningPathV2AssessmentType);
+
         (async () => {
           try {
-            result = await IRT_SERVICE.generateWeeklyPlan(
-              testId,
-              answersMap,
-              elapsed,
-              dayStudyId
+
+            const response = await learningPathV2Service.submitAssessment(
+              learningPathId,
+              {
+                test_id: testId,
+                answers: answersMap,
+                duration: elapsed,
+                assessment_type: assessmentType,
+                week_study_id: assessmentReturn.weekStudyId,
+                day_study_id: dayStudyId,
+              }
             );
 
-            // Nếu cần, có thể lưu weeklyPlanResult vào localStorage để LessonPage đọc
-            // localStorage.setItem("mini_test_weekly_plan", JSON.stringify(weeklyPlanResult));
+            result = {
+              score: response.data?.score ?? 0,
+              answers: response.data?.detailedAnswers ?? [],
+            };
           } catch (e) {
-            console.error("generateWeeklyPlan failed", e);
+            console.error("learning path assessment submit failed", e);
           }
         })();
       } else {
@@ -202,112 +271,21 @@ const TestHeader: FC<TestHeaderProps> = ({
           question_no: index + 1,
         })),
       });
-      // --- Persist a lightweight summary (parts accuracy + score) to localStorage ---
-      try {
-        // Prefer server-provided parts summary if available
-        let partsSummary: { part_name: string; accuracy: number }[] = [];
-
-        if (
-          result &&
-          Array.isArray((result as any).parts) &&
-          (result as any).parts.length > 0
-        ) {
-          partsSummary = (result as any).parts.map((p: any) => {
-            const name = p?.part_name ?? p?.name ?? p?.part ?? "";
-            let acc = typeof p?.accuracy === "number" ? p.accuracy : 0;
-            // normalize fraction -> percent
-            if (acc <= 1) acc = acc * 100;
-            return { part_name: String(name), accuracy: acc };
-          });
-        } else if (result && Array.isArray((result as any).answers)) {
-          // Fallback: try to map answers to parts using local exam `groups` to find question numbers
-          try {
-            // build map questionId -> question_no using groups if available
-            const qIdToNo = new Map<string, number>();
-            if (groups && Array.isArray(groups)) {
-              let fallback = 1;
-              for (const g of groups) {
-                for (const q of (g.questions || []) as any[]) {
-                  const qRaw: any = q;
-                  const rawId = qRaw._id
-                    ? typeof qRaw._id === "string"
-                      ? qRaw._id
-                      : qRaw._id.$oid ?? String(qRaw._id)
-                    : undefined;
-                  const qNo =
-                    typeof qRaw.questionNumber === "number"
-                      ? qRaw.questionNumber
-                      : fallback++;
-                  if (rawId) qIdToNo.set(rawId, qNo);
-                }
-              }
-            }
-
-            const rawAnswers = ((result as any).answers as any[]).map(
-              (a, idx) => {
-                const qidObj = a.question_id;
-                const qid =
-                  typeof qidObj === "string"
-                    ? qidObj
-                    : qidObj?.$oid ?? qidObj?._id ?? undefined;
-                const question_no = qIdToNo.get(qid) ?? idx + 1;
-                return {
-                  question_id: qid,
-                  question_no,
-                  selectedOption: a.selectedOption,
-                  isCorrect: !!a.isCorrect,
-                  tags: a.tags || undefined,
-                } as any;
-              }
-            );
-
-            const partsMap = mapAnswersToParts(rawAnswers as any);
-            partsSummary = Object.keys(partsMap).map((p) => {
-              const arr = partsMap[Number(p) as 1 | 2 | 3 | 4 | 5 | 6 | 7];
-              const total = arr.length;
-              const correct = arr.filter((a) => !!a.isCorrect).length;
-              const accuracy = total > 0 ? (correct / total) * 100 : 0;
-              return { part_name: `Part ${p}`, accuracy };
-            });
-          } catch (e) {
-            console.warn("Fallback mapping answers->parts failed", e);
-          }
-        }
-
-        // Chỉ lưu vào localStorage nếu KHÔNG phải mini test từ Lesson
-        // (mini test sẽ lấy kết quả từ BE)
-        // LearningPath v2 không dùng localStorage để tạo lộ trình.
-        // Entry test đã được lưu ở BE dưới dạng UserTest(submit_type="initial_assessment").
-        // Các key cũ này tạm giữ lại cho những UI cũ còn phụ thuộc.
-        if (!fromLesson) {
-          const payload = {
-            testId,
-            userId,
-            score: result.score,
-            parts: partsSummary,
-            submit_at: new Date().toISOString(),
-          };
-        }
-
-        // Nếu là mini test bắt nguồn từ Lesson (fromLesson=true), không hiện modal kết quả,
-        // thay vào đó điều hướng ngay về LessonPage để hiển thị kết quả trong context của lộ trình học.
-        if (fromLesson) {
-          const returnInfo = localStorage.getItem("mini_test_return");
-          try {
-            if (returnInfo) {
-              const { dayId, week } = JSON.parse(returnInfo);
-              navigate(`/lesson?day=${dayId}&week=${week}`);
-            } else {
-              navigate("/home");
-            }
-          } catch (e) {
-            console.warn("Error navigating back to lesson after mini_test", e);
+      // Nếu là mini test bắt nguồn từ Lesson (fromLesson=true), không hiện modal kết quả,
+      // thay vào đó điều hướng ngay về LessonPage để hiển thị kết quả trong context của lộ trình học.
+      if (fromLesson) {
+        const returnInfo = localStorage.getItem("learning_path_assessment_return");
+        try {
+          if (returnInfo) {
+            navigate(buildLessonReturnUrl(JSON.parse(returnInfo)));
+          } else {
             navigate("/home");
           }
-          return; // skip opening the modal
+        } catch (e) {
+          console.warn("Error navigating back to lesson after mini_test", e);
+          navigate("/home");
         }
-      } catch (e) {
-        console.warn("Tính toán parts summary thất bại", e);
+        return; // skip opening the modal
       }
       dispatchLocal({ type: "OPEN_SCORE", payload: result.score });
     } catch (err) {
@@ -329,11 +307,74 @@ const TestHeader: FC<TestHeaderProps> = ({
     return cloned;
   };
 
-  const handleQuickSubmit = async () => {
+  const buildMockCorrectSetByPart = (
+    questionMetas: Array<{ questionNumber: number; part: number }>,
+    correctCountByPart: Map<number, number>,
+  ): Set<number> => {
+    const questionsByPart: Map<number, number[]> = new Map();
+
+    questionMetas.forEach((meta) => {
+      if (!questionsByPart.has(meta.part)) {
+        questionsByPart.set(meta.part, []);
+      }
+      questionsByPart.get(meta.part)!.push(meta.questionNumber);
+    });
+
+    const correctQuestions: number[] = [];
+    questionsByPart.forEach((questions, part) => {
+      const targetCorrect = correctCountByPart.get(part) ?? 0;
+      const shuffled = shuffleArray(questions);
+
+      correctQuestions.push(...shuffled.slice(0, targetCorrect));
+    });
+
+    return new Set(correctQuestions);
+  };
+
+  const getQuestionCountsByPart = (): Map<number, number> => {
+    const counts = new Map<number, number>();
+    groups.forEach((group) => {
+      const part = group.part ?? getPartFromQuestionNumber(group.questions[0]?.questionNumber ?? 1);
+      counts.set(part, (counts.get(part) ?? 0) + group.questions.length);
+    });
+    return counts;
+  };
+
+  const openMockDialog = () => {
+    if (!groups || groups.length === 0) {
+      console.warn("Chưa có dữ liệu câu hỏi để cấu hình mock");
+      return;
+    }
+    const nextPartAccuracies = Object.fromEntries(
+      Array.from(getQuestionCountsByPart().keys()).map((part) => [part, mockAccuracy])
+    );
+    setPartAccuracies(nextPartAccuracies);
+    setCustomPartAccuracy(false);
+    setIsMockDialogOpen(true);
+  };
+
+  const applyMockPreset = (accuracy: number) => {
+    setMockAccuracy(accuracy);
+    setPartAccuracies(
+      Object.fromEntries(
+        Array.from(getQuestionCountsByPart().keys()).map((part) => [part, accuracy])
+      )
+    );
+  };
+
+  const stopActiveMedia = () => {
+    document.querySelectorAll<HTMLMediaElement>("audio, video").forEach((media) => {
+      media.pause();
+    });
+  };
+
+  const handleMockSubmit = async () => {
     if (!groups || groups.length === 0 || !answers || answers.length === 0) {
       console.warn("Chưa có dữ liệu câu hỏi để nộp nhanh");
       return;
     }
+
+    stopActiveMedia();
 
     // Build questionMetas với part từ group.part (không dùng questionNumber nữa)
     const questionMetas = groups.flatMap((group) =>
@@ -368,66 +409,25 @@ const TestHeader: FC<TestHeaderProps> = ({
       });
     });
 
-    let correctSet: Set<number>;
+    const questionCountsByPart = getQuestionCountsByPart();
+    const correctCountByPart = new Map<number, number>();
+    questionCountsByPart.forEach((questionCount, part) => {
+      const accuracy = customPartAccuracy
+        ? (partAccuracies[part] ?? mockAccuracy)
+        : mockAccuracy;
+      correctCountByPart.set(part, Math.round((questionCount * accuracy) / 100));
+    });
 
-    if (fromLesson) {
-      // === MINI TEST: Part 4,5,7 yếu (10-20% đúng), Part 1,2,3,6 khá (50-60% đúng) ===
-      const weakParts = new Set([4, 5, 7]); // Parts điểm yếu
-      const weakMinRatio = 0.1; // 10%
-      const weakMaxRatio = 0.2; // 20%
-      const strongMinRatio = 0.5; // 50%
-      const strongMaxRatio = 0.6; // 60%
-
-      // Nhóm câu hỏi theo part (DÙNG meta.part từ group, không dùng getPartFromQuestionNumber)
-      const questionsByPart: Map<number, number[]> = new Map();
-      questionMetas.forEach((meta) => {
-        const part = meta.part; // Lấy trực tiếp từ meta.part
-        if (!questionsByPart.has(part)) {
-          questionsByPart.set(part, []);
-        }
-        questionsByPart.get(part)!.push(meta.questionNumber);
-      });
-
-      // Log thống kê để debug
-      console.log(
-        "📊 Questions per part:",
-        Array.from(questionsByPart.entries()).map(
-          ([p, qs]) => `Part ${p}: ${qs.length} câu`
-        )
-      );
-
-      // Chọn câu đúng cho từng part theo tỷ lệ ngẫu nhiên trong khoảng
-      const correctQuestions: number[] = [];
-      questionsByPart.forEach((questions, part) => {
-        let ratio: number;
-        if (weakParts.has(part)) {
-          // Part yếu: random 10-20%
-          ratio = weakMinRatio + Math.random() * (weakMaxRatio - weakMinRatio);
-        } else {
-          // Part khá: random 50-60%
-          ratio =
-            strongMinRatio + Math.random() * (strongMaxRatio - strongMinRatio);
-        }
-        const targetCorrect = Math.max(0, Math.round(questions.length * ratio));
-        const shuffled = shuffleArray(questions);
-        correctQuestions.push(...shuffled.slice(0, targetCorrect));
-      });
-
-      correctSet = new Set(correctQuestions);
-      console.log(
-        `Mini test quick submit: Part 4,5,7 → 10-20% | Part 1,2,3,6 → 50-60%`
-      );
-    } else {
-      // === FULL TEST / PRACTICE: giữ nguyên logic cũ (~40-42% đúng) ===
-      const questionNumbers = questionMetas.map((q) => q.questionNumber);
-      const correctRatio = 0.4 + Math.random() * 0.02; // ~400-420 điểm
-      const targetCorrect = Math.max(
-        1,
-        Math.round(questionMetas.length * correctRatio)
-      );
-      const shuffledNumbers = shuffleArray(questionNumbers);
-      correctSet = new Set(shuffledNumbers.slice(0, targetCorrect));
-    }
+    const correctSet = buildMockCorrectSetByPart(questionMetas, correctCountByPart);
+    console.log(
+      "Mock assessment config:",
+      {
+        overallAccuracy: mockAccuracy,
+        customPartAccuracy,
+        partAccuracies,
+        correctCountByPart: Object.fromEntries(correctCountByPart),
+      }
+    );
 
     const autoFilledAnswers: AnswerItem[] = answers.map((item) => {
       const meta = metaMap.get(item.question);
@@ -453,8 +453,22 @@ const TestHeader: FC<TestHeaderProps> = ({
     });
 
     dispatch(setInitialAnswers(autoFilledAnswers));
+    setIsMockDialogOpen(false);
     await submitPreparedAnswers(autoFilledAnswers);
   };
+
+  const isMockFullTest = !fromLesson || assessmentTypeParam === "full_test";
+  const mockPresets = isMockFullTest
+    ? [
+      { label: "Dưới mục tiêu", accuracy: 40 },
+      { label: "Gần mục tiêu", accuracy: 60 },
+      { label: "Kết quả cao", accuracy: 80 },
+    ]
+    : [
+      { label: "Plateau", accuracy: 30 },
+      { label: "Tiến bộ", accuracy: 85 },
+      { label: "Kết quả cao", accuracy: 100 },
+    ];
 
   useEffect(() => {
     if (timeLeft === 0) {
@@ -479,14 +493,13 @@ const TestHeader: FC<TestHeaderProps> = ({
     }
 
     if (fromLesson) {
-      const returnInfo = localStorage.getItem("mini_test_return");
+      const returnInfo = localStorage.getItem("learning_path_assessment_return");
       try {
-        console.log("mini_test_return:", returnInfo);
+        console.log("learning_path_assessment_return:", returnInfo);
       } catch (e) { }
       if (returnInfo) {
-        const { dayId, week } = JSON.parse(returnInfo);
         // LessonPage is mounted at `/lesson` route
-        navigate(`/lesson?day=${dayId}&week=${week}`, { replace: true });
+        navigate(buildLessonReturnUrl(JSON.parse(returnInfo)), { replace: true });
       } else {
         navigate("/home", { replace: true });
       }
@@ -532,9 +545,9 @@ const TestHeader: FC<TestHeaderProps> = ({
             variant="outlined"
             color="primary"
             className="rounded-lg px-4 py-2 font-semibold"
-            onClick={handleQuickSubmit}
+            onClick={openMockDialog}
           >
-            Nộp nhanh (mock)
+            Nộp mock
           </Button>
         )}
 
@@ -573,6 +586,79 @@ const TestHeader: FC<TestHeaderProps> = ({
         testId={testId}
         practicedParts={parts ? parts.split(",").map(Number) : undefined}
       />
+      <Dialog
+        open={isMockDialogOpen}
+        onClose={() => setIsMockDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          Cấu hình nộp mock {isMockFullTest ? "Full Test" : "Mini Test"}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Đáp án được sinh từ đúng đề đang hiển thị. Bạn có thể chọn preset hoặc điều chỉnh tỷ lệ câu đúng.
+          </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 3 }}>
+            {mockPresets.map((preset) => (
+              <Button
+                key={preset.label}
+                variant={mockAccuracy === preset.accuracy ? "contained" : "outlined"}
+                onClick={() => applyMockPreset(preset.accuracy)}
+              >
+                {preset.label} ({preset.accuracy}%)
+              </Button>
+            ))}
+          </Stack>
+          <Typography fontWeight={700}>Tỷ lệ đúng tổng: {mockAccuracy}%</Typography>
+          <Slider
+            value={mockAccuracy}
+            onChange={(_, value) => {
+              const accuracy = value as number;
+              setMockAccuracy(accuracy);
+              if (!customPartAccuracy) applyMockPreset(accuracy);
+            }}
+            valueLabelDisplay="auto"
+            min={0}
+            max={100}
+            step={5}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={customPartAccuracy}
+                onChange={(event) => setCustomPartAccuracy(event.target.checked)}
+              />
+            }
+            label="Tùy chỉnh tỷ lệ đúng theo từng Part"
+          />
+          {customPartAccuracy && (
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              {Array.from(getQuestionCountsByPart().entries()).map(([part, questionCount]) => (
+                <Box key={part}>
+                  <Typography variant="body2" fontWeight={600}>
+                    Part {part} · {questionCount} câu · {partAccuracies[part] ?? mockAccuracy}% đúng
+                  </Typography>
+                  <Slider
+                    value={partAccuracies[part] ?? mockAccuracy}
+                    onChange={(_, value) =>
+                      setPartAccuracies((current) => ({ ...current, [part]: value as number }))
+                    }
+                    valueLabelDisplay="auto"
+                    min={0}
+                    max={100}
+                    step={5}
+                  />
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setIsMockDialogOpen(false)}>Hủy</Button>
+          <Button variant="contained" onClick={handleMockSubmit}>Tạo đáp án và nộp</Button>
+        </DialogActions>
+      </Dialog>
     </header>
   );
 };

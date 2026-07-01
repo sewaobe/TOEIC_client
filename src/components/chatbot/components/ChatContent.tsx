@@ -29,7 +29,7 @@ interface ChatContentProps {
     messages: ChatMessage[];
     input: string;
     setInput: (v: string) => void;
-    onSend: () => void;
+    onSend: (override?: { text?: string; clientContext?: Record<string, unknown> }) => void | Promise<void>;
     onTypeSelect: (t: ChatType) => void;
     selectedType: ChatType;
     questionTypes: { value: ChatType; label: string }[];
@@ -448,7 +448,13 @@ function StructuredMarkdown({ source }: { source?: string }) {
     );
 }
 
-function StructuredChatViewCard({ view }: { view: ChatStructuredView }) {
+function StructuredChatViewCard({
+    view,
+    onAction,
+}: {
+    view: ChatStructuredView;
+    onAction?: (action: ChatAction) => void | Promise<void>;
+}) {
     if (view.type === "progress_summary") {
         const weakPartItems = view.weakParts?.map((part) => ({ label: part, tone: "warning" as const }));
         return (
@@ -466,6 +472,49 @@ function StructuredChatViewCard({ view }: { view: ChatStructuredView }) {
                         </Typography>
                     </Box>
                 ) : null}
+            </StructuredCardFrame>
+        );
+    }
+
+    if (view.type === "ability_map_summary") {
+        return (
+            <StructuredCardFrame title={view.title} subtitle={view.subtitle} tone="info">
+                <StructuredStats stats={view.stats} />
+                <Box sx={{ display: "grid", gap: 1.05 }}>
+                    {view.parts.map((part) => (
+                        <Box
+                            key={part.label}
+                            sx={{
+                                border: "1px solid #dbeafe",
+                                bgcolor: part.isFocusPart ? "#eff6ff" : "#f8fafc",
+                                borderRadius: 2,
+                                p: 1,
+                            }}
+                        >
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+                                <Typography sx={{ fontSize: 13, fontWeight: 900, color: "#0f172a" }}>
+                                    {part.label}
+                                </Typography>
+                                <Typography sx={{ fontSize: 12, fontWeight: 800, color: "#ea580c" }}>
+                                    {part.abilityPercent}%
+                                </Typography>
+                            </Box>
+                            <Typography sx={{ fontSize: 12, color: "#64748b", mt: 0.15 }}>
+                                {[part.domain, part.status, part.trend].filter(Boolean).join(" • ")}
+                            </Typography>
+                            <Box sx={{ mt: 0.8, height: 7, borderRadius: 999, bgcolor: "#e2e8f0", overflow: "hidden" }}>
+                                <Box
+                                    sx={{
+                                        width: `${Math.max(0, Math.min(100, part.abilityPercent))}%`,
+                                        height: "100%",
+                                        bgcolor: "#f97316",
+                                    }}
+                                />
+                            </Box>
+                        </Box>
+                    ))}
+                </Box>
+                <StructuredList title="Điểm nổi bật" items={view.highlights} />
             </StructuredCardFrame>
         );
     }
@@ -532,6 +581,101 @@ function StructuredChatViewCard({ view }: { view: ChatStructuredView }) {
                         </Typography>
                     </Box>
                 ) : null}
+            </StructuredCardFrame>
+        );
+    }
+
+    if (view.type === "similar_practice_recommendations") {
+        return (
+            <StructuredCardFrame title={view.title} subtitle={view.subtitle} tone="success">
+                <StructuredList
+                    title="Tag liên quan"
+                    items={view.sourceTags.slice(0, 4).map((tag) => ({ label: tag, tone: "info" as const }))}
+                />
+                <Box sx={{ display: "grid", gap: 1.1 }}>
+                    {view.items.map((item) => (
+                        <Box key={item.lessonManagerId} sx={{ border: "1px solid #dbeafe", borderRadius: 2, p: 1, bgcolor: "#f8fafc" }}>
+                            <Typography sx={{ fontSize: 13, fontWeight: 900, color: "#0f172a" }}>
+                                {item.title}
+                            </Typography>
+                            <Typography sx={{ fontSize: 12, color: "#64748b", mt: 0.25 }}>
+                                {[
+                                    item.part ? `Part ${item.part}` : "",
+                                    typeof item.fitScore === "number" ? `Phù hợp ${Math.round(item.fitScore * 100)}%` : "",
+                                ].filter(Boolean).join(" • ")}
+                            </Typography>
+                            {item.targetTags.length ? (
+                                <Typography sx={{ fontSize: 12, color: "#1e40af", mt: 0.5, lineHeight: 1.35 }}>
+                                    {item.targetTags.slice(0, 3).join(", ")}
+                                </Typography>
+                            ) : null}
+                            <Box sx={{ display: "grid", gap: 0.7, mt: 0.9 }}>
+                                {item.activities.map((activity) => (
+                                    <Box
+                                        key={`${item.lessonManagerId}-${activity.id}`}
+                                        sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}
+                                    >
+                                        <Typography sx={{ fontSize: 12.5, color: "#334155", minWidth: 0 }}>
+                                            {activity.title}
+                                            {activity.estimatedMinutes ? ` • ${activity.estimatedMinutes} phút` : ""}
+                                        </Typography>
+                                        <button
+                                            className="px-2.5 py-1 rounded-md bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shrink-0"
+                                            onClick={() => onAction?.(activity.action)}
+                                        >
+                                            Luyện ngay
+                                        </button>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </Box>
+                    ))}
+                </Box>
+            </StructuredCardFrame>
+        );
+    }
+
+    if (view.type === "flashcard_supply") {
+        const policyLabels: Record<typeof view.policyReason, string> = {
+            DB_ENOUGH: "Đủ từ từ kho hệ thống",
+            FILL_FROM_GEMINI: "Đã bổ sung bằng AI",
+            STRICT_SOURCE_LIMIT: "Chỉ lấy từ trong ngữ cảnh",
+            PARTIAL_DB_ONLY: "Tạo tạm từ kho hệ thống",
+            PARTIAL_AFTER_GENERATION: "Tạo tạm sau khi lọc AI",
+            REUSED_EXISTING_DECK: "Đã dùng lại bộ vừa tạo",
+        };
+        return (
+            <StructuredCardFrame title={view.title} subtitle={view.subtitle} tone="success">
+                <StructuredStats
+                    stats={[
+                        { label: "Số từ", value: `${view.returnedCount}/${view.requestedCount}`, tone: "success" },
+                        { label: "Kho hệ thống", value: String(view.suppliedBy.systemCatalog ?? 0), tone: "info" },
+                        { label: "AI bổ sung", value: String(view.suppliedBy.gemini ?? 0), tone: "warning" },
+                        { label: "Trạng thái", value: policyLabels[view.policyReason] ?? view.policyReason, tone: "default" },
+                    ]}
+                />
+                {view.words.length ? (
+                    <Box sx={{ display: "grid", gap: 0.65, mb: 1.1 }}>
+                        {view.words.slice(0, 6).map((word) => (
+                            <Box key={`${word.word}-${word.type ?? ""}`} sx={{ border: "1px solid #dbeafe", borderRadius: 2, p: 1, bgcolor: "#f8fafc" }}>
+                                <Typography sx={{ fontSize: 13, fontWeight: 900, color: "#0f172a" }}>
+                                    {word.word}{word.type ? ` · ${word.type}` : ""}
+                                </Typography>
+                                {word.definition ? (
+                                    <Typography sx={{ fontSize: 12, color: "#64748b", mt: 0.25, lineHeight: 1.35 }}>
+                                        {word.definition}
+                                    </Typography>
+                                ) : null}
+                            </Box>
+                        ))}
+                    </Box>
+                ) : null}
+                <button
+                    className="w-full px-3 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+                    onClick={() => onAction?.(view.action)}
+                >
+                    Học ngay
+                </button>
             </StructuredCardFrame>
         );
     }
@@ -667,7 +811,43 @@ export function ChatContent({
             return;
         }
 
+        if (action.type === "open_flashcard_deck" && payload.topicVocabularyId) {
+            navigate(`/flash-cards/${payload.topicVocabularyId}/practice`);
+            return;
+        }
+
+        if (action.type === "recommend_similar_practice") {
+            await onSend({
+                text: "Gợi ý bài luyện tương tự",
+                clientContext: {
+                    sourceAction: "recommend_similar_practice",
+                    actionPayload: payload,
+                },
+            });
+            return;
+        }
+
         if (action.type === "start_practice") {
+            if (payload.activityType && payload.activityId) {
+                const activityType = String(payload.activityType);
+                const activityId = String(payload.activityId);
+                if (activityType === "dictation") {
+                    navigate(`/practice-skill/dictation/${activityId}`);
+                    return;
+                }
+                if (activityType === "shadowing") {
+                    navigate(`/practice-skill/shadowing/${activityId}`);
+                    return;
+                }
+                if (activityType === "quiz") {
+                    navigate(`/practice-skill/quiz/${activityId}`);
+                    return;
+                }
+                if (activityType === "vocabulary") {
+                    navigate(`/flash-cards/${activityId}/practice`);
+                    return;
+                }
+            }
             navigate(`/practice-skill${buildQuery({
                 part: payload.part,
                 tags: payload.tags,
@@ -830,7 +1010,10 @@ export function ChatContent({
                                                 ) : msg.meta?.quickQuestionView ? (
                                                     <FormattedQuickQuestionAnswerCard view={msg.meta.quickQuestionView} />
                                                 ) : msg.meta?.structuredView ? (
-                                                    <StructuredChatViewCard view={msg.meta.structuredView} />
+                                                    <StructuredChatViewCard
+                                                        view={msg.meta.structuredView}
+                                                        onAction={(action) => handleChatAction(msg, action)}
+                                                    />
                                                 ) : (
                                                     // Bot messages: render markdown
                                                     <MarkdownPreview

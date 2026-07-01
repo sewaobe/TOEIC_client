@@ -190,8 +190,8 @@ const getStatusTheme = (status: SkillMapAbilityStatus) => {
 
 const getTrendLabel = (trend?: string, delta?: number) => {
     if (typeof delta === "number" && Number.isFinite(delta)) {
-        if (delta > 0) return `+${delta}% so với lần trước`;
-        if (delta < 0) return `${delta}% so với lần trước`;
+        if (delta > 0) return `Xu hướng +${delta}%`;
+        if (delta < 0) return `Xu hướng ${delta}%`;
         return "Ổn định";
     }
 
@@ -657,8 +657,8 @@ function PartsTab({ data }: { data: SkillMapPartsResponse }) {
                             display: "grid",
                             gridTemplateColumns: {
                                 xs: "1fr",
-                                md: "140px 82px 72px 104px minmax(140px, 1fr) 96px 110px",
-                                lg: `170px 100px 82px 112px minmax(200px, 1fr) 108px ${skillMapLayout.focusChipColumnWidth}px`,
+                                md: "140px 82px 72px 104px minmax(150px, 220px) minmax(150px, 1fr) 110px",
+                                lg: `170px 100px 82px 112px minmax(220px, 300px) minmax(170px, 1fr) ${skillMapLayout.focusChipColumnWidth}px`,
                             },
                             alignItems: "center",
                             gap: { xs: 0.9, md: 1.25 },
@@ -757,8 +757,8 @@ const SkillRow = React.memo(function SkillRow({ skill }: { skill: SkillMapSkill 
                 display: "grid",
                 gridTemplateColumns: {
                     xs: "1fr",
-                    md: "minmax(190px, 1fr) 96px 72px 104px minmax(140px, 1fr) 96px 110px",
-                    lg: `minmax(260px, 1fr) 112px 82px 112px minmax(200px, 1fr) 108px ${skillMapLayout.focusChipColumnWidth}px`,
+                    md: "minmax(190px, 1fr) 96px 72px 104px minmax(150px, 220px) minmax(150px, 1fr) 110px",
+                    lg: `minmax(260px, 1fr) 112px 82px 112px minmax(220px, 300px) minmax(170px, 1fr) ${skillMapLayout.focusChipColumnWidth}px`,
                 },
                 gap: { xs: 0.75, md: 1 },
                 alignItems: "center",

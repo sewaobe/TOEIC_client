@@ -115,6 +115,10 @@ function getConversationFocus(messages: ChatMessage[] = []): ConversationFocus |
             return { scope: "attempt_analysis", intent: "test_attempt.analysis" };
         }
 
+        if (message.meta?.intent === "user_progress.ability_map") {
+            return { scope: "overall_progress", intent: "user_progress.ability_map" };
+        }
+
         if (message.meta?.intent === "question.explain_specific") {
             return { scope: "single_question", intent: "question.explain_specific" };
         }
@@ -133,6 +137,10 @@ function getConversationFocus(messages: ChatMessage[] = []): ConversationFocus |
 
         if (message.meta?.structuredView?.type === "progress_summary") {
             return { scope: "overall_progress", intent: "roadmap.summary" };
+        }
+
+        if (message.meta?.structuredView?.type === "ability_map_summary") {
+            return { scope: "overall_progress", intent: "user_progress.ability_map" };
         }
     }
 

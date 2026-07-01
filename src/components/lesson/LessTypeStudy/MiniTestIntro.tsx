@@ -27,10 +27,14 @@ export const MiniTestIntro: React.FC<MiniTestIntroProps> = ({
   title,
   description,
   onStart,
-  questionCount = 100,
-  duration = 60,
+  questionCount,
+  duration,
   parts = [],
 }) => {
+  const hasQuestionCount =
+    typeof questionCount === "number" && Number.isFinite(questionCount);
+  const hasDuration = typeof duration === "number" && Number.isFinite(duration);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 40 }}
@@ -73,24 +77,30 @@ export const MiniTestIntro: React.FC<MiniTestIntroProps> = ({
             </Typography>
 
             {/* Stats */}
-            <Stack
-              direction="row"
-              spacing={2}
-              sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}
-            >
-              <Chip
-                icon={<QuestionAnswerIcon />}
-                label={`${questionCount} câu hỏi`}
-                color="primary"
-                variant="outlined"
-              />
-              <Chip
-                icon={<TimerIcon />}
-                label={`${duration} phút`}
-                color="warning"
-                variant="outlined"
-              />
-            </Stack>
+            {(hasQuestionCount || hasDuration) && (
+              <Stack
+                direction="row"
+                spacing={2}
+                sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}
+              >
+                {hasQuestionCount && (
+                  <Chip
+                    icon={<QuestionAnswerIcon />}
+                    label={`${questionCount} câu hỏi`}
+                    color="primary"
+                    variant="outlined"
+                  />
+                )}
+                {hasDuration && (
+                  <Chip
+                    icon={<TimerIcon />}
+                    label={`${duration} phút`}
+                    color="warning"
+                    variant="outlined"
+                  />
+                )}
+              </Stack>
+            )}
 
             {/* Parts */}
             {parts.length > 0 && (

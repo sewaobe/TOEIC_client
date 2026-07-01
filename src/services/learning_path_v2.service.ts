@@ -1,4 +1,3 @@
-import { LearningPathStrategyOverviewResponse, SelectLearningPathStrategyOptionResponse } from "../types/learning_strategy";
 import { GetLearningPathSkillMapParams } from "../types/user_skill";
 import axiosClient from "./axiosClient";
 
@@ -7,6 +6,20 @@ export type LearningPathV2SetupPayload = {
   target_completion_date: string | Date;
   time_per_day: number;
   days_per_week: number;
+};
+
+export type LearningPathV2AssessmentType = "mini_test" | "full_test";
+
+export type SubmitLearningPathV2AssessmentPayload = {
+  test_id: string;
+  answers: {
+    question_id: string;
+    selectedOption: string;
+  }[];
+  duration: number;
+  assessment_type: LearningPathV2AssessmentType;
+  week_study_id?: string;
+  day_study_id?: string;
 };
 
 const BASE_URL = "/learning-path-v2";
@@ -20,7 +33,7 @@ const BASE_URL = "/learning-path-v2";
  * thì đổi flag này về false, hoặc dùng env:
  * const USE_MOCK_NODE_DETAIL = import.meta.env.VITE_MOCK_LEARNING_PATH_NODE_DETAIL === "true";
  */
-const USE_MOCK_NODE_DETAIL = true;
+const USE_MOCK_NODE_DETAIL = false;
 
 export type RoadmapUnitStatus = "completed" | "in_cycle" | "current" | "locked";
 
@@ -525,12 +538,26 @@ const learningPathV2Service = {
     return axiosClient.post(`${BASE_URL}/${learningPathId}/initial-generation`, {});
   },
 
+  submitAssessment: async (
+    learningPathId: string,
+    payload: SubmitLearningPathV2AssessmentPayload
+  ) => {
+    return axiosClient.post(
+      `${BASE_URL}/${learningPathId}/assessments/submit`,
+      payload
+    );
+  },
+
   getCurrentCycle: async (learningPathId: string) => {
     return axiosClient.get(`${BASE_URL}/${learningPathId}/current-cycle`);
   },
 
   getOverview: async (learningPathId: string) => {
     return axiosClient.get(`${BASE_URL}/${learningPathId}/overview`);
+  },
+
+  mockLearning: async (learningPathId: string) => {
+    return axiosClient.post(`${BASE_URL}/${learningPathId}/mock-learning`, {});
   },
 
   /**
@@ -575,9 +602,17 @@ const learningPathV2Service = {
       });
     }
 
-    return axiosClient.get(
+    const response = await axiosClient.get<{
+      success: boolean;
+      data: LearningPathNodeDetailResponse | null;
+      message: string;
+    }>(
       `${BASE_URL}/${learningPathId}/nodes/${lessonManagerId}/detail`
     );
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Không thể lấy chi tiết bài học.");
+    }
+    return { data: response.data };
   },
 
   getSkillMap: async (
@@ -589,18 +624,6 @@ const learningPathV2Service = {
     });
   },
 
-  getStrategy: async (learningPathId: string) => {
-    return axiosClient.get<LearningPathStrategyOverviewResponse>(
-      `${BASE_URL}/${learningPathId}/strategy`
-    );
-  },
-
-  selectStrategyOption: async (learningPathId: string, optionId: string) => {
-    return axiosClient.post<SelectLearningPathStrategyOptionResponse>(
-      `${BASE_URL}/${learningPathId}/strategy-options/${optionId}/select`,
-      {}
-    );
-  },
 };
 
 export default learningPathV2Service;

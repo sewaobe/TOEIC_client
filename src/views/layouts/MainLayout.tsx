@@ -124,6 +124,7 @@ function MainLayout({ children }: MainLayoutProps) {
               onSaveNotebook={handleSaveNotebook}
               onSaveFlashcard={handleSaveFlashcard}
               onAskAI={handleAskAI}
+              onClose={clearSelection}
             />
           )}
         </div>

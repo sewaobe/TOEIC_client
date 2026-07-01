@@ -8,6 +8,7 @@ import {
   Dialog,
   DialogContent,
   Divider,
+  LinearProgress,
   Paper,
   Stack,
   Typography,
@@ -484,6 +485,27 @@ export default function DashboardDemo() {
                 </>
               )}
 
+              {creatingPath && (
+                <Alert
+                  severity="info"
+                  icon={<CircularProgress size={20} />}
+                  sx={{
+                    borderRadius: 2,
+                    border: "1px solid #B8D4FF",
+                    bgcolor: "#F3F8FF",
+                    alignItems: "center",
+                  }}
+                >
+                  <Typography fontWeight={800} sx={{ mb: 0.5 }}>
+                    Đang tạo lộ trình học cá nhân hóa
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#4A5578", mb: 1 }}>
+                    Hệ thống đang phân tích entry test, mục tiêu và thời gian học để sinh cycle đầu tiên.
+                  </Typography>
+                  <LinearProgress sx={{ borderRadius: 999 }} />
+                </Alert>
+              )}
+
               <Divider />
 
               <Stack
@@ -499,7 +521,7 @@ export default function DashboardDemo() {
                   variant="contained"
                   onClick={handleConfirm}
                   disabled={!canGenerate || creatingPath || loadingGenerationContext}
-                  startIcon={creatingPath ? undefined : <PlayArrowRoundedIcon />}
+                  startIcon={creatingPath ? <CircularProgress size={18} color="inherit" /> : <PlayArrowRoundedIcon />}
                   sx={{
                     minWidth: { xs: "100%", sm: 220 },
                     borderRadius: 2,

@@ -6,12 +6,12 @@ export interface DictionaryData {
   audio_uk?: string;
   audio_us?: string;
   phonetics?: PhoneticInfo[];
-  examples?: ExamplePair[];
-  synonyms?: SynonymMeaning[];
-  antonyms?: SynonymMeaning[];
-  word_family?: WordFamilyEntry[];
-  collocations?: CollocationEntry[];
   translations: TranslationEntry[];
+  examples?: ExamplePair[];
+  synonyms?: RelatedWord[];
+  antonyms?: RelatedWord[];
+  word_family?: WordFamilyItem[];
+  collocations?: CollocationItem[];
   imageKeywords?: string[];
   imageUrls?: string[];
   source?: DictionarySource;
@@ -49,7 +49,7 @@ export interface PhoneticInfo {
 export interface TranslationEntry {
   partOfSpeech: string;
   meanings?: TranslatedDefinition[];
-  translatedDefinitions: TranslatedDefinition[];
+  translatedDefinitions?: TranslatedDefinition[];
   examples?: ExamplePair[];
   synonyms?: string[];
   antonyms?: string[];
@@ -65,17 +65,23 @@ export interface ExamplePair {
   vi: string;
 }
 
-export interface SynonymMeaning {
+export interface RelatedWord {
   word: string;
   meaning: string;
 }
 
-export interface WordFamilyEntry {
+export type SynonymMeaning = RelatedWord;
+
+export interface WordFamilyItem {
   word: string;
   partOfSpeech: string;
 }
 
-export interface CollocationEntry {
+export type WordFamilyEntry = WordFamilyItem;
+
+export interface CollocationItem {
   phrase: string;
   meaning: string;
 }
+
+export type CollocationEntry = CollocationItem;

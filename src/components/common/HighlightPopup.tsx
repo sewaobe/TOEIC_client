@@ -123,7 +123,7 @@ const HighlightPopup: React.FC<HighlightPopupProps> = ({
   const definitions = useMemo<DefinitionItem[]>(
     () =>
       dictionary?.translations.flatMap((entry) =>
-        (entry.meanings?.length ? entry.meanings : entry.translatedDefinitions).map((definition) => ({
+        (entry.meanings?.length ? entry.meanings : entry.translatedDefinitions ?? []).map((definition) => ({
           ...definition,
           partOfSpeech: entry.partOfSpeech,
         })),

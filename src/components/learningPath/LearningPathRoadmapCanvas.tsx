@@ -21,9 +21,18 @@ import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import AutoStoriesOutlinedIcon from "@mui/icons-material/AutoStoriesOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import CheckIcon from "@mui/icons-material/Check";
+import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
+import QuizOutlinedIcon from "@mui/icons-material/QuizOutlined";
+import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import LearningPathNodeDetailModal from "./LearningPathNodeDetailModal";
-import learningPathV2Service, { LearningPathNodeDetailResponse } from "../../services/learning_path_v2.service";
+import learningPathV2Service, {
+    LearningPathCycleExplanationResponse,
+    LearningPathNodeDetailResponse,
+} from "../../services/learning_path_v2.service";
 import LearningPathSkillMapModal from "./LearningPathSkillMapModal";
+import LearningPathCycleExplanationModal, {
+    unwrapCycleExplanationPayload,
+} from "./LearningPathCycleExplanationModal";
 
 export type RoadmapUnitStatus = "completed" | "in_cycle" | "current" | "locked";
 
@@ -56,6 +65,24 @@ type PartRoadmap = {
     estimated_gain?: number;
     reaches_target?: boolean;
     units: RoadmapUnit[];
+};
+
+type RoadmapCheckpointType = "entry_test" | "mini_test" | "full_test";
+
+type RoadmapCheckpointStatus = "completed" | "current" | "planned";
+
+type RoadmapCheckpoint = {
+    id: string;
+    type: RoadmapCheckpointType;
+    label: string;
+    cycle_no: number;
+    status: RoadmapCheckpointStatus;
+    test_id?: string | null;
+    week_study_id?: string | null;
+    day_study_id?: string | null;
+    planned_score?: number | null;
+    actual_score?: number | null;
+    submitted_at?: string | Date | null;
 };
 
 type LearningPathRoadmapCanvasProps = {
@@ -619,6 +646,248 @@ function RoadmapLane({
     );
 }
 
+const checkpointStatusMeta: Record<
+    RoadmapCheckpointStatus,
+    { label: string; color: string; soft: string; border: string }
+> = {
+    completed: {
+        label: "Đã xong",
+        color: "#047857",
+        soft: "rgba(16,185,129,0.12)",
+        border: "rgba(16,185,129,0.28)",
+    },
+    current: {
+        label: "Đang mở",
+        color: "#C2410C",
+        soft: "rgba(249,115,22,0.14)",
+        border: "rgba(249,115,22,0.32)",
+    },
+    planned: {
+        label: "Dự kiến",
+        color: "#475569",
+        soft: "#F8FAFC",
+        border: "rgba(148,163,184,0.24)",
+    },
+};
+
+const getCheckpointIcon = (type: RoadmapCheckpointType) => {
+    if (type === "entry_test") return <AssignmentTurnedInOutlinedIcon sx={{ fontSize: 18 }} />;
+    if (type === "mini_test") return <QuizOutlinedIcon sx={{ fontSize: 18 }} />;
+    return <FactCheckOutlinedIcon sx={{ fontSize: 18 }} />;
+};
+
+const getCheckpointHelper = (checkpoint: RoadmapCheckpoint) => {
+    if (checkpoint.type === "entry_test") return "Mốc năng lực đầu vào";
+    if (checkpoint.type === "mini_test") return `Cuối Cycle ${checkpoint.cycle_no}`;
+    return `Full Test Cycle ${checkpoint.cycle_no}`;
+};
+
+const formatCheckpointScore = (score?: number | null) =>
+    typeof score === "number" && Number.isFinite(score)
+        ? `${Math.round(score)} TOEIC`
+        : null;
+
+const formatActualCheckpointScore = (checkpoint: RoadmapCheckpoint) => {
+    if (
+        typeof checkpoint.actual_score !== "number" ||
+        !Number.isFinite(checkpoint.actual_score)
+    ) {
+        return null;
+    }
+
+    if (checkpoint.type === "mini_test") {
+        return `${Math.round(checkpoint.actual_score)} điểm`;
+    }
+
+    return `${Math.round(checkpoint.actual_score)} TOEIC`;
+};
+
+const shouldShowPlannedToeicScore = (checkpoint: RoadmapCheckpoint) =>
+    checkpoint.type === "full_test";
+
+function RoadmapCheckpointRail({
+    checkpoints,
+}: {
+    checkpoints: RoadmapCheckpoint[];
+}) {
+    if (checkpoints.length === 0) return null;
+
+    return (
+        <Box
+            sx={{
+                mx: roadmapLayout.canvasMarginX,
+                mb: 1.1,
+                px: { xs: 1.2, sm: 1.4, md: 1.6, lg: 1.8, xl: 2 },
+                py: { xs: 1.2, sm: 1.35, md: 1.45, lg: 1.55, xl: 1.65 },
+                borderRadius: 2.5,
+                border: "1px solid rgba(148,163,184,0.18)",
+                bgcolor: "rgba(248,250,252,0.72)",
+            }}
+        >
+            <Stack spacing={1.1}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                    <Typography sx={{ ...roadmapTextSx.label, color: "#0F1F4B" }}>
+                        Checkpoint đánh giá
+                    </Typography>
+                    <Typography sx={{ ...roadmapTextSx.helper, color: "#64748B" }}>
+                        Entry Test, Mini Test và Full Test trong lộ trình
+                    </Typography>
+                </Stack>
+
+                <Box
+                    sx={{
+                        overflowX: "auto",
+                        pb: 0.5,
+                        "&::-webkit-scrollbar": { height: 6 },
+                        "&::-webkit-scrollbar-thumb": {
+                            bgcolor: "rgba(100,116,139,0.22)",
+                            borderRadius: 999,
+                        },
+                    }}
+                >
+                    <Stack
+                        direction="row"
+                        alignItems="stretch"
+                        spacing={1.1}
+                        sx={{ minWidth: "max-content" }}
+                    >
+                        {checkpoints.map((checkpoint, index) => {
+                            const statusMeta = checkpointStatusMeta[checkpoint.status];
+                            const actualScore = formatActualCheckpointScore(checkpoint);
+                            const plannedScore = shouldShowPlannedToeicScore(checkpoint)
+                                ? formatCheckpointScore(checkpoint.planned_score)
+                                : null;
+
+                            return (
+                                <React.Fragment key={checkpoint.id}>
+                                    {index > 0 && (
+                                        <Box
+                                            sx={{
+                                                alignSelf: "center",
+                                                width: 34,
+                                                height: 2,
+                                                bgcolor: "rgba(148,163,184,0.28)",
+                                                borderRadius: 999,
+                                            }}
+                                        />
+                                    )}
+
+                                    <Box
+                                        sx={{
+                                            minWidth: { xs: 154, sm: 166, md: 178 },
+                                            px: 1.15,
+                                            py: 1,
+                                            borderRadius: 2,
+                                            border: `1px solid ${statusMeta.border}`,
+                                            bgcolor: "#FFFFFF",
+                                            boxShadow:
+                                                checkpoint.status === "current"
+                                                    ? "0 10px 22px rgba(249,115,22,0.12)"
+                                                    : "0 6px 16px rgba(15,23,42,0.04)",
+                                        }}
+                                    >
+                                        <Stack spacing={0.8}>
+                                            <Stack direction="row" alignItems="center" spacing={0.8}>
+                                                <Box
+                                                    sx={{
+                                                        width: 30,
+                                                        height: 30,
+                                                        borderRadius: "50%",
+                                                        display: "grid",
+                                                        placeItems: "center",
+                                                        color: statusMeta.color,
+                                                        bgcolor: statusMeta.soft,
+                                                        border: `1px solid ${statusMeta.border}`,
+                                                    }}
+                                                >
+                                                    {getCheckpointIcon(checkpoint.type)}
+                                                </Box>
+                                                <Box sx={{ minWidth: 0 }}>
+                                                    <Typography
+                                                        title={checkpoint.label}
+                                                        sx={{
+                                                            ...roadmapTextSx.label,
+                                                            color: "#172554",
+                                                            whiteSpace: "nowrap",
+                                                            overflow: "hidden",
+                                                            textOverflow: "ellipsis",
+                                                        }}
+                                                    >
+                                                        {checkpoint.label}
+                                                    </Typography>
+                                                    <Typography sx={{ ...roadmapTextSx.helper, color: "#64748B" }}>
+                                                        {getCheckpointHelper(checkpoint)}
+                                                    </Typography>
+                                                </Box>
+                                            </Stack>
+
+                                            <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap>
+                                                <Chip
+                                                    label={statusMeta.label}
+                                                    size="small"
+                                                    sx={{
+                                                        height: 24,
+                                                        borderRadius: 999,
+                                                        color: statusMeta.color,
+                                                        bgcolor: statusMeta.soft,
+                                                        border: `1px solid ${statusMeta.border}`,
+                                                        ...roadmapTextSx.caption,
+                                                    }}
+                                                />
+                                                {actualScore && (
+                                                    <Chip
+                                                        label={actualScore}
+                                                        size="small"
+                                                        sx={{
+                                                            height: 24,
+                                                            borderRadius: 999,
+                                                            color: "#2563EB",
+                                                            bgcolor: "#EEF5FF",
+                                                            ...roadmapTextSx.caption,
+                                                        }}
+                                                    />
+                                                )}
+                                                {!actualScore && plannedScore && (
+                                                    <Chip
+                                                        label={`Dự kiến ${plannedScore}`}
+                                                        size="small"
+                                                        sx={{
+                                                            height: 24,
+                                                            borderRadius: 999,
+                                                            color: "#475569",
+                                                            bgcolor: "#F8FAFC",
+                                                            border: "1px solid rgba(148,163,184,0.2)",
+                                                            ...roadmapTextSx.caption,
+                                                        }}
+                                                    />
+                                                )}
+                                                {!actualScore && !plannedScore && checkpoint.type === "mini_test" && (
+                                                    <Chip
+                                                        label="Đo focus skill"
+                                                        size="small"
+                                                        sx={{
+                                                            height: 24,
+                                                            borderRadius: 999,
+                                                            color: "#475569",
+                                                            bgcolor: "#F8FAFC",
+                                                            border: "1px solid rgba(148,163,184,0.2)",
+                                                            ...roadmapTextSx.caption,
+                                                        }}
+                                                    />
+                                                )}
+                                            </Stack>
+                                        </Stack>
+                                    </Box>
+                                </React.Fragment>
+                            );
+                        })}
+                    </Stack>
+                </Box>
+            </Stack>
+        </Box>
+    );
+}
+
 function CanvasLegend() {
     return (
         <Stack
@@ -735,6 +1004,8 @@ export default function LearningPathRoadmapCanvas({
 }: LearningPathRoadmapCanvasProps) {
     const partRoadmaps: PartRoadmap[] =
         overview?.roadmap_canvas?.part_roadmaps ?? [];
+    const checkpoints: RoadmapCheckpoint[] =
+        overview?.roadmap_canvas?.checkpoints ?? [];
 
     const learningPathId = overview?.learning_path?._id;
     const statusByLessonManagerId = React.useMemo(
@@ -822,6 +1093,61 @@ export default function LearningPathRoadmapCanvas({
     }, []);
 
     const [skillMapOpen, setSkillMapOpen] = React.useState(false);
+    const [cycleExplanationModal, setCycleExplanationModal] = React.useState<{
+        open: boolean;
+        loading: boolean;
+        errorMessage: string | null;
+        data: LearningPathCycleExplanationResponse | null;
+    }>({
+        open: false,
+        loading: false,
+        errorMessage: null,
+        data: null,
+    });
+
+    const handleOpenCycleExplanation = React.useCallback(async () => {
+        setCycleExplanationModal({
+            open: true,
+            loading: true,
+            errorMessage: null,
+            data: null,
+        });
+
+        try {
+            if (!learningPathId) {
+                throw new Error("Không tìm thấy learningPathId để lấy giải thích cycle.");
+            }
+
+            const response = await learningPathV2Service.getCurrentCycleExplanation(
+                learningPathId
+            );
+            const payload = unwrapCycleExplanationPayload(response);
+
+            setCycleExplanationModal({
+                open: true,
+                loading: false,
+                errorMessage: null,
+                data: payload,
+            });
+        } catch (error) {
+            setCycleExplanationModal({
+                open: true,
+                loading: false,
+                errorMessage:
+                    error instanceof Error
+                        ? error.message
+                        : "Không thể tải giải thích cycle hiện tại.",
+                data: null,
+            });
+        }
+    }, [learningPathId]);
+
+    const handleCloseCycleExplanation = React.useCallback(() => {
+        setCycleExplanationModal((prev) => ({
+            ...prev,
+            open: false,
+        }));
+    }, []);
 
     return (
         <Paper
@@ -928,13 +1254,15 @@ export default function LearningPathRoadmapCanvas({
                         <Button
                             variant="outlined"
                             startIcon={<LightbulbOutlinedIcon />}
-                            onClick={() => { }}
+                            onClick={handleOpenCycleExplanation}
                             sx={actionButtonSx}
                         >
                             Vì sao?
                         </Button>
                     </Stack>
                 </Stack>
+
+                <RoadmapCheckpointRail checkpoints={checkpoints} />
 
                 <Box
                     sx={{
@@ -1022,6 +1350,14 @@ export default function LearningPathRoadmapCanvas({
                 open={skillMapOpen}
                 learningPathId={learningPathId}
                 onClose={() => setSkillMapOpen(false)}
+            />
+
+            <LearningPathCycleExplanationModal
+                open={cycleExplanationModal.open}
+                data={cycleExplanationModal.data}
+                loading={cycleExplanationModal.loading}
+                errorMessage={cycleExplanationModal.errorMessage}
+                onClose={handleCloseCycleExplanation}
             />
 
         </Paper>

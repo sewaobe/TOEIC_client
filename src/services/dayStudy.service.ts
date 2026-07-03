@@ -36,7 +36,10 @@ export const dayStudyService = {
           id: `${it.activity_id ?? idx}`,
           week: Number(week),
           title: `${capitalizeFirst(it.kind)} ${session.part_type ? `— Part ${session.part_type}` : ""}`,
-          type: it.kind as LessonItem["type"],
+          type:
+            it.kind === "full_test"
+              ? "full_test"
+              : (it.kind as LessonItem["type"]),
           status: it.status
         });
       });

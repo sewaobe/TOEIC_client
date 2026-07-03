@@ -2,13 +2,28 @@ import { io, Socket } from "socket.io-client";
 
 let socket: Socket | null = null;
 
+const resolveSocketUrl = () => {
+  const explicitSocketUrl = import.meta.env.VITE_SOCKET_URL?.trim();
+  if (explicitSocketUrl) return explicitSocketUrl;
+
+  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+  try {
+    const url = new URL(apiUrl);
+    url.pathname = url.pathname.replace(/\/api\/?$/, "");
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return apiUrl.replace(/\/api\/?$/, "");
+  }
+};
+
 export const initSocket = () => {
   if (socket && socket.connected) {
     console.log("⚠️ Socket đã được khởi tạo, bỏ qua.");
     return socket;
   }
 
-  socket = io(import.meta.env.VITE_API_URL, {
+  socket = io(resolveSocketUrl(), {
     withCredentials: true,
     transports: ["websocket"],
   });

@@ -1,48 +1,332 @@
+import type { ElementType } from "react";
+
 export type ChatSender = "user" | "bot";
 
 export type ChatType =
-    | "question"   // Luyện nghe hiểu ngắn
-    | "reading"    // Luyện đọc hiểu
-    | "shadowing"  // Bắt chước giọng
-    | "dictation"  // Nghe chép chính tả
-    | "lesson";    // Bài kiểm tra ngắn
+    | "question"
+    | "reading"
+    | "shadowing"
+    | "dictation"
+    | "lesson";
 
 export type ChatFeedback = "like" | "dislike" | null;
 
-/** Phiên hội thoại giữa người dùng và chatbot */
+export type ChatErrorType =
+    | "AUTH_REQUIRED"
+    | "SOCKET_DISCONNECTED"
+    | "MISSING_CONTEXT"
+    | "MISSING_REQUIRED_CONTEXT"
+    | "UNAUTHORIZED"
+    | "NO_DATA"
+    | "NO_USER_DATA"
+    | "UNSUPPORTED_CAPABILITY"
+    | "LOW_CONFIDENCE"
+    | "AI_SERVICE_ERROR"
+    | "LEGACY_RETRIEVER_UNAVAILABLE"
+    | "VALIDATION_ERROR"
+    | "UNKNOWN";
+
+export type ChatRoutePage =
+    | "dashboard"
+    | "roadmap"
+    | "today_plan"
+    | "test_practice"
+    | "test_result"
+    | "question_review"
+    | "dictation"
+    | "shadowing"
+    | "flashcard"
+    | "lesson"
+    | "unknown";
+
+export interface ChatRouteQuestionRef {
+    questionNumber: number;
+    questionId: string;
+    textPreview?: string;
+}
+
+export interface ChatRouteContext {
+    page: ChatRoutePage;
+    roadmapId?: string;
+    nodeId?: string;
+    testId?: string;
+    attemptId?: string;
+    questionId?: string;
+    lessonId?: string;
+    dictationAttemptId?: string;
+    shadowingAttemptId?: string;
+    currentQuestionNumber?: number;
+    questionRefs?: ChatRouteQuestionRef[];
+}
+
+export interface ChatClientContext {
+    selectedText?: string;
+    currentAudioTime?: number;
+    userTimezone?: string;
+    sourceAction?: "quick_question_explain" | string;
+    actionPayload?: Record<string, unknown>;
+    clientRequestId?: string;
+    testTitle?: string;
+    intentHint?: ChatIntentHint;
+}
+
+export type ChatIntentScope =
+    | "single_question"
+    | "attempt_analysis"
+    | "overall_progress"
+    | "general_knowledge"
+    | "unknown";
+
+export type ChatIntentSource =
+    | "rule"
+    | "fast_path"
+    | "semantic"
+    | "follow_up"
+    | "fallback";
+
+export type ChatResolverPolicy =
+    | "DB_FIRST"
+    | "DB_FIRST_AI"
+    | "GENERAL_AI"
+    | "CLARIFY"
+    | "CLARIFY_IF_CONTEXT_MISSING"
+    | "NO_DATA"
+    | "UNAUTHORIZED"
+    | "UNSUPPORTED_CAPABILITY"
+    | "LOW_CONFIDENCE"
+    | "SAFE_FALLBACK";
+
+export interface ChatIntentHintSlots {
+    attemptScope?: "latest" | "current" | "selected" | "explicit";
+    parts?: Array<1 | 2 | 3 | 4 | 5 | 6 | 7>;
+    comparison?: boolean;
+    metric?: "strength" | "weakness" | "error_pattern" | "score_breakdown";
+    roadmapRequest?: "navigation" | "status" | "next_step" | "explain_recommendation" | "adjust";
+    questionNumber?: number;
+}
+
+export interface ChatIntentHint {
+    scope: ChatIntentScope;
+    intent?: string;
+    confidence: number;
+    source: ChatIntentSource;
+    resolverPolicy: ChatResolverPolicy;
+    reasonCodes: string[];
+    slots?: ChatIntentHintSlots;
+}
+
+export type ChatActionType =
+    | "open_question_review"
+    | "review_mistakes"
+    | "start_practice"
+    | "recommend_similar_practice"
+    | "show_roadmap"
+    | "open_flashcards"
+    | "open_flashcard_deck"
+    | "replay_audio"
+    | "request_roadmap_recompute";
+
+export interface ChatAction {
+    id: string;
+    label: string;
+    type: ChatActionType;
+    payload: Record<string, unknown>;
+}
+
 export interface ChatSession {
-    _id: string;                   // ObjectId của phiên chat
-    user_id?: string;              // ID người dùng (nếu đăng nhập)
-    title: string;                 // “Practice Listening - Day 3”
-    type: ChatType;                // Loại luyện tập
-    created_at: string;            // ISO date string
-    updated_at: string;            // ISO date string
-    last_message_preview?: string; // Dòng preview ở danh sách
-    total_messages?: number;       // Số tin nhắn trong phiên
-    is_archived?: boolean;         // Có bị ẩn không
+    _id: string;
+    user_id?: string;
+    title: string;
+    type: ChatType;
+    created_at: string;
+    updated_at: string;
+    last_message_preview?: string;
+    total_messages?: number;
+    is_archived?: boolean;
 }
 
-/** Tin nhắn trong một phiên chat */
 export interface ChatMessage {
-    _id: string;                   // ObjectId của tin nhắn
-    session_id: string;            // Liên kết tới ChatSession
-    sender: ChatSender;            // "user" | "bot"
-    text: string;                  // Nội dung tin nhắn
-    created_at: string;            // ISO date string
-    meta?: ChatMessageMeta;        // Thông tin phụ (token, feedback, lỗi, ...)
+    _id: string;
+    session_id: string;
+    sender: ChatSender;
+    text: string;
+    created_at: string;
+    meta?: ChatMessageMeta;
 }
 
-/** Thông tin phụ cho tin nhắn */
+export interface QuickQuestionVocabularyItem {
+    word: string;
+    pos?: string;
+    meaning: string;
+}
+
+export interface QuickQuestionView {
+    questionLabel: string;
+    status: "correct" | "wrong" | "skipped";
+    statusText: string;
+    userAnswer: string;
+    correctAnswer: string;
+    explanation?: string;
+    vocabulary?: QuickQuestionVocabularyItem[];
+    reminder?: string;
+}
+
+export interface QuickQuestionContext {
+    questionId: string;
+    questionNumber?: number;
+    attemptId: string;
+    testId: string;
+    testTitle?: string;
+    part?: string;
+    questionText?: string;
+    choices?: Record<string, unknown>;
+    userAnswer?: string;
+    userAnswerText?: string;
+    correctAnswer?: string;
+    correctAnswerText?: string;
+    isCorrect?: boolean;
+    status: "correct" | "wrong" | "skipped";
+}
+
+export interface ChatStructuredStatItem {
+    label: string;
+    value: string;
+    tone?: "default" | "success" | "warning" | "danger" | "info";
+}
+
+export interface ChatStructuredListItem {
+    label: string;
+    value?: string;
+    tone?: "default" | "success" | "warning" | "danger" | "info";
+}
+
+export type ChatStructuredView =
+    | {
+        type: "progress_summary";
+        title: string;
+        subtitle?: string;
+        stats: ChatStructuredStatItem[];
+        highlights?: ChatStructuredListItem[];
+        weakParts?: string[];
+        nextStep?: string;
+    }
+    | {
+        type: "ability_map_summary";
+        title: string;
+        subtitle?: string;
+        stats: ChatStructuredStatItem[];
+        parts: Array<{
+            label: string;
+            domain?: string;
+            abilityPercent: number;
+            status: string;
+            trend?: string;
+            isFocusPart?: boolean;
+        }>;
+        highlights?: ChatStructuredListItem[];
+    }
+    | {
+        type: "test_attempt_analysis";
+        title: string;
+        subtitle?: string;
+        stats: ChatStructuredStatItem[];
+        weakTags?: ChatStructuredListItem[];
+        wrongAnswers?: ChatStructuredListItem[];
+        summary?: string;
+    }
+    | {
+        type: "question_context";
+        title: string;
+        subtitle?: string;
+        status?: "correct" | "wrong" | "skipped" | "neutral";
+        stats?: ChatStructuredStatItem[];
+        questionText?: string;
+        userAnswer?: string;
+        correctAnswer?: string;
+        answer?: string;
+        reminder?: string;
+    }
+    | {
+        type: "similar_practice_recommendations";
+        title: string;
+        subtitle?: string;
+        sourceTags: string[];
+        items: Array<{
+            lessonManagerId: string;
+            title: string;
+            part?: number;
+            targetTags: string[];
+            weight?: number;
+            fitScore?: number;
+            activities: Array<{
+                id: string;
+                type: "vocabulary" | "dictation" | "shadowing" | "quiz";
+                title: string;
+                estimatedMinutes?: number;
+                action: ChatAction;
+            }>;
+        }>;
+    }
+    | {
+        type: "flashcard_supply";
+        title: string;
+        subtitle?: string;
+        requestedCount: number;
+        returnedCount: number;
+        suppliedBy: {
+            systemCatalog: number;
+            gemini: number;
+        };
+        policyReason:
+            | "DB_ENOUGH"
+            | "FILL_FROM_GEMINI"
+            | "STRICT_SOURCE_LIMIT"
+            | "PARTIAL_DB_ONLY"
+            | "PARTIAL_AFTER_GENERATION"
+            | "REUSED_EXISTING_DECK";
+        words: Array<{
+            word: string;
+            type?: string;
+            definition?: string;
+            source: "systemCatalog" | "gemini";
+        }>;
+        action: ChatAction;
+    }
+    | {
+        type: "navigation_support";
+        title: string;
+        subtitle?: string;
+        items: ChatStructuredListItem[];
+    }
+    | {
+        type: "fallback_notice";
+        title: string;
+        subtitle?: string;
+        message: string;
+        tone?: "warning" | "danger" | "info";
+    };
+
 export interface ChatMessageMeta {
-    token_usage?: number;          // Số token dùng (nếu có)
-    model?: string;                // Tên model AI
-    feedback?: ChatFeedback;       // like / dislike
-    error?: string;                // Thông báo lỗi (nếu có)
+    token_usage?: number;
+    model?: string;
+    feedback?: ChatFeedback;
+    error?: string;
+    intent?: string;
+    usedAI?: boolean;
+    contextType?: string;
+    actions?: ChatAction[];
+    routeContext?: ChatRouteContext;
+    clientContext?: ChatClientContext;
+    responseTimeMs?: number;
+    errorType?: string;
+    fallbackUsed?: boolean;
+    quickQuestionView?: QuickQuestionView;
+    quickQuestionContext?: QuickQuestionContext;
+    structuredView?: ChatStructuredView;
 }
 
-/** Dành cho ChipScrollerMini hoặc bộ chọn chế độ luyện tập */
 export interface PracticeModeOption {
     value: ChatType;
     label: string;
-    icon?: React.ElementType;
+    icon?: ElementType;
 }

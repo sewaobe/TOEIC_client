@@ -10,22 +10,29 @@ const HOURS_TABLE: Record<number, Record<number, number>> = {
 };
 const LEVELS = [200, 300, 400, 500, 600, 700, 800, 900];
 
-// Lấy mốc "chuẩn" gần nhất phía dưới
-function normalizeScore(score: number) {
-    for (let i = LEVELS.length - 1; i >= 0; i--) {
-        if (score >= LEVELS[i]) return LEVELS[i];
-    }
-    return 200;
-}
+const clampScore = (score: number) =>
+    Math.max(LEVELS[0], Math.min(LEVELS[LEVELS.length - 1], score));
 
 export const getHoursNeeded = (from: number, to: number) => {
     if (from >= to) return 0;
 
-    const fromNorm = normalizeScore(from);
-    const toNorm = normalizeScore(to);
+    const start = clampScore(from);
+    const target = clampScore(to);
+    let totalHours = 0;
 
-    // Nếu to không khớp 100% (ví dụ target = 465), thì làm tròn lên
-    const toFinal = LEVELS.find((lv) => lv >= toNorm) ?? 900;
+    for (let i = 0; i < LEVELS.length - 1; i++) {
+        const bandStart = LEVELS[i];
+        const bandEnd = LEVELS[i + 1];
 
-    return HOURS_TABLE[fromNorm]?.[toFinal] ?? 0;
+        if (target <= bandStart || start >= bandEnd) continue;
+
+        const overlapStart = Math.max(start, bandStart);
+        const overlapEnd = Math.min(target, bandEnd);
+        const bandHours = HOURS_TABLE[bandStart]?.[bandEnd] ?? 0;
+        const ratio = (overlapEnd - overlapStart) / (bandEnd - bandStart);
+
+        totalHours += bandHours * ratio;
+    }
+
+    return Math.round(totalHours);
 };

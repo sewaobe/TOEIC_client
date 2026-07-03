@@ -5,7 +5,8 @@ export type LessonType =
   | "dictation"
   | "quiz"
   | "lesson"
-  | "mini_test";
+  | "mini_test"
+  | "full_test";
 
 export interface LessonItem {
   id: string;
@@ -14,6 +15,8 @@ export interface LessonItem {
   type: LessonType;
   status: LessonStatus;
 }
+
+export type CurrentLesson = LessonItem;
 export interface LessonResponse {
   accuracy_overall: number;
   sessions: {

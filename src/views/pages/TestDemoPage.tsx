@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react";
+import { FC, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchExamById } from "../../stores/examSlice";
 import { AppDispatch, RootState } from "../../stores/store";
@@ -12,6 +12,7 @@ import { ExamGroup, ExamQuestion } from "../../types/Exam";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import F5Modal from "../../components/modals/F5Modal";
 import AssessmentModal from "../../components/modals/AssessmentModal";
+import { clearChatRouteState, compactQuestionText, setChatRouteState } from "../../utils/chatRouteState";
 
 const steps: Step[] = [
   {
@@ -48,7 +49,7 @@ const TestDemoPage: FC = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const dispatch = useDispatch<AppDispatch>();
-  const groups = useSelector((s: RootState) => s.exam.groups);
+  const { groups, currentGroupIndex } = useSelector((s: RootState) => s.exam);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -75,6 +76,29 @@ const TestDemoPage: FC = () => {
       dispatch(setInitialAnswers(initialAnswers));
     }
   }, [groups, dispatch]);
+
+  const questionRefs = useMemo(
+    () =>
+      groups.flatMap((group: ExamGroup) =>
+        group.questions.map((question: ExamQuestion) => ({
+          questionNumber: question.questionNumber,
+          questionId: question._id,
+          textPreview: compactQuestionText(question.textQuestion),
+        }))
+      ),
+    [groups]
+  );
+
+  useEffect(() => {
+    const currentQuestions = groups[currentGroupIndex]?.questions ?? [];
+    const currentQuestion = currentQuestions.length === 1 ? currentQuestions[0] : undefined;
+    setChatRouteState({
+      questionId: currentQuestion?._id,
+      currentQuestionNumber: currentQuestion?.questionNumber,
+      questionRefs,
+    });
+    return clearChatRouteState;
+  }, [groups, currentGroupIndex, questionRefs]);
 
   const handleJoyrideCallback = (data: any) => {
     const { status } = data;

@@ -24,13 +24,11 @@ import {
 } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
-import useLocalStorage from "../../hooks/useLocalStorage";
 import { diffInWeeks } from "../../utils/date";
 import { getHoursNeeded } from "../../utils/estimatedStudyHour";
-import { WEEKDAYS, redistributeWeeks, redistributeDays } from "../../utils/planDistribution";
+import { WEEKDAYS, redistributeDays } from "../../utils/planDistribution";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { Weekday } from "../../types/PlanWizard";
 import { pieArcClasses, pieClasses } from "@mui/x-charts/PieChart";
@@ -57,6 +55,7 @@ const MIN_DAY = 0;
 const MAX_DAY = 24*60;
 const MIN_WEEK = 7 * MIN_DAY;
 const MAX_WEEK = 7 * 1440;
+const MAX_WEEKLY_STUDY_HOURS = 32;
 
 // const TimeInput = ({
 //   value,
@@ -123,21 +122,47 @@ const MAX_WEEK = 7 * 1440;
 //   );
 // };
 
-export const DetailedPlanStep = ({ startScore }: { startScore?: number }) => {
-  const [planEnd] = useLocalStorage<string>("plan_end", "");
-  const [planStart] = useLocalStorage<string>("plan_start", "");
-  const [targetScore] = useLocalStorage<number>("score_target_plan", 650);
+type DetailedPlanStepProps = {
+  startScore?: number;
+  planStart: Date | null;
+  planEnd: Date | null;
+  targetScore: number;
+  weeklyMinutesByDay: Record<string, number>;
+  onWeeklyMinutesByDayChange: (value: Record<string, number>) => void;
+};
 
-  const totalWeek = diffInWeeks(planStart, planEnd);
+const DAY_KEY_BY_WEEKDAY: Record<string, string> = {
+  Mon: "monday",
+  Tue: "tuesday",
+  Wed: "wednesday",
+  Thu: "thursday",
+  Fri: "friday",
+  Sat: "saturday",
+  Sun: "sunday",
+};
+
+const toISODate = (date: Date | null) =>
+  date ? date.toISOString().slice(0, 10) : "";
+
+export const DetailedPlanStep = ({
+  startScore,
+  planStart,
+  planEnd,
+  targetScore,
+  onWeeklyMinutesByDayChange,
+}: DetailedPlanStepProps) => {
+  const planEndISO = toISODate(planEnd);
+  const planStartISO = toISODate(planStart);
+
+  const totalWeek = diffInWeeks(planStartISO, planEndISO);
   const totalHours = getHoursNeeded(startScore ?? 400, targetScore);
   const totalMinutes = Math.max(0, Math.round(totalHours * 60));
   const weeklyHours = totalWeek > 0 ? parseFloat((totalHours / totalWeek).toFixed(1)) : 0;
 
-  const [weeklyTotals, setWeeklyTotals] = useLocalStorage<number[]>("weekly_totals", []);
-  const [weekDays, setWeekDays] = useLocalStorage<Record<string, any>>("weekly_days", {});
+  const [weeklyTotals, setWeeklyTotals] = useState<number[]>([]);
+  const [weekDays, setWeekDays] = useState<Record<string, any>>({});
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [tab, setTab] = useState(0);
-  const [warning, setWarning] = useState<string>("");
   // editing buffers so typing isn't clamped and to allow commit onBlur/Enter
   const [editingCells, setEditingCells] = useState<Record<string, string>>({});
   const [editingWeekTotals, setEditingWeekTotals] = useState<Record<number, string>>({});
@@ -145,27 +170,31 @@ export const DetailedPlanStep = ({ startScore }: { startScore?: number }) => {
   const [lockedWeeks, setLockedWeeks] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    // Chỉ kiểm tra khi có dữ liệu
-    if (!weeklyTotals || weeklyTotals.length === 0) {
-      setWarning("");
+    const weekPlans = Object.values(weekDays);
+    if (weekPlans.length === 0) {
+      onWeeklyMinutesByDayChange({
+        monday: 0,
+        tuesday: 0,
+        wednesday: 0,
+        thursday: 0,
+        friday: 0,
+        saturday: 0,
+        sunday: 0,
+      });
       return;
     }
 
-    // Tìm số phút học cao nhất trong tất cả các tuần
-    const maxMinutesInAnyWeek = Math.max(...weeklyTotals);
-    const maxHoursInAnyWeek = maxMinutesInAnyWeek / 60;
-
-    // So sánh với ngưỡng đã định nghĩa
-    if (maxHoursInAnyWeek > 32) {
-      setWarning(
-        `Khối lượng học ${weeklyHours} giờ/tuần vượt quá mức tối đa 32 giờ/tuần. Bạn nên nới lỏng thời gian học để đạt được hiệu quả tốt nhất.`
+    const next: Record<string, number> = {};
+    WEEKDAYS.forEach((day) => {
+      const total = weekPlans.reduce(
+        (sum, plan: any) => sum + Number(plan?.[day] || 0),
+        0
       );
-    } else {
-      // Nếu không có tuần nào vượt ngưỡng, xóa cảnh báo
-      setWarning("");
-    }
+      next[DAY_KEY_BY_WEEKDAY[day]] = Math.round(total / weekPlans.length);
+    });
 
-  }, [weeklyTotals]);
+    onWeeklyMinutesByDayChange(next);
+  }, [onWeeklyMinutesByDayChange, weekDays]);
 
   const makeEvenWeekPlan = (weekTotal: number) => {
     const per = Math.max(MIN_DAY, Math.round(weekTotal / 7));
@@ -288,7 +317,7 @@ export const DetailedPlanStep = ({ startScore }: { startScore?: number }) => {
 
     const daysMap: Record<string, any> = {};
     totals.forEach((t, idx) => {
-      daysMap[String(idx)] = makeEvenWeekPlan(t);
+      daysMap[String(idx + 1)] = makeEvenWeekPlan(t);
     });
 
     setWeeklyTotals(totals);
@@ -307,6 +336,9 @@ export const DetailedPlanStep = ({ startScore }: { startScore?: number }) => {
     : Math.round(weeklyHours * 60);
 
   const avgDailyMinutes = Math.ceil(avgWeeklyMinutes / 7);
+  const maxWeeklyMinutes = weeklyTotals.length ? Math.max(...weeklyTotals) : 0;
+  const maxWeeklyHours = maxWeeklyMinutes / 60;
+  const isWeeklyLoadTooHigh = maxWeeklyHours > MAX_WEEKLY_STUDY_HOURS;
 
   // const handleWeekChange = (index: number, newVal: number) => {
   //   if (!weeklyTotals.length) return;
@@ -487,10 +519,13 @@ export const DetailedPlanStep = ({ startScore }: { startScore?: number }) => {
         </Button>
       </Paper>
 
-      <Collapse in={!!warning}>
-        {/* Dùng !!warning để chuyển chuỗi thành boolean (true/false) */}
-        <Alert severity="warning" variant="filled" sx={{ borderRadius: 2, mb: warning ? 3 : 0 }}>
-          {warning}
+      <Collapse in={isWeeklyLoadTooHigh}>
+        <Alert
+          severity="warning"
+          variant="filled"
+          sx={{ borderRadius: 2, mb: isWeeklyLoadTooHigh ? 3 : 0 }}
+        >
+          Khối lượng học {maxWeeklyHours.toFixed(1)} giờ/tuần vượt quá mức tối đa 32 giờ/tuần. Bạn nên nới lỏng thời gian học để đạt được hiệu quả tốt nhất.
         </Alert>
       </Collapse>
       {/* Tabs */}
@@ -660,43 +695,6 @@ export const DetailedPlanStep = ({ startScore }: { startScore?: number }) => {
           {/* (Removed compact edit panel — edits now happen inline in the table) */}
         </Grid>
       )}
-      <Grid size={{ xs: 12, md: 12 }}>
-        <Card variant="outlined" className="rounded-2xl">
-          <CardContent className="p-4 sm:p-5">
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-              <TipsAndUpdatesIcon color="primary" />
-              <Typography variant="h6" fontWeight={800}>
-                Vì sao gợi ý như vậy?
-              </Typography>
-            </Stack>
-            <Stack spacing={1.25}>
-              {["Giữ cân bằng tổng thời gian", "Phân bổ hợp lý từng ngày", "Tối ưu hiệu suất học", "Dễ dàng điều chỉnh"].map(
-                (text, idx) => (
-                  <Paper
-                    key={idx}
-                    elevation={0}
-                    className="rounded-xl"
-                    sx={{
-                      p: 1.25,
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 1,
-                      border: "1px solid rgba(255,255,255,.15)",
-                      bgcolor: "rgba(255,255,255,.08)",
-                      backdropFilter: "blur(8px)",
-                    }}
-                  >
-                    <Chip size="small" color="primary" label={idx + 1} sx={{ fontWeight: 700, minWidth: 28 }} />
-                    <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
-                      {text}
-                    </Typography>
-                  </Paper>
-                )
-              )}
-            </Stack>
-          </CardContent>
-        </Card>
-      </Grid>
     </Stack>
   );
 };

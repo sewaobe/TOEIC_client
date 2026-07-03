@@ -1,225 +1,257 @@
-// src/pages/DashboardDemo.tsx
 import * as React from "react";
 import {
+  Alert,
   Box,
   Button,
-  Modal,
-  Typography,
+  Chip,
   CircularProgress,
+  Dialog,
+  DialogContent,
+  Divider,
+  LinearProgress,
+  Paper,
+  Stack,
+  Typography,
 } from "@mui/material";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
+import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
+import TrackChangesIcon from "@mui/icons-material/TrackChanges";
+import { useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import DashboardLearningPath from "./DashboardLearningPath";
-import learningPathService from "../../services/learningPath.service";
-// NOTE: Ẩn tính năng chọn phương pháp tạm thời để đơn giản hoá flow tạo lộ trình.
-// Khi cần bật lại, bỏ comment import bên dưới và khối Modal 2 ở cuối file.
-// import {
-//   LEARNING_METHOD_GROUPS,
-//   type Method,
-//   type MethodDetails,
-// } from "../../constants/learningMethods";
-import axiosClient from "../../services/axiosClient";
+import learningPathV2Service from "../../services/learning_path_v2.service";
 
-/* LocalStorage keys (để gom plan khi xác nhận) */
-// const LS_KEY = "toeic_plan_draft";
-// const LS_PLACEMENT_KEY = "toeic_placement_result";
+const missingRequirementLabel: Record<string, string> = {
+  initial_assessment: "Thiếu bài entry test.",
+  learning_path_setup: "Thiếu thiết lập lộ trình.",
+  target_completion_date: "Thiếu deadline.",
+  time_setup: "Thiếu thời gian học.",
+};
 
-/* ============== Card phương pháp + View chi tiết (TẠM ẨN) ==============
-   Toàn bộ block MethodCard và MethodDetailsView được comment để tạm thời ẩn
-   tính năng chọn phương pháp học. Khi muốn bật lại:
-   - Mở comment import learningMethods phía trên
-   - Mở comment block Modal 2 ở dưới cùng file
-   - Giữ nguyên 2 component này (copy lại từ git history hoặc bỏ comment)
-*/
+const formatDateTime = (value?: string | Date | null) => {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
-/* ============== Main ============== */
+const formatDate = (value?: string | Date | null) => {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+const formatDuration = (seconds?: number) => {
+  const value = Number(seconds ?? 0);
+  if (!Number.isFinite(value) || value <= 0) return "N/A";
+  const minutes = Math.floor(value / 60);
+  const remainingSeconds = Math.round(value % 60);
+  if (minutes <= 0) return `${remainingSeconds} giây`;
+  return `${minutes} phút ${remainingSeconds} giây`;
+};
+
+function MetricTile({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 1.5,
+        borderRadius: 2,
+        borderColor: "#DDE3F0",
+        bgcolor: "#F8FAFF",
+      }}
+    >
+      <Stack direction="row" spacing={1.25} alignItems="center">
+        <Box
+          sx={{
+            width: 34,
+            height: 34,
+            borderRadius: 1.5,
+            display: "grid",
+            placeItems: "center",
+            color: "#2653D9",
+            bgcolor: "#EEF4FF",
+            flex: "0 0 auto",
+          }}
+        >
+          {icon}
+        </Box>
+        <Box minWidth={0}>
+          <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#6A728C" }}>
+            {label}
+          </Typography>
+          <Typography sx={{ fontSize: 15, fontWeight: 900, color: "#101A3D" }}>
+            {value}
+          </Typography>
+        </Box>
+      </Stack>
+    </Paper>
+  );
+}
+
+const unwrapApiData = (response: any) => response?.data ?? response;
+
+const toDashboardPlanFromV2Overview = (overview: any, generationContext: any) => {
+  const learningPath = overview?.learning_path;
+  const weekStudies = overview?.week_studies ?? [];
+  const currentCycle = overview?.current_cycle;
+  const entryScore = generationContext.latest_initial_test.score;
+
+  const weekStudyIds =
+    weekStudies.length > 0
+      ? weekStudies.map((week: any) => ({
+        ...week,
+        days:
+          currentCycle?.week_study?._id === week._id
+            ? currentCycle?.day_studies ?? week.days ?? []
+            : week.days ?? [],
+      }))
+      : currentCycle?.week_study
+        ? [
+          {
+            ...currentCycle.week_study,
+            days: currentCycle.day_studies ?? [],
+          },
+        ]
+        : [];
+
+  return {
+    learningPath_id: {
+      ...learningPath,
+      entry_score: entryScore,
+      week_study_ids: weekStudyIds,
+    },
+    learning_path_v2: overview,
+  };
+};
+
 export default function DashboardDemo() {
+  const navigate = useNavigate();
   const [loading, setLoading] = React.useState(true);
   const [hasPlan, setHasPlan] = React.useState(false);
   const [plan, setPlan] = React.useState<any | null>(null);
-  const [creating, setCreating] = React.useState(false);
-  const [creatingMsg, setCreatingMsg] = React.useState<string | null>(null);
-
-  // Modal 1: báo chưa có lộ trình
   const [open, setOpen] = React.useState(false);
-  // NOTE: Các state dưới đây thuộc tính năng chọn phương pháp – tạm thời ẩn.
-  // Khi cần bật lại, bỏ comment các state và UI block Modal 2 tương ứng.
-  // const [chooseMethod, setChooseMethod] = React.useState(false);
-  // const [infoMethod, setInfoMethod] = React.useState<Method | null>(null);
-  // const [blockedToast, setBlockedToast] = React.useState(false);
-  // const [confirmExit, setConfirmExit] = React.useState(false);
-  // const [selected, setSelected] = React.useState<Set<string>>(new Set());
-  // const toggleMethod = (key: string) =>
-  //   setSelected((prev) => {
-  //     const next = new Set(prev);
-  //     next.has(key) ? next.delete(key) : next.add(key);
-  //     return next;
-  //   });
+  const [generationContext, setGenerationContext] = React.useState<any>(null);
+  const [loadingGenerationContext, setLoadingGenerationContext] =
+    React.useState(false);
+  const [creatingPath, setCreatingPath] = React.useState(false);
+
+  const loadGenerationContext = React.useCallback(async () => {
+    try {
+      setLoadingGenerationContext(true);
+      const response = await learningPathV2Service.getGenerationContext();
+      const context = unwrapApiData(response);
+      setGenerationContext(context);
+      return context;
+    } catch (error) {
+      console.error("Tải generation context LearningPath v2 thất bại", error);
+      setGenerationContext(null);
+      return null;
+    } finally {
+      setLoadingGenerationContext(false);
+    }
+  }, []);
+
+  const loadV2OverviewIfReady = React.useCallback(async (context: any) => {
+    const learningPath = context?.learning_path;
+    const learningPathId = learningPath?._id;
+    const hasCycle = (learningPath?.week_study_ids?.length ?? 0) > 0;
+
+    if (!learningPathId || !hasCycle) {
+      return false;
+    }
+
+    const overviewResponse = await learningPathV2Service.getOverview(
+      learningPathId
+    );
+    const overview = unwrapApiData(overviewResponse);
+    setPlan(toDashboardPlanFromV2Overview(overview, context));
+    setHasPlan(true);
+    setOpen(false);
+    return true;
+  }, []);
 
   React.useEffect(() => {
     const fetchPlan = async () => {
       try {
-        const res = await learningPathService.getUserLearningPath();
-        // learningPathService returns an ApiResponse wrapper { success, data, ... }
-        console.log("res", res);
-        if (res && res.success && res.data) {
-          setPlan(res.data);
-          setHasPlan(true);
-        } else {
-          setOpen(true);
-        }
-      } catch (e) {
-        console.error("Error fetching user learning path", e);
+        const context = await loadGenerationContext();
+        const loadedV2 = await loadV2OverviewIfReady(context);
+        if (loadedV2) return;
+        setOpen(true);
+      } catch (error) {
+        console.error("Tải lộ trình học thất bại", error);
         setOpen(true);
       } finally {
         setLoading(false);
       }
     };
+
     fetchPlan();
-  }, []);
+  }, [loadGenerationContext, loadV2OverviewIfReady]);
+
+  const refreshLearningPathV2Overview = React.useCallback(async () => {
+    const refreshedContext = await loadGenerationContext();
+    const loadedV2 = await loadV2OverviewIfReady(refreshedContext);
+
+    if (!loadedV2) {
+      setOpen(true);
+    }
+  }, [loadGenerationContext, loadV2OverviewIfReady]);
 
   const handleConfirm = async () => {
-    // TẠM THỜI: Bỏ qua bước chọn phương pháp và gọi trực tiếp Gemini để lấy khung lộ trình
-    // DỮ LIỆU ĐẦU VÀO: lấy "thực tế" từ localStorage (wizard) nếu có, và tính toán an toàn
+    const learningPathId = generationContext?.learning_path?._id;
+
+    if (!learningPathId) {
+      alert("Chưa có thiết lập lộ trình. Vui lòng hoàn tất /plan trước.");
+      return;
+    }
+
+    if (!generationContext?.can_generate) {
+      alert("Chưa đủ dữ liệu để tạo lộ trình.");
+      return;
+    }
+
     try {
-      // show creating modal + message
-      setCreating(true);
-      setCreatingMsg(
-        "Đang tạo lộ trình tự động… Quá trình có thể tốn vài phút. Vui lòng chờ."
+      setCreatingPath(true);
+      await learningPathV2Service.initialGeneration(learningPathId);
+
+      const refreshedContext = await loadGenerationContext();
+
+      const overviewResponse = await learningPathV2Service.getOverview(
+        learningPathId
       );
-      setOpen(true);
-      // 1) Lấy dữ liệu từ localStorage (đã lưu ở các step wizard)
-      const planStart = JSON.parse(
-        localStorage.getItem("plan_start") || "null"
-      );
-      const planEnd = JSON.parse(localStorage.getItem("plan_end") || "null");
-      const targetScore = JSON.parse(
-        localStorage.getItem("score_target_plan") || "null"
-      );
-      const weeklyTotals: number[] = JSON.parse(
-        localStorage.getItem("weekly_totals") || "[]"
-      ); // minutes per week
-      const weeklyDays = JSON.parse(
-        localStorage.getItem("weekly_days") || "{}"
-      ); // per-day minutes map
-
-      // 2) Tính weekly_study_hours & study_days_per_week từ bản phân bổ tuần/ngày
-      const avgWeeklyMinutes = weeklyTotals.length
-        ? Math.round(
-            weeklyTotals.reduce((a, b) => a + b, 0) / weeklyTotals.length
-          )
-        : 21 * 60; // fallback 21h/tuần
-      const weekly_study_hours = Math.max(1, avgWeeklyMinutes / 60);
-
-      const firstWeekPlan = weeklyDays?.["0"] || {};
-      const study_days_per_week =
-        Object.values(firstWeekPlan).filter(
-          (m: any) => (typeof m === "number" ? m : 0) > 0
-        ).length || 6;
-
-      // 3) Lấy điểm hiện tại và accuracy nếu có (ưu tiên local last_test_result/demo_test_result)
-      // Các key mới: 'last_test_result' (lưu bởi TestHeader) chứa { score, parts: [{ part_name, accuracy }], ... }
-      let current_score = 400;
-      let current_accuracy = {
-        part1: 72,
-        part2: 65,
-        part3: 58,
-        part4: 55,
-        part5: 68,
-        part6: 60,
-        part7: 56,
-      } as Record<string, number>;
-
-      try {
-        const lastRaw = localStorage.getItem("last_test_result");
-        const demoRaw = localStorage.getItem("demo_test_result");
-        const placementRaw =
-          lastRaw || demoRaw || localStorage.getItem("toeic_placement_result");
-
-        if (placementRaw) {
-          const placement = JSON.parse(placementRaw);
-          if (typeof placement?.score === "number")
-            current_score = placement.score;
-
-          if (Array.isArray(placement?.parts)) {
-            const acc: Record<string, number> = {};
-            placement.parts.forEach((p: any) => {
-              // support both { part_name: 'Part 1' } and { name: 'Part 1' }
-              const name = p?.part_name ?? p?.name ?? "";
-              const match = String(name).match(/(\d+)/);
-              const key = match ? `part${match[1]}` : undefined;
-              if (key && typeof p?.accuracy === "number") {
-                // If accuracy is in [0,1] (fraction), convert to percent; else assume percent already
-                const rawAcc = p.accuracy;
-                const percent = rawAcc <= 1 ? rawAcc * 100 : rawAcc;
-                acc[key] = Math.round(percent);
-              }
-            });
-            // Nếu có ít nhất 3 parts thì merge vào current_accuracy
-            if (Object.keys(acc).length >= 3)
-              current_accuracy = { ...current_accuracy, ...acc } as any;
-          }
-        }
-      } catch (e) {
-        console.warn(
-          "Không parse được placement từ localStorage, dùng mặc định demo.",
-          e
-        );
-      }
-
-      // 4) Xây payload gọi Gemini theo spec bạn cung cấp
-      const body = {
-        current_score,
-        current_accuracy,
-        target_score: typeof targetScore === "number" ? targetScore : 600,
-        start_date: typeof planStart === "string" ? planStart : "2025-01-01",
-        deadline: typeof planEnd === "string" ? planEnd : "2025-04-30",
-        weekly_study_hours,
-        study_days_per_week,
-        learning_methods: {
-          video: "Ngữ pháp, lý thuyết, chiến lược",
-          flashcard: "Từ vựng, collocation",
-          dictation: "Nghe - chép chính tả",
-          shadowing: "Bắt chước phát âm, ngữ điệu người bản xứ",
-          quiz: "Trắc nghiệm ngắn ôn từ và cấu trúc",
-          mini_test: "Làm đề TOEIC ngắn, đánh giá phản xạ",
-          full_test: "Làm đề TOEIC đầy đủ, mô phỏng thực tế",
-        },
-      };
-
-      console.log("GEMINI_INPUT_BODY", body);
-      const res = await axiosClient.post("/gemini/generate-toeic-plan", body);
-      console.log("GEMINI_PLAN_RESULT", res);
-
-      // After generation, fetch the user's saved learning path to display it
-      try {
-        const userLpRes = await learningPathService.getUserLearningPath();
-        if (userLpRes && userLpRes.success && userLpRes.data) {
-          setPlan(userLpRes.data);
-          setHasPlan(true);
-        } else {
-          // fallback: if gemini returned a learningPath object directly in res.data.data.learningPath
-          const maybeData = res?.data?.data;
-          if (maybeData?.learningPath) {
-            setPlan(maybeData.learningPath);
-            setHasPlan(true);
-          }
-        }
-      } catch (e) {
-        console.error("Không lấy được learning path sau khi tạo:", e);
-      }
-
-      // close creating UI
-      setCreating(false);
-      setCreatingMsg(null);
+      const overview = unwrapApiData(overviewResponse);
+      setPlan(toDashboardPlanFromV2Overview(overview, refreshedContext));
+      setHasPlan(true);
       setOpen(false);
-    } catch (err) {
-      console.error("Gọi Gemini tạo lộ trình thất bại:", err);
-      setCreating(false);
-      setCreatingMsg(null);
-      // keep modal open and show a brief alert
-      setOpen(true);
-      // optionally show a simple alert; you can replace with Snackbar later
-      alert("Tạo lộ trình thất bại. Vui lòng thử lại sau.");
+    } catch (error) {
+      console.error("Tạo LearningPath v2 thất bại", error);
+      alert("Không thể tạo lộ trình. Vui lòng thử lại.");
+    } finally {
+      setCreatingPath(false);
     }
   };
 
@@ -238,94 +270,274 @@ export default function DashboardDemo() {
     );
   }
 
-  if (hasPlan && plan) return <DashboardLearningPath plan={plan} />;
+  if (hasPlan && plan) {
+    return (
+      <DashboardLearningPath
+        plan={plan}
+        onRefresh={refreshLearningPathV2Overview}
+      />
+    );
+  }
+
+  const latestInitialTest = generationContext?.latest_initial_test;
+  const learningPath = generationContext?.learning_path;
+  const missingRequirements = generationContext?.missing_requirements ?? [];
+  const canGenerate = generationContext?.can_generate === true;
 
   return (
     <MainLayout>
-      {/* Modal 1: chưa có lộ trình */}
-      <Modal
+      <Dialog
         open={open}
         onClose={() => {
-          // prevent closing while creating
-          if (!creating) setOpen(false);
+          if (!creatingPath) setOpen(false);
+        }}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{
+          sx: {
+            borderRadius: 4,
+            overflow: "hidden",
+            border: "1px solid #DDE3F0",
+            boxShadow: "0 24px 70px rgba(16, 26, 61, 0.18)",
+          },
         }}
       >
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            bgcolor: "background.paper",
-            p: 4,
-            borderRadius: 2,
-            boxShadow: 24,
-            textAlign: "center",
-            minWidth: 320,
-          }}
-        >
-          {creating ? (
-            <Box>
-              <CircularProgress sx={{ mb: 2 }} />
-              <Typography variant="h6" gutterBottom>
-                Đang tạo lộ trình…
-              </Typography>
-              <Typography color="text.secondary">{creatingMsg}</Typography>
-            </Box>
-          ) : (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Bạn chưa có lộ trình học
-              </Typography>
-              <Typography color="text.secondary" sx={{ mb: 2 }}>
-                Hãy tạo lộ trình trước khi bắt đầu học.
-              </Typography>
-              <Button
-                variant="contained"
-                onClick={() => {
-                  // TẠM THỜI: Gọi trực tiếp handleConfirm để tạo lộ trình qua Gemini.
-                  // Khi bật lại chọn phương pháp, đổi thành setChooseMethod(true)
-                  handleConfirm();
-                }}
+        <DialogContent sx={{ p: 0, bgcolor: "#F5F7FB" }}>
+          <Box
+            sx={{
+              px: { xs: 2.5, md: 4 },
+              py: { xs: 2.5, md: 3 },
+              bgcolor: "#FFFFFF",
+              borderBottom: "1px solid #DDE3F0",
+            }}
+          >
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              justifyContent="space-between"
+              alignItems={{ xs: "flex-start", sm: "center" }}
+            >
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    display: "grid",
+                    placeItems: "center",
+                    bgcolor: "#EEF4FF",
+                    color: "#2653D9",
+                  }}
+                >
+                  <AutoAwesomeIcon />
+                </Box>
+                <Box>
+                  <Typography sx={{ fontSize: 20, fontWeight: 900, color: "#101A3D" }}>
+                    Tạo lộ trình LearningPath v2
+                  </Typography>
+                  <Typography sx={{ fontSize: 14, color: "#4A5578", mt: 0.5 }}>
+                    Kiểm tra dữ liệu đầu vào trước khi hệ thống tạo cycle học cá nhân hóa.
+                  </Typography>
+                </Box>
+              </Stack>
+              <Chip
+                color={canGenerate ? "success" : "warning"}
+                variant="outlined"
+                icon={canGenerate ? <AssignmentTurnedInIcon /> : <ErrorOutlineIcon />}
+                label={canGenerate ? "Sẵn sàng tạo" : "Cần bổ sung dữ liệu"}
+                sx={{ fontWeight: 800, borderRadius: 999 }}
+              />
+            </Stack>
+          </Box>
+
+          <Box sx={{ p: { xs: 2.5, md: 4 } }}>
+            <Stack spacing={2.5}>
+              {loadingGenerationContext ? (
+                <Box display="flex" justifyContent="center" alignItems="center" py={8}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                      gap: 2,
+                    }}
+                  >
+                    <Paper
+                      variant="outlined"
+                      sx={{ p: 2.25, borderRadius: 3, borderColor: "#DDE3F0", bgcolor: "#FFFFFF" }}
+                    >
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+                        <TrackChangesIcon color="primary" />
+                        <Typography fontWeight={900} color="#101A3D">
+                          Bài entry test gần nhất
+                        </Typography>
+                      </Stack>
+                      {latestInitialTest ? (
+                        <Stack spacing={1.25}>
+                          <MetricTile
+                            icon={<AssignmentTurnedInIcon fontSize="small" />}
+                            label="Điểm đầu vào"
+                            value={latestInitialTest.score ?? "N/A"}
+                          />
+                          <MetricTile
+                            icon={<CalendarMonthOutlinedIcon fontSize="small" />}
+                            label="Thời điểm nộp"
+                            value={formatDateTime(latestInitialTest.submit_at)}
+                          />
+                          <MetricTile
+                            icon={<ScheduleOutlinedIcon fontSize="small" />}
+                            label="Thời lượng"
+                            value={formatDuration(latestInitialTest.duration)}
+                          />
+                          <Stack direction="row" flexWrap="wrap" gap={1} mt={0.5}>
+                            {(latestInitialTest.parts ?? []).map((part: any) => (
+                              <Chip
+                                key={part.part_name}
+                                size="small"
+                                label={`${part.part_name}: ${Math.round(Number(part.accuracy || 0))}%`}
+                                sx={{ borderRadius: 999, fontWeight: 700 }}
+                              />
+                            ))}
+                          </Stack>
+                        </Stack>
+                      ) : (
+                        <Alert
+                          severity="warning"
+                          action={
+                            <Button
+                              color="inherit"
+                              size="small"
+                              onClick={() => navigate("/overview-test?type=entry-test")}
+                            >
+                              Làm entry test
+                            </Button>
+                          }
+                        >
+                          Bạn chưa có bài entry test. Hãy hoàn thành bài đánh giá đầu vào để hệ thống có dữ liệu năng lực ban đầu.
+                        </Alert>
+                      )}
+                    </Paper>
+
+                    <Paper
+                      variant="outlined"
+                      sx={{ p: 2.25, borderRadius: 3, borderColor: "#DDE3F0", bgcolor: "#FFFFFF" }}
+                    >
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+                        <CalendarMonthOutlinedIcon color="primary" />
+                        <Typography fontWeight={900} color="#101A3D">
+                          Thiết lập lộ trình
+                        </Typography>
+                      </Stack>
+                      {learningPath ? (
+                        <Stack spacing={1.25}>
+                          <MetricTile
+                            icon={<TrackChangesIcon fontSize="small" />}
+                            label="Điểm mục tiêu"
+                            value={learningPath.target_score ?? "N/A"}
+                          />
+                          <MetricTile
+                            icon={<CalendarMonthOutlinedIcon fontSize="small" />}
+                            label="Hạn hoàn thành"
+                            value={formatDate(learningPath.target_completion_date)}
+                          />
+                          <MetricTile
+                            icon={<ScheduleOutlinedIcon fontSize="small" />}
+                            label="Nhịp học"
+                            value={`${learningPath.time_per_day ?? 0} phút/ngày · ${learningPath.days_per_week ?? 0} ngày/tuần`}
+                          />
+                        </Stack>
+                      ) : (
+                        <Alert
+                          severity="warning"
+                          action={
+                            <Button color="inherit" size="small" onClick={() => navigate(`/plan?score=${latestInitialTest.score}`)}>
+                              Thiết lập
+                            </Button>
+                          }
+                        >
+                          Bạn chưa thiết lập mục tiêu học. Hãy cấu hình điểm mục tiêu, deadline và thời gian học trước khi tạo lộ trình.
+                        </Alert>
+                      )}
+                    </Paper>
+                  </Box>
+
+                  {missingRequirements.length > 0 && (
+                    <Alert
+                      severity="info"
+                      sx={{ borderRadius: 2, border: "1px solid #B8D4FF", bgcolor: "#F3F8FF" }}
+                    >
+                      <Typography fontWeight={800} sx={{ mb: 0.75 }}>
+                        Cần hoàn tất trước khi tạo lộ trình
+                      </Typography>
+                      <Stack spacing={0.75}>
+                        {missingRequirements.map((item: string) => (
+                          <Stack key={item} direction="row" spacing={1} alignItems="center">
+                            <ErrorOutlineIcon sx={{ fontSize: 16 }} />
+                            <span>{missingRequirementLabel[item] ?? item}</span>
+                          </Stack>
+                        ))}
+                      </Stack>
+                    </Alert>
+                  )}
+                </>
+              )}
+
+              {creatingPath && (
+                <Alert
+                  severity="info"
+                  icon={<CircularProgress size={20} />}
+                  sx={{
+                    borderRadius: 2,
+                    border: "1px solid #B8D4FF",
+                    bgcolor: "#F3F8FF",
+                    alignItems: "center",
+                  }}
+                >
+                  <Typography fontWeight={800} sx={{ mb: 0.5 }}>
+                    Đang tạo lộ trình học cá nhân hóa
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#4A5578", mb: 1 }}>
+                    Hệ thống đang phân tích entry test, mục tiêu và thời gian học để sinh cycle đầu tiên.
+                  </Typography>
+                  <LinearProgress sx={{ borderRadius: 999 }} />
+                </Alert>
+              )}
+
+              <Divider />
+
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                justifyContent="space-between"
+                alignItems={{ xs: "stretch", sm: "center" }}
               >
-                Tạo lộ trình ngay
-              </Button>
-            </Box>
-          )}
-        </Box>
-      </Modal>
-
-      {/* Modal 2: chọn phương pháp – TẠM THỜI ẨN
-          Để bật lại, bỏ comment toàn bộ block dưới cùng và khối import + state bên trên. */}
-      {/**
-      <Modal
-        open={chooseMethod}
-        onClose={(_, reason) => {
-          if (reason === "backdropClick" || reason === "escapeKeyDown") {
-            setBlockedToast(true);
-            return;
-          }
-          setChooseMethod(false);
-        }}
-      >
-        <Box ...> ... (UI chọn phương pháp học) ... </Box>
-      </Modal>
-      */}
-
-      {/* Snackbar cảnh báo – thuộc flow chọn phương pháp (TẠM ẨN) */}
-      {/**
-      <Snackbar ...> ... </Snackbar>
-      */}
-
-      {/* Dialog xác nhận – thuộc flow chọn phương pháp (TẠM ẨN) */}
-      {/**
-      <Dialog ...> ... </Dialog>
-      */}
-
-      {/* Modal ℹ️ chi tiết – thuộc flow chọn phương pháp (TẠM ẨN) */}
-      {/**
-      <Modal ...> ... </Modal>
-      */}
+                <Typography sx={{ fontSize: 13, color: "#6A728C", maxWidth: 520 }}>
+                  Khi bấm tạo, hệ thống sẽ phân tích entry test, mục tiêu và thời gian học để sinh cycle đầu tiên cho LearningPath v2.
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={handleConfirm}
+                  disabled={!canGenerate || creatingPath || loadingGenerationContext}
+                  startIcon={creatingPath ? <CircularProgress size={18} color="inherit" /> : <PlayArrowRoundedIcon />}
+                  sx={{
+                    minWidth: { xs: "100%", sm: 220 },
+                    borderRadius: 2,
+                    py: 1.25,
+                    fontWeight: 900,
+                    bgcolor: "#2653D9",
+                    "&:hover": { bgcolor: "#1238C8" },
+                  }}
+                >
+                  {creatingPath ? "Đang tạo lộ trình..." : "Tạo lộ trình ngay"}
+                </Button>
+              </Stack>
+            </Stack>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

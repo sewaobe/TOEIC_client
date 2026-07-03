@@ -106,7 +106,7 @@ export const LessonFlashcard: FC<LessonFlashcardProps> = ({
           day_study_id: dayId,
           results: logs.map((l) => ({
             vocabulary_id: l.vocab_id,
-            eval_type: l.eval_type,
+            eval_type: l.eval_type ?? "hard",
             response_time: Math.round(l.response_time / 1000), // Convert ms to seconds
           })),
         });

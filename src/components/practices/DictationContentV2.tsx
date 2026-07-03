@@ -1,10 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Box, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Typography,
+} from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Dictation, DictationAttemptLog } from "../../types/Dictation";
 import { dictationAttemptService } from "../../services/dictation_attempt.service";
+import { dictationProgressService } from "../../services/dictation_progress.service";
 import geminiService from "../../services/gemini.service";
+import type { DictationProgress } from "../../types/DictationProgress";
 import DictationAIAnalysis from "./DictationAIAnalysis";
 import { loadStopWords } from "../../utils/stopWord";
 import {
@@ -47,6 +57,27 @@ type EvaluationResult = {
   userTokens: string[];
   correctMatches: boolean[];
   userMatches: boolean[];
+};
+
+const hasResumeableDictationProgress = (
+  progress: DictationProgress | null
+): progress is DictationProgress => {
+  if (!progress) return false;
+  if ((progress.attempt_logs?.length ?? 0) > 0) return true;
+  if ((progress.completed_indices?.length ?? 0) > 0) return true;
+
+  return Object.values(progress.sentence_records ?? {}).some((record) => {
+    const hasAnswer = Object.values(record.answers ?? {}).some(
+      (answer) => answer.trim().length > 0
+    );
+
+    return (
+      hasAnswer ||
+      record.showAnswer ||
+      record.accuracy > 0 ||
+      record.passed
+    );
+  });
 };
 
 export type DictationRuleInsights = {
@@ -479,12 +510,53 @@ export default function DictationContentV2({
   });
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const autoNextTimerRef = useRef<number | null>(null);
+  const saveProgressTimerRef = useRef<number | null>(null);
   const attemptLogsRef = useRef<DictationAttemptLog[]>([]);
   const hasSubmittedRef = useRef(false);
+  const progressIdRef = useRef<string | null>(null);
+  const pendingRestoreRef = useRef<DictationProgress | null>(null);
+  const hasUserInteractedRef = useRef(false);
+  const isRestoringRef = useRef(false);
+  const [activeProgress, setActiveProgress] = useState<DictationProgress | null>(null);
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [, setProgressId] = useState<string | null>(null);
 
   useEffect(() => {
     setDifficulty(initialDifficulty);
   }, [initialDifficulty, dictation._id]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadActiveProgress = async () => {
+      try {
+        const progress = await dictationProgressService.getActive(dictation._id);
+        if (!isMounted) return;
+        if (!hasResumeableDictationProgress(progress)) {
+          setActiveProgress(null);
+          setShowResumeDialog(false);
+          return;
+        }
+
+        setActiveProgress(progress);
+        setShowResumeDialog(true);
+      } catch (error) {
+        console.error("Failed to load active dictation progress:", error);
+      }
+    };
+
+    setActiveProgress(null);
+    setShowResumeDialog(false);
+    setProgressId(null);
+    progressIdRef.current = null;
+    pendingRestoreRef.current = null;
+    hasUserInteractedRef.current = false;
+    loadActiveProgress();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [dictation._id]);
 
   useEffect(() => {
     let isMounted = true;
@@ -615,6 +687,148 @@ export default function DictationContentV2({
     difficulty === "medium"
       ? blankIndices.every((index) => (currentAnswers[index] || "").trim())
       : (currentAnswers[0] || "").trim().length > 0;
+
+  const buildProgressPatch = useCallback(
+    (overrides?: {
+      currentIndex?: number;
+      sentenceRecords?: Record<number, SentenceRecord>;
+      currentAnswers?: Record<number, string>;
+      currentShowAnswer?: boolean;
+      currentAccuracy?: number;
+      currentPassed?: boolean;
+    }) => {
+      const nextCurrentIndex = overrides?.currentIndex ?? currentIndex;
+      const recordIndex = currentIndex;
+      const nextRecords = {
+        ...(overrides?.sentenceRecords ?? sentenceRecords),
+      };
+      const answers = overrides?.currentAnswers ?? currentAnswers;
+
+      nextRecords[recordIndex] = {
+        answers: { ...answers },
+        showAnswer: overrides?.currentShowAnswer ?? currentShowAnswer,
+        accuracy: overrides?.currentAccuracy ?? currentAccuracy,
+        mistakes:
+          nextRecords[recordIndex]?.mistakes ?? getEvaluation(answers).mistakes,
+        passed: overrides?.currentPassed ?? currentPassed,
+      };
+
+      const completedIndices = Object.entries(nextRecords)
+        .filter(([, record]) => record.passed)
+        .map(([index]) => Number(index));
+
+      return {
+        difficulty,
+        current_index: nextCurrentIndex,
+        completed_indices: completedIndices,
+        sentence_records: nextRecords,
+        attempt_logs: attemptLogsRef.current,
+      };
+    },
+    [
+      currentAccuracy,
+      currentAnswers,
+      currentIndex,
+      currentPassed,
+      currentShowAnswer,
+      difficulty,
+      getEvaluation,
+      sentenceRecords,
+    ]
+  );
+
+  const ensureProgressStarted = useCallback(async () => {
+    if (progressIdRef.current) return progressIdRef.current;
+
+    const progress = await dictationProgressService.start(dictation._id, difficulty);
+    progressIdRef.current = progress._id;
+    setProgressId(progress._id);
+    return progress._id;
+  }, [dictation._id, difficulty]);
+
+  const saveProgressDraft = useCallback(
+    async (
+      overrides?: Parameters<typeof buildProgressPatch>[0],
+      options?: { createIfMissing?: boolean }
+    ) => {
+      try {
+        if (hasSubmittedRef.current || isRestoringRef.current) return;
+        if (!progressIdRef.current && options?.createIfMissing === false) return;
+
+        const id = await ensureProgressStarted();
+        await dictationProgressService.update(id, buildProgressPatch(overrides));
+      } catch (error) {
+        console.error("Failed to save dictation progress:", error);
+      }
+    },
+    [buildProgressPatch, ensureProgressStarted]
+  );
+
+  const scheduleProgressSave = useCallback(() => {
+    if (!hasUserInteractedRef.current || hasSubmittedRef.current || isRestoringRef.current) {
+      return;
+    }
+
+    if (saveProgressTimerRef.current !== null) {
+      window.clearTimeout(saveProgressTimerRef.current);
+    }
+
+    saveProgressTimerRef.current = window.setTimeout(() => {
+      saveProgressTimerRef.current = null;
+      saveProgressDraft();
+    }, 700);
+  }, [saveProgressDraft]);
+
+  useEffect(() => {
+    scheduleProgressSave();
+
+    return () => {
+      if (saveProgressTimerRef.current !== null) {
+        window.clearTimeout(saveProgressTimerRef.current);
+        saveProgressTimerRef.current = null;
+      }
+    };
+  }, [currentAnswers, scheduleProgressSave]);
+
+  const restoreProgress = useCallback(
+    (progress: DictationProgress) => {
+      isRestoringRef.current = true;
+      const records = progress.sentence_records ?? {};
+      const safeIndex = Math.min(
+        Math.max(progress.current_index ?? 0, 0),
+        Math.max(totalItems - 1, 0)
+      );
+      const record = records[safeIndex];
+
+      progressIdRef.current = progress._id;
+      setProgressId(progress._id);
+      setSentenceRecords(records);
+      attemptLogsRef.current = progress.attempt_logs ?? [];
+      setCurrentIndex(safeIndex);
+      setCurrentAnswers(record?.answers ?? {});
+      setCurrentShowAnswer(record?.showAnswer ?? false);
+      setCurrentAccuracy(record?.accuracy ?? 0);
+      setCurrentPassed(record?.passed ?? false);
+      setStartedAt(Date.now());
+      setProgress(0);
+      setOpenComplete(false);
+      hasUserInteractedRef.current = true;
+      window.setTimeout(() => {
+        isRestoringRef.current = false;
+      }, 0);
+    },
+    [totalItems]
+  );
+
+  useEffect(() => {
+    if (loadingSentences || !pendingRestoreRef.current) return;
+    const progress = pendingRestoreRef.current;
+
+    if (progress.difficulty !== difficulty) return;
+
+    pendingRestoreRef.current = null;
+    restoreProgress(progress);
+  }, [difficulty, loadingSentences, restoreProgress]);
 
   const renderTokens = useCallback(
     (tokens: string[], matches: boolean[], normalize = false) => {
@@ -838,11 +1052,13 @@ export default function DictationContentV2({
   );
 
   const handleWordChange = (index: number, value: string) => {
+    hasUserInteractedRef.current = true;
     setCurrentAnswers((prev) => ({ ...prev, [index]: value }));
   };
 
   const handleCheck = () => {
     if (!currentItem) return;
+    hasUserInteractedRef.current = true;
 
     const accuracy = currentEvaluation.accuracy;
     const passed = isPassedAccuracy(difficulty, accuracy);
@@ -866,12 +1082,19 @@ export default function DictationContentV2({
     setCurrentShowAnswer(true);
     setCurrentAccuracy(accuracy);
     setCurrentPassed(passed);
-    commitCurrentRecord({
+    const nextRecord = {
       answers: { ...currentAnswers },
       showAnswer: true,
       accuracy,
       mistakes,
       passed,
+    };
+    commitCurrentRecord(nextRecord);
+    saveProgressDraft({
+      currentAnswers,
+      currentShowAnswer: true,
+      currentAccuracy: accuracy,
+      currentPassed: passed,
     });
 
     if (passed && autoNext && currentIndex < totalItems - 1) {
@@ -887,6 +1110,7 @@ export default function DictationContentV2({
   };
 
   const handleRetry = () => {
+    hasUserInteractedRef.current = true;
     setCurrentAnswers({});
     setCurrentShowAnswer(false);
     setCurrentAccuracy(0);
@@ -896,6 +1120,13 @@ export default function DictationContentV2({
     setSentenceRecords((prev) => {
       const next = { ...prev };
       delete next[currentIndex];
+      saveProgressDraft({
+        sentenceRecords: next,
+        currentAnswers: {},
+        currentShowAnswer: false,
+        currentAccuracy: 0,
+        currentPassed: false,
+      });
       return next;
     });
     stopAudio();
@@ -906,6 +1137,8 @@ export default function DictationContentV2({
 
   const handlePrev = () => {
     if (currentIndex > 0) {
+      hasUserInteractedRef.current = true;
+      saveProgressDraft({ currentIndex: currentIndex - 1 });
       loadSentenceState(currentIndex - 1);
     }
   };
@@ -920,11 +1153,15 @@ export default function DictationContentV2({
       return;
     }
 
+    hasUserInteractedRef.current = true;
+    saveProgressDraft({ currentIndex: currentIndex + 1 });
     loadSentenceState(currentIndex + 1);
   };
 
   const handleJumpTo = (index: number) => {
     if (index === currentIndex) return;
+    hasUserInteractedRef.current = true;
+    saveProgressDraft({ currentIndex: index });
     loadSentenceState(index);
   };
 
@@ -935,17 +1172,6 @@ export default function DictationContentV2({
     }
 
     try {
-      await toast.promise(
-        dictationAttemptService.createDictationAttempts(
-          attemptLogsRef.current,
-          dictation._id
-        ),
-        {
-          loading: "Đang lưu kết quả luyện tập...",
-          success: "Lưu kết quả luyện tập thành công!",
-        }
-      );
-
       const logsForSummary = attemptLogsRef.current;
       const total = logsForSummary.length;
       const accuracy = total
@@ -971,7 +1197,7 @@ export default function DictationContentV2({
         avgTime
       );
 
-      setSummary({
+      const nextSummary = {
         accuracy,
         total,
         avgTime,
@@ -980,14 +1206,88 @@ export default function DictationContentV2({
         difficulty,
         insights,
         logs: logsForSummary,
-      });
+      };
+
+      try {
+        const id = await ensureProgressStarted();
+        await toast.promise(
+          dictationProgressService.complete(id, {
+            ...buildProgressPatch(),
+            summary: nextSummary,
+            attempts: logsForSummary,
+          }),
+          {
+            loading: "Dang luu ket qua luyen tap...",
+            success: "Luu ket qua luyen tap thanh cong!",
+          }
+        );
+      } catch (progressError) {
+        console.error(
+          "Dictation progress complete failed. Falling back to legacy attempt API.",
+          progressError
+        );
+        await toast.promise(
+          dictationAttemptService.createDictationAttempts(
+            logsForSummary,
+            dictation._id
+          ),
+          {
+            loading: "Dang luu ket qua bang luong du phong...",
+            success: "Luu ket qua luyen tap thanh cong!",
+          }
+        );
+      }
+
+      setSummary(nextSummary);
       hasSubmittedRef.current = true;
       setOpenComplete(true);
     } catch {
-      toast.error("Có lỗi xảy ra khi lưu kết quả luyện tập.");
+      toast.error("Co loi xay ra khi luu ket qua luyen tap.");
     }
   };
 
+  const handleResumeProgress = () => {
+    if (!activeProgress) return;
+    setShowResumeDialog(false);
+    pendingRestoreRef.current = activeProgress;
+
+    if (activeProgress.difficulty !== difficulty) {
+      setDifficulty(activeProgress.difficulty);
+      return;
+    }
+
+    if (loadingSentences) return;
+
+    restoreProgress(activeProgress);
+    pendingRestoreRef.current = null;
+  };
+
+  const handleRestartProgress = async () => {
+    const progressToCancel = activeProgress;
+    setShowResumeDialog(false);
+    setActiveProgress(null);
+    pendingRestoreRef.current = null;
+    progressIdRef.current = null;
+    setProgressId(null);
+    hasUserInteractedRef.current = false;
+
+    if (progressToCancel?._id) {
+      try {
+        await dictationProgressService.cancel(progressToCancel._id);
+      } catch (error) {
+        console.error("Failed to cancel dictation progress:", error);
+      }
+    }
+
+    setSentenceRecords({});
+    setCurrentIndex(0);
+    setCurrentAnswers({});
+    setCurrentShowAnswer(false);
+    setCurrentAccuracy(0);
+    setCurrentPassed(false);
+    attemptLogsRef.current = [];
+    setStartedAt(Date.now());
+  };
   const handleAnalyzeWithAI = async () => {
     try {
       setLoadingAI(true);
@@ -1075,6 +1375,24 @@ export default function DictationContentV2({
         overflowX: "hidden",
       }}
     >
+      <Dialog open={showResumeDialog} onClose={handleResumeProgress} maxWidth="xs" fullWidth>
+        <DialogTitle>Khôi phục phiên Dictation</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            Bạn đang có một phiên dictation chưa hoàn thành. Bạn muốn tiếp tục
+            từ tiến trình đã lưu hay bắt đầu lại?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleRestartProgress} color="inherit">
+            Làm lại
+          </Button>
+          <Button onClick={handleResumeProgress} variant="contained">
+            Tiếp tục
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <DictationTourGuide isRun={isRunGuide} />
 
       <DictationHeader

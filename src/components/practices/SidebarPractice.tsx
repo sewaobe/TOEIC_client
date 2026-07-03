@@ -25,10 +25,23 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toeicPartsArray } from "../../constants/toeicPart";
 
+export interface Section {
+  id: string;
+  title: string;
+  icon?: JSX.Element;
+  lessons: {
+    id: string;
+    title: string;
+    difficulty?: string;
+  }[];
+}
+
 interface SidebarProps {
   onSelectTag?: (tagName: string) => void;
   onSelectPart?: (partNumber: number) => void;
   onSelectTagFilter?: (partNumber: number, tag: string) => void;
+  sections?: Section[];
+  onSelectLesson?: (lessonId: string) => void;
   skillType?: "dictation" | "shadowing" | "flashcard" | "listening" | "reading";
 }
 
@@ -36,6 +49,8 @@ export default function SidebarPractice({
   onSelectTag,
   onSelectPart,
   onSelectTagFilter,
+  sections,
+  onSelectLesson,
   skillType = "listening",
 }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -100,7 +115,94 @@ export default function SidebarPractice({
 
       {/* ===== Accordion Parts ===== */}
       <Box className="flex-1 overflow-y-auto px-2 overflow-x-hidden">
-        {filteredParts.slice(0, 4).map((part, index) => (
+        {sections ? sections.map((section) => (
+          <Accordion
+            key={section.id}
+            disableGutters
+            sx={{
+              background: "transparent",
+              boxShadow: "none",
+              "&:before": { display: "none" },
+            }}
+          >
+            <AccordionSummary
+              expandIcon={
+                !isCollapsed && (
+                  <ExpandMoreIcon sx={{ color: "#777", fontSize: 18 }} />
+                )
+              }
+              sx={{
+                borderRadius: "8px",
+                px: 1.2,
+                py: 1,
+                "&:hover": { backgroundColor: "rgba(0,0,0,0.04)" },
+                justifyContent: isCollapsed ? "center" : "flex-start",
+              }}
+            >
+              <Box display="flex" alignItems="center" gap={1}>
+                {section.icon}
+                <AnimatePresence>
+                  {!isCollapsed && (
+                    <motion.span
+                      key="title"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: 600, fontSize: 14 }}
+                      >
+                        {section.title}
+                      </Typography>
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </Box>
+            </AccordionSummary>
+
+            <AnimatePresence>
+              {!isCollapsed && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <AccordionDetails sx={{ pb: 1 }}>
+                    <Box display="flex" flexDirection="column" gap={0.5}>
+                      {section.lessons.length > 0 ? (
+                        section.lessons.map((lesson) => (
+                          <Button
+                            key={lesson.id}
+                            onClick={() => onSelectLesson?.(lesson.id)}
+                            sx={{
+                              justifyContent: "flex-start",
+                              textTransform: "none",
+                              fontSize: 13,
+                              color: "#334155",
+                            }}
+                          >
+                            {lesson.title}
+                          </Button>
+                        ))
+                      ) : (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ fontStyle: "italic", px: 1, py: 1 }}
+                        >
+                          Chưa có bài học
+                        </Typography>
+                      )}
+                    </Box>
+                  </AccordionDetails>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Accordion>
+        )) : filteredParts.slice(0, 4).map((part, index) => (
           <Accordion
             key={part.label}
             disableGutters
@@ -199,7 +301,7 @@ export default function SidebarPractice({
             </AnimatePresence>
           </Accordion>
         ))}
-        {filteredParts.slice(4).map((part, index) => (
+        {!sections && filteredParts.slice(4).map((part, index) => (
           <Accordion
             key={part.label}
             disableGutters

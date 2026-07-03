@@ -42,6 +42,10 @@ export interface UserVocabularyMemoryV2 {
   last_interval_days?: number;
   last_seen_count?: number;
   last_remember_count?: number;
+  last_hard_count?: number;
+  last_medium_count?: number;
+  last_easy_count?: number;
+  last_skip_count?: number;
   last_vague_count?: number;
   last_unknown_count?: number;
   last_forgot_count?: number;
@@ -202,6 +206,10 @@ export interface SuggestedVocabularyItem extends VocabularyDisplayInfo {
     | "last_interval_days"
     | "last_seen_count"
     | "last_remember_count"
+    | "last_hard_count"
+    | "last_medium_count"
+    | "last_easy_count"
+    | "last_skip_count"
     | "last_vague_count"
     | "last_unknown_count"
     | "last_forgot_count"

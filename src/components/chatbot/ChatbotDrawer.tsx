@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Box,
@@ -17,16 +17,50 @@ import { ChatContent } from "./components/ChatContent";
 import { chatService } from "../../services/chat.service";
 import { useChatSocket } from "../../hooks/useChatSocket";
 import { toast } from "sonner";
+import { useLocation, useParams } from "react-router-dom";
+import { buildRouteContext } from "../../utils/chatRouteContext";
+import { getChatRouteState } from "../../utils/chatRouteState";
+import {
+    chatErrorMessages,
+    getChatErrorMessage,
+    isSilentChatError,
+    shouldHideChatMessage,
+} from "../../utils/chatErrors";
+import { prepareChatPayload } from "../../utils/chatIntentHint";
+import { hasSessionExpired } from "../../services/sessionManager";
+import { createIdempotencyKey } from "../../utils/idempotency.util";
+
+const chatTypeLabels: Record<ChatType, string> = {
+    question: "Hỏi đáp câu hỏi TOEIC",
+    reading: "Chiến lược Reading",
+    shadowing: "Luyện nói và shadowing",
+    dictation: "Luyện nghe chép chính tả",
+    lesson: "Ôn ngữ pháp và mini test",
+};
+
+function getChatTypeLabel(type: ChatType) {
+    return chatTypeLabels[type] ?? "Chat";
+}
 
 /* ---------------- COMPONENT ---------------- */
 export function ChatbotDrawer({
     isOpen,
     onClose,
-    initialQuestion
+    initialQuestion,
+    quickQuestionRequest,
 }: {
     isOpen: boolean;
     onClose: () => void;
     initialQuestion?: { id: string; text: string };
+    quickQuestionRequest?: {
+        requestId: string;
+        testId: string;
+        attemptId: string;
+        questionId: string;
+        questionNumber?: number;
+        textPreview?: string;
+        testTitle?: string;
+    };
 }) {
     /* ---------- STATE ---------- */
     const [contextQuestion, setContextQuestion] = useState<{ id: string; text: string } | null>(null);
@@ -41,37 +75,216 @@ export function ChatbotDrawer({
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState("");
     const [selectedType, setSelectedType] = useState<ChatType>("question");
+    const location = useLocation();
+    const params = useParams();
 
     const listRef = useRef<HTMLDivElement | null>(null);
     const observerRef = useRef<HTMLDivElement | null>(null);
+    const loadingSessionsRef = useRef(false);
+    const handledQuickRequestRef = useRef<string | null>(null);
+    const sendingQuickRequestRef = useRef<string | null>(null);
+    const [pendingQuickRequest, setPendingQuickRequest] = useState<typeof quickQuestionRequest | null>(null);
+    const streamStatesRef = useRef<Record<string, {
+        queue: string;
+        displayed: string;
+        timer?: ReturnType<typeof setTimeout>;
+        finalMessage?: ChatMessage;
+        ending?: boolean;
+    }>>({});
+
+    const TYPEWRITER_INTERVAL_MS = 16;
+    const TYPEWRITER_CHARS_PER_TICK = 2;
 
     const questionTypes = [
-        { value: "question", label: "Ask about TOEIC Questions" },
-        { value: "reading", label: "Discuss Reading Strategies" },
-        { value: "shadowing", label: "Practice Speaking & Shadowing" },
-        { value: "dictation", label: "Improve Dictation Skills" },
-        { value: "lesson", label: "Review Grammar or Mini Tests" },
+        { value: "question", label: "Hỏi đáp câu hỏi TOEIC" },
+        { value: "reading", label: "Chiến lược Reading" },
+        { value: "shadowing", label: "Luyện nói và shadowing" },
+        { value: "dictation", label: "Luyện nghe chép chính tả" },
+        { value: "lesson", label: "Ôn ngữ pháp và mini test" },
     ] satisfies { value: ChatType; label: string }[];
+
+    const clearStreamTimer = useCallback((tempMessageId: string) => {
+        const streamState = streamStatesRef.current[tempMessageId];
+        if (streamState?.timer) {
+            clearTimeout(streamState.timer);
+            streamState.timer = undefined;
+        }
+    }, []);
+
+    const clearAllStreamTimers = useCallback(() => {
+        Object.keys(streamStatesRef.current).forEach(clearStreamTimer);
+        streamStatesRef.current = {};
+    }, [clearStreamTimer]);
+
+    const replaceStreamMessage = useCallback((tempMessageId: string, message: ChatMessage) => {
+        setMessages((prev) =>
+            prev.some((msg) => msg._id === tempMessageId)
+                ? prev.map((msg) => (msg._id === tempMessageId ? message : msg))
+                : [...prev, message]
+        );
+    }, []);
+
+    const pumpTypewriterQueue = useCallback((tempMessageId: string) => {
+        const streamState = streamStatesRef.current[tempMessageId];
+        if (!streamState || streamState.timer) return;
+
+        const tick = () => {
+            const currentState = streamStatesRef.current[tempMessageId];
+            if (!currentState) return;
+
+            if (!currentState.queue) {
+                currentState.timer = undefined;
+                if (currentState.ending && currentState.finalMessage) {
+                    replaceStreamMessage(tempMessageId, currentState.finalMessage);
+                    delete streamStatesRef.current[tempMessageId];
+                }
+                return;
+            }
+
+            const visibleText = currentState.queue.slice(0, TYPEWRITER_CHARS_PER_TICK);
+            currentState.queue = currentState.queue.slice(TYPEWRITER_CHARS_PER_TICK);
+            currentState.displayed = `${currentState.displayed}${visibleText}`;
+            setMessages((prev) =>
+                prev.map((msg) =>
+                    msg._id === tempMessageId
+                        ? { ...msg, text: `${msg.text}${visibleText}` }
+                        : msg
+                )
+            );
+            currentState.timer = setTimeout(tick, TYPEWRITER_INTERVAL_MS);
+        };
+
+        streamState.timer = setTimeout(tick, TYPEWRITER_INTERVAL_MS);
+    }, [replaceStreamMessage]);
+
+    const handleSocketMessage = useCallback((msg: ChatMessage) => {
+        if (shouldHideChatMessage(msg)) return;
+        setMessages((prev) => [...prev, msg]);
+    }, []);
+
+    const handleSessionUpdated = useCallback((data: { sessionId: string; title?: string; last_message_preview: string; updated_at: string | Date }) => {
+        setSessions((prev) =>
+            prev.map((s) =>
+                s._id === data.sessionId
+                    ? {
+                        ...s,
+                        title: data.title || s.title,
+                        last_message_preview: data.last_message_preview,
+                        updated_at: data.updated_at as string,
+                    }
+                    : s
+            )
+        );
+        setSelectedSession((prev) =>
+            prev?._id === data.sessionId && data.title
+                ? { ...prev, title: data.title, last_message_preview: data.last_message_preview, updated_at: data.updated_at as string }
+                : prev
+        );
+    }, []);
+
+    const handleStreamStart = useCallback(({ tempMessageId }: { sessionId: string; tempMessageId: string }) => {
+        clearStreamTimer(tempMessageId);
+        streamStatesRef.current[tempMessageId] = { queue: "", displayed: "" };
+        const tempMessage: ChatMessage = {
+            _id: tempMessageId,
+            session_id: selectedSession?._id || "unknown",
+            sender: "bot",
+            text: "",
+            created_at: new Date().toISOString(),
+        };
+        setMessages((prev) =>
+            prev.some((msg) => msg._id === tempMessageId) ? prev : [...prev, tempMessage]
+        );
+    }, [clearStreamTimer, selectedSession?._id]);
+
+    const handleStreamChunk = useCallback(({ tempMessageId, chunk }: { sessionId: string; tempMessageId: string; chunk: string }) => {
+        if (!chunk) return;
+        if (!streamStatesRef.current[tempMessageId]) {
+            streamStatesRef.current[tempMessageId] = { queue: "", displayed: "" };
+        }
+        streamStatesRef.current[tempMessageId].queue += chunk;
+        pumpTypewriterQueue(tempMessageId);
+    }, [pumpTypewriterQueue]);
+
+    const handleStreamEnd = useCallback(({ tempMessageId, message }: { sessionId: string; tempMessageId: string; message: ChatMessage }) => {
+        const streamState = streamStatesRef.current[tempMessageId];
+        if (!streamState) {
+            replaceStreamMessage(tempMessageId, message);
+            return;
+        }
+
+        streamState.finalMessage = message;
+        streamState.ending = true;
+        if (!streamState.queue && !streamState.timer) {
+            if (!streamState.displayed && message.text) {
+                streamState.queue = message.text;
+                pumpTypewriterQueue(tempMessageId);
+                return;
+            }
+            replaceStreamMessage(tempMessageId, message);
+            delete streamStatesRef.current[tempMessageId];
+            return;
+        }
+        pumpTypewriterQueue(tempMessageId);
+    }, [pumpTypewriterQueue, replaceStreamMessage]);
+
+    const handleStreamError = useCallback(({ tempMessageId, message }: { sessionId: string; tempMessageId: string; message: ChatMessage }) => {
+        clearStreamTimer(tempMessageId);
+        delete streamStatesRef.current[tempMessageId];
+        if (shouldHideChatMessage(message)) {
+            setMessages((prev) => prev.filter((item) => item._id !== tempMessageId));
+            return;
+        }
+        replaceStreamMessage(tempMessageId, message);
+    }, [clearStreamTimer, replaceStreamMessage]);
 
     /* ---------- SOCKET HOOK ---------- */
     const { sendMessage, isBotTyping } = useChatSocket({
         sessionId: selectedSession?._id || "",
-        onMessage: (msg) => setMessages((prev) => [...prev, msg]),
+        onMessage: handleSocketMessage,
         onBotTyping: () => { },
         onError: (err) => {
-            console.error("⚠️ Chat Error:", err);
-            toast.error("Error communicating with chatbot. Please try again.");
-            handleBotErrorMessage();
+            console.error("Chat Error:", err);
+            if (isSilentChatError(err)) return;
+            const message = getChatErrorMessage(err);
+            toast.error(message);
         },
-        onSessionUpdated: (data) =>
-            setSessions((prev) =>
-                prev.map((s) =>
-                    s._id === data.sessionId
-                        ? { ...s, last_message_preview: data.last_message_preview, updated_at: data.updated_at as string }
-                        : s
-                )
-            ),
+        onSessionUpdated: handleSessionUpdated,
+        onStreamStart: handleStreamStart,
+        onStreamChunk: handleStreamChunk,
+        onStreamEnd: handleStreamEnd,
+        onStreamError: handleStreamError,
     });
+
+    const loadInitialSessions = useCallback(async () => {
+        if (loadingSessionsRef.current) return;
+        loadingSessionsRef.current = true;
+        setLoadingSessions(true);
+
+        try {
+            let nextPage = 1;
+            let combined: ChatSession[] = [];
+
+            while (true) {
+                const res = await chatService.getChatSessions(nextPage, 8);
+                const newSessions = res.items;
+
+                combined = [...combined, ...newSessions];
+                setSessions([...combined]);
+                setHasMore(res.hasMore ?? newSessions.length > 0);
+                nextPage++;
+
+                const container = listRef.current;
+                if (!container || !res.hasMore) break;
+                if (container.scrollHeight > container.clientHeight + 80) break;
+            }
+
+            setPage(nextPage - 1);
+        } finally {
+            loadingSessionsRef.current = false;
+            setLoadingSessions(false);
+        }
+    }, []);
 
     /* ---------- LOAD INITIAL SESSIONS ---------- */
     useEffect(() => {
@@ -82,53 +295,116 @@ export function ChatbotDrawer({
             loadInitialSessions();
         }
         return () => {
+            clearAllStreamTimers();
             setSelectedSession(null);
             setMessages([]);
             setInput("");
             setContextQuestion(null);
         }
-    }, [isOpen]);
+    }, [clearAllStreamTimers, isOpen, loadInitialSessions]);
 
     useEffect(() => {
         if (initialQuestion) {
-            // Nếu chưa có session đang mở → tạo session mới luôn
+            // Nếu chưa có session đang mở thì tạo session mới.
             (async () => {
                 const created = await chatService.createChatSession({
-                    title: `Question Discussion - ${initialQuestion.text.slice(0, 40)}...`,
+                    title: `Thảo luận câu hỏi - ${initialQuestion.text.slice(0, 40)}...`,
                     type: "question",
                 });
                 setSelectedSession(created);
                 setSessions((prev) => [created, ...prev]);
-                // Gắn context để FE hiển thị chip
+                // Gắn context để FE hiển thị chip.
                 setContextQuestion(initialQuestion);
             })();
         }
     }, [initialQuestion]);
 
-    const loadInitialSessions = async () => {
-        if (loadingSessions) return;
-        setLoadingSessions(true);
+    useEffect(() => {
+        if (!isOpen || !quickQuestionRequest) return;
+        if (handledQuickRequestRef.current === quickQuestionRequest.requestId) return;
 
-        let nextPage = 1;
-        let combined: ChatSession[] = [];
+        handledQuickRequestRef.current = quickQuestionRequest.requestId;
+        setPendingQuickRequest(quickQuestionRequest);
 
-        while (true) {
-            const res = await chatService.getChatSessions(nextPage, 8);
-            const newSessions = res.items;
-
-            combined = [...combined, ...newSessions];
-            setSessions([...combined]);
-            setHasMore(res.hasMore ?? newSessions.length > 0);
-            nextPage++;
-
-            const container = listRef.current;
-            if (!container || !res.hasMore) break;
-            if (container.scrollHeight > container.clientHeight + 80) break;
+        if (!selectedSession) {
+            (async () => {
+                const title = quickQuestionRequest.questionNumber
+                    ? quickQuestionRequest.testTitle
+                        ? `Giải thích câu ${quickQuestionRequest.questionNumber} - ${quickQuestionRequest.testTitle}`
+                        : `Giải thích câu ${quickQuestionRequest.questionNumber}`
+                    : "Giải thích câu hỏi";
+                const created = await chatService.createChatSession({
+                    title,
+                    type: "question",
+                });
+                setSelectedSession(created);
+                setSessions((prev) => [created, ...prev]);
+            })().catch((err) => {
+                console.error("Không thể tạo phiên chat cho câu hỏi nhanh:", err);
+                toast.error("Không thể mở chatbot cho câu hỏi này.");
+                setPendingQuickRequest(null);
+            });
         }
+    }, [isOpen, quickQuestionRequest, selectedSession]);
 
-        setPage(nextPage - 1);
-        setLoadingSessions(false);
-    };
+    useEffect(() => {
+        if (!pendingQuickRequest || !selectedSession?._id) return;
+        if (sendingQuickRequestRef.current === pendingQuickRequest.requestId) return;
+
+        const text = pendingQuickRequest.questionNumber
+            ? `Giải thích nhanh câu ${pendingQuickRequest.questionNumber}`
+            : "Giải thích nhanh câu này";
+        const routeContext = {
+            page: "question_review" as const,
+            testId: pendingQuickRequest.testId,
+            attemptId: pendingQuickRequest.attemptId,
+            questionId: pendingQuickRequest.questionId,
+            currentQuestionNumber: pendingQuickRequest.questionNumber,
+            questionRefs: [
+                {
+                    questionNumber: pendingQuickRequest.questionNumber ?? 0,
+                    questionId: pendingQuickRequest.questionId,
+                    textPreview: pendingQuickRequest.textPreview,
+                },
+            ].filter((item) => item.questionNumber > 0),
+        };
+
+        sendingQuickRequestRef.current = pendingQuickRequest.requestId;
+        (async () => {
+            const preparedPayload = prepareChatPayload({
+                userText: text,
+                routeContext,
+                selectedText: pendingQuickRequest.textPreview,
+                clientContext: {
+                    userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    sourceAction: "quick_question_explain",
+                    testTitle: pendingQuickRequest.testTitle,
+                },
+            });
+            console.info("chat.route.clientPayload", {
+                userText: text,
+                scope: preparedPayload.intentHint.scope,
+                intent: preparedPayload.intentHint.intent,
+                source: preparedPayload.intentHint.source,
+                routeContext: preparedPayload.routeContext,
+                resolverPolicy: preparedPayload.intentHint.resolverPolicy,
+            });
+            const sent = await sendMessage(text, {
+                questionId: preparedPayload.questionId,
+                mode: "db_first",
+                routeContext: preparedPayload.routeContext,
+                clientContext: preparedPayload.clientContext,
+            });
+
+            sendingQuickRequestRef.current = null;
+            if (!sent) {
+                if (hasSessionExpired()) return;
+                toast.error(chatErrorMessages.SOCKET_DISCONNECTED);
+                return;
+            }
+            setPendingQuickRequest(null);
+        })();
+    }, [pendingQuickRequest, selectedSession?._id, sendMessage]);
 
     /* ---------- INFINITE SCROLL ---------- */
     useEffect(() => {
@@ -168,90 +444,128 @@ export function ChatbotDrawer({
         setLoadingMessages(true);
         try {
             const res = await chatService.getAllChatMessageInSession(session._id);
-            setMessages(res);
+            setMessages(res.filter((message) => !shouldHideChatMessage(message)));
         } catch (err) {
-            console.error("❌ Lỗi tải tin nhắn:", err);
+            console.error("Lỗi tải tin nhắn:", err);
         } finally {
             setLoadingMessages(false);
         }
     };
 
-    // Xoá session
+    // Xóa session.
     const handleDeleteSession = async (sessionId: string) => {
-        if (!window.confirm("Are you sure you want to delete this chat session?")) return;
+        if (!window.confirm("Bạn có chắc muốn xóa phiên chat này không?")) return;
 
         try {
             await toast.promise(chatService.deleteChatSession(sessionId), {
-                loading: "Deleting chat session...",
-                success: "Chat session deleted.",
-                error: "Failed to delete chat session.",
+                loading: "Đang xóa phiên chat...",
+                success: "Đã xóa phiên chat.",
+                error: "Không thể xóa phiên chat.",
             });
             setSessions((prev) => prev.filter((s) => s._id !== sessionId));
 
-            // Nếu đang xem session bị xóa
+            // Nếu đang xem session bị xóa.
             if (selectedSession?._id === sessionId) {
                 setSelectedSession(null);
                 setMessages([]);
             }
 
-            console.log("🗑️ Deleted chat session:", sessionId);
+            console.log("Đã xóa phiên chat:", sessionId);
         } catch (err) {
-            console.error("❌ Lỗi xoá session:", err);
+            console.error("Lỗi xóa phiên chat:", err);
         }
     };
 
-    // Xử lý tin nhắn lỗi từ bot
-    const handleBotErrorMessage = async (errorText?: string) => {
-        const botErrorMessage: ChatMessage = {
-            _id: `${Date.now()}_error`,
-            session_id: selectedSession?._id || "unknown",
-            sender: "bot",
-            text:
-                errorText ||
-                "⚠️ Xin lỗi, hiện tại mình đang gặp sự cố khi xử lý yêu cầu. Vui lòng thử lại sau nhé!",
-            created_at: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, botErrorMessage]);
-    };
-
     /* ---------- GỬI TIN NHẮN ---------- */
-    const handleSendMessage = async () => {
-        if (!input.trim() || !selectedSession?._id) return;
+    const handleSendMessage = async (override?: { text?: string; clientContext?: Record<string, unknown> }) => {
+        const messageText = override?.text ?? input;
+        if (!messageText.trim() || !selectedSession?._id) return;
 
-        const text = input.trim();
-        setInput("");
+        const text = messageText.trim();
+        if (!override?.text) setInput("");
 
         try {
-            if (!contextQuestion) {
-                sendMessage(text);
-            } else {
-                sendMessage(`${text}. Dữ liệu liên quan: ${contextQuestion.text}`);
-                setContextQuestion(null); // gửi xong xoá context
+            const routeContext = buildRouteContext({
+                pathname: location.pathname,
+                search: location.search,
+                params,
+                pageState: {
+                    ...getChatRouteState(),
+                    questionId: contextQuestion?.id || undefined,
+                },
+            });
+            const preparedPayload = prepareChatPayload({
+                userText: text,
+                routeContext,
+                messages,
+                contextQuestion,
+                selectedText: window.getSelection()?.toString() || undefined,
+                clientContext: {
+                    userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    clientRequestId: createIdempotencyKey("chat-flashcard"),
+                    ...(override?.clientContext ?? {}),
+                },
+            });
+            console.info("chat.route.clientPayload", {
+                userText: text,
+                scope: preparedPayload.intentHint.scope,
+                intent: preparedPayload.intentHint.intent,
+                source: preparedPayload.intentHint.source,
+                routeContext: preparedPayload.routeContext,
+                resolverPolicy: preparedPayload.intentHint.resolverPolicy,
+            });
+
+            const sent = await sendMessage(text, {
+                questionId: preparedPayload.questionId,
+                routeContext: preparedPayload.routeContext,
+                clientContext: preparedPayload.clientContext,
+            });
+            if (!sent) {
+                if (contextQuestion) setContextQuestion(contextQuestion);
+                if (!override?.text) setInput(text);
+                if (hasSessionExpired()) return;
+                const message = chatErrorMessages.SOCKET_DISCONNECTED;
+                toast.error(message);
+                return;
             }
         } catch (error) {
             console.error("Lỗi gửi tin nhắn:", error);
             toast.error("Không thể gửi tin nhắn đến chatbot.");
-            handleBotErrorMessage("Mình không thể gửi tin nhắn được lúc này. Hãy thử lại sau nhé!");
         }
     };
 
     /* ---------- TẠO CHAT MỚI ---------- */
+    const resetConversationState = useCallback(() => {
+        clearAllStreamTimers();
+        setMessages([]);
+        setInput("");
+        setContextQuestion(null);
+        setPendingQuickRequest(null);
+        setLoadingMessages(false);
+    }, [clearAllStreamTimers]);
+
+    const returnToSessionList = useCallback(() => {
+        resetConversationState();
+        setSelectedSession(null);
+    }, [resetConversationState]);
+
     const handleNewChat = async (type?: ChatType) => {
         const chatType = type || selectedType;
 
         try {
             const created = await chatService.createChatSession({
-                title: `New ${chatType} session`,
+                title: `Phiên ${getChatTypeLabel(chatType).toLowerCase()} mới`,
                 type: chatType,
             });
             setSessions((prev) => [created, ...prev]);
 
+            resetConversationState();
             setSelectedSession(created);
 
             const list = listRef.current;
             if (list) list.scrollTop = 0;
         } catch (err) {
-            console.error("❌ Lỗi tạo phiên chat:", err);
+            console.error("Lỗi tạo phiên chat:", err);
         }
     };
 
@@ -287,7 +601,7 @@ export function ChatbotDrawer({
                                 color: "transparent",
                             }}
                         >
-                            TOEIC Smart Assistant
+                            Trợ lý TOEIC thông minh
                         </Typography>
                         <IconButton onClick={onClose} size="small">
                             <Close sx={{ color: "#2563eb" }} />
@@ -298,7 +612,7 @@ export function ChatbotDrawer({
                     {!selectedSession ? (
                         <Box ref={listRef} sx={{ flex: 1, overflowY: "auto", py: 2, px: 0.5 }}>
                             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                                Quick Practice Modes
+                                Chế độ luyện tập nhanh
                             </Typography>
 
                             <ChipScrollerMini
@@ -309,7 +623,7 @@ export function ChatbotDrawer({
                             />
 
                             <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 3, mb: 1 }}>
-                                Recent Practice Sessions
+                                Phiên luyện tập gần đây
                             </Typography>
 
                             {/* Loading Skeleton */}
@@ -392,7 +706,7 @@ export function ChatbotDrawer({
                                 </>
                             )}
 
-                            {/* Floating New Chat Button */}
+                            {/* Nút tạo chat mới */}
                             <Box
                                 sx={{
                                     position: "fixed",
@@ -420,7 +734,7 @@ export function ChatbotDrawer({
                                         },
                                     }}
                                 >
-                                    New Chat
+                                    Chat mới
                                 </Button>
                             </Box>
                         </Box>
@@ -436,7 +750,7 @@ export function ChatbotDrawer({
                             questionTypes={questionTypes}
                             loadingMessages={loadingMessages}
                             isBotTyping={isBotTyping}
-                            onBack={() => setSelectedSession(null)}
+                            onBack={returnToSessionList}
                             contextQuestion={contextQuestion}
                             onClearContext={() => setContextQuestion(null)}
                         />
@@ -446,3 +760,5 @@ export function ChatbotDrawer({
         </AnimatePresence>
     );
 }
+
+

@@ -52,6 +52,7 @@ import { learningPathActivityService } from "../../services/learningPathActivity
 import { useNavigate } from "react-router-dom";
 import AssessmentModal from "../../components/modals/AssessmentModal";
 import userTestService from "../../services/user_test.service";
+import testService from "../../services/test.service";
 
 interface MiniTestResult {
   testId: string;
@@ -62,16 +63,24 @@ interface MiniTestResult {
   submit_at: string;
 }
 
+interface AssessmentIntroMeta {
+  questionCount?: number;
+  parts: string[];
+}
+
 export default function LessonPage() {
   const [searchParam] = useSearchParams();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const dayId = (searchParam.get("day") || "").toString();
   const week = (searchParam.get("week") || "").toString();
+  const learningPathId = (searchParam.get("learningPathId") || "").toString();
 
   // Mini test result state
   const [miniTestResult, setMiniTestResult] =
     React.useState<MiniTestResult | null>(null);
+  const [assessmentIntroMeta, setAssessmentIntroMeta] =
+    React.useState<AssessmentIntroMeta | null>(null);
 
   // Assessment modal state for mini test
   const [isAssessmentOpen, setIsAssessmentOpen] = React.useState(false);
@@ -110,6 +119,57 @@ export default function LessonPage() {
     handleOpenModalStatistic,
     handleCloseModalStatistic,
   } = useLessonViewModel(dayId, week);
+
+  React.useEffect(() => {
+    if (
+      !currentLesson ||
+      (currentLesson.type !== "mini_test" && currentLesson.type !== "full_test")
+    ) {
+      setAssessmentIntroMeta(null);
+      return;
+    }
+
+    let cancelled = false;
+    setAssessmentIntroMeta(null);
+
+    const loadAssessmentMeta = async () => {
+      try {
+        const response = await testService.getTestById(currentLesson.id, {
+          full: true,
+        });
+        const rawTest = (response.test as any)?.test ?? response.test;
+        const groups = Array.isArray(rawTest?.groups) ? rawTest.groups : [];
+        const questionCount = groups.reduce((sum: number, group: any) => {
+          return sum + (Array.isArray(group?.questions) ? group.questions.length : 0);
+        }, 0);
+        const partNumbers = Array.from(
+          new Set(
+            groups
+              .map((group: any) => Number(group?.part))
+              .filter((part: number) => Number.isInteger(part) && part >= 1 && part <= 7)
+          )
+        ).sort((a, b) => a - b);
+
+        if (!cancelled) {
+          setAssessmentIntroMeta({
+            questionCount: questionCount > 0 ? questionCount : undefined,
+            parts: partNumbers.map((part) => `Part ${part}`),
+          });
+        }
+      } catch (err) {
+        console.warn("Không lấy được metadata assessment test", err);
+        if (!cancelled) {
+          setAssessmentIntroMeta(null);
+        }
+      }
+    };
+
+    loadAssessmentMeta();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentLesson?.id, currentLesson?.type]);
 
   const [historyOpen, setHistoryOpen] = React.useState(false);
   const [historyLoading, setHistoryLoading] = React.useState(false);
@@ -538,9 +598,9 @@ export default function LessonPage() {
     window.scroll(0, 0);
   }, [currentLesson]);
 
-  // Check for mini test result from BE (when returning from test page)
+  // Check for LearningPath assessment result from BE (when returning from test page)
   React.useEffect(() => {
-    const returnInfo = localStorage.getItem("mini_test_return");
+    const returnInfo = localStorage.getItem("learning_path_assessment_return");
     if (!returnInfo) return;
 
     // Parse thông tin return
@@ -549,7 +609,7 @@ export default function LessonPage() {
       const parsed = JSON.parse(returnInfo);
       testId = parsed.testId; // testId đã được lưu trong MiniTestIntro
     } catch (e) {
-      console.warn("Lỗi parse mini_test_return", e);
+      console.warn("Lỗi parse learning_path_assessment_return", e);
     }
 
     if (!testId) return;
@@ -588,17 +648,17 @@ export default function LessonPage() {
     fetchMiniTestResult();
   }, [dayId, week]);
 
-  // Khi quay lại từ mini_test: xem có cần mở AssessmentModal không
+  // Khi quay lại từ LearningPath assessment: xem có cần mở AssessmentModal không
   React.useEffect(() => {
     try {
-      const shouldShow = localStorage.getItem("mini_test_show_assessment");
+      const shouldShow = localStorage.getItem("learning_path_assessment_show");
       if (shouldShow === "true") {
         setIsAssessmentOpen(true);
         setShowMiniTestResultInContent(false); // Reset để hiển thị result card sau
-        localStorage.removeItem("mini_test_show_assessment");
+        localStorage.removeItem("learning_path_assessment_show");
       }
     } catch (e) {
-      console.warn("Không đọc được flag mini_test_show_assessment", e);
+      console.warn("Không đọc được flag learning_path_assessment_show", e);
     }
   }, []);
 
@@ -965,39 +1025,59 @@ export default function LessonPage() {
           </>
         );
       case "mini_test":
+      case "full_test":
         // Navigate to TestDemoPage with mini_test params
         const handleStartMiniTest = () => {
+          const assessmentType =
+            currentLesson.type === "full_test" ? "full_test" : "mini_test";
+          const activeLearningPathId =
+            learningPathId || localStorage.getItem("learning_path_v2_id") || "";
+          const activeWeekStudyId =
+            localStorage.getItem("learning_path_v2_week_study_id") || "";
+          const returnPayload = {
+            dayId,
+            week,
+            testId: currentLesson.id,
+            learningPathId: activeLearningPathId || undefined,
+            weekStudyId: activeWeekStudyId || undefined,
+            dayStudyId: dayId,
+            assessmentType,
+          };
+
           // Store return info in localStorage to come back after test
           localStorage.setItem(
-            "mini_test_return",
-            JSON.stringify({
-              dayId,
-              week,
-              testId: currentLesson.id, // testId để fetch history sau
-            })
+            "learning_path_assessment_return",
+            JSON.stringify(returnPayload)
           );
-          // Navigate directly to test page (skip overview) với timeLimit 60 phút (1 tiếng)
+          const timeLimit = currentLesson.type === "full_test" ? 120 : 60;
+          const query = new URLSearchParams({
+            testId: currentLesson.id,
+            fromLesson: "true",
+            timeLimit: String(timeLimit),
+            assessmentType,
+          });
+          if (activeLearningPathId) {
+            query.set("learningPathId", activeLearningPathId);
+          }
+
+          // Navigate directly to test page (skip overview)
           navigate(
-            `/test?testId=${currentLesson.id}&fromLesson=true&timeLimit=60`
+            `/test?${query.toString()}`
           );
         };
 
         return (
           <MiniTestIntro
             title={currentLesson.title}
-            description="Bài kiểm tra mini gồm 100 câu hỏi để đánh giá kiến thức của bạn"
+            description={
+              currentLesson.type === "full_test"
+                ? "Bài full test định kỳ để cập nhật chiến lược học tiếp theo"
+                : "Bài kiểm tra mini để đánh giá kiến thức của bạn"
+            }
             onStart={handleStartMiniTest}
-            questionCount={100}
-            duration={60}
-            parts={[
-              "Part 1",
-              "Part 2",
-              "Part 3",
-              "Part 4",
-              "Part 5",
-              "Part 6",
-              "Part 7",
-            ]}
+            questionCount={assessmentIntroMeta?.questionCount}
+            duration={currentLesson.type === "full_test" ? 120 : 60}
+            parts={assessmentIntroMeta?.parts ?? []}
           />
         );
       default:

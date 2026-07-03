@@ -8,6 +8,7 @@ import {
     TextField,
     InputAdornment,
     Fade,
+    Alert,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
@@ -36,7 +37,25 @@ export default function DictionaryDrawer({ open, onClose }: DictionaryDrawerProp
     const [result, setResult] = useState<DictionaryData | null>(null);
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [suppressSuggestions, setSuppressSuggestions] = useState(false);
+    const [searchError, setSearchError] = useState<string | null>(null);
+    const [lastSearchedTerm, setLastSearchedTerm] = useState("");
     const debouncedSearch = useDebounce(searchTerm, 400);
+
+    useEffect(() => {
+        const current = searchTerm.trim().toLowerCase();
+        const last = lastSearchedTerm.trim().toLowerCase();
+
+        if (!current) {
+            setResult(null);
+            setSearchError(null);
+            return;
+        }
+
+        if (last && current !== last) {
+            setResult(null);
+            setSearchError(null);
+        }
+    }, [searchTerm, lastSearchedTerm]);
 
     /* --- Suggestion API --- */
     useEffect(() => {
@@ -68,12 +87,17 @@ export default function DictionaryDrawer({ open, onClose }: DictionaryDrawerProp
 
         setIsSearching(true);
         setResult(null);
+        setSearchError(null);
         setSuggestions([]);
         setSuppressSuggestions(true);
 
         try {
             const data = await dictionaryService.lookup(q);
             setResult(data);
+            setLastSearchedTerm(q);
+        } catch (error) {
+            console.error("Dictionary lookup failed:", error);
+            setSearchError("Không thể tra cứu từ này. Vui lòng thử lại.");
         } finally {
             setIsSearching(false);
         }
@@ -92,6 +116,8 @@ export default function DictionaryDrawer({ open, onClose }: DictionaryDrawerProp
         setResult(null);
         setSuggestions([]);
         setSuppressSuggestions(false);
+        setSearchError(null);
+        setLastSearchedTerm("");
     };
 
     return (
@@ -260,13 +286,32 @@ export default function DictionaryDrawer({ open, onClose }: DictionaryDrawerProp
                                             </Typography>
                                         </Box>
                                     ) : (
-                                        result && (
-                                            <Fade in timeout={400}>
-                                                <Box className="pt-2">
-                                                    <DictionaryViewer data={result} />
+                                        <>
+                                            {searchError && (
+                                                <Alert severity="error" sx={{ borderRadius: 2 }}>
+                                                    {searchError}
+                                                </Alert>
+                                            )}
+
+                                            {!searchError && !result && searchTerm.trim() && !isSearching && (
+                                                <Box className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-white/70 px-4 py-8 text-center">
+                                                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#0f172a" }}>
+                                                        Chưa có kết quả
+                                                    </Typography>
+                                                    <Typography variant="body2" className="mt-1 text-slate-500">
+                                                        Hãy nhấn tìm kiếm để xem nghĩa, phát âm và ví dụ của từ.
+                                                    </Typography>
                                                 </Box>
-                                            </Fade>
-                                        )
+                                            )}
+
+                                            {result && (
+                                                <Fade in timeout={400}>
+                                                    <Box className="pt-2">
+                                                        <DictionaryViewer data={result} />
+                                                    </Box>
+                                                </Fade>
+                                            )}
+                                        </>
                                     )}
                                 </motion.div>
                             )}

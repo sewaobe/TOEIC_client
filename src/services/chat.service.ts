@@ -28,7 +28,7 @@ export const chatService = {
 
         return res.data;
     },
-    processUserMessage: async (data: { sessionId: string; userText: string, questionId?: string }): Promise<any> => {
+    processUserMessage: async (data: { sessionId: string; userText: string, questionId?: string }): Promise<unknown> => {
         const res = await axiosClient.post(`${BASE_URL}/message`, data);
 
         return res.data;
@@ -44,6 +44,14 @@ export const chatService = {
     },
     deleteChatSession: async (sessionId: string): Promise<ChatSession> => {
         const res = await axiosClient.delete(`${BASE_URL}/session/${sessionId}`);
+        return res.data;
+    },
+    logActionClick: async (data: {
+        messageId: string;
+        actionType: string;
+        payload: Record<string, unknown>;
+    }) => {
+        const res = await axiosClient.post(`${BASE_URL}/action-click`, data);
         return res.data;
     }
 }

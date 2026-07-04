@@ -51,8 +51,8 @@ const BenefitsGrid: FC = () => {
       sx={{
         position: "relative",
         overflow: "hidden",
-        bgcolor: "#fff",
-        py: { xs: 7, sm: 8, lg: 9, xl: 10 },
+        bgcolor: "rgba(255, 255, 255, 0.76)",
+        py: { xs: 5.5, sm: 6.5, lg: 7, xl: 8 },
       }}
     >
       <Container
@@ -62,13 +62,13 @@ const BenefitsGrid: FC = () => {
           px: { xs: 2.5, sm: 4, md: 6, lg: 7 },
         }}
       >
-        <Box textAlign="center" sx={{ mb: { xs: 4, sm: 5, lg: 6 } }}>
+        <Box textAlign="center" sx={{ mb: { xs: 3.5, sm: 4.2, lg: 5 } }}>
           <Typography
             component="h2"
             sx={{
               color: "#151b31",
               fontFamily: "'Montserrat', 'Inter', sans-serif",
-              fontSize: { xs: 24, sm: 30, md: 34, lg: 38 },
+              fontSize: { xs: 24, sm: 30, md: 34, lg: 36 },
               fontWeight: 800,
               letterSpacing: 0,
               lineHeight: 1.2,

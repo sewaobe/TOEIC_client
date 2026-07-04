@@ -62,8 +62,8 @@ const Courses: FC = () => {
       sx={{
         position: "relative",
         overflow: "hidden",
-        bgcolor: "#fff",
-        py: { xs: 7, sm: 8, lg: 9, xl: 10 },
+        bgcolor: "rgba(255, 255, 255, 0.76)",
+        py: { xs: 5.5, sm: 6.5, lg: 7, xl: 8 },
       }}
     >
       <Container
@@ -73,7 +73,7 @@ const Courses: FC = () => {
           px: { xs: 2.5, sm: 4, md: 6, lg: 7 },
         }}
       >
-        <Box textAlign="center" sx={{ mb: { xs: 4.5, md: 6, xl: 7 } }}>
+        <Box textAlign="center" sx={{ mb: { xs: 3.6, md: 4.8, xl: 5.6 } }}>
           <Typography
             component="h2"
             sx={{

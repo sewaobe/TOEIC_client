@@ -72,7 +72,7 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
       sx={{
         position: "relative",
         overflow: "hidden",
-        bgcolor: "#fff",
+        bgcolor: "rgba(255, 255, 255, 0.76)",
         minHeight: { xs: "auto", lg: 640 },
         py: 1
       }}
@@ -83,7 +83,7 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
           inset: 0,
           pointerEvents: "none",
           background:
-            "linear-gradient(90deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.82) 46%, rgba(239,246,255,0.5) 100%)",
+            "linear-gradient(90deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.56) 46%, rgba(239,246,255,0.18) 100%)",
         }}
       />
 
@@ -188,7 +188,7 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
                 fontWeight: 700,
                 letterSpacing: 0,
                 lineHeight: { xs: 1.12, sm: 1.14, lg: 1.16 },
-                fontSize: { xs: 38, sm: 48, md: 54, lg: 50, xl: 60 },
+                fontSize: { xs: 38, sm: 48, md: 54, lg: 48, xl: 60 },
                 mb: { xs: 2.2, lg: 2.8 },
                 textShadow: "0 0 0.25px currentColor",
               }}
@@ -256,7 +256,7 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
                 variant="contained"
                 disableElevation
                 sx={{
-                  width: { xs: "100%", sm: 255, xl: 275 },
+                  width: { xs: "100%", sm: 205, xl: 225 },
                   maxWidth: { xs: 320, sm: "none" },
                   height: { xs: 52, sm: 56, xl: 58 },
                   borderRadius: 2,
@@ -273,7 +273,7 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
                   },
                 }}
               >
-                Học thử 7 ngày miễn phí
+                Bắt đầu ngay
               </Button>
 
               <Button

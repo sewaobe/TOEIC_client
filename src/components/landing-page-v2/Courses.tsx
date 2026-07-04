@@ -1,7 +1,6 @@
 import { FC } from "react";
 import { Box, Button, Container, Stack, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CheckIcon from "@mui/icons-material/Check";
 
 const BLUE = "#2563eb";
@@ -10,46 +9,46 @@ const MUTED = "#64748b";
 
 const courses = [
   {
-    level: "Starter",
+    level: "Khởi động",
     score: "0 - 350+",
     subtitle: "Dành cho người mới bắt đầu",
     features: [
       "Nắm vững kiến thức nền tảng",
-      "Làm quen với cấu trúc đề thi",
-      "Xây dựng thói quen học tập",
+      "Làm quen cấu trúc đề thi TOEIC",
+      "Xây dựng thói quen học đều mỗi ngày",
     ],
     image: "/landing-page-images/character-1.webp",
   },
   {
-    level: "500+",
+    level: "Củng cố",
     score: "350 - 550+",
-    subtitle: "Xây dựng nền tảng vững chắc",
+    subtitle: "Xây nền vững cho từng phần thi",
     features: [
-      "Tăng tốc từ 350 - 550+",
-      "Củng cố cả 4 kỹ năng",
-      "Luyện đề theo từng Part",
+      "Lấp lỗ hổng ngữ pháp và từ vựng",
+      "Củng cố Listening và Reading theo Part",
+      "Luyện bài theo điểm yếu được hệ thống phát hiện",
     ],
     image: "/landing-page-images/character-2.webp",
   },
   {
-    level: "700+",
+    level: "Tăng tốc",
     score: "550 - 750+",
-    subtitle: "Bứt phá chinh phục 700+",
+    subtitle: "Bứt phá lên band điểm cao hơn",
     features: [
-      "Nâng cao kỹ năng",
-      "Chiến lược làm bài hiệu quả",
-      "Đạt mục tiêu 700+",
+      "Tập trung vào dạng bài còn mất điểm",
+      "Rèn chiến lược làm bài theo thời gian",
+      "Theo dõi tiến độ và điều chỉnh lộ trình",
     ],
     image: "/landing-page-images/character-3.webp",
   },
   {
-    level: "850+",
+    level: "Tối ưu",
     score: "750 - 990",
-    subtitle: "Hướng đến điểm số cao nhất",
+    subtitle: "Hướng đến mục tiêu 850+",
     features: [
       "Luyện đề sát đề thi thật",
-      "Tối ưu thời gian làm bài",
-      "Đạt mục tiêu 850 - 990",
+      "Tối ưu tốc độ và độ chính xác",
+      "Chốt điểm yếu trước ngày thi",
     ],
     image: "/landing-page-images/character-4.webp",
   },
@@ -80,7 +79,7 @@ const Courses: FC = () => {
             sx={{
               color: "#151b31",
               fontFamily: "'Montserrat', 'Inter', sans-serif",
-              fontSize: { xs: 24, sm: 30, md: 34, lg: 38 },
+              fontSize: { xs: 23, sm: 28, md: 32, lg: 35 },
               fontWeight: 800,
               letterSpacing: 0,
               lineHeight: 1.2,
@@ -88,7 +87,7 @@ const Courses: FC = () => {
               mb: { xs: 2.2, lg: 2.6 },
             }}
           >
-            Khóa học phù hợp với bạn
+            Lộ trình TOEIC cá nhân hóa theo mục tiêu của bạn
           </Typography>
           <Box
             sx={{
@@ -108,7 +107,7 @@ const Courses: FC = () => {
               <Box
                 sx={{
                   height: "100%",
-                  minHeight: { xs: 430, sm: 455, lg: 470, xl: 520 },
+                  minHeight: { xs: 400, sm: 425, lg: 420, xl: 510 },
                   borderRadius: 3,
                   bgcolor: "#fff",
                   border: "1px solid rgba(226, 232, 240, 0.92)",
@@ -148,8 +147,8 @@ const Courses: FC = () => {
                       sx={{
                         color: BLUE,
                         fontFamily: "'Montserrat', 'Inter', sans-serif",
-                        fontSize: { xs: 28, lg: 27, xl: 34 },
-                        fontWeight: 800,
+                        fontSize: { xs: 24, lg: 24, xl: 30 },
+                        fontWeight: 750,
                         lineHeight: 1.08,
                         mb: { xs: 1.5, xl: 2 },
                       }}
@@ -161,7 +160,7 @@ const Courses: FC = () => {
                     <Typography
                       sx={{
                         color: "#26334d",
-                        fontSize: { xs: 17, lg: 16, xl: 20 },
+                        fontSize: { xs: 15.5, lg: 15, xl: 18 },
                         fontWeight: 800,
                         lineHeight: 1,
                       }}
@@ -203,7 +202,7 @@ const Courses: FC = () => {
                   <Typography
                     sx={{
                       color: DARK,
-                      fontSize: { xs: 16, lg: 15, xl: 18 },
+                      fontSize: { xs: 14, lg: 13.25, xl: 17 },
                       fontWeight: 800,
                       lineHeight: 1.45,
                       mb: { xs: 2.1, xl: 2.4 },
@@ -223,7 +222,7 @@ const Courses: FC = () => {
                         <CheckIcon
                           sx={{
                             mt: "2px",
-                            fontSize: { xs: 17, xl: 19 },
+                            fontSize: { xs: 16, xl: 18 },
                             color: BLUE,
                             flexShrink: 0,
                           }}
@@ -231,7 +230,7 @@ const Courses: FC = () => {
                         <Typography
                           sx={{
                             color: MUTED,
-                            fontSize: { xs: 14, lg: 13.5, xl: 16 },
+                            fontSize: { xs: 13.5, lg: 13, xl: 15 },
                             fontWeight: 600,
                             lineHeight: 1.55,
                           }}
@@ -241,30 +240,6 @@ const Courses: FC = () => {
                       </Stack>
                     ))}
                   </Stack>
-
-                  <Button
-                    variant="outlined"
-                    endIcon={<ArrowForwardIcon sx={{ fontSize: 17 }} />}
-                    fullWidth
-                    sx={{
-                      mt: { xs: 3, xl: 3.5 },
-                      height: { xs: 48, xl: 54 },
-                      borderRadius: 2,
-                      borderColor: "rgba(37, 99, 235, 0.16)",
-                      bgcolor: "rgba(248, 250, 252, 0.78)",
-                      color: BLUE,
-                      fontWeight: 800,
-                      fontSize: { xs: 15, lg: 14.5, xl: 17 },
-                      textTransform: "none",
-                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.8)",
-                      "&:hover": {
-                        borderColor: "rgba(37, 99, 235, 0.36)",
-                        bgcolor: "rgba(37, 99, 235, 0.04)",
-                      },
-                    }}
-                  >
-                    Tìm hiểu thêm
-                  </Button>
                 </Box>
               </Box>
             </Grid>
@@ -274,13 +249,16 @@ const Courses: FC = () => {
         <Box textAlign="center" sx={{ mt: { xs: 4.5, lg: 5.5 } }}>
           <Button
             variant="outlined"
+            onClick={() => {
+              window.location.href = "/overview-test?type=entry-test";
+            }}
             sx={{
               minWidth: { xs: 220, sm: 260 },
               height: { xs: 50, lg: 54 },
               borderRadius: 2,
               px: 4,
               fontWeight: 800,
-              fontSize: { xs: 15, lg: 16 },
+              fontSize: { xs: 14.5, lg: 15.5 },
               textTransform: "none",
               borderColor: "rgba(37, 99, 235, 0.38)",
               color: BLUE,
@@ -292,7 +270,7 @@ const Courses: FC = () => {
               },
             }}
           >
-            Xem tất cả khóa học
+            Tạo lộ trình cá nhân hóa
           </Button>
         </Box>
       </Container>

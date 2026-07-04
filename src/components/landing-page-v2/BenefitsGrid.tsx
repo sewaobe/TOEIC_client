@@ -154,7 +154,7 @@ const BenefitsGrid: FC = () => {
                 component="h3"
                 sx={{
                   color: DARK,
-                  fontSize: { xs: 17, sm: 18, lg: 18, xl: 20 },
+                  fontSize: { xs: 17, sm: 18, lg: 15, xl: 20 },
                   fontWeight: 800,
                   lineHeight: 1.35,
                   mb: { xs: 1.7, lg: 2 },

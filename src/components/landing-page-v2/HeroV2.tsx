@@ -26,7 +26,9 @@ const Avatar = ({ src, index }: { src: string; index: number }) => (
       width: 34,
       height: 34,
       borderRadius: "50%",
-      objectFit: "cover",
+      objectFit: "contain",
+      objectPosition: "center bottom",
+      bgcolor: "#fff",
       border: "3px solid #fff",
       ml: index === 0 ? 0 : -1.1,
       boxShadow: "0 7px 16px rgba(15, 23, 42, 0.12)",
@@ -72,7 +74,7 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
         overflow: "hidden",
         bgcolor: "#fff",
         minHeight: { xs: "auto", lg: 640 },
-        py: { xs: 5, sm: 6, md: 7, lg: 7.2 },
+        py: 1
       }}
     >
       <Box
@@ -241,6 +243,7 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
               direction={{ xs: "column", sm: "row" }}
               spacing={{ xs: 1.5, sm: 2, lg: 2.4 }}
               justifyContent={{ xs: "center", lg: "flex-start" }}
+              alignItems={{ xs: "center" }}
               sx={{
                 mb: { xs: 4, lg: 5.1 },
                 "@media (min-width:1200px) and (max-width:1279.95px)": {
@@ -370,7 +373,7 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
               height: { xs: 430, sm: 500, md: 540, lg: 500 },
               mt: { xs: 5, md: 6, lg: 0 },
               mx: "auto",
-              display: "flex",
+              display: { xs: "none", lg: "flex" },
               alignItems: "center",
               justifyContent: "center",
               "@media (min-width:1200px) and (max-width:1279.95px)": {

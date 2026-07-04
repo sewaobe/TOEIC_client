@@ -1,6 +1,5 @@
-import { FC } from "react";
+import { FC, useEffect, useRef, useState } from "react";
 import { Box, Container, Stack, Typography } from "@mui/material";
-import Grid from "@mui/material/Grid";
 import StarIcon from "@mui/icons-material/Star";
 import FormatQuoteRoundedIcon from "@mui/icons-material/FormatQuoteRounded";
 
@@ -33,16 +32,45 @@ const testimonials = [
   },
 ];
 
+const testimonialGroups = [testimonials, testimonials];
+
 const TestimonialsV2: FC = () => {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const [shouldAnimate, setShouldAnimate] = useState(false);
+
+  useEffect(() => {
+    const node = sectionRef.current;
+
+    if (!node) return;
+    if (!("IntersectionObserver" in window)) {
+      setShouldAnimate(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setShouldAnimate(true);
+        observer.disconnect();
+      },
+      { rootMargin: "120px 0px", threshold: 0.12 },
+    );
+
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <Box
+      ref={sectionRef}
       component="section"
       sx={{
         position: "relative",
         overflow: "hidden",
-        bgcolor: "#fff",
-        pt: { xs: 7, sm: 8, lg: 9, xl: 10 },
-        pb: { xs: 4.5, lg: 5.5 },
+        bgcolor: "rgba(255, 255, 255, 0.76)",
+        pt: { xs: 5.5, sm: 6.5, lg: 7, xl: 8 },
+        pb: { xs: 3.5, lg: 4.5 },
       }}
     >
       <Container
@@ -52,7 +80,7 @@ const TestimonialsV2: FC = () => {
           px: { xs: 2.5, sm: 4, md: 6, lg: 7 },
         }}
       >
-        <Box textAlign="center" sx={{ mb: { xs: 4.5, md: 6, xl: 7 } }}>
+        <Box textAlign="center" sx={{ mb: { xs: 3.6, md: 4.8, xl: 5.6 } }}>
           <Typography
             component="h2"
             sx={{
@@ -80,98 +108,153 @@ const TestimonialsV2: FC = () => {
           />
         </Box>
 
-        <Grid container spacing={{ xs: 2.5, md: 3.4, xl: 4 }}>
-          {testimonials.map((item) => (
-            <Grid key={item.name} size={{ xs: 12, md: 4 }}>
+        <Box
+          sx={{
+            overflow: "hidden",
+            mx: { xs: -2.5, sm: -4, md: -6, lg: -7 },
+            px: { xs: 2.5, sm: 4, md: 6, lg: 7 },
+            maskImage:
+              "linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%)",
+            WebkitMaskImage:
+              "linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%)",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              width: "max-content",
+              animation: shouldAnimate
+                ? "testimonialsMarquee 28s linear infinite"
+                : "none",
+              willChange: "transform",
+              "&:hover": {
+                animationPlayState: "paused",
+              },
+              "@keyframes testimonialsMarquee": {
+                "0%": { transform: "translateX(0)" },
+                "100%": { transform: "translateX(-50%)" },
+              },
+              "@media (prefers-reduced-motion: reduce)": {
+                animation: "none",
+                transform: "none",
+              },
+            }}
+          >
+            {testimonialGroups.map((group, groupIndex) => (
               <Box
+                key={groupIndex}
                 sx={{
-                  height: "100%",
-                  minHeight: { xs: 300, md: 330, xl: 365 },
-                  p: { xs: 3.5, sm: 4, lg: 4.5, xl: 5.2 },
-                  borderRadius: 3,
-                  bgcolor: "#fff",
-                  border: "1px solid rgba(226, 232, 240, 0.92)",
-                  boxShadow:
-                    "0 22px 58px rgba(15, 23, 42, 0.045), inset 0 1px 0 rgba(255,255,255,0.95)",
                   display: "flex",
-                  flexDirection: "column",
+                  gap: { xs: 2.5, md: 3.4, xl: 4 },
+                  pr: { xs: 2.5, md: 3.4, xl: 4 },
                 }}
+                aria-hidden={groupIndex === 1 ? true : undefined}
               >
-                <FormatQuoteRoundedIcon
-                  sx={{
-                    color: BLUE,
-                    fontSize: { xs: 44, lg: 52, xl: 62 },
-                    lineHeight: 1,
-                    mb: { xs: 1.2, xl: 1.5 },
-                  }}
-                />
-
-                <Typography
-                  sx={{
-                    color: "#40506a",
-                    fontSize: { xs: 16, lg: 16.5, xl: 20 },
-                    fontWeight: 700,
-                    lineHeight: { xs: 1.75, xl: 1.85 },
-                    mb: { xs: 3, xl: 4 },
-                    flex: 1,
-                  }}
-                >
-                  {item.quote}
-                </Typography>
-
-                <Stack direction="row" spacing={0.7} sx={{ mb: { xs: 3, xl: 4 } }}>
-                  {Array.from({ length: 5 }).map((_, idx) => (
-                    <StarIcon
-                      key={idx}
-                      sx={{ color: STAR, fontSize: { xs: 22, xl: 27 } }}
-                    />
-                  ))}
-                </Stack>
-
-                <Stack direction="row" alignItems="center" spacing={2}>
+                {group.map((item) => (
                   <Box
-                    component="img"
-                    src={item.avatar}
-                    alt={item.name}
-                    loading="lazy"
+                    key={`${item.name}-${groupIndex}`}
                     sx={{
-                      width: { xs: 54, xl: 62 },
-                      height: { xs: 54, xl: 62 },
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                      objectPosition: "top center",
-                      bgcolor: "#edf4ff",
-                      border: "3px solid #fff",
-                      boxShadow: "0 10px 24px rgba(15, 23, 42, 0.12)",
+                      flex: "0 0 auto",
+                      width: {
+                        xs: "min(78vw, 300px)",
+                        sm: 320,
+                        md: 360,
+                        xl: 400,
+                      },
+                      minHeight: { xs: 260, md: 285, xl: 315 },
+                      p: { xs: 2.8, sm: 3.2, lg: 3.6, xl: 4.2 },
+                      borderRadius: 3,
+                      bgcolor: "#fff",
+                      border: "1px solid rgba(226, 232, 240, 0.92)",
+                      boxShadow:
+                        "0 22px 58px rgba(15, 23, 42, 0.045), inset 0 1px 0 rgba(255,255,255,0.95)",
+                      display: "flex",
+                      flexDirection: "column",
                     }}
-                  />
-                  <Box>
-                    <Typography
+                  >
+                    <FormatQuoteRoundedIcon
                       sx={{
-                        color: DARK,
-                        fontSize: { xs: 18, xl: 21 },
-                        fontWeight: 800,
-                        lineHeight: 1.25,
+                        color: BLUE,
+                        fontSize: { xs: 36, lg: 42, xl: 50 },
+                        lineHeight: 1,
+                        mb: { xs: 1.2, xl: 1.5 },
                       }}
-                    >
-                      {item.name}
-                    </Typography>
+                    />
+
                     <Typography
                       sx={{
-                        color: MUTED,
-                        fontSize: { xs: 14, xl: 16 },
+                        color: "#40506a",
+                        fontSize: { xs: 14.5, lg: 15, xl: 17 },
                         fontWeight: 700,
-                        mt: 0.5,
+                        lineHeight: { xs: 1.75, xl: 1.85 },
+                        mb: { xs: 2.4, xl: 3.2 },
+                        flex: 1,
                       }}
                     >
-                      {item.result}
+                      {item.quote}
                     </Typography>
+
+                    <Stack
+                      direction="row"
+                      spacing={0.7}
+                      sx={{ mb: { xs: 2.4, xl: 3.2 } }}
+                    >
+                      {Array.from({ length: 5 }).map((_, idx) => (
+                        <StarIcon
+                          key={idx}
+                          sx={{ color: STAR, fontSize: { xs: 19, xl: 23 } }}
+                        />
+                      ))}
+                    </Stack>
+
+                    <Stack direction="row" alignItems="center" spacing={2}>
+                      <Box
+                        component="img"
+                        src={item.avatar}
+                        alt={item.name}
+                        loading="lazy"
+                        decoding="async"
+                        fetchPriority="low"
+                        sx={{
+                          width: { xs: 46, xl: 54 },
+                          height: { xs: 46, xl: 54 },
+                          borderRadius: "50%",
+                          objectFit: "cover",
+                          objectPosition: "top center",
+                          bgcolor: "#edf4ff",
+                          border: "3px solid #fff",
+                          boxShadow: "0 10px 24px rgba(15, 23, 42, 0.12)",
+                        }}
+                      />
+                      <Box>
+                        <Typography
+                          sx={{
+                            color: DARK,
+                            fontSize: { xs: 16, xl: 18 },
+                            fontWeight: 800,
+                            lineHeight: 1.25,
+                          }}
+                        >
+                          {item.name}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            color: MUTED,
+                            fontSize: { xs: 13, xl: 14.5 },
+                            fontWeight: 700,
+                            mt: 0.5,
+                          }}
+                        >
+                          {item.result}
+                        </Typography>
+                      </Box>
+                    </Stack>
                   </Box>
-                </Stack>
+                ))}
               </Box>
-            </Grid>
-          ))}
-        </Grid>
+            ))}
+          </Box>
+        </Box>
 
         <Stack
           direction="row"

@@ -42,9 +42,9 @@ const StatsStrip: FC = () => {
     <Box
       component="section"
       sx={{
-        bgcolor: "#fff",
-        pt: { xs: 2, lg: 3 },
-        pb: { xs: 7, sm: 8, lg: 9, xl: 10 },
+        bgcolor: "rgba(255, 255, 255, 0.76)",
+        pt: { xs: 1.5, lg: 2 },
+        pb: { xs: 5.5, sm: 6.5, lg: 7, xl: 8 },
       }}
     >
       <Container

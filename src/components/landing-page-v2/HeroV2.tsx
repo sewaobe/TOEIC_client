@@ -22,11 +22,16 @@ const Avatar = ({ src, index }: { src: string; index: number }) => (
     component="img"
     src={src}
     alt=""
+    loading="lazy"
+    decoding="async"
+    fetchPriority="low"
     sx={{
       width: 34,
       height: 34,
       borderRadius: "50%",
-      objectFit: "cover",
+      objectFit: "contain",
+      objectPosition: "center bottom",
+      bgcolor: "#fff",
       border: "3px solid #fff",
       ml: index === 0 ? 0 : -1.1,
       boxShadow: "0 7px 16px rgba(15, 23, 42, 0.12)",
@@ -70,9 +75,9 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
       sx={{
         position: "relative",
         overflow: "hidden",
-        bgcolor: "#fff",
+        bgcolor: "rgba(255, 255, 255, 0.76)",
         minHeight: { xs: "auto", lg: 640 },
-        py: { xs: 5, sm: 6, md: 7, lg: 7.2 },
+        py: 1
       }}
     >
       <Box
@@ -81,7 +86,7 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
           inset: 0,
           pointerEvents: "none",
           background:
-            "linear-gradient(90deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.82) 46%, rgba(239,246,255,0.5) 100%)",
+            "linear-gradient(90deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.56) 46%, rgba(239,246,255,0.18) 100%)",
         }}
       />
 
@@ -127,12 +132,13 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
       />
 
       <Container
+        disableGutters
         maxWidth={false}
         sx={{
           position: "relative",
           zIndex: 1,
           maxWidth: 1700,
-          px: { xs: 2.5, sm: 5, md: 7, lg: 5, xl: 6.5 },
+          px: 0,
         }}
       >
         <Stack
@@ -186,7 +192,7 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
                 fontWeight: 700,
                 letterSpacing: 0,
                 lineHeight: { xs: 1.12, sm: 1.14, lg: 1.16 },
-                fontSize: { xs: 38, sm: 48, md: 54, lg: 50, xl: 60 },
+                fontSize: { xs: 38, sm: 48, md: 54, lg: 48, xl: 60 },
                 mb: { xs: 2.2, lg: 2.8 },
                 textShadow: "0 0 0.25px currentColor",
               }}
@@ -241,6 +247,7 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
               direction={{ xs: "column", sm: "row" }}
               spacing={{ xs: 1.5, sm: 2, lg: 2.4 }}
               justifyContent={{ xs: "center", lg: "flex-start" }}
+              alignItems={{ xs: "center" }}
               sx={{
                 mb: { xs: 4, lg: 5.1 },
                 "@media (min-width:1200px) and (max-width:1279.95px)": {
@@ -253,7 +260,7 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
                 variant="contained"
                 disableElevation
                 sx={{
-                  width: { xs: "100%", sm: 255, xl: 275 },
+                  width: { xs: "100%", sm: 205, xl: 225 },
                   maxWidth: { xs: 320, sm: "none" },
                   height: { xs: 52, sm: 56, xl: 58 },
                   borderRadius: 2,
@@ -263,14 +270,16 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
                   textTransform: "none",
                   fontSize: { xs: 15, sm: 16, xl: 17 },
                   whiteSpace: "nowrap",
-                  boxShadow: "0 16px 28px rgba(37, 99, 235, 0.24)",
+                  boxShadow:
+                    "0 10px 22px rgba(37, 99, 235, 0.18), 0 3px 8px rgba(15, 23, 42, 0.08)",
                   "&:hover": {
                     bgcolor: "#174dcc",
-                    boxShadow: "0 18px 32px rgba(37, 99, 235, 0.3)",
+                    boxShadow:
+                      "0 14px 28px rgba(37, 99, 235, 0.24), 0 5px 12px rgba(15, 23, 42, 0.1)",
                   },
                 }}
               >
-                Học thử 7 ngày miễn phí
+                Bắt đầu ngay
               </Button>
 
               <Button
@@ -370,7 +379,7 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
               height: { xs: 430, sm: 500, md: 540, lg: 500 },
               mt: { xs: 5, md: 6, lg: 0 },
               mx: "auto",
-              display: "flex",
+              display: { xs: "none", lg: "flex" },
               alignItems: "center",
               justifyContent: "center",
               "@media (min-width:1200px) and (max-width:1279.95px)": {
@@ -650,6 +659,8 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
                 src="/landing-page-images/anh-tai-nghe-cuon-sach.webp"
                 alt="Tai nghe và cuốn sách TOEIC"
                 loading="eager"
+                decoding="async"
+                fetchPriority="high"
                 sx={{
                   position: "absolute",
                   top: { xs: "65%", sm: "61%", lg: "45%", xl: "40%" },

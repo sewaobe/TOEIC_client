@@ -12,8 +12,8 @@ const FinalCTA: FC<FinalCTAProps> = ({ onPrimaryClick }) => {
     <Box
       component="section"
       sx={{
-        bgcolor: "#fff",
-        py: { xs: 5, sm: 7, lg: 8, xl: 9 },
+        bgcolor: "rgba(255, 255, 255, 0.76)",
+        py: { xs: 4, sm: 5.5, lg: 6.5, xl: 7.5 },
       }}
     >
       <Container

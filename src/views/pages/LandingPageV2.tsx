@@ -32,7 +32,7 @@ const LandingPageV2: FC = () => {
 
   return (
     <LandingLayout>
-      <Box sx={{ px: { xs: 2, sm: 4, md: 6 } }}>
+      <Box sx={{ px: { xs: 2, sm: 4, md: 6 }, backgroundColor: "white" }}>
         <HeroV2
           onPrimaryClick={handleStartNow}
           onSecondaryClick={handleExploreNow}

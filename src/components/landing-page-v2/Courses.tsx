@@ -58,7 +58,6 @@ const Courses: FC = () => {
   return (
     <Box
       component="section"
-      id="courses"
       sx={{
         position: "relative",
         overflow: "hidden",
@@ -174,6 +173,8 @@ const Courses: FC = () => {
                     src={course.image}
                     alt={`TOEIC ${course.level}`}
                     loading="lazy"
+                    decoding="async"
+                    fetchPriority="low"
                     sx={{
                       position: "absolute",
                       right: { xs: -10, lg: -18, xl: -12 },

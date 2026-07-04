@@ -1,18 +1,86 @@
-import { FC, lazy, Suspense, useCallback } from "react";
+import {
+  FC,
+  ReactNode,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Box } from "@mui/material";
 import LandingLayout from "../layouts/LandingLayout";
 import ScrollToTopButton from "../../components/common/ScrollToTopButton";
 import HeroV2 from "../../components/landing-page-v2/HeroV2";
-import BenefitsGrid from "../../components/landing-page-v2/BenefitsGrid";
-import RoadmapTimeline from "../../components/landing-page-v2/RoadmapTimeline";
-import Courses from "../../components/landing-page-v2/Courses";
-import TestimonialsV2 from "../../components/landing-page-v2/TestimonialsV2";
-import StatsStrip from "../../components/landing-page-v2/StatsStrip";
-import FinalCTA from "../../components/landing-page-v2/FinalCTA";
+
+const BenefitsGrid = lazy(
+  () => import("../../components/landing-page-v2/BenefitsGrid"),
+);
+const RoadmapTimeline = lazy(
+  () => import("../../components/landing-page-v2/RoadmapTimeline"),
+);
+const Courses = lazy(() => import("../../components/landing-page-v2/Courses"));
+const TestimonialsV2 = lazy(
+  () => import("../../components/landing-page-v2/TestimonialsV2"),
+);
+const StatsStrip = lazy(
+  () => import("../../components/landing-page-v2/StatsStrip"),
+);
+const FinalCTA = lazy(
+  () => import("../../components/landing-page-v2/FinalCTA"),
+);
 
 const AnnouncementModal = lazy(
   () => import("../../components/modals/AnnouncementModal"),
 );
+
+const SectionFallback: FC<{ minHeight: number }> = ({ minHeight }) => (
+  <Box sx={{ minHeight }} />
+);
+
+interface LazySectionProps {
+  children: ReactNode;
+  id?: string;
+  minHeight: number;
+}
+
+const LazySection: FC<LazySectionProps> = ({ children, id, minHeight }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [shouldRender, setShouldRender] = useState(false);
+
+  useEffect(() => {
+    const node = containerRef.current;
+
+    if (!node) return;
+    if (!("IntersectionObserver" in window)) {
+      setShouldRender(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setShouldRender(true);
+        observer.disconnect();
+      },
+      { rootMargin: "900px 0px", threshold: 0.01 },
+    );
+
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <Box id={id} ref={containerRef} sx={{ minHeight: shouldRender ? 0 : minHeight }}>
+      {shouldRender ? (
+        <Suspense fallback={<SectionFallback minHeight={minHeight} />}>
+          {children}
+        </Suspense>
+      ) : null}
+    </Box>
+  );
+};
 
 const LandingPageV2: FC = () => {
   const handleStartNow = useCallback(() => {
@@ -114,12 +182,24 @@ const LandingPageV2: FC = () => {
             onPrimaryClick={handleStartNow}
             onSecondaryClick={handleExploreNow}
           />
-          <BenefitsGrid />
-          <RoadmapTimeline />
-          <Courses />
-          <TestimonialsV2 />
-          <StatsStrip />
-          <FinalCTA onPrimaryClick={handleFinalCta} />
+          <LazySection minHeight={620}>
+            <BenefitsGrid />
+          </LazySection>
+          <LazySection minHeight={520}>
+            <RoadmapTimeline />
+          </LazySection>
+          <LazySection id="courses" minHeight={560}>
+            <Courses />
+          </LazySection>
+          <LazySection minHeight={440}>
+            <TestimonialsV2 />
+          </LazySection>
+          <LazySection minHeight={240}>
+            <StatsStrip />
+          </LazySection>
+          <LazySection minHeight={360}>
+            <FinalCTA onPrimaryClick={handleFinalCta} />
+          </LazySection>
           <ScrollToTopButton scrollThreshold={1000} />
         </Box>
       </Box>

@@ -22,6 +22,9 @@ const Avatar = ({ src, index }: { src: string; index: number }) => (
     component="img"
     src={src}
     alt=""
+    loading="lazy"
+    decoding="async"
+    fetchPriority="low"
     sx={{
       width: 34,
       height: 34,
@@ -129,12 +132,13 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
       />
 
       <Container
+        disableGutters
         maxWidth={false}
         sx={{
           position: "relative",
           zIndex: 1,
           maxWidth: 1700,
-          px: { xs: 2.5, sm: 5, md: 7, lg: 5, xl: 6.5 },
+          px: 0,
         }}
       >
         <Stack
@@ -266,10 +270,12 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
                   textTransform: "none",
                   fontSize: { xs: 15, sm: 16, xl: 17 },
                   whiteSpace: "nowrap",
-                  boxShadow: "0 16px 28px rgba(37, 99, 235, 0.24)",
+                  boxShadow:
+                    "0 10px 22px rgba(37, 99, 235, 0.18), 0 3px 8px rgba(15, 23, 42, 0.08)",
                   "&:hover": {
                     bgcolor: "#174dcc",
-                    boxShadow: "0 18px 32px rgba(37, 99, 235, 0.3)",
+                    boxShadow:
+                      "0 14px 28px rgba(37, 99, 235, 0.24), 0 5px 12px rgba(15, 23, 42, 0.1)",
                   },
                 }}
               >
@@ -653,6 +659,8 @@ const HeroV2: FC<HeroV2Props> = ({ onPrimaryClick, onSecondaryClick }) => {
                 src="/landing-page-images/anh-tai-nghe-cuon-sach.webp"
                 alt="Tai nghe và cuốn sách TOEIC"
                 loading="eager"
+                decoding="async"
+                fetchPriority="high"
                 sx={{
                   position: "absolute",
                   top: { xs: "65%", sm: "61%", lg: "45%", xl: "40%" },

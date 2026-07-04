@@ -213,6 +213,8 @@ const TestimonialsV2: FC = () => {
                         src={item.avatar}
                         alt={item.name}
                         loading="lazy"
+                        decoding="async"
+                        fetchPriority="low"
                         sx={{
                           width: { xs: 46, xl: 54 },
                           height: { xs: 46, xl: 54 },

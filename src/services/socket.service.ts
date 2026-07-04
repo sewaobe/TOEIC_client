@@ -25,11 +25,7 @@ export const initSocket = () => {
 
   socket = io(resolveSocketUrl(), {
     withCredentials: true,
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 500,
-    reconnectionDelayMax: 5000,
-    timeout: 20000,
+    transports: ["websocket"],
   });
 
   socket.on("connect", () => {

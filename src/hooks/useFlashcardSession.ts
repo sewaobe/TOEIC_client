@@ -188,7 +188,7 @@ export const useFlashcardSession = ({
         const initSession = async () => {
             const startNewSession = async () => {
                 if (sessionMode === "quick_review") {
-                    toast.error("Phien on tap goi y khong con kha dung.");
+                    toast.error("Phiên ôn tập gợi ý không còn khả dụng.");
                     onSessionUnavailable?.();
                     return;
                 }
@@ -227,7 +227,7 @@ export const useFlashcardSession = ({
                         res = await flashCardProgressService.getSession(resumeSessionId);
                     } catch {
                         if (sessionMode === "quick_review") {
-                            toast.error("Phien on tap goi y khong con kha dung.");
+                            toast.error("Phiên ôn tập gợi ý không còn khả dụng.");
                             onSessionUnavailable?.();
                             return;
                         }
@@ -243,7 +243,7 @@ export const useFlashcardSession = ({
                     const progress = res.progress;
                     if (!progress) {
                         if (sessionMode === "quick_review") {
-                            toast.error("Phien on tap goi y khong con kha dung.");
+                            toast.error("Phiên ôn tập gợi ý không còn khả dụng.");
                             onSessionUnavailable?.();
                             return;
                         }

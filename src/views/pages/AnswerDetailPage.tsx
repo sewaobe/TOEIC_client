@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import {
@@ -12,6 +12,7 @@ import {
   Typography,
   Collapse,
 } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
@@ -21,8 +22,14 @@ import userTestService from "../../services/user_test.service";
 import { questionService } from "../../services/question.service";
 import testService from "../../services/test.service";
 import type { RawAnswer } from "../../utils/mapAnswersToParts";
-import { getPartFromTags } from "../../utils/mapAnswersToParts";
 import type { ExamGroup, ExamQuestion } from "../../types/Exam";
+import { clearChatRouteState, compactQuestionText, setChatRouteState } from "../../utils/chatRouteState";
+import { useDispatch } from "react-redux";
+import type { AppDispatch } from "../../stores/store";
+import {
+  disableHighlightPopup,
+  enableHighlightPopup,
+} from "../../stores/highlightPopupSlice";
 
 type GroupWithAnswers = ExamGroup & {
   answersInGroup: RawAnswer[];
@@ -37,14 +44,40 @@ const AnswerDetailPage = () => {
   }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
 
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<RawAnswer[]>([]);
   const [groups, setGroups] = useState<GroupWithAnswers[]>([]);
   const [activePart, setActivePart] = useState<number | null>(null);
   const [testTitle, setTestTitle] = useState<string>("");
+  const [focusedQuestionId, setFocusedQuestionId] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const selectedQuestionId = useMemo(
+    () => new URLSearchParams(location.search).get("questionId") ?? undefined,
+    [location.search]
+  );
+  const focusTs = useMemo(
+    () => new URLSearchParams(location.search).get("focusTs") ?? undefined,
+    [location.search]
+  );
+  const answerFilter = useMemo(
+    () => new URLSearchParams(location.search).get("filter") ?? undefined,
+    [location.search]
+  );
+  const visibleAnswers = useMemo(() => {
+    if (answerFilter !== "wrong") return answers;
+    return answers.filter((answer) => answer.selectedOption === "" || answer.isCorrect === false);
+  }, [answers, answerFilter]);
+
+  useEffect(() => {
+    dispatch(enableHighlightPopup());
+
+    return () => {
+      dispatch(disableHighlightPopup());
+    };
+  }, [dispatch]);
 
   // Fetch answers first
   useEffect(() => {
@@ -57,7 +90,9 @@ const AnswerDetailPage = () => {
           try {
             const { test } = await testService.getTestById(testId);
             setTestTitle(test?.title || "");
-          } catch {}
+          } catch {
+            // Title is optional for this review page.
+          }
         }
         const data = await userTestService.getTestHistoryDetail(historyId);
         const arr = data.answers || [];
@@ -69,22 +104,25 @@ const AnswerDetailPage = () => {
       }
     };
     run();
-  }, [historyId]);
+  }, [historyId, testId]);
 
   // Fetch groups that contain the answered questions
   useEffect(() => {
     const fetchGroups = async () => {
-      if (!answers.length || !testId) return;
+      if (!visibleAnswers.length || !testId) {
+        setGroups([]);
+        return;
+      }
       setLoading(true);
       try {
         const byQid = new Map<string, RawAnswer>();
-        answers.forEach((a) => byQid.set(a.question_id, a));
+        visibleAnswers.forEach((a) => byQid.set(a.question_id, a));
 
         // Deduplicate group by id after fetching
         const fetched: Record<string, GroupWithAnswers> = {};
 
         await Promise.all(
-          answers.map(async (ans) => {
+          visibleAnswers.map(async (ans) => {
             try {
               const g = await questionService.getQuestionByIdFromGroup(
                 ans.question_id,
@@ -119,18 +157,27 @@ const AnswerDetailPage = () => {
       }
     };
     fetchGroups();
-  }, [answers, testId]);
+  }, [visibleAnswers, testId]);
 
   const answerMap = useMemo(() => {
     const m = new Map<string, RawAnswer>();
-    answers.forEach((a) => m.set(a.question_id, a));
+    visibleAnswers.forEach((a) => m.set(a.question_id, a));
     return m;
-  }, [answers]);
+  }, [visibleAnswers]);
 
   const scrollToPart = (part: number) => {
+    const params = new URLSearchParams(location.search);
+    params.delete("questionId");
+    params.delete("focusTs");
+    const nextSearch = params.toString();
     setActivePart(part);
-    const el = containerRef.current?.querySelector(`#part-${part}`);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (nextSearch !== location.search.replace(/^\?/, "")) {
+      navigate(nextSearch ? `${location.pathname}?${nextSearch}` : location.pathname, { replace: true });
+    }
+    window.setTimeout(() => {
+      const el = containerRef.current?.querySelector(`#part-${part}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   };
 
   // Map questionId -> part to ensure rightbar navigates correctly
@@ -142,22 +189,86 @@ const AnswerDetailPage = () => {
     return map;
   }, [groups]);
 
-  const scrollToQuestion = (qno: number) => {
-    // find the answer by qno to know its question_id
-    const ans = answers.find((a) => a.question_no === qno);
-    const part = ans ? questionIdToPart.get(ans.question_id) : undefined;
+  const questionRefs = useMemo(() => {
+    const questionText = new Map<string, string | undefined>();
+    groups.forEach((g) => {
+      g.questions.forEach((q) => questionText.set(q._id, q.textQuestion));
+    });
+    return visibleAnswers.map((answer) => ({
+      questionNumber: answer.question_no,
+      questionId: answer.question_id,
+      textPreview: compactQuestionText(questionText.get(answer.question_id)),
+    }));
+  }, [groups, visibleAnswers]);
+
+  const currentQuestionNumber = useMemo(() => {
+    if (!selectedQuestionId) return undefined;
+    return visibleAnswers.find((answer) => answer.question_id === selectedQuestionId)?.question_no;
+  }, [selectedQuestionId, visibleAnswers]);
+
+  useEffect(() => {
+    setChatRouteState({
+      attemptId: historyId,
+      questionId: selectedQuestionId,
+      currentQuestionNumber,
+      questionRefs,
+    });
+    return clearChatRouteState;
+  }, [historyId, selectedQuestionId, currentQuestionNumber, questionRefs]);
+
+  const syncQuestionQuery = useCallback((questionId: string) => {
+    const params = new URLSearchParams(location.search);
+    params.set("questionId", questionId);
+    params.set("focusTs", String(Date.now()));
+    const nextSearch = params.toString();
+    navigate(`${location.pathname}?${nextSearch}`, { replace: true });
+  }, [location.pathname, location.search, navigate]);
+
+  const findQuestionElement = useCallback(
+    (questionId: string) =>
+      containerRef.current?.querySelector(`[data-question-id="${questionId}"]`),
+    []
+  );
+
+  const focusQuestionElement = useCallback((questionId: string) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = findQuestionElement(questionId);
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setFocusedQuestionId(questionId);
+        window.setTimeout(() => {
+          setFocusedQuestionId((current) => (current === questionId ? null : current));
+        }, 1800);
+      });
+    });
+  }, [findQuestionElement]);
+
+  const scrollToQuestionId = useCallback((questionId: string, options?: { updateQuery?: boolean }) => {
+    const part = questionIdToPart.get(questionId);
+    if (options?.updateQuery !== false) {
+      syncQuestionQuery(questionId);
+    }
     if (part && activePart !== part) {
       setActivePart(part);
-      // wait DOM to render, then scroll
-      setTimeout(() => {
-        const el = containerRef.current?.querySelector(`#q-${qno}`);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 60);
-    } else {
-      const el = containerRef.current?.querySelector(`#q-${qno}`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.setTimeout(() => focusQuestionElement(questionId), 80);
+      return;
     }
+    focusQuestionElement(questionId);
+  }, [activePart, focusQuestionElement, questionIdToPart, syncQuestionQuery]);
+
+  const scrollToQuestion = (qno: number, options?: { updateQuery?: boolean }) => {
+    // find the answer by qno to know its question_id
+    const ans = visibleAnswers.find((a) => a.question_no === qno);
+    if (ans) scrollToQuestionId(ans.question_id, options);
   };
+
+  useEffect(() => {
+    if (!focusTs) return;
+    if (!selectedQuestionId || !visibleAnswers.length || !groups.length) return;
+    if (!visibleAnswers.some((item) => item.question_id === selectedQuestionId)) return;
+    scrollToQuestionId(selectedQuestionId, { updateQuery: false });
+  }, [selectedQuestionId, focusTs, visibleAnswers, groups, scrollToQuestionId]);
 
   return (
     <MainLayout>
@@ -176,7 +287,7 @@ const AnswerDetailPage = () => {
               <IconButton
                 size="small"
                 onClick={() => {
-                  const from = (location.state as any)?.from;
+                  const from = (location.state as { from?: string } | null)?.from;
                   if (from) {
                     navigate(from);
                   } else {
@@ -285,6 +396,10 @@ const AnswerDetailPage = () => {
                             key={q._id}
                             q={q}
                             ans={answerMap.get(q._id)!}
+                            focused={focusedQuestionId === q._id}
+                            testId={testId || ""}
+                            attemptId={historyId || ""}
+                            testTitle={testTitle}
                           />
                         ))}
                     </Box>
@@ -308,7 +423,7 @@ const AnswerDetailPage = () => {
               Điều hướng
             </Typography>
             {parts.map((p) => {
-              const qs = answers
+              const qs = visibleAnswers
                 .filter((a) => {
                   const partFromGroup = questionIdToPart.get(a.question_id);
                   const partFromNo = (() => {
@@ -346,7 +461,7 @@ const AnswerDetailPage = () => {
                           : a.isCorrect
                           ? "correct"
                           : "wrong";
-                      let sxStyle: any = {
+                      let sxStyle: SxProps<Theme> = {
                         minWidth: 36,
                         p: 0,
                         fontSize: 12,
@@ -398,16 +513,32 @@ const AnswerDetailPage = () => {
   );
 };
 
-function QuestionBlock({ q, ans }: { q: ExamQuestion; ans: RawAnswer }) {
+type AnswerStatus = "correct" | "wrong" | "skipped";
+
+function QuestionBlock({
+  q,
+  ans,
+  focused,
+  testId,
+  attemptId,
+  testTitle,
+}: {
+  q: ExamQuestion;
+  ans: RawAnswer;
+  focused?: boolean;
+  testId: string;
+  attemptId: string;
+  testTitle?: string;
+}) {
   const [openExplain, setOpenExplain] = useState(false);
-  const status =
+  const status: AnswerStatus =
     ans.selectedOption === "" ? "skipped" : ans.isCorrect ? "correct" : "wrong";
-  const stylesByStatus: any = {
+  const stylesByStatus: Record<AnswerStatus, { borderColor: string; bgcolor: string }> = {
     correct: { borderColor: "#86efac", bgcolor: "#f0fdf4" },
     wrong: { borderColor: "#fecaca", bgcolor: "#fef2f2" },
     skipped: { borderColor: "#fde68a", bgcolor: "#fffbeb" },
   };
-  const chipByStatus: any = {
+  const chipByStatus: Record<AnswerStatus, { label: string; color: "success" | "error" | "warning"; variant: "filled" }> = {
     correct: {
       label: "Đúng",
       color: "success" as const,
@@ -424,14 +555,36 @@ function QuestionBlock({ q, ans }: { q: ExamQuestion; ans: RawAnswer }) {
       variant: "filled" as const,
     },
   };
+  const handleAskChatbot = () => {
+    if (!testId || !attemptId || !ans.question_id) return;
+    window.dispatchEvent(
+      new CustomEvent("chatbot:quick-question-explain", {
+        detail: {
+          requestId: `${Date.now()}-${ans.question_id}`,
+          testId,
+          attemptId,
+          questionId: ans.question_id,
+          questionNumber: ans.question_no,
+          textPreview: compactQuestionText(q.textQuestion),
+          testTitle,
+        },
+      })
+    );
+  };
+
   return (
     <Box
       id={`q-${ans.question_no}`}
+      data-question-id={ans.question_id}
       sx={{
         mb: 2,
         p: 2,
+        scrollMarginTop: "96px",
         borderRadius: 2,
         border: "1px solid",
+        transition: "box-shadow 0.25s ease, transform 0.25s ease",
+        boxShadow: focused ? "0 0 0 3px rgba(37, 99, 235, 0.35)" : "none",
+        transform: focused ? "translateY(-2px)" : "none",
         ...stylesByStatus[status],
       }}
     >
@@ -440,17 +593,35 @@ function QuestionBlock({ q, ans }: { q: ExamQuestion; ans: RawAnswer }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: 1,
           mb: 0.5,
         }}
       >
         <Typography
           variant="subtitle2"
           fontWeight={700}
-          sx={{ color: "primary.main" }}
+          sx={{ color: "primary.main", flex: 1, minWidth: 0 }}
         >
           {ans.question_no}. {q.textQuestion || ""}
         </Typography>
-        <Chip size="small" {...chipByStatus[status]} />
+        <Stack direction="row" spacing={1} alignItems="center" flexShrink={0}>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={handleAskChatbot}
+            sx={{
+              textTransform: "none",
+              fontWeight: 700,
+              px: 1.25,
+              py: 0.25,
+              minWidth: "auto",
+              bgcolor: "#fff",
+            }}
+          >
+            Hỏi chatbot
+          </Button>
+          <Chip size="small" {...chipByStatus[status]} />
+        </Stack>
       </Box>
       {Object.entries(q.choices).map(([key, value]) => {
         const isCorrect = key === q.correctAnswer;

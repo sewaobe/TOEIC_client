@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Navbar from "../../components/common/NavBar";
 import Footer from "../../components/sections/Footer";
 import RightMenuDrawer from "../../components/common/RightMenu";
@@ -20,6 +20,16 @@ interface MainLayoutProps {
   children: ReactNode;
 }
 
+export interface QuickQuestionExplainRequest {
+  requestId: string;
+  testId: string;
+  attemptId: string;
+  questionId: string;
+  questionNumber?: number;
+  textPreview?: string;
+  testTitle?: string;
+}
+
 function MainLayout({ children }: MainLayoutProps) {
   const isAuthenticated = useSelector(
     (state: RootState) => state.user.isAuthenticated
@@ -36,6 +46,8 @@ function MainLayout({ children }: MainLayoutProps) {
     id: string;
     text: string;
   } | null>(null);
+  const [quickQuestionRequest, setQuickQuestionRequest] =
+    useState<QuickQuestionExplainRequest | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showCreateVocabulary, setShowCreateVocabulary] = useState(false);
   const [highlightedWord, setHighlightedWord] = useState("");
@@ -69,10 +81,35 @@ function MainLayout({ children }: MainLayoutProps) {
   };
 
   const handleAskAI = () => {
+    setQuickQuestionRequest(null);
     setShowChatbot(true);
     setChatDrawerQuestion({ id: "", text: selectedText });
     clearSelection();
   };
+
+  useEffect(() => {
+    const handleQuickQuestionExplain = (event: Event) => {
+      const detail = (event as CustomEvent<Partial<QuickQuestionExplainRequest>>).detail;
+      if (!detail?.testId || !detail.attemptId || !detail.questionId) return;
+
+      setChatDrawerQuestion(null);
+      setQuickQuestionRequest({
+        requestId: detail.requestId || `${Date.now()}-${detail.questionId}`,
+        testId: detail.testId,
+        attemptId: detail.attemptId,
+        questionId: detail.questionId,
+        questionNumber: detail.questionNumber,
+        textPreview: detail.textPreview,
+        testTitle: detail.testTitle,
+      });
+      setShowChatbot(true);
+    };
+
+    window.addEventListener("chatbot:quick-question-explain", handleQuickQuestionExplain);
+    return () => {
+      window.removeEventListener("chatbot:quick-question-explain", handleQuickQuestionExplain);
+    };
+  }, []);
 
   return (
     <AdjustmentProvider openDialogWithRequest={openDialogWithRequest}>
@@ -87,6 +124,7 @@ function MainLayout({ children }: MainLayoutProps) {
               onSaveNotebook={handleSaveNotebook}
               onSaveFlashcard={handleSaveFlashcard}
               onAskAI={handleAskAI}
+              onClose={clearSelection}
             />
           )}
         </div>
@@ -117,6 +155,7 @@ function MainLayout({ children }: MainLayoutProps) {
               isOpen={showChatbot}
               onClose={() => setShowChatbot(false)}
               initialQuestion={chatDrawerQuestion || undefined}
+              quickQuestionRequest={quickQuestionRequest || undefined}
             />
             <ReportIssueModal
               open={showReportModal}

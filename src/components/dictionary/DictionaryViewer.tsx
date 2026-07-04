@@ -65,6 +65,31 @@ export default function DictionaryViewer({ data }: DictionaryViewerProps) {
         );
     }
 
+    const translations = dict.translations ?? [];
+    const imageUrls = dict.imageUrls ?? [];
+    const hasTranslationContent = translations.length > 0;
+    const hasImageContent = imageUrls.length > 0;
+    const directAudioChips = [
+        {
+            key: "uk-audio",
+            label: dict.phonetic_uk ? `UK ${dict.phonetic_uk}` : "UK",
+            audio: dict.audio_uk,
+        },
+        {
+            key: "us-audio",
+            label: dict.phonetic_us ? `US ${dict.phonetic_us}` : "US",
+            audio: dict.audio_us,
+        },
+    ].filter((item): item is { key: string; label: string; audio: string } => Boolean(item.audio));
+    const phoneticChips = (dict.phonetics ?? [])
+        .map((item, index) => ({
+            key: `phonetic-${index}`,
+            label: item.text || "IPA",
+            audio: item.audio,
+        }))
+        .filter((item) => Boolean(item.label || item.audio));
+    const pronunciationChips = directAudioChips.length ? directAudioChips : phoneticChips;
+
     return (
         <Box className="w-full flex flex-col gap-4 md:gap-6">
             {/* Header word */}
@@ -91,85 +116,127 @@ export default function DictionaryViewer({ data }: DictionaryViewerProps) {
                                 {dict.phonetic_us && (
                                     <Chip size="small" label={`US ${dict.phonetic_us}`} variant="outlined" />
                                 )}
+                                {!dict.phonetic_uk && !dict.phonetic_us && dict.phonetic && (
+                                    <Chip size="small" label={dict.phonetic} variant="outlined" />
+                                )}
                             </Stack>
                         </Box>
                     </Box>
 
                     {/* Audio */}
                     <Box className="flex gap-2 flex-wrap">
-                        {[
-                            { label: "UK", audio: dict.audio_uk },
-                            { label: "US", audio: dict.audio_us },
-                        ].filter((p) => p.audio).map((p) => (
-                            <Chip
-                                key={p.label}
-                                label={p.label}
-                                onClick={() => handlePlayAudio(p.audio)}
-                                icon={<VolumeUpIcon fontSize="small" />}
-                                variant={selectedPhonetic === p.audio ? "filled" : "outlined"}
-                                className="!cursor-pointer"
-                                sx={{
-                                    borderRadius: "9999px",
-                                    ...(selectedPhonetic === p.audio
-                                        ? { bgcolor: "primary.main", color: "white" }
-                                        : {}),
-                                }}
-                            />
-                        ))}
+                        {pronunciationChips.length ? (
+                            pronunciationChips.map((item) => {
+                                const isActive = Boolean(item.audio && selectedPhonetic === item.audio);
+                                const isClickable = Boolean(item.audio);
+
+                                return (
+                                    <Chip
+                                        key={item.key}
+                                        label={item.label}
+                                        onClick={isClickable ? () => handlePlayAudio(item.audio) : undefined}
+                                        icon={<VolumeUpIcon fontSize="small" />}
+                                        variant={isActive ? "filled" : "outlined"}
+                                        className={isClickable ? "!cursor-pointer" : "!cursor-default"}
+                                        disabled={!isClickable}
+                                        sx={{
+                                            borderRadius: "9999px",
+                                            ...(isActive
+                                                ? { bgcolor: "primary.main", color: "white" }
+                                                : {}),
+                                        }}
+                                    />
+                                );
+                            })
+                        ) : (
+                            <Typography variant="body2" className="!text-slate-400">
+                                Chưa có phiên âm.
+                            </Typography>
+                        )}
                     </Box>
                 </CardContent>
             </Card>
 
             {/* Translations */}
             <Box className="flex flex-col gap-4">
-                {dict.translations?.map((tran, idx) => (
-                    <Card
-                        key={idx}
-                        elevation={0}
-                        className="border border-slate-100 rounded-2xl !overflow-hidden"
-                    >
-                        <CardContent className="flex flex-col gap-3">
-                            {/* POS */}
-                            <Box className="flex items-center gap-2 justify-between">
-                                <Box className="flex items-center gap-2">
-                                    <Chip
-                                        label={tran.partOfSpeech || "—"}
-                                        color="primary"
-                                        size="small"
-                                        className="!font-semibold"
-                                    />
-                                    <Typography variant="subtitle1" className="!font-semibold">
-                                        Nghĩa ({posLabel(tran.partOfSpeech)})
-                                    </Typography>
-                                </Box>
-                            </Box>
+                {hasTranslationContent ? (
+                    translations.map((tran, idx) => {
+                        const definitions = tran.meanings?.length
+                            ? tran.meanings
+                            : tran.translatedDefinitions ?? [];
 
-                            <Divider />
-
-                            {/* Definitions */}
-                            <Box className="flex flex-col gap-2">
-                                {tran.meanings?.map((def, defIdx) => (
-                                    <Box
-                                        key={defIdx}
-                                        className="flex gap-2 items-start bg-slate-50/50 rounded-xl px-3 py-2"
-                                    >
-                                        <span className="text-slate-400 text-sm mt-0.5">
-                                            {defIdx + 1}.
-                                        </span>
-                                        <Box className="flex flex-col gap-1">
-                                            <Typography variant="body2" className="!text-slate-900">
-                                                {def.en}
-                                            </Typography>
-                                            <Typography variant="body2" className="!text-slate-500">
-                                                {def.vi}
+                        return (
+                            <Card
+                                key={idx}
+                                elevation={0}
+                                className="border border-slate-100 rounded-2xl !overflow-hidden"
+                            >
+                                <CardContent className="flex flex-col gap-3">
+                                    {/* POS */}
+                                    <Box className="flex items-center gap-2 justify-between">
+                                        <Box className="flex items-center gap-2">
+                                            <Chip
+                                                label={tran.partOfSpeech || "—"}
+                                                color="primary"
+                                                size="small"
+                                                className="!font-semibold"
+                                            />
+                                            <Typography variant="subtitle1" className="!font-semibold">
+                                                Nghĩa ({posLabel(tran.partOfSpeech)})
                                             </Typography>
                                         </Box>
                                     </Box>
-                                ))}
-                            </Box>
+
+                                    <Divider />
+
+                                    {/* Definitions */}
+                                    <Box className="flex flex-col gap-2">
+                                        {definitions.length ? (
+                                            definitions.map((def, defIdx) => (
+                                                <Box
+                                                    key={defIdx}
+                                                    className="flex gap-2 items-start bg-slate-50/50 rounded-xl px-3 py-2"
+                                                >
+                                                    <span className="text-slate-400 text-sm mt-0.5">
+                                                        {defIdx + 1}.
+                                                    </span>
+                                                    <Box className="flex flex-col gap-1">
+                                                        <Typography variant="body2" className="!text-slate-900">
+                                                            {def.vi || "—"}
+                                                        </Typography>
+                                                        {def.en && (
+                                                            <Typography variant="body2" className="!text-slate-500">
+                                                                {def.en}
+                                                            </Typography>
+                                                        )}
+                                                    </Box>
+                                                </Box>
+                                            ))
+                                        ) : (
+                                            <Typography variant="body2" className="!text-slate-400">
+                                                Chưa có định nghĩa cho mục này.
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                </CardContent>
+                            </Card>
+                        );
+                    })
+                ) : (
+                    <Card
+                        elevation={0}
+                        className="border border-dashed border-slate-200 rounded-2xl !overflow-hidden"
+                    >
+                        <CardContent>
+                            <Typography variant="subtitle2" className="!font-semibold !text-slate-700">
+                                Chưa có nghĩa để hiển thị
+                            </Typography>
+                            <Typography variant="body2" className="!text-slate-500 mt-1">
+                                Từ này chưa có dữ liệu nghĩa song ngữ trong response hiện tại.
+                            </Typography>
                         </CardContent>
                     </Card>
-                ))}
+                )}
             </Box>
 
             {/* Examples */}
@@ -286,7 +353,7 @@ export default function DictionaryViewer({ data }: DictionaryViewerProps) {
                 )}
 
             {/* Images */}
-            {dict.imageUrls && dict.imageUrls.length > 0 && (
+            {hasImageContent && (
                 <Card
                     elevation={0}
                     className="border border-slate-100 rounded-2xl !overflow-hidden"
@@ -299,8 +366,8 @@ export default function DictionaryViewer({ data }: DictionaryViewerProps) {
                             </Typography>
                         </Box>
 
-                        <ImageList cols={dict.imageUrls.length > 1 ? 2 : 1} gap={12}>
-                            {dict.imageUrls.map((url) => (
+                        <ImageList cols={imageUrls.length > 1 ? 2 : 1} gap={12}>
+                            {imageUrls.map((url) => (
                                 <ImageListItem key={url}>
                                     <img
                                         src={url}

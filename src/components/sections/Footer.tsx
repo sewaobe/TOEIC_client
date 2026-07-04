@@ -82,7 +82,12 @@ const Footer: FC = () => {
         pb: { xs: 1, md: 2 },
       }}
     >
-      <Container maxWidth='lg'>
+      <Container
+        maxWidth={false}
+        sx={{
+          maxWidth: 1500,
+        }}
+      >
         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent='space-between' alignItems='center' spacing={{ xs: 3, md: 2 }}>
           <Typography variant='h6' fontWeight='bold' color='text.primary'>
             TOEIC Smart

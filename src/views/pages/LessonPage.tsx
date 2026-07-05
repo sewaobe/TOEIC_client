@@ -1049,7 +1049,7 @@ export default function LessonPage() {
             "learning_path_assessment_return",
             JSON.stringify(returnPayload)
           );
-          const timeLimit = currentLesson.type === "full_test" ? 120 : 60;
+          const timeLimit = currentLesson.type === "full_test" ? 120 : 30;
           const query = new URLSearchParams({
             testId: currentLesson.id,
             fromLesson: "true",
@@ -1076,7 +1076,7 @@ export default function LessonPage() {
             }
             onStart={handleStartMiniTest}
             questionCount={assessmentIntroMeta?.questionCount}
-            duration={currentLesson.type === "full_test" ? 120 : 60}
+            duration={currentLesson.type === "full_test" ? 120 : 30}
             parts={assessmentIntroMeta?.parts ?? []}
           />
         );
@@ -1221,7 +1221,7 @@ export default function LessonPage() {
               setMiniTestResult(null);
               setShowMiniTestResultInContent(false);
               navigate(
-                `/test?testId=${miniTestResult.testId}&fromLesson=true&timeLimit=60`
+                `/test?testId=${miniTestResult.testId}&fromLesson=true&timeLimit=30`
               );
             }}
           />

@@ -20,6 +20,7 @@ export type SubmitLearningPathV2AssessmentPayload = {
   assessment_type: LearningPathV2AssessmentType;
   week_study_id?: string;
   day_study_id?: string;
+  debug_scenario_override?: "PLATEAU";
 };
 
 export type LearningPathCycleExplanationResponse = {

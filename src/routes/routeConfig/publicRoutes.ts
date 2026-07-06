@@ -1,5 +1,5 @@
 import { lazy, ComponentType } from 'react';
-const LandingPage = lazy(() => import('../../views/pages/LandingPage'));
+const LandingPage = lazy(() => import('../../views/pages/LandingPageV2'));
 
 export interface AppRoute {
   path: string;

@@ -43,6 +43,8 @@ export interface ChatRouteQuestionRef {
     questionNumber: number;
     questionId: string;
     textPreview?: string;
+    attemptId?: string;
+    testId?: string;
 }
 
 export interface ChatRouteContext {
@@ -52,11 +54,18 @@ export interface ChatRouteContext {
     testId?: string;
     attemptId?: string;
     questionId?: string;
+    questionNumber?: number;
+    currentVisibleQuestionId?: string;
+    currentVisibleQuestionNumber?: number;
+    selectedQuestionId?: string;
+    selectedQuestionNumber?: number;
     lessonId?: string;
     dictationAttemptId?: string;
     shadowingAttemptId?: string;
     currentQuestionNumber?: number;
     questionRefs?: ChatRouteQuestionRef[];
+    visibleQuestionRefs?: ChatRouteQuestionRef[];
+    currentQuestionIndex?: number;
 }
 
 export interface ChatClientContext {
@@ -118,13 +127,17 @@ export interface ChatIntentHint {
 export type ChatActionType =
     | "open_question_review"
     | "review_mistakes"
+    | "open_test_result"
+    | "open_attempt_review"
     | "start_practice"
     | "recommend_similar_practice"
+    | "open_lesson"
     | "show_roadmap"
     | "open_flashcards"
     | "open_flashcard_deck"
     | "replay_audio"
-    | "request_roadmap_recompute";
+    | "request_roadmap_recompute"
+    | "select_clarify_option";
 
 export interface ChatAction {
     id: string;
@@ -235,6 +248,13 @@ export type ChatStructuredView =
         summary?: string;
     }
     | {
+        type: "user_profile_identity";
+        title: string;
+        subtitle?: string;
+        stats: ChatStructuredStatItem[];
+        highlights?: ChatStructuredListItem[];
+    }
+    | {
         type: "question_context";
         title: string;
         subtitle?: string;
@@ -261,6 +281,28 @@ export type ChatStructuredView =
             activities: Array<{
                 id: string;
                 type: "vocabulary" | "dictation" | "shadowing" | "quiz";
+                title: string;
+                estimatedMinutes?: number;
+                action: ChatAction;
+            }>;
+        }>;
+    }
+    | {
+        type: "lesson_recommendations";
+        title: string;
+        subtitle?: string;
+        sourceTags: string[];
+        items: Array<{
+            lessonManagerId: string;
+            title: string;
+            part?: number;
+            targetTags: string[];
+            estimatedMinutes?: number;
+            fitScore?: number;
+            reason?: string;
+            activities: Array<{
+                id: string;
+                type: "lesson" | "vocabulary" | "dictation" | "shadowing" | "quiz";
                 title: string;
                 estimatedMinutes?: number;
                 action: ChatAction;

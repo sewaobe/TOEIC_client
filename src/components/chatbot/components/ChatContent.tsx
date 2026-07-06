@@ -11,6 +11,7 @@ import { ChatInputBar } from "./ChatInputBar";
 import {
     ChatAction,
     ChatMessage,
+    ChatRouteContext,
     ChatSession,
     ChatStructuredListItem,
     ChatStructuredStatItem,
@@ -29,7 +30,11 @@ interface ChatContentProps {
     messages: ChatMessage[];
     input: string;
     setInput: (v: string) => void;
-    onSend: (override?: { text?: string; clientContext?: Record<string, unknown> }) => void | Promise<void>;
+    onSend: (override?: {
+        text?: string;
+        clientContext?: Record<string, unknown>;
+        routeContext?: ChatRouteContext;
+    }) => void | Promise<void>;
     onTypeSelect: (t: ChatType) => void;
     selectedType: ChatType;
     questionTypes: { value: ChatType; label: string }[];
@@ -448,6 +453,54 @@ function StructuredMarkdown({ source }: { source?: string }) {
     );
 }
 
+function normalizeStructuredLabel(value?: string) {
+    return (value ?? "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D")
+        .toLowerCase();
+}
+
+function findStructuredStat(stats: ChatStructuredStatItem[] | undefined, keywords: string[]) {
+    return stats?.find((item) => {
+        const label = normalizeStructuredLabel(item.label);
+        return keywords.some((keyword) => label.includes(keyword));
+    });
+}
+
+function getProfileInitials(name?: string) {
+    const words = (name ?? "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+    if (!words.length) return "U";
+    const first = words[0]?.[0] ?? "";
+    const last = words.length > 1 ? words[words.length - 1]?.[0] ?? "" : "";
+    return `${first}${last}`.toUpperCase();
+}
+
+function splitUserProfileHighlights(items?: ChatStructuredListItem[]) {
+    const profileItems: ChatStructuredListItem[] = [];
+    const learningItems: ChatStructuredListItem[] = [];
+
+    items?.forEach((item) => {
+        const label = normalizeStructuredLabel(item.label);
+        if (
+            label.includes("muc tieu") ||
+            label.includes("diem") ||
+            label.includes("hoc") ||
+            label.includes("streak")
+        ) {
+            learningItems.push(item);
+            return;
+        }
+        profileItems.push(item);
+    });
+
+    return { profileItems, learningItems };
+}
+
 function StructuredChatViewCard({
     view,
     onAction,
@@ -526,6 +579,114 @@ function StructuredChatViewCard({
                 <StructuredList title="Kỹ năng yếu" items={view.weakTags} />
                 <StructuredList title="Câu sai tiêu biểu" items={view.wrongAnswers} />
                 <StructuredMarkdown source={view.summary} />
+            </StructuredCardFrame>
+        );
+    }
+
+    if (view.type === "user_profile_identity") {
+        const nameStat = findStructuredStat(view.stats, ["ten", "name"]);
+        const emailStat = findStructuredStat(view.stats, ["email"]);
+        const statusStat = findStructuredStat(view.stats, ["trang thai", "status"]);
+        const displayName = nameStat?.value || "Người dùng hiện tại";
+        const secondaryStats = view.stats.filter(
+            (item) => item !== nameStat && item !== emailStat && item !== statusStat
+        );
+        const { profileItems, learningItems } = splitUserProfileHighlights(view.highlights);
+        const hasDetails = Boolean(view.stats.length || view.highlights?.length);
+
+        return (
+            <StructuredCardFrame title={view.title} subtitle={view.subtitle} tone="info">
+                {hasDetails ? (
+                    <>
+                        <Box
+                            sx={{
+                                display: "grid",
+                                gridTemplateColumns: "40px minmax(0, 1fr)",
+                                alignItems: "center",
+                                gap: 1.15,
+                                border: "1px solid #dbeafe",
+                                bgcolor: "#f8fbff",
+                                borderRadius: 2,
+                                p: 1.1,
+                                mb: 1.35,
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: "50%",
+                                    display: "grid",
+                                    placeItems: "center",
+                                    bgcolor: "#2563eb",
+                                    color: "#ffffff",
+                                    fontSize: 13,
+                                    fontWeight: 900,
+                                    flexShrink: 0,
+                                }}
+                            >
+                                {getProfileInitials(displayName)}
+                            </Box>
+                            <Box sx={{ minWidth: 0, flex: 1 }}>
+                                <Typography
+                                    sx={{
+                                        fontSize: 13.5,
+                                        fontWeight: 900,
+                                        color: "#0f172a",
+                                        lineHeight: 1.3,
+                                        wordBreak: "normal",
+                                        overflowWrap: "break-word",
+                                    }}
+                                >
+                                    {displayName}
+                                </Typography>
+                                {emailStat?.value ? (
+                                    <Typography
+                                        sx={{
+                                            mt: 0.2,
+                                            fontSize: 12,
+                                            color: "#475569",
+                                            lineHeight: 1.35,
+                                            overflowWrap: "anywhere",
+                                        }}
+                                    >
+                                        {emailStat.value}
+                                    </Typography>
+                                ) : null}
+                                {statusStat?.value ? (
+                                    <Box
+                                        sx={{
+                                            display: "inline-flex",
+                                            maxWidth: "100%",
+                                            mt: 0.65,
+                                            border: "1px solid #bfdbfe",
+                                            bgcolor: "#ffffff",
+                                            color: "#1d4ed8",
+                                            borderRadius: 999,
+                                            px: 0.85,
+                                            py: 0.4,
+                                            fontSize: 10.5,
+                                            fontWeight: 900,
+                                            lineHeight: 1.2,
+                                            whiteSpace: "normal",
+                                        }}
+                                    >
+                                        {statusStat.value}
+                                    </Box>
+                                ) : null}
+                            </Box>
+                        </Box>
+                        <StructuredStats stats={secondaryStats} />
+                        <StructuredList title="Hồ sơ" items={profileItems} />
+                        <StructuredList title="Học tập" items={learningItems} />
+                    </>
+                ) : (
+                    <Box sx={{ borderRadius: 2, bgcolor: "#f8fafc", border: "1px solid #e2e8f0", p: 1 }}>
+                        <Typography sx={{ fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
+                            Chưa có đủ dữ liệu hồ sơ để hiển thị.
+                        </Typography>
+                    </Box>
+                )}
             </StructuredCardFrame>
         );
     }
@@ -631,6 +792,104 @@ function StructuredChatViewCard({
                         </Box>
                     ))}
                 </Box>
+            </StructuredCardFrame>
+        );
+    }
+
+    if (view.type === "lesson_recommendations") {
+        const hasItems = view.items.length > 0;
+        return (
+            <StructuredCardFrame title={view.title} subtitle={view.subtitle} tone="success">
+                {view.sourceTags.length ? (
+                    <StructuredList
+                        title="Theo yeu cau"
+                        items={view.sourceTags.slice(0, 5).map((tag) => ({ label: tag, tone: "info" as const }))}
+                    />
+                ) : null}
+                {hasItems ? (
+                    <Box sx={{ display: "grid", gap: 1.1 }}>
+                        {view.items.map((item) => (
+                            <Box
+                                key={item.lessonManagerId}
+                                sx={{
+                                    border: "1px solid #bfdbfe",
+                                    borderRadius: 2,
+                                    p: 1.05,
+                                    bgcolor: "#f8fbff",
+                                    minWidth: 0,
+                                }}
+                            >
+                                <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
+                                    <Box sx={{ minWidth: 0 }}>
+                                        <Typography sx={{ fontSize: 13, fontWeight: 900, color: "#0f172a", lineHeight: 1.35 }}>
+                                            {item.title}
+                                        </Typography>
+                                        <Typography sx={{ fontSize: 11.5, color: "#64748b", mt: 0.25, lineHeight: 1.35 }}>
+                                            {[
+                                                item.part ? `Part ${item.part}` : "",
+                                                typeof item.fitScore === "number" ? `Phu hop ${Math.round(item.fitScore * 100)}%` : "",
+                                                item.estimatedMinutes ? `${item.estimatedMinutes} phut` : "",
+                                            ].filter(Boolean).join(" - ")}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                                {item.targetTags.length ? (
+                                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.45, mt: 0.8 }}>
+                                        {item.targetTags.slice(0, 4).map((tag) => (
+                                            <Box
+                                                key={`${item.lessonManagerId}-${tag}`}
+                                                sx={{
+                                                    maxWidth: "100%",
+                                                    border: "1px solid #dbeafe",
+                                                    bgcolor: "#ffffff",
+                                                    color: "#1d4ed8",
+                                                    borderRadius: 999,
+                                                    px: 0.75,
+                                                    py: 0.25,
+                                                    fontSize: 10.5,
+                                                    fontWeight: 800,
+                                                    overflowWrap: "anywhere",
+                                                }}
+                                            >
+                                                {tag}
+                                            </Box>
+                                        ))}
+                                    </Box>
+                                ) : null}
+                                {item.reason ? (
+                                    <Typography sx={{ fontSize: 12, color: "#334155", mt: 0.75, lineHeight: 1.4 }}>
+                                        {item.reason}
+                                    </Typography>
+                                ) : null}
+                                <Box sx={{ display: "grid", gap: 0.7, mt: 0.95 }}>
+                                    {item.activities.map((activity) => (
+                                        <Box
+                                            key={`${item.lessonManagerId}-${activity.id}`}
+                                            sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, minWidth: 0 }}
+                                        >
+                                            <Typography sx={{ fontSize: 12.3, color: "#334155", minWidth: 0, overflowWrap: "anywhere" }}>
+                                                {activity.title}
+                                                {activity.estimatedMinutes ? ` - ${activity.estimatedMinutes} phut` : ""}
+                                            </Typography>
+                                            <button
+                                                className="px-2.5 py-1 rounded-md bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shrink-0"
+                                                onClick={() => onAction?.(activity.action)}
+                                            >
+                                                {activity.type === "lesson" ? "Hoc ngay" : "Luyen ngay"}
+                                            </button>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </Box>
+                        ))}
+                    </Box>
+                ) : (
+                    <Box sx={{ borderRadius: 2, bgcolor: "#f8fafc", border: "1px solid #e2e8f0", p: 1 }}>
+                        <Typography sx={{ fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
+                            Chua co bai hoc phu hop de hien thi.
+                        </Typography>
+                    </Box>
+                )}
             </StructuredCardFrame>
         );
     }
@@ -787,6 +1046,36 @@ export function ChatContent({
         }
 
         const payload = action.payload ?? {};
+        if (action.type === "select_clarify_option") {
+            const originalUserText = typeof payload.originalUserText === "string"
+                ? payload.originalUserText.trim()
+                : "";
+            if (payload.manualInput) {
+                setInput(originalUserText);
+                return;
+            }
+
+            const selectedRouteContext = payload.selectedRouteContext as ChatRouteContext | undefined;
+            if (!originalUserText || !selectedRouteContext) {
+                if (originalUserText) setInput(originalUserText);
+                return;
+            }
+
+            await onSend({
+                text: originalUserText,
+                routeContext: selectedRouteContext,
+                clientContext: {
+                    sourceAction: "select_clarify_option",
+                    actionPayload: {
+                        optionReason: payload.optionReason,
+                        previousIntentId: payload.previousIntentId,
+                        optionConfidence: payload.optionConfidence,
+                    },
+                },
+            });
+            return;
+        }
+
         if (action.type === "open_question_review" && payload.testId && payload.attemptId) {
             const query = buildQuery({
                 questionId: payload.questionId,
@@ -816,6 +1105,16 @@ export function ChatContent({
             return;
         }
 
+        if (action.type === "open_lesson") {
+            const route = typeof payload.route === "string" && payload.route ? String(payload.route) : "/programs";
+            navigate(`${route}${buildQuery({
+                lessonManagerId: payload.lessonManagerId,
+                activityId: payload.activityId,
+                part: payload.part,
+            })}`);
+            return;
+        }
+
         if (action.type === "recommend_similar_practice") {
             await onSend({
                 text: "Gợi ý bài luyện tương tự",
@@ -831,6 +1130,14 @@ export function ChatContent({
             if (payload.activityType && payload.activityId) {
                 const activityType = String(payload.activityType);
                 const activityId = String(payload.activityId);
+                if (activityType === "lesson") {
+                    navigate(`/programs${buildQuery({
+                        lessonManagerId: payload.lessonManagerId,
+                        activityId,
+                        part: payload.part,
+                    })}`);
+                    return;
+                }
                 if (activityType === "dictation") {
                     navigate(`/practice-skill/dictation/${activityId}`);
                     return;

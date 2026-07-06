@@ -1,7 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import BookIcon from "@mui/icons-material/Book";
-import StyleIcon from "@mui/icons-material/Style";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -79,9 +76,7 @@ const EmptyState = ({ label }: { label: string }) => (
 const HighlightPopup: React.FC<HighlightPopupProps> = ({
   rect,
   text,
-  onSaveNotebook,
   onSaveFlashcard,
-  onAskAI,
   onClose,
   gap = 10,
 }) => {
@@ -277,47 +272,6 @@ const HighlightPopup: React.FC<HighlightPopupProps> = ({
       onMouseDown={(event) => event.preventDefault()}
       style={{ top: position.top, left: position.left, width: position.width }}
     >
-      <div
-        role="toolbar"
-        className="
-          flex items-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg
-          divide-x divide-gray-200
-        "
-      >
-        <button
-          onClick={onSaveNotebook}
-          className="relative group flex items-center gap-1 px-3 py-2 hover:bg-gray-50"
-          aria-label="Save to Notebook"
-        >
-          <BookIcon fontSize="small" className="text-indigo-600" />
-          <span className="absolute bottom-full mb-1 hidden whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-white group-hover:block">
-            Notebook
-          </span>
-        </button>
-
-        <button
-          onClick={onSaveFlashcard}
-          className="relative group flex items-center gap-1 px-3 py-2 hover:bg-gray-50"
-          aria-label="Save to Flashcard"
-        >
-          <StyleIcon fontSize="small" className="text-rose-600" />
-          <span className="absolute bottom-full mb-1 hidden whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-white group-hover:block">
-            Flashcard
-          </span>
-        </button>
-
-        <button
-          onClick={onAskAI}
-          className="relative group flex items-center gap-1 px-3 py-2 hover:bg-gray-50"
-          aria-label="Ask AI"
-        >
-          <SmartToyIcon fontSize="small" className="text-blue-600" />
-          <span className="absolute bottom-full mb-1 hidden whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-white group-hover:block">
-            Ask AI
-          </span>
-        </button>
-      </div>
-
       <div className="max-h-[420px] w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-3 px-3 py-3">
           <div className="min-w-0">

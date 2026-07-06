@@ -159,11 +159,20 @@ const RetryWrongAnswersPage = () => {
     const selectedAnswer = selectedQuestionId
       ? answers.find((answer) => answer.question_id === selectedQuestionId)
       : undefined;
+    const currentQuestionIndex = selectedQuestionId
+      ? answers.findIndex((answer) => answer.question_id === selectedQuestionId)
+      : -1;
     setChatRouteState({
       attemptId: historyId,
       questionId: selectedQuestionId,
       currentQuestionNumber: selectedAnswer?.question_no,
       questionRefs,
+      currentVisibleQuestionId: selectedQuestionId,
+      currentVisibleQuestionNumber: selectedAnswer?.question_no,
+      selectedQuestionId,
+      selectedQuestionNumber: selectedAnswer?.question_no,
+      visibleQuestionRefs: questionRefs,
+      currentQuestionIndex: currentQuestionIndex >= 0 ? currentQuestionIndex : undefined,
     });
     return clearChatRouteState;
   }, [historyId, selectedQuestionId, answers, questionRefs]);

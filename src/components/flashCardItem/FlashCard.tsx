@@ -1,6 +1,6 @@
 import { Box, Card, IconButton, Stack, Typography } from '@mui/material';
 import { VolumeUp, Sync } from '@mui/icons-material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSpeech } from '../../hooks/useSpeech';
 import { FlashcardItem } from '../modals/CreateFlashcardItemModal';
 import { parseVocabularyNotes } from '../../views/pages/FlashcardDetailPage';
@@ -14,6 +14,10 @@ export default function Flashcard({ word, voice }: FlashcardProps) {
   const [flipped, setFlipped] = useState(false);
 
   const { speak } = useSpeech(voice);
+
+  useEffect(() => {
+    setFlipped(false);
+  }, [word._id, word.word]);
 
   const parsedNotes = parseVocabularyNotes(word.notes);
 

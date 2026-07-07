@@ -80,6 +80,7 @@ export default function PracticeShadowingV2Page() {
   const [showResumeModal, setShowResumeModal] = useState<boolean>(false);
   const [savePromptIntent, setSavePromptIntent] = useState<SavePromptIntent | null>(null);
   const [isSavingDraft, setIsSavingDraft] = useState<boolean>(false);
+  const [isFastCompleting, setIsFastCompleting] = useState<boolean>(false);
   const [resumeAudioMissing, setResumeAudioMissing] = useState<boolean>(false);
   const [segmentResults, setSegmentResults] = useState<ShadowingSegmentResult[]>([]);
   const [completedIndices, setCompletedIndices] = useState<number[]>([]);
@@ -151,6 +152,14 @@ export default function PracticeShadowingV2Page() {
       }, 0) / results.length,
     );
   };
+
+  const getTotalDuration = (results: ShadowingSegmentResult[]) =>
+    results.reduce((sum, segment) => {
+      const latest = segment.attempts[segment.attempts.length - 1];
+      return sum + (latest?.duration || 0);
+    }, 0);
+
+  const getRandomDemoDuration = () => Math.floor(Math.random() * 6) + 5;
 
   const getAudioStorageId = () => currentSession?._id || localDraftIdRef.current;
 
@@ -555,6 +564,29 @@ export default function PracticeShadowingV2Page() {
     return session;
   };
 
+  const ensureShadowingSession = async () => {
+    if (currentSession) return currentSession;
+    if (!resolvedShadowingId || !shadowingData) return null;
+
+    const oldDraftId = localDraftIdRef.current;
+    const sessionResponse = await practiceSessionService.startOrResume({
+      practice_type: 'shadowing',
+      topic_id: resolvedShadowingId,
+      total_items: shadowingData.timings.length,
+    });
+    const session = sessionResponse.session;
+
+    if (oldDraftId) {
+      await migrateShadowingAudioChunks(oldDraftId, session._id);
+    }
+
+    setCurrentSession(session);
+    if (resolvedShadowingId) {
+      localStorage.removeItem(getLocalDraftStorageKey(resolvedShadowingId));
+    }
+    return session;
+  };
+
   const handleNext = () => {
     setAppState('idle');
     if (!shadowingData) return;
@@ -751,6 +783,87 @@ export default function PracticeShadowingV2Page() {
     }));
   }, [transcriptSegments]);
 
+  const handleFastCompletePractice = async () => {
+    if (!shadowingData || transcriptSegments.length === 0) return;
+
+    const shouldFastComplete = window.confirm(
+      "Nộp nhanh demo sẽ đánh dấu các câu chưa làm đúng 100% với thời gian mô phỏng 5-10s/câu. Bạn có muốn tiếp tục?"
+    );
+    if (!shouldFastComplete) return;
+
+    setIsFastCompleting(true);
+    try {
+      const session = await ensureShadowingSession();
+      if (!session) {
+        alert('Không thể tạo phiên shadowing để nộp nhanh.');
+        return;
+      }
+
+      const existingResults = new Map(
+        latestSegmentResultsRef.current.map((segment) => [segment.index, segment]),
+      );
+      const completedAt = new Date();
+      const fullSegmentResults: ShadowingSegmentResult[] = transcriptSegments.map(
+        (segment, index) => {
+          const existing = existingResults.get(index);
+          if (existing?.attempts?.length) {
+            return existing;
+          }
+
+          return {
+            index,
+            text: segment.text,
+            attempts: [
+              {
+                user_transcript: segment.text,
+                similarity_score: 100,
+                accuracy_score: 100,
+                feedback: "Auto-completed for demo",
+                duration: getRandomDemoDuration(),
+                attempted_at: completedAt,
+              },
+            ],
+          };
+        },
+      );
+      const fullCompletedIndices = fullSegmentResults.map((segment) => segment.index);
+
+      await shadowingAttemptService.fastComplete(session._id, {
+        total_segments: transcriptSegments.length,
+        completed_segments: transcriptSegments.length,
+        segment_results: fullSegmentResults,
+        similarity_score: getAverageScore(fullSegmentResults),
+        duration: getTotalDuration(fullSegmentResults),
+      });
+
+      setSegmentResults(fullSegmentResults);
+      setCompletedIndices(fullCompletedIndices);
+      latestSegmentResultsRef.current = fullSegmentResults;
+      latestCompletedIndicesRef.current = fullCompletedIndices;
+      pendingRecordCountRef.current = 0;
+      setCurrentFeedback(null);
+      setAppState('idle');
+      setCurrentSession({
+        ...session,
+        status: 'completed',
+        completed_items: transcriptSegments.length,
+        completed_indices: fullCompletedIndices,
+        total_accuracy: getAverageScore(fullSegmentResults),
+        completed_at: completedAt,
+        last_activity_at: completedAt,
+      });
+
+      await clearShadowingAudioChunks(session._id);
+      await clearLocalDraft();
+      alert('Đã hoàn thành bài shadowing.');
+    } catch (error) {
+      console.error('Failed to fast complete shadowing practice:', error);
+      alert('Không thể nộp nhanh bài shadowing. Vui lòng thử lại.');
+    } finally {
+      setIsFastCompleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-screen bg-slate-50 flex flex-col items-center justify-center text-gray-500">
@@ -900,6 +1013,8 @@ export default function PracticeShadowingV2Page() {
             onHandleNext={handleNext}
             onHandlePrevious={handlePrevious}
             onCompletePractice={handleCompletePractice}
+            onFastCompletePractice={handleFastCompletePractice}
+            isFastCompleting={isFastCompleting}
           />
         </main>
       </div>

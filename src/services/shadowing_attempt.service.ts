@@ -8,7 +8,9 @@ const BASE_URL = "/shadowing-attempts";
 
 export const shadowingAttemptService = {
   getBySession: async (sessionId: string): Promise<ShadowingAttempt | null> => {
-    const res = await axiosClient.get(`${BASE_URL}/session/${sessionId}`);
+    const res = await axiosClient.get<unknown, { data: ShadowingAttempt | null }>(
+      `${BASE_URL}/session/${sessionId}`,
+    );
     return res.data;
   },
 
@@ -16,9 +18,10 @@ export const shadowingAttemptService = {
     sessionId: string,
     payload: SaveShadowingAttemptPayload,
   ): Promise<ShadowingAttempt> => {
-    const res = await axiosClient.post(`${BASE_URL}/session/${sessionId}/save-draft`, {
-      payload,
-    });
+    const res = await axiosClient.post<unknown, { data: ShadowingAttempt }>(
+      `${BASE_URL}/session/${sessionId}/save-draft`,
+      { payload },
+    );
     return res.data;
   },
 
@@ -31,9 +34,24 @@ export const shadowingAttemptService = {
     formData.append("payload", JSON.stringify(payload));
     formData.append("audio", audioBlob, "shadowing-attempt.webm");
 
-    const res = await axiosClient.post(`${BASE_URL}/session/${sessionId}/complete`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    const res = await axiosClient.post<unknown, { data: ShadowingAttempt }>(
+      `${BASE_URL}/session/${sessionId}/complete`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      },
+    );
+    return res.data;
+  },
+
+  fastComplete: async (
+    sessionId: string,
+    payload: SaveShadowingAttemptPayload,
+  ): Promise<ShadowingAttempt> => {
+    const res = await axiosClient.post<unknown, { data: ShadowingAttempt }>(
+      `${BASE_URL}/session/${sessionId}/fast-complete`,
+      { payload },
+    );
     return res.data;
   },
 

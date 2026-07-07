@@ -76,6 +76,8 @@ interface RightContentProps {
 	onHandleNext: () => void;
 	onHandlePrevious: () => void;
 	onCompletePractice?: () => void;
+	onFastCompletePractice?: () => void;
+	isFastCompleting?: boolean;
 }
 
 interface DictData {
@@ -294,6 +296,8 @@ export default function RightContent({
 	onHandleNext,
 	onHandlePrevious,
 	onCompletePractice,
+	onFastCompletePractice,
+	isFastCompleting = false,
 }: RightContentProps) {
 	const wordPattern = activeTranscriptData ? getWordPattern(activeTranscriptData.text) : [];
 	const wordCount = wordPattern.length;
@@ -1129,13 +1133,22 @@ export default function RightContent({
 						<p className="text-sm text-gray-500">
 							Completed {completedSegmentCount}/{shadowingData.segmentCount} segments
 						</p>
-						<button
-							onClick={onCompletePractice}
-							disabled={!onCompletePractice || completedSegmentCount < shadowingData.segmentCount}
-							className="w-full sm:w-auto rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-						>
-							Submit shadowing
-						</button>
+						<div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+							<button
+								onClick={onFastCompletePractice}
+								disabled={!onFastCompletePractice || isFastCompleting}
+								className="w-full sm:w-auto rounded-lg border border-amber-200 bg-amber-50 px-5 py-2.5 text-sm font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+							>
+								{isFastCompleting ? 'Đang nộp nhanh...' : 'Nộp nhanh demo'}
+							</button>
+							<button
+								onClick={onCompletePractice}
+								disabled={!onCompletePractice || completedSegmentCount < shadowingData.segmentCount}
+								className="w-full sm:w-auto rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+							>
+								Submit shadowing
+							</button>
+						</div>
 					</div>
 
 				</div>

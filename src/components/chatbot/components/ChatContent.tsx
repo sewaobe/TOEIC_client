@@ -1086,7 +1086,7 @@ export function ChatContent({
         }
 
         if (action.type === "review_mistakes" && payload.testId && payload.attemptId) {
-            navigate(`/tests/${payload.testId}/result/${payload.attemptId}/answers${buildQuery({ filter: "wrong" })}`);
+            navigate(`/tests/${payload.testId}/result/${payload.attemptId}/answers`);
             return;
         }
 

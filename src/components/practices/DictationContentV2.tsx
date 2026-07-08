@@ -13,7 +13,6 @@ import { toast } from "sonner";
 import { Dictation, DictationAttemptLog } from "../../types/Dictation";
 import { dictationAttemptService } from "../../services/dictation_attempt.service";
 import { dictationProgressService } from "../../services/dictation_progress.service";
-import geminiService from "../../services/gemini.service";
 import type { DictationProgress } from "../../types/DictationProgress";
 import DictationAIAnalysis from "./DictationAIAnalysis";
 import { loadStopWords } from "../../utils/stopWord";
@@ -1241,7 +1240,8 @@ export default function DictationContentV2({
       setSummary(nextSummary);
       hasSubmittedRef.current = true;
       setOpenComplete(true);
-    } catch {
+    } catch (error) {
+      console.error("Rule-based dictation feedback failed.", error);
       toast.error("Co loi xay ra khi luu ket qua luyen tap.");
     }
   };
@@ -1292,17 +1292,17 @@ export default function DictationContentV2({
     try {
       setLoadingAI(true);
       toast.loading("Đang phân tích bài luyện với AI...");
-      const result = await geminiService.analyzeDictation(summary.logs, {
-        _id: dictation._id,
-        title: dictation.title,
-        level: dictation.level,
-      });
+      if (!progressIdRef.current) {
+        throw new Error("Missing dictation progress id for rule-based feedback.");
+      }
+      const result = await dictationProgressService.getAIFeedback(progressIdRef.current);
       toast.dismiss();
       toast.success("AI đã hoàn tất phân tích 🎉");
       setAiAnalysis(result);
-    } catch {
+    } catch (error) {
+      console.error("Rule-based dictation feedback failed.", error);
       toast.dismiss();
-      toast.error("Không thể phân tích bằng AI, vui lòng thử lại.");
+      toast.error("Không thể tải phân tích Dictation. Vui lòng kiểm tra dữ liệu bài làm hoặc thử lại.");
     } finally {
       setLoadingAI(false);
     }
@@ -1323,6 +1323,7 @@ export default function DictationContentV2({
       <DictationAIAnalysis
         loading={loadingAI}
         analysis={aiAnalysis}
+        currentDifficulty={difficulty}
         onConfirm={() => window.location.reload()}
       />
     );

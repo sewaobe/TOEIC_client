@@ -46,3 +46,61 @@ export interface DictationProgressPatch {
   attempt_logs?: DictationAttemptLog[];
   summary?: Partial<DictationProgressSummary>;
 }
+
+export type DictationAIFeedbackSource =
+  | "rule_based_gemini"
+  | "rule_based_deepseek"
+  | "rule_based_template"
+  | "legacy_gemini";
+
+export interface DictationRecommendation {
+  dictationId: string;
+  title: string;
+  level?: string;
+  part_type?: number;
+  partLabel?: string;
+  tags: string[];
+  weight?: number;
+  suggestedDifficulty?: DictationProgressDifficulty;
+  recommendationGoal?:
+    | "increase_difficulty"
+    | "build_reflex"
+    | "reinforce_foundation"
+    | "retry_current"
+    | "move_to_less_supported_mode"
+    | "same_level_stabilization";
+  action: "start_dictation" | "retry_dictation";
+  score: number;
+  reasons: string[];
+}
+
+export interface DictationAIFeedbackResponse {
+  source: DictationAIFeedbackSource;
+  summary: {
+    accuracy: number;
+    difficulty?: DictationProgressDifficulty;
+    avgDuration?: number;
+    totalTime?: number;
+    rawPerformanceBand?: string;
+    adjustedPerformanceBand?: string;
+    performanceBand: string;
+    speedStatus: string;
+    speedReliable?: boolean;
+    slowSentenceRate?: number;
+    recommendationMode: string;
+  };
+  feedback: {
+    overall: string;
+    strengths: string[];
+    weaknesses: string[];
+    tips: string[];
+    sentenceAccuracyInsights: string[];
+    commonMistakeInsights: string[];
+  };
+  charts: {
+    accuracyBySentence: { index: number; accuracy: number }[];
+    frequentMistakes: { text: string; count: number }[];
+  };
+  recommendations: DictationRecommendation[];
+  warnings?: string[];
+}

@@ -1,17 +1,18 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Autorenew as Loader2,
 } from '@mui/icons-material';
 import { Dialog, DialogActions, DialogContent, DialogTitle, Button, Typography, Box, LinearProgress } from '@mui/material';
 import Sidebar from '../../components/practices/shadowing-detail-v2/Sidebar';
 import RightContent from '../../components/practices/shadowing-detail-v2/RightContent';
+import ShadowingResultPanel from '../../components/practices/shadowing-detail-v2/ShadowingResultPanel';
 import PracticeLayout from '../layouts/PracticeLayout';
 import { ShadowingLessonDetail, shadowingV2Service } from '../../services/shadowing_service_v2';
 import { practiceSessionService } from '../../services/practice_session.service';
 import { shadowingAttemptService } from '../../services/shadowing_attempt.service';
 import { PracticeSession } from '../../types/PracticeSession';
-import { ShadowingSegmentResult } from '../../types/ShadowingAttempt';
+import { ShadowingAttempt, ShadowingSegmentResult } from '../../types/ShadowingAttempt';
 import { createSpeechRecognition, evaluatePronunciation } from '../../utils/stt.util';
 import {
   buildShadowingCombinedAudioBlob,
@@ -72,6 +73,7 @@ const createLocalDraftId = (shadowingId: string) => `local-shadowing:${shadowing
 
 export default function PracticeShadowingV2Page() {
   const { shadowingId, id } = useParams<{ shadowingId?: string; id?: string }>();
+  const navigate = useNavigate();
   const resolvedShadowingId = shadowingId || id;
   const [shadowingData, setShadowingData] = useState<ShadowingLessonDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -84,6 +86,8 @@ export default function PracticeShadowingV2Page() {
   const [resumeAudioMissing, setResumeAudioMissing] = useState<boolean>(false);
   const [segmentResults, setSegmentResults] = useState<ShadowingSegmentResult[]>([]);
   const [completedIndices, setCompletedIndices] = useState<number[]>([]);
+  const [completedAttempt, setCompletedAttempt] = useState<ShadowingAttempt | null>(null);
+  const [showResult, setShowResult] = useState<boolean>(false);
   const [currentFeedback, setCurrentFeedback] = useState<{
     transcript: string;
     score: number;
@@ -267,6 +271,12 @@ export default function PracticeShadowingV2Page() {
           setSegmentResults(restoredSegmentResults);
           latestSegmentResultsRef.current = restoredSegmentResults;
           latestCompletedIndicesRef.current = existingSession.completed_indices || [];
+          if (existingSession.status === 'completed' && existingAttempt) {
+            setCompletedAttempt(existingAttempt);
+            setShowResult(true);
+            setSessionLoading(false);
+            return;
+          }
           setResumeAudioMissing(Boolean(existingAttempt?.segment_results?.length) && !(await hasShadowingAudioChunks(existingSession._id)));
           setShowResumeModal(true);
           return;
@@ -633,6 +643,17 @@ export default function PracticeShadowingV2Page() {
     window.history.back();
   };
 
+  const handlePracticeAgainFromResult = () => {
+    setShowResult(false);
+    setCurrentFeedback(null);
+    setAppState('idle');
+    setActiveTranscriptId(1);
+  };
+
+  const handleBackToShadowingList = () => {
+    navigate('/practice-skill/shadowing');
+  };
+
   const handleResumeSession = () => {
     setShowResumeModal(false);
     setSessionLoading(false);
@@ -656,6 +677,8 @@ export default function PracticeShadowingV2Page() {
       localStorage.removeItem(getLocalDraftStorageKey(resolvedShadowingId));
       setSegmentResults([]);
       setCompletedIndices([]);
+      setCompletedAttempt(null);
+      setShowResult(false);
       latestSegmentResultsRef.current = [];
       latestCompletedIndicesRef.current = [];
       pendingRecordCountRef.current = 0;
@@ -690,14 +713,25 @@ export default function PracticeShadowingV2Page() {
 
     try {
       await flushShadowingDraft();
-      await shadowingAttemptService.complete(currentSession._id, {
+      const completed = await shadowingAttemptService.complete(currentSession._id, {
         total_segments: transcriptSegments.length,
         completed_segments: completedIndices.length,
         segment_results: segmentResults,
         similarity_score: getAverageScore(segmentResults),
       }, audioBlob);
       await clearShadowingAudioChunks(currentSession._id);
-      alert('Đã hoàn thành bài shadowing.');
+      const completedAt = new Date();
+      setCompletedAttempt(completed);
+      setShowResult(true);
+      setCurrentSession({
+        ...currentSession,
+        status: 'completed',
+        completed_items: completed.completed_segments || completedIndices.length,
+        completed_indices: completedIndices,
+        total_accuracy: completed.similarity_score ?? getAverageScore(segmentResults),
+        completed_at: completed.finished_at ? new Date(completed.finished_at) : completedAt,
+        last_activity_at: completedAt,
+      });
     } catch (error) {
       console.error('Failed to complete shadowing practice:', error);
       alert('Không thể submit bài shadowing. Vui lòng thử lại.');
@@ -724,14 +758,25 @@ export default function PracticeShadowingV2Page() {
           return;
         }
 
-        await shadowingAttemptService.complete(session._id, {
+        const completed = await shadowingAttemptService.complete(session._id, {
           total_segments: transcriptSegments.length,
           completed_segments: completedIndices.length,
           segment_results: segmentResults,
           similarity_score: getAverageScore(segmentResults),
         }, audioBlob);
         await clearShadowingAudioChunks(session._id);
-        alert('Đã hoàn thành bài shadowing.');
+        const completedAt = new Date();
+        setCompletedAttempt(completed);
+        setShowResult(true);
+        setCurrentSession({
+          ...session,
+          status: 'completed',
+          completed_items: completed.completed_segments || completedIndices.length,
+          completed_indices: completedIndices,
+          total_accuracy: completed.similarity_score ?? getAverageScore(segmentResults),
+          completed_at: completed.finished_at ? new Date(completed.finished_at) : completedAt,
+          last_activity_at: completedAt,
+        });
       }
     } catch (error) {
       console.error('Failed to save shadowing progress:', error);
@@ -828,7 +873,7 @@ export default function PracticeShadowingV2Page() {
       );
       const fullCompletedIndices = fullSegmentResults.map((segment) => segment.index);
 
-      await shadowingAttemptService.fastComplete(session._id, {
+      const completed = await shadowingAttemptService.fastComplete(session._id, {
         total_segments: transcriptSegments.length,
         completed_segments: transcriptSegments.length,
         segment_results: fullSegmentResults,
@@ -843,6 +888,8 @@ export default function PracticeShadowingV2Page() {
       pendingRecordCountRef.current = 0;
       setCurrentFeedback(null);
       setAppState('idle');
+      setCompletedAttempt(completed);
+      setShowResult(true);
       setCurrentSession({
         ...session,
         status: 'completed',
@@ -855,7 +902,6 @@ export default function PracticeShadowingV2Page() {
 
       await clearShadowingAudioChunks(session._id);
       await clearLocalDraft();
-      alert('Đã hoàn thành bài shadowing.');
     } catch (error) {
       console.error('Failed to fast complete shadowing practice:', error);
       alert('Không thể nộp nhanh bài shadowing. Vui lòng thử lại.');
@@ -978,44 +1024,60 @@ export default function PracticeShadowingV2Page() {
             onSetActiveTranscriptId={handleSelectedTranscriptTab}
           />
 
-          <RightContent
-            activeIndex={activeIndex}
-            activeTranscriptId={activeTranscriptId}
-            shadowingData={{
-              title: shadowingData.title,
-              audioUrl: shadowingData.audio_url,
-              sourceType: normalizedSourceType,
-              level: shadowingData.level,
-              duration: shadowingData.duration,
-              segmentCount: transcriptSegments.length,
-              videoSourceId: shadowingData.source_type === "youtube" ? shadowingData.audio_url.split("?v=")[1] : undefined,
-            }}
-            activeTranscriptData={activeTranscriptData}
-            currentFeedback={currentFeedback}
-            completedIndices={completedIndices}
-            transcriptTimings={transcriptTimings}
-            appState={appState}
-            recordTimer={recordTimer}
-            mediaMode={mediaMode}
-            isVideoPlaying={isVideoPlaying}
-            iframeRef={iframeRef}
-            showSentence={showSentence}
-            showIPA={showIPA}
-            showTranslation={showTranslation}
-            onToggleShowSentence={() => setShowSentence(!showSentence)}
-            onToggleShowIPA={() => setShowIPA(!showIPA)}
-            onToggleShowTranslation={() => setShowTranslation(!showTranslation)}
-            onStartRecording={handleStartRecording}
-            onStopRecording={handleStopRecording}
-            onRetryRecording={handleRetryRecording}
-            onSetActiveTranscriptId={setActiveTranscriptId}
-            onToggleVideoPlayback={toggleVideoPlayback}
-            onHandleNext={handleNext}
-            onHandlePrevious={handlePrevious}
-            onCompletePractice={handleCompletePractice}
-            onFastCompletePractice={handleFastCompletePractice}
-            isFastCompleting={isFastCompleting}
-          />
+          {showResult ? (
+            <ShadowingResultPanel
+              lesson={{
+                title: shadowingData.title,
+                level: shadowingData.level,
+                duration: shadowingData.duration,
+                segmentCount: transcriptSegments.length,
+              }}
+              attempt={completedAttempt}
+              fallbackResults={segmentResults}
+              fallbackCompletedIndices={completedIndices}
+              onPracticeAgain={handlePracticeAgainFromResult}
+              onBackToList={handleBackToShadowingList}
+            />
+          ) : (
+            <RightContent
+              activeIndex={activeIndex}
+              activeTranscriptId={activeTranscriptId}
+              shadowingData={{
+                title: shadowingData.title,
+                audioUrl: shadowingData.audio_url,
+                sourceType: normalizedSourceType,
+                level: shadowingData.level,
+                duration: shadowingData.duration,
+                segmentCount: transcriptSegments.length,
+                videoSourceId: shadowingData.source_type === "youtube" ? shadowingData.audio_url.split("?v=")[1] : undefined,
+              }}
+              activeTranscriptData={activeTranscriptData}
+              currentFeedback={currentFeedback}
+              completedIndices={completedIndices}
+              transcriptTimings={transcriptTimings}
+              appState={appState}
+              recordTimer={recordTimer}
+              mediaMode={mediaMode}
+              isVideoPlaying={isVideoPlaying}
+              iframeRef={iframeRef}
+              showSentence={showSentence}
+              showIPA={showIPA}
+              showTranslation={showTranslation}
+              onToggleShowSentence={() => setShowSentence(!showSentence)}
+              onToggleShowIPA={() => setShowIPA(!showIPA)}
+              onToggleShowTranslation={() => setShowTranslation(!showTranslation)}
+              onStartRecording={handleStartRecording}
+              onStopRecording={handleStopRecording}
+              onRetryRecording={handleRetryRecording}
+              onSetActiveTranscriptId={setActiveTranscriptId}
+              onToggleVideoPlayback={toggleVideoPlayback}
+              onHandleNext={handleNext}
+              onHandlePrevious={handlePrevious}
+              onCompletePractice={handleCompletePractice}
+              onFastCompletePractice={handleFastCompletePractice}
+              isFastCompleting={isFastCompleting}
+            />
+          )}
         </main>
       </div>
     </PracticeLayout>

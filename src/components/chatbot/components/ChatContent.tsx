@@ -802,7 +802,7 @@ function StructuredChatViewCard({
             <StructuredCardFrame title={view.title} subtitle={view.subtitle} tone="success">
                 {view.sourceTags.length ? (
                     <StructuredList
-                        title="Theo yeu cau"
+                        title="Theo yêu cầu"
                         items={view.sourceTags.slice(0, 5).map((tag) => ({ label: tag, tone: "info" as const }))}
                     />
                 ) : null}
@@ -827,8 +827,8 @@ function StructuredChatViewCard({
                                         <Typography sx={{ fontSize: 11.5, color: "#64748b", mt: 0.25, lineHeight: 1.35 }}>
                                             {[
                                                 item.part ? `Part ${item.part}` : "",
-                                                typeof item.fitScore === "number" ? `Phu hop ${Math.round(item.fitScore * 100)}%` : "",
-                                                item.estimatedMinutes ? `${item.estimatedMinutes} phut` : "",
+                                                typeof item.fitScore === "number" ? `Phù hợp ${Math.round(item.fitScore * 100)}%` : "",
+                                                item.estimatedMinutes ? `${item.estimatedMinutes} phút` : "",
                                             ].filter(Boolean).join(" - ")}
                                         </Typography>
                                     </Box>
@@ -869,13 +869,13 @@ function StructuredChatViewCard({
                                         >
                                             <Typography sx={{ fontSize: 12.3, color: "#334155", minWidth: 0, overflowWrap: "anywhere" }}>
                                                 {activity.title}
-                                                {activity.estimatedMinutes ? ` - ${activity.estimatedMinutes} phut` : ""}
+                                                {activity.estimatedMinutes ? ` - ${activity.estimatedMinutes} phút` : ""}
                                             </Typography>
                                             <button
                                                 className="px-2.5 py-1 rounded-md bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shrink-0"
                                                 onClick={() => onAction?.(activity.action)}
                                             >
-                                                {activity.type === "lesson" ? "Hoc ngay" : "Luyen ngay"}
+                                                {activity.type === "lesson" ? "Học ngay" : "Luyện ngay"}
                                             </button>
                                         </Box>
                                     ))}
@@ -886,7 +886,7 @@ function StructuredChatViewCard({
                 ) : (
                     <Box sx={{ borderRadius: 2, bgcolor: "#f8fafc", border: "1px solid #e2e8f0", p: 1 }}>
                         <Typography sx={{ fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
-                            Chua co bai hoc phu hop de hien thi.
+                            Chưa có bài học phù hợp để hiển thị.
                         </Typography>
                     </Box>
                 )}

@@ -13,7 +13,11 @@ import {
   Typography,
   Paper,
   Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
+  Rating,
   Alert,
   styled,
 } from "@mui/material";
@@ -83,24 +87,7 @@ export function getStyledStudyIcon(dayValue: number) {
  * @returns {string} - Tên của ngày học.
  */
 function getStudyDayName(dayValue: number) {
-  switch (dayValue) {
-    case 1:
-      return "Khởi động thính tai";
-    case 2:
-      return "Giải mã hội thoại";
-    case 3:
-      return "Vững chắc ngữ pháp";
-    case 4:
-      return "Hoàn thiện văn bản";
-    case 5:
-      return "Tăng tốc đọc hiểu";
-    case 6:
-      return "Củng cố toàn diện";
-    case 0:
-      return "Ngày thi chinh phục";
-    default:
-      return "Ngày học tự do";
-  }
+  return `Stage ${dayValue}`;
 }
 // ===============================================
 // Mock data (bạn nối real data sau)
@@ -112,9 +99,28 @@ interface Day {
   id: string;
   week: number;
   title: string;
+  subtitle: string;
   no: number;
   status: DayStatus;
   progress?: number;
+}
+
+interface FeedbackDay {
+  id: string;
+  title: string;
+  subtitle: string;
+  no: number;
+  status: DayStatus;
+  cycleNo: number;
+}
+
+interface LearningPathFeedback {
+  day_study_id: string | { _id?: string };
+  rating: number;
+  reasons?: string[];
+  comment?: string;
+  is_positive?: boolean;
+  created_at?: string;
 }
 
 interface DashboardLearningPathProps {
@@ -224,7 +230,7 @@ function DayItem({ data, onOpen }: { data: Day; onOpen: (l: Day) => void }) {
               {data.title}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {getStudyDayName(data.no)}
+              {data.subtitle}
             </Typography>
           </Box>
         </Stack>
@@ -287,6 +293,19 @@ const normalizeDayStatus = (status?: string): DayStatus => {
   return "lock";
 };
 
+const getFeedbackDayId = (feedback: LearningPathFeedback): string => {
+  const dayStudyId = feedback.day_study_id;
+  if (typeof dayStudyId === "string") return dayStudyId;
+  return String(dayStudyId?._id ?? "");
+};
+
+const formatFeedbackDate = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("vi-VN");
+};
+
 export default function DashboardLearningPath({
   plan,
   onRefresh,
@@ -308,7 +327,8 @@ export default function DashboardLearningPath({
     return (week?.days || []).map((d: any, idx: number) => ({
       id: String(d?._id ?? d?.id ?? `${week?._id ?? activeWeek}-day-${idx}`),
       week: week.name,
-      title: d.title || `Stage ${idx + 1}`,
+      title: d.display_title || d.title || `Stage ${idx + 1}`,
+      subtitle: d.display_subtitle || d.activity_summary || `Stage ${idx + 1}`,
       no: d.dayOfWeek ?? 1,
       status: normalizeDayStatus(d.status),
       progress: d.progress ?? 0,
@@ -334,6 +354,58 @@ export default function DashboardLearningPath({
     ? Math.round((WEEK_DONE / WEEK_TOTAL) * 100)
     : 0;
 
+  const feedbackItems = React.useMemo<LearningPathFeedback[]>(
+    () => (Array.isArray(lp.feedbacks) ? lp.feedbacks : []),
+    [lp.feedbacks]
+  );
+
+  const feedbackByDayId = React.useMemo(() => {
+    return new Map(
+      feedbackItems
+        .map((feedback) => [getFeedbackDayId(feedback), feedback] as const)
+        .filter(([dayId]) => Boolean(dayId))
+    );
+  }, [feedbackItems]);
+
+  const allFeedbackDays = React.useMemo<FeedbackDay[]>(() => {
+    const weeks = Array.isArray(lp.week_study_ids) ? lp.week_study_ids : [];
+    return weeks.flatMap((week: any, weekIndex: number) =>
+      (week?.days ?? []).map((day: any, dayIndex: number) => ({
+        id: String(day?._id ?? day?.id ?? `${week?._id ?? weekIndex}-day-${dayIndex}`),
+        title: day?.display_title || day?.title || `Stage ${dayIndex + 1}`,
+        subtitle:
+          day?.display_subtitle ||
+          day?.activity_summary ||
+          `Stage ${dayIndex + 1}`,
+        no: day?.dayOfWeek ?? 1,
+        status: normalizeDayStatus(day?.status),
+        cycleNo: week?.no ?? weekIndex + 1,
+      }))
+    );
+  }, [lp.week_study_ids]);
+
+  const pendingFeedbackDays = React.useMemo(
+    () =>
+      allFeedbackDays.filter(
+        (day) => day.status === "done" && !feedbackByDayId.has(day.id)
+      ),
+    [allFeedbackDays, feedbackByDayId]
+  );
+
+  const submittedFeedbackItems = React.useMemo(
+    () =>
+      allFeedbackDays
+        .map((day) => ({
+          day,
+          feedback: feedbackByDayId.get(day.id),
+        }))
+        .filter(
+          (item): item is { day: FeedbackDay; feedback: LearningPathFeedback } =>
+            Boolean(item.feedback)
+        ),
+    [allFeedbackDays, feedbackByDayId]
+  );
+
   const handleMockLearning = async () => {
     if (!lp?._id || mockLearningLoading) {
       return;
@@ -341,7 +413,7 @@ export default function DashboardLearningPath({
 
     try {
       setMockLearningLoading(true);
-      const response = await learningPathV2Service.mockLearning(String(lp._id));
+      const response = await learningPathV2Service.mockLearning(String(lp._id)) as any;
       await onRefresh?.();
       alert(
         response?.data?.message ??
@@ -379,13 +451,13 @@ export default function DashboardLearningPath({
     ""
   );
   const [isFirstVisitToday, setIsFirstVisitToday] = React.useState(false);
-  const [isDayComplete, setIsDayComplete] = React.useState(false);
   const [inactiveLearning, setInactiveLearning] = React.useState<{
     lastAttempt: string;
     inactiveDays: number;
   } | null>(null);
   const [learningInactivity, setLearningInactivity] = React.useState<number | null>(null);
-  const feedbackTimerRef = React.useRef<number | null>(null);
+  const [feedbackCenterOpen, setFeedbackCenterOpen] = React.useState(false);
+  const [feedbackModalDayId, setFeedbackModalDayId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const checkLearningInactivity = async () => {
@@ -429,25 +501,6 @@ export default function DashboardLearningPath({
       setLastVisitDate(todayStr);
     }
 
-    const dayCompletedLocalStorage = localStorage.getItem('day_study_completed');
-    const dayCompleted = dayCompletedLocalStorage ? JSON.parse(dayCompletedLocalStorage) : undefined;
-    if (dayCompleted && dayCompleted.status === 'true') {
-      // Delay showing the feedback modal to avoid abrupt popup
-      // Schedule after 5 seconds, then clear the localStorage flag
-      if (feedbackTimerRef.current) {
-        window.clearTimeout(feedbackTimerRef.current);
-      }
-      feedbackTimerRef.current = window.setTimeout(() => {
-        setIsDayComplete(true);
-      }, 2000);
-    }
-
-    return () => {
-      if (feedbackTimerRef.current) {
-        window.clearTimeout(feedbackTimerRef.current);
-        feedbackTimerRef.current = null;
-      }
-    };
   }, []);
 
   // Keep activeWeek in sync if plan/current_week changes
@@ -662,6 +715,14 @@ export default function DashboardLearningPath({
                 Danh sách stage
               </Typography>
               <Stack direction="row" spacing={1} alignItems="center">
+                <Button
+                  size="small"
+                  variant={pendingFeedbackDays.length > 0 ? "contained" : "outlined"}
+                  onClick={() => setFeedbackCenterOpen(true)}
+                  sx={{ borderRadius: 999, fontWeight: 800 }}
+                >
+                  Feedback · {pendingFeedbackDays.length} chờ · {submittedFeedbackItems.length} đã gửi
+                </Button>
                 {canShowMockLearning && (
                   <Button
                     size="small"
@@ -703,6 +764,158 @@ export default function DashboardLearningPath({
         </Container>
 
         <Dialog
+          open={feedbackCenterOpen}
+          onClose={() => setFeedbackCenterOpen(false)}
+          fullWidth
+          maxWidth="md"
+          disableScrollLock
+          PaperProps={{ sx: { borderRadius: 3 } }}
+        >
+          <DialogTitle sx={{ pb: 1 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Box>
+                <Typography variant="h6" fontWeight={800}>
+                  Feedback lộ trình học
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Góp ý là tùy chọn. Mỗi stage chỉ gửi feedback một lần.
+                </Typography>
+              </Box>
+              <IconButton onClick={() => setFeedbackCenterOpen(false)}>
+                <CloseIcon />
+              </IconButton>
+            </Stack>
+          </DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={3}>
+              <Box>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  sx={{ mb: 1.5 }}
+                >
+                  <Typography variant="subtitle1" fontWeight={800}>
+                    Cần góp ý
+                  </Typography>
+                  <Chip size="small" label={`${pendingFeedbackDays.length} stage`} />
+                </Stack>
+
+                {pendingFeedbackDays.length === 0 ? (
+                  <Alert severity="success" sx={{ borderRadius: 2 }}>
+                    Không có stage nào đang chờ feedback.
+                  </Alert>
+                ) : (
+                  <Stack spacing={1.25}>
+                    {pendingFeedbackDays.map((day) => (
+                      <Paper
+                        key={day.id}
+                        variant="outlined"
+                        sx={{ p: 2, borderRadius: 2 }}
+                      >
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1.5}
+                          alignItems={{ sm: "center" }}
+                          justifyContent="space-between"
+                        >
+                          <Box>
+                            <Typography fontWeight={800}>{day.title}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Cycle {day.cycleNo} · {day.subtitle}
+                            </Typography>
+                          </Box>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={() => {
+                              setFeedbackCenterOpen(false);
+                              setFeedbackModalDayId(day.id);
+                            }}
+                            sx={{ borderRadius: 999, fontWeight: 800 }}
+                          >
+                            Gửi feedback
+                          </Button>
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                )}
+              </Box>
+
+              <Box>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  sx={{ mb: 1.5 }}
+                >
+                  <Typography variant="subtitle1" fontWeight={800}>
+                    Đã góp ý
+                  </Typography>
+                  <Chip size="small" label={`${submittedFeedbackItems.length} feedback`} />
+                </Stack>
+
+                {submittedFeedbackItems.length === 0 ? (
+                  <Alert severity="info" sx={{ borderRadius: 2 }}>
+                    Bạn chưa gửi feedback nào cho lộ trình này.
+                  </Alert>
+                ) : (
+                  <Stack spacing={1.25}>
+                    {submittedFeedbackItems.map(({ day, feedback }) => (
+                      <Paper
+                        key={day.id}
+                        variant="outlined"
+                        sx={{ p: 2, borderRadius: 2 }}
+                      >
+                        <Stack spacing={1}>
+                          <Stack
+                            direction={{ xs: "column", sm: "row" }}
+                            spacing={1}
+                            justifyContent="space-between"
+                          >
+                            <Box>
+                              <Typography fontWeight={800}>{day.title}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Cycle {day.cycleNo} · {day.subtitle}
+                              </Typography>
+                            </Box>
+                            <Typography variant="caption" color="text.secondary">
+                              {formatFeedbackDate(feedback.created_at)}
+                            </Typography>
+                          </Stack>
+                          <Rating value={feedback.rating} readOnly size="small" />
+                          {feedback.reasons && feedback.reasons.length > 0 && (
+                            <Stack direction="row" spacing={0.75} flexWrap="wrap">
+                              {feedback.reasons.map((reason) => (
+                                <Chip
+                                  key={reason}
+                                  size="small"
+                                  variant="outlined"
+                                  label={reason}
+                                />
+                              ))}
+                            </Stack>
+                          )}
+                          {feedback.comment && (
+                            <Typography variant="body2" color="text.secondary">
+                              {feedback.comment}
+                            </Typography>
+                          )}
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                )}
+              </Box>
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button onClick={() => setFeedbackCenterOpen(false)}>Đóng</Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
           open={isFirstVisitToday}
           onClose={() => setIsFirstVisitToday(false)}
           fullWidth
@@ -737,12 +950,12 @@ export default function DashboardLearningPath({
         </Dialog>
       </Box>
       <FeedbackLessonModal
-        open={isDayComplete}
+        open={Boolean(feedbackModalDayId)}
         onClose={() => {
-          setIsDayComplete(false);
-          localStorage.removeItem('day_study_completed');
+          setFeedbackModalDayId(null);
+          onRefresh?.();
         }}
-        dayId={isDayComplete ? JSON.parse(localStorage.getItem('day_study_completed') || '{}').day_id : ''}
+        dayId={feedbackModalDayId ?? ""}
       />
       {inactiveLearning && (
         <InactiveLearningPathModal

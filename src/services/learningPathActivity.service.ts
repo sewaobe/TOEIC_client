@@ -12,12 +12,7 @@ export const learningPathActivityService = {
       time_spent: timeSpentSec,
     })
 
-    if (res.data.day_completed) {
-      localStorage.setItem('day_study_completed', JSON.stringify({
-        status: 'true',
-        day_id: res.data.day_id,
-      }));
-    }
+    return res;
   },
 
   // Quiz
@@ -39,12 +34,7 @@ export const learningPathActivityService = {
       day_study_id: dayStudyId,
     });
 
-    if (res.data.day_completed) {
-      localStorage.setItem('day_study_completed', JSON.stringify({
-        status: 'true',
-        day_id: res.data.day_id,
-      }));
-    }
+    return res;
   },
 
   // Dictation
@@ -67,12 +57,7 @@ export const learningPathActivityService = {
       day_study_id: dayStudyId,
     });
 
-    if (res.data.day_completed) {
-      localStorage.setItem('day_study_completed', JSON.stringify({
-        status: 'true',
-        day_id: res.data.day_id,
-      }));
-    }
+    return res;
   },
   // Shadowing
   getShadowing: async (shadowingId: string, dayStudyId?: string) => {
@@ -94,12 +79,7 @@ export const learningPathActivityService = {
       day_study_id: dayStudyId,
     });
 
-    if (res.data.day_completed) {
-      localStorage.setItem('day_study_completed', JSON.stringify({
-        status: 'true',
-        day_id: res.data.day_id,
-      }));
-    }
+    return res;
   },
   // Flashcard
   getFlashcard: async (topicId: string, dayStudyId?: string) => {
@@ -123,12 +103,7 @@ export const learningPathActivityService = {
     }
   ) => {
     const res = await axiosClient.post(`/flashcards-learningpath/${topicId}/submit`, payload);
-    if (res.data.day_completed) {
-      localStorage.setItem('day_study_completed', JSON.stringify({
-        status: 'true',
-        day_id: res.data.day_id,
-      }));
-    }
+    return res;
   },
 
   // Mini Test - chỉ cần complete activity (submit đã xử lý ở TestHeader)

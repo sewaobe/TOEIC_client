@@ -24,11 +24,11 @@ const PART_LABELS_BY_TYPE: Record<number, { id: string; name: string }> = {
 // Initial placeholder until the backend ability payload arrives.
 const PARTS_DATA = [
     { id: 'Part 1', name: 'Photographs', score: 85, status: 'Strong' },
-    { id: 'Part 2', name: 'Q&A', score: 65, status: 'Average' },
+    { id: 'Part 2', name: 'Q&A', score: 65, status: 'Medium' },
     { id: 'Part 3', name: 'Conversations', score: 40, status: 'Weak' },
-    { id: 'Part 4', name: 'Talks', score: 70, status: 'Good' },
+    { id: 'Part 4', name: 'Talks', score: 70, status: 'Medium' },
     { id: 'Part 5', name: 'Incomplete Sentences', score: 90, status: 'Strong' },
-    { id: 'Part 6', name: 'Text Completion', score: 55, status: 'Average' },
+    { id: 'Part 6', name: 'Text Completion', score: 55, status: 'Medium' },
     { id: 'Part 7', name: 'Reading Comp', score: 45, status: 'Weak' },
 ];
 
@@ -41,16 +41,22 @@ const SYSTEM_MODULES = [
 
 // STAGE 3 DATA: Weekly Schedule (Right Column)
 const SCHEDULE_DATA = [
-    { day: 'Day 1', title: 'Vocab Booster', type: 'Vocab', color: 'border-blue-500 text-blue-700 !bg-blue-50' },
-    { day: 'Day 2', title: 'Listening Drills', type: 'Audio', color: 'border-emerald-500 text-emerald-700 !bg-emerald-50' },
-    { day: 'Day 3', title: 'Reading Tech', type: 'Reading', color: 'border-purple-500 text-purple-700 !bg-purple-50' },
-    { day: 'Day 4', title: 'Grammar Fix', type: 'Mixed', color: 'border-orange-500 text-orange-700 !bg-orange-50' },
-    { day: 'Day 5', title: 'Full Review', type: 'Review', color: 'border-rose-500 text-rose-700 !bg-rose-50' },
-    { day: 'Day 6', title: 'Targeted Practice', type: 'Mixed', color: 'border-yellow-500 text-yellow-700 !bg-yellow-50' },
-    { day: 'Day 7', title: 'Mock Test & Review', type: 'Test', color: 'border-sky-500 text-sky-700 !bg-sky-50' },
+    { stage: 'Stage 1', title: 'Vocab Booster', type: 'Vocab', color: 'border-blue-500 text-blue-700 !bg-blue-50' },
+    { stage: 'Stage 2', title: 'Listening Drills', type: 'Audio', color: 'border-emerald-500 text-emerald-700 !bg-emerald-50' },
+    { stage: 'Stage 3', title: 'Reading Tech', type: 'Reading', color: 'border-purple-500 text-purple-700 !bg-purple-50' },
+    { stage: 'Stage 4', title: 'Grammar Fix', type: 'Mixed', color: 'border-orange-500 text-orange-700 !bg-orange-50' },
+    { stage: 'Stage 5', title: 'Full Review', type: 'Review', color: 'border-rose-500 text-rose-700 !bg-rose-50' },
+    { stage: 'Stage 6', title: 'Targeted Practice', type: 'Mixed', color: 'border-yellow-500 text-yellow-700 !bg-yellow-50' },
+    { stage: 'Stage 7', title: 'Mock Test & Review', type: 'Test', color: 'border-sky-500 text-sky-700 !bg-sky-50' },
 ];
 
 type Scene = 'scan' | 'retrieve' | 'distribute' | 'completed';
+
+const USER_SKILL_STATUS_LABELS: Record<string, string> = {
+    weak: 'Weak',
+    medium: 'Medium',
+    strong: 'Strong',
+};
 
 const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete, initialPayload = null }) => {
     const [scene, setScene] = useState<Scene>('scan');
@@ -97,18 +103,7 @@ const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete, initialPayload 
             };
             const ability = Number(found.ability);
             const score = Math.round(Math.max(0, Math.min(100, ability * 100)));
-            const status =
-                found.status === 'weak'
-                    ? 'Weak'
-                    : found.status === 'strong'
-                        ? 'Strong'
-                        : score >= 70
-                            ? 'Strong'
-                            : score >= 50
-                                ? 'Good'
-                                : score >= 30
-                                    ? 'Average'
-                                    : 'Weak';
+            const status = USER_SKILL_STATUS_LABELS[String(found.status ?? '').toLowerCase()] ?? 'Unknown';
 
             return { ...partMeta, score, status };
         });
@@ -157,7 +152,7 @@ const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete, initialPayload 
                     }
                     return prev + 1;
                 });
-            }, 2000); // 2 seconds per day (Slowed down as requested)
+            }, 2000); // 2 seconds per stage (Slowed down as requested)
             return () => clearInterval(interval);
         }
     }, [scene, onComplete, partsData.length]);
@@ -193,8 +188,7 @@ const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete, initialPayload 
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'Strong': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-            case 'Good': return 'bg-blue-100 text-blue-700 border-blue-200';
-            case 'Average': return 'bg-amber-100 text-amber-700 border-amber-200';
+            case 'Medium': return 'bg-amber-100 text-amber-700 border-amber-200';
             case 'Weak': return 'bg-rose-100 text-rose-700 border-rose-200';
             default: return 'bg-slate-100 text-slate-700';
         }
@@ -460,7 +454,7 @@ const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete, initialPayload 
                                 const startX = isMobile ? 0 : (isLargeScreen ? -300 : -180);
 
                                 return (
-                                    <div key={item.day} className="relative h-14 xl:h-20 w-full">
+                                    <div key={item.stage} className="relative h-14 xl:h-20 w-full">
                                         {isTargeting && (
                                             <motion.div
                                                 className="absolute top-1/2 left-0 w-4 h-4 rounded-full bg-indigo-500 z-50 shadow-[0_0_10px_indigo]"
@@ -490,7 +484,7 @@ const PhaseTwoAnalysis: React.FC<PhaseTwoProps> = ({ onComplete, initialPayload 
                                             {isUnlocked ? (
                                                 <div className="flex justify-between items-center w-full z-0">
                                                     <div className="flex flex-col">
-                                                        <span className="text-[9px] xl:text-[11px] uppercase font-bold opacity-60 tracking-wider">{item.day}</span>
+                                                        <span className="text-[9px] xl:text-[11px] uppercase font-bold opacity-60 tracking-wider">{item.stage}</span>
                                                         <span className="text-xs xl:text-base font-bold leading-tight text-slate-800">{item.title}</span>
                                                     </div>
                                                     <div className="bg-slate-100 p-1 rounded-full">

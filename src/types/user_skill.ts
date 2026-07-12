@@ -77,7 +77,8 @@ export type SkillMapPartsResponse = {
     strongest_parts: number[];
     improving_parts: number[];
     declining_parts: number[];
-    focus_part_types: number[];
+    focus_part_type?: number | null;
+    focus_part_types?: number[];
     last_evaluated_at?: string | Date;
   };
   parts: SkillMapPart[];

@@ -306,6 +306,11 @@ const formatFeedbackDate = (value?: string) => {
   return date.toLocaleDateString("vi-VN");
 };
 
+const formatScoreValue = (value?: number | null) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "Chưa có";
+  return value;
+};
+
 export default function DashboardLearningPath({
   plan,
   onRefresh,
@@ -339,6 +344,10 @@ export default function DashboardLearningPath({
   const TARGET = lp.target_score;
   const DAILY = `${lp.time_per_day} phút/ngày`;
   const REMAINING_TIME = formatRemainingTime(lp.target_completion_date);
+  const scoreSummary = plan?.learning_path_v2?.score_summary ?? lp.score_summary;
+  const CURRENT_TOTAL_SCORE = formatScoreValue(scoreSummary?.current_total);
+  const CURRENT_LISTENING_SCORE = formatScoreValue(scoreSummary?.current_listening);
+  const CURRENT_READING_SCORE = formatScoreValue(scoreSummary?.current_reading);
   const WEEKS = lp.week_study_ids?.length ?? 0;
   const roadmapId =
     lp?._id ??
@@ -600,6 +609,29 @@ export default function DashboardLearningPath({
 
           {/* ===== Stat bar ===== */}
           <Section>
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <StatItem
+                  icon={<SpeedIcon color="primary" />}
+                  label="Tổng điểm hiện tại (dự kiến)"
+                  value={CURRENT_TOTAL_SCORE}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <StatItem
+                  icon={<HeadphonesIcon color="primary" />}
+                  label="Điểm Listening hiện tại (dự kiến)"
+                  value={CURRENT_LISTENING_SCORE}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <StatItem
+                  icon={<MenuBookIcon color="primary" />}
+                  label="Điểm Reading hiện tại (dự kiến)"
+                  value={CURRENT_READING_SCORE}
+                />
+              </Grid>
+            </Grid>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 3 }}>
                 <StatItem

@@ -52,8 +52,13 @@ const AnswerDetailPage = () => {
   const [activePart, setActivePart] = useState<number | null>(null);
   const [testTitle, setTestTitle] = useState<string>("");
   const [focusedQuestionId, setFocusedQuestionId] = useState<string | null>(null);
+  const [viewportQuestionId, setViewportQuestionId] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const questionVisibilityRef = useRef(
+    new Map<string, { ratio: number; distanceFromViewportCenter: number }>()
+  );
+  const questionVisibilityTimerRef = useRef<number | null>(null);
   const selectedQuestionId = useMemo(
     () => new URLSearchParams(location.search).get("questionId") ?? undefined,
     [location.search]
@@ -189,32 +194,172 @@ const AnswerDetailPage = () => {
     return map;
   }, [groups]);
 
-  const questionRefs = useMemo(() => {
+  const questionTextById = useMemo(() => {
     const questionText = new Map<string, string | undefined>();
     groups.forEach((g) => {
       g.questions.forEach((q) => questionText.set(q._id, q.textQuestion));
     });
+    return questionText;
+  }, [groups]);
+
+  const questionRefs = useMemo(() => {
     return visibleAnswers.map((answer) => ({
       questionNumber: answer.question_no,
       questionId: answer.question_id,
-      textPreview: compactQuestionText(questionText.get(answer.question_id)),
+      textPreview: compactQuestionText(questionTextById.get(answer.question_id)),
+      attemptId: historyId,
+      testId,
     }));
-  }, [groups, visibleAnswers]);
-
-  const currentQuestionNumber = useMemo(() => {
-    if (!selectedQuestionId) return undefined;
-    return visibleAnswers.find((answer) => answer.question_id === selectedQuestionId)?.question_no;
-  }, [selectedQuestionId, visibleAnswers]);
+  }, [historyId, questionTextById, testId, visibleAnswers]);
 
   useEffect(() => {
+    const root = containerRef.current;
+    if (!root || !visibleAnswers.length) {
+      setViewportQuestionId(null);
+      return;
+    }
+
+    const validQuestionIds = new Set(visibleAnswers.map((answer) => answer.question_id));
+    questionVisibilityRef.current.clear();
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const viewportCenter = window.innerHeight / 2;
+        for (const entry of entries) {
+          const questionId = (entry.target as HTMLElement).dataset.questionId;
+          if (!questionId || !validQuestionIds.has(questionId)) continue;
+
+          if (!entry.isIntersecting || entry.intersectionRatio <= 0) {
+            questionVisibilityRef.current.delete(questionId);
+            continue;
+          }
+
+          const elementCenter = entry.boundingClientRect.top + entry.boundingClientRect.height / 2;
+          questionVisibilityRef.current.set(questionId, {
+            ratio: entry.intersectionRatio,
+            distanceFromViewportCenter: Math.abs(elementCenter - viewportCenter),
+          });
+        }
+
+        if (questionVisibilityTimerRef.current) {
+          window.clearTimeout(questionVisibilityTimerRef.current);
+        }
+        questionVisibilityTimerRef.current = window.setTimeout(() => {
+          const best = Array.from(questionVisibilityRef.current.entries())
+            .filter(([, value]) => value.ratio >= 0.08)
+            .sort((a, b) => {
+              const ratioDiff = b[1].ratio - a[1].ratio;
+              if (Math.abs(ratioDiff) > 0.01) return ratioDiff;
+              return a[1].distanceFromViewportCenter - b[1].distanceFromViewportCenter;
+            })[0]?.[0];
+
+          if (best) setViewportQuestionId(best);
+        }, 120);
+      },
+      { threshold: [0, 0.08, 0.15, 0.25, 0.5, 0.75, 1] }
+    );
+
+    root
+      .querySelectorAll<HTMLElement>("[data-question-id]")
+      .forEach((element) => observer.observe(element));
+
+    return () => {
+      observer.disconnect();
+      if (questionVisibilityTimerRef.current) {
+        window.clearTimeout(questionVisibilityTimerRef.current);
+        questionVisibilityTimerRef.current = null;
+      }
+      questionVisibilityRef.current.clear();
+    };
+  }, [activePart, groups, visibleAnswers]);
+
+  const activeQuestionId = useMemo(() => {
+    const isVisibleAnswer = (questionId?: string | null) =>
+      !!questionId && visibleAnswers.some((answer) => answer.question_id === questionId);
+
+    if (isVisibleAnswer(focusedQuestionId)) return focusedQuestionId ?? undefined;
+    if (isVisibleAnswer(viewportQuestionId)) return viewportQuestionId ?? undefined;
+    if (isVisibleAnswer(selectedQuestionId)) return selectedQuestionId;
+    return undefined;
+  }, [focusedQuestionId, selectedQuestionId, viewportQuestionId, visibleAnswers]);
+
+  const currentQuestionIndex = useMemo(() => {
+    if (!activeQuestionId) return undefined;
+    const index = visibleAnswers.findIndex((answer) => answer.question_id === activeQuestionId);
+    return index >= 0 ? index : undefined;
+  }, [activeQuestionId, visibleAnswers]);
+
+  const currentQuestionNumber = useMemo(() => {
+    if (typeof currentQuestionIndex !== "number") return undefined;
+    return visibleAnswers[currentQuestionIndex]?.question_no;
+  }, [currentQuestionIndex, visibleAnswers]);
+
+  const nearbyQuestionStartIndex = useMemo(() => {
+    if (typeof currentQuestionIndex !== "number") return undefined;
+    return Math.max(0, currentQuestionIndex - 1);
+  }, [currentQuestionIndex]);
+
+  const nearbyCurrentQuestionIndex = useMemo(() => {
+    if (
+      typeof currentQuestionIndex !== "number" ||
+      typeof nearbyQuestionStartIndex !== "number"
+    ) {
+      return undefined;
+    }
+    return currentQuestionIndex - nearbyQuestionStartIndex;
+  }, [currentQuestionIndex, nearbyQuestionStartIndex]);
+
+  const nearbyQuestionRefs = useMemo(() => {
+    if (
+      typeof currentQuestionIndex !== "number" ||
+      typeof nearbyQuestionStartIndex !== "number"
+    ) {
+      return [];
+    }
+    return visibleAnswers
+      .slice(nearbyQuestionStartIndex, currentQuestionIndex + 2)
+      .map((answer) => ({
+        questionNumber: answer.question_no,
+        questionId: answer.question_id,
+        textPreview: compactQuestionText(questionTextById.get(answer.question_id)),
+        attemptId: historyId,
+        testId,
+      }));
+  }, [
+    currentQuestionIndex,
+    historyId,
+    nearbyQuestionStartIndex,
+    questionTextById,
+    testId,
+    visibleAnswers,
+  ]);
+
+  useEffect(() => {
+    const routeQuestionRefs = activeQuestionId ? questionRefs : [];
+    const routeVisibleQuestionRefs = activeQuestionId ? nearbyQuestionRefs : [];
     setChatRouteState({
       attemptId: historyId,
-      questionId: selectedQuestionId,
+      questionId: activeQuestionId,
+      questionNumber: currentQuestionNumber,
       currentQuestionNumber,
-      questionRefs,
+      questionRefs: routeQuestionRefs,
+      currentVisibleQuestionId: activeQuestionId,
+      currentVisibleQuestionNumber: currentQuestionNumber,
+      selectedQuestionId: activeQuestionId,
+      selectedQuestionNumber: currentQuestionNumber,
+      visibleQuestionRefs: routeVisibleQuestionRefs,
+      currentQuestionIndex: nearbyCurrentQuestionIndex,
     });
     return clearChatRouteState;
-  }, [historyId, selectedQuestionId, currentQuestionNumber, questionRefs]);
+  }, [
+    activeQuestionId,
+    currentQuestionIndex,
+    currentQuestionNumber,
+    historyId,
+    nearbyCurrentQuestionIndex,
+    nearbyQuestionRefs,
+    questionRefs,
+  ]);
 
   const syncQuestionQuery = useCallback((questionId: string) => {
     const params = new URLSearchParams(location.search);

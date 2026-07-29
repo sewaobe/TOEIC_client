@@ -24,12 +24,26 @@ export default function DictionaryViewer({ data }: DictionaryViewerProps) {
     const dict = data;
     const [selectedPhonetic, setSelectedPhonetic] = useState<string | null>(null);
 
-    const handlePlayAudio = (audioUrl?: string) => {
-        if (!audioUrl) return;
-        const audio = new Audio(audioUrl);
-        audio.play();
-        setSelectedPhonetic(audioUrl);
+    const speakWithWebSpeech = (text: string, lang = "en-US") => {
+        if (!text || typeof window === "undefined" || !window.speechSynthesis) return;
+
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = lang;
+        window.speechSynthesis.speak(utterance);
+    };
+
+    const handlePlayAudio = (audioUrl: string | undefined, fallbackText: string, lang = "en-US", activeKey = "tts") => {
+        setSelectedPhonetic(audioUrl || activeKey);
         setTimeout(() => setSelectedPhonetic(null), 2000);
+
+        if (!audioUrl) {
+            speakWithWebSpeech(fallbackText, lang);
+            return;
+        }
+
+        const audio = new Audio(audioUrl);
+        audio.play().catch(() => speakWithWebSpeech(fallbackText, lang));
     };
 
     const posLabel = (partOfSpeech?: string) => {
@@ -74,21 +88,29 @@ export default function DictionaryViewer({ data }: DictionaryViewerProps) {
             key: "uk-audio",
             label: dict.phonetic_uk ? `UK ${dict.phonetic_uk}` : "UK",
             audio: dict.audio_uk,
+            lang: "en-GB",
         },
         {
             key: "us-audio",
             label: dict.phonetic_us ? `US ${dict.phonetic_us}` : "US",
             audio: dict.audio_us,
+            lang: "en-US",
         },
-    ].filter((item): item is { key: string; label: string; audio: string } => Boolean(item.audio));
+    ].filter((item) => Boolean(item.audio));
     const phoneticChips = (dict.phonetics ?? [])
         .map((item, index) => ({
             key: `phonetic-${index}`,
             label: item.text || "IPA",
             audio: item.audio,
+            lang: "en-US",
         }))
         .filter((item) => Boolean(item.label || item.audio));
     const pronunciationChips = directAudioChips.length ? directAudioChips : phoneticChips;
+    const ttsChips = [
+        { key: "tts-us", label: "US voice", audio: undefined, lang: "en-US" },
+        { key: "tts-uk", label: "UK voice", audio: undefined, lang: "en-GB" },
+    ];
+    const audioActionChips = pronunciationChips.length ? pronunciationChips : ttsChips;
 
     return (
         <Box className="w-full flex flex-col gap-4 md:gap-6">
@@ -125,20 +147,19 @@ export default function DictionaryViewer({ data }: DictionaryViewerProps) {
 
                     {/* Audio */}
                     <Box className="flex gap-2 flex-wrap">
-                        {pronunciationChips.length ? (
-                            pronunciationChips.map((item) => {
-                                const isActive = Boolean(item.audio && selectedPhonetic === item.audio);
-                                const isClickable = Boolean(item.audio);
+                        {audioActionChips.length ? (
+                            audioActionChips.map((item) => {
+                                const activeKey = item.audio || item.key;
+                                const isActive = selectedPhonetic === activeKey;
 
                                 return (
                                     <Chip
                                         key={item.key}
                                         label={item.label}
-                                        onClick={isClickable ? () => handlePlayAudio(item.audio) : undefined}
+                                        onClick={() => handlePlayAudio(item.audio, dict.englishWord, item.lang, item.key)}
                                         icon={<VolumeUpIcon fontSize="small" />}
                                         variant={isActive ? "filled" : "outlined"}
-                                        className={isClickable ? "!cursor-pointer" : "!cursor-default"}
-                                        disabled={!isClickable}
+                                        className="!cursor-pointer"
                                         sx={{
                                             borderRadius: "9999px",
                                             ...(isActive

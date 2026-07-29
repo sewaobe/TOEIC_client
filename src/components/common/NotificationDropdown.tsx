@@ -30,6 +30,7 @@ import { useNotifications } from "../../hooks/useNotifications";
 import { Notification } from "../../types/Notification";
 import NotificationDetailDialog from "./NotificationDetailDialog";
 import { useAdjustment } from "../../contexts/AdjustmentContext";
+import StudentCareConversationDialog from "./StudentCareConversationDialog";
 
 const MotionIconButton = motion(IconButton);
 
@@ -50,12 +51,27 @@ export default function NotificationDropdown() {
 
   const [selectedNotif, setSelectedNotif] = useState<Notification | null>(null);
   const [openDetail, setOpenDetail] = useState(false);
+  const [conversationId, setCareConversationId] = useState<string | null>(null);
+  const [openCareConversation, setOpenCareConversation] = useState(false);
   const [isDialogClosing, setIsDialogClosing] = useState(false); // ✅ NEW
 
   const handleOpenDetail = async (notif: Notification) => {
     console.log("🔔 Click notification:", notif);
 
     // Nếu notification có adjustmentRequestId → mở adjustment dialog thay vì detail dialog
+    if (
+      notif.metadata?.entityType === "student_care_conversation" &&
+      notif.metadata?.entityId
+    ) {
+      handleClose();
+      setSelectedNotif(null);
+      setOpenDetail(false);
+      setCareConversationId(String(notif.metadata.entityId));
+      setOpenCareConversation(true);
+      if (!notif.isRead) markAsRead(notif.id);
+      return;
+    }
+
     if (notif.metadata?.adjustmentRequestId) {
       console.log(
         "📋 Mở adjustment dialog với ID:",
@@ -421,6 +437,11 @@ export default function NotificationDropdown() {
         open={openDetail}
         onClose={handleCloseDetail}
         notification={selectedNotif}
+      />
+      <StudentCareConversationDialog
+        open={openCareConversation}
+        conversationId={conversationId}
+        onClose={() => setOpenCareConversation(false)}
       />
     </>
   );

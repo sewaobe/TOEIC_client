@@ -112,14 +112,23 @@ const ResultTestPage = () => {
   );
 
   useEffect(() => {
+    const currentQuestionIndex = selectedAnswer?.question_id
+      ? (testDetail?.answers ?? []).findIndex((answer) => answer.question_id === selectedAnswer.question_id)
+      : -1;
     setChatRouteState({
       attemptId: historyId,
       questionId: selectedAnswer?.question_id,
       currentQuestionNumber: selectedAnswer?.question_no,
       questionRefs,
+      currentVisibleQuestionId: selectedAnswer?.question_id,
+      currentVisibleQuestionNumber: selectedAnswer?.question_no,
+      selectedQuestionId: selectedAnswer?.question_id,
+      selectedQuestionNumber: selectedAnswer?.question_no,
+      visibleQuestionRefs: questionRefs,
+      currentQuestionIndex: currentQuestionIndex >= 0 ? currentQuestionIndex : undefined,
     });
     return clearChatRouteState;
-  }, [historyId, selectedAnswer, questionRefs]);
+  }, [historyId, selectedAnswer, questionRefs, testDetail?.answers]);
 
   return (
     <MainLayout>

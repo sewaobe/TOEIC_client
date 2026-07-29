@@ -393,6 +393,12 @@ function stripQuestionResolverFields(routeContext: ChatRouteContext): ChatRouteC
     delete next.questionId;
     delete next.currentQuestionNumber;
     delete next.questionRefs;
+    delete next.currentVisibleQuestionId;
+    delete next.currentVisibleQuestionNumber;
+    delete next.selectedQuestionId;
+    delete next.selectedQuestionNumber;
+    delete next.visibleQuestionRefs;
+    delete next.currentQuestionIndex;
     return next;
 }
 

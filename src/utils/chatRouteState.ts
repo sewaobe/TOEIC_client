@@ -2,12 +2,19 @@ import type { ChatRouteQuestionRef } from "../types/Chat";
 
 export interface ChatRoutePageState {
     questionId?: string;
+    questionNumber?: number;
     attemptId?: string;
     roadmapId?: string;
     nodeId?: string;
     lessonId?: string;
     currentQuestionNumber?: number;
     questionRefs?: ChatRouteQuestionRef[];
+    currentVisibleQuestionId?: string;
+    currentVisibleQuestionNumber?: number;
+    selectedQuestionId?: string;
+    selectedQuestionNumber?: number;
+    visibleQuestionRefs?: ChatRouteQuestionRef[];
+    currentQuestionIndex?: number;
 }
 
 declare global {

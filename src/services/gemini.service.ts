@@ -9,11 +9,15 @@ const geminiService = {
     return res; // axiosClient đã trả response.data
   },
   async analyzeDictation(logs: any[], dictation: any) {
-    const res = await axiosClient.post("/gemini/dictation-analysis", {
-      logs,
-      dictation,
-    })
-    return res.data.json;
+    const res: any = await axiosClient.post(
+      "/gemini/dictation-analysis",
+      {
+        logs,
+        dictation,
+      },
+      { timeout: 30000 },
+    )
+    return res?.data?.json ?? res?.json ?? res?.data ?? res;
   },
   async analyzeShadowing(
     userAudioUrl: string,

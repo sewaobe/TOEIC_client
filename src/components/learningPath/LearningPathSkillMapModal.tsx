@@ -607,7 +607,12 @@ function PartsTab({ data }: { data: SkillMapPartsResponse }) {
     const parts = data.parts ?? [];
     const weakestPart = data.summary.weakest_parts?.[0];
     const improvingPart = data.summary.improving_parts?.[0];
-    const focusParts = data.summary.focus_part_types ?? [];
+    const focusPart = data.summary.focus_part_type;
+    const legacyFocusParts = data.summary.focus_part_types ?? [];
+    const focusParts =
+        typeof focusPart === "number" && Number.isFinite(focusPart)
+            ? [focusPart]
+            : legacyFocusParts;
 
     return (
         <Stack spacing={skillMapLayout.sectionGap}>

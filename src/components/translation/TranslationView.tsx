@@ -18,6 +18,17 @@ interface TranslateViewProps {
     onSwitchToLookup: () => void;
 }
 
+const formatTranslationNotes = (notes?: string): string[] => {
+    if (!notes?.trim()) return [];
+
+    return notes
+        .trim()
+        .replace(/\s+(?=\d+\.\s)/g, "\n")
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+};
+
 export default function TranslationView({ onBack, onSwitchToLookup }: TranslateViewProps) {
     const [sourceLang, setSourceLang] = useState("en");
     const [targetLang, setTargetLang] = useState("vi");
@@ -45,6 +56,8 @@ export default function TranslationView({ onBack, onSwitchToLookup }: TranslateV
     const handleEnter = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") handleTranslate();
     };
+
+    const formattedNotes = formatTranslationNotes(translationResult?.translationNotes);
 
     return (
         <motion.div
@@ -175,9 +188,21 @@ export default function TranslationView({ onBack, onSwitchToLookup }: TranslateV
                             <Typography variant="body1" sx={{ mb: 2, color: "#0f172a" }}>
                                 {translationResult.translatedText}
                             </Typography>
-                            {translationResult.translationNotes && (
-                                <Box className="p-2 bg-slate-50 border border-slate-200 rounded-md text-sm whitespace-pre-wrap text-slate-700">
-                                    {translationResult.translationNotes}
+                            {formattedNotes.length > 0 && (
+                                <Box className="p-2 bg-slate-50 border border-slate-200 rounded-md text-sm text-slate-700">
+                                    {formattedNotes.map((note, index) => (
+                                        <Typography
+                                            key={`${index}-${note.slice(0, 16)}`}
+                                            variant="body2"
+                                            sx={{
+                                                mb: index === formattedNotes.length - 1 ? 0 : 1,
+                                                lineHeight: 1.6,
+                                                whiteSpace: "pre-wrap",
+                                            }}
+                                        >
+                                            {note}
+                                        </Typography>
+                                    ))}
                                 </Box>
                             )}
                         </Box>

@@ -44,12 +44,28 @@ export function buildRouteContext({
         fromQuery(search, "testId");
 
     const questionId =
+        pageState.currentVisibleQuestionId ??
         pageState.questionId ??
+        pageState.selectedQuestionId ??
         params.questionId ??
         fromQuery(search, "questionId");
     const questionState = {
-        currentQuestionNumber: pageState.currentQuestionNumber,
+        questionNumber:
+            pageState.questionNumber ??
+            pageState.currentVisibleQuestionNumber ??
+            pageState.currentQuestionNumber ??
+            pageState.selectedQuestionNumber,
+        currentQuestionNumber:
+            pageState.currentVisibleQuestionNumber ??
+            pageState.currentQuestionNumber ??
+            pageState.selectedQuestionNumber,
         questionRefs: pageState.questionRefs,
+        currentVisibleQuestionId: pageState.currentVisibleQuestionId,
+        currentVisibleQuestionNumber: pageState.currentVisibleQuestionNumber,
+        selectedQuestionId: pageState.selectedQuestionId,
+        selectedQuestionNumber: pageState.selectedQuestionNumber,
+        visibleQuestionRefs: pageState.visibleQuestionRefs,
+        currentQuestionIndex: pageState.currentQuestionIndex,
     };
 
     if (pathname === "/test") {

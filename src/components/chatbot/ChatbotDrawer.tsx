@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import { Close, Add } from "@mui/icons-material";
 import ChipScrollerMini from "./components/ChipScrollerMini";
-import { ChatMessage, ChatSession, ChatType } from "../../types/Chat";
+import { ChatMessage, ChatRouteContext, ChatSession, ChatType } from "../../types/Chat";
 import { ChatContent } from "./components/ChatContent";
 import { chatService } from "../../services/chat.service";
 import { useChatSocket } from "../../hooks/useChatSocket";
@@ -359,14 +359,31 @@ export function ChatbotDrawer({
             testId: pendingQuickRequest.testId,
             attemptId: pendingQuickRequest.attemptId,
             questionId: pendingQuickRequest.questionId,
+            questionNumber: pendingQuickRequest.questionNumber,
             currentQuestionNumber: pendingQuickRequest.questionNumber,
+            currentVisibleQuestionId: pendingQuickRequest.questionId,
+            currentVisibleQuestionNumber: pendingQuickRequest.questionNumber,
+            selectedQuestionId: pendingQuickRequest.questionId,
+            selectedQuestionNumber: pendingQuickRequest.questionNumber,
             questionRefs: [
                 {
                     questionNumber: pendingQuickRequest.questionNumber ?? 0,
                     questionId: pendingQuickRequest.questionId,
                     textPreview: pendingQuickRequest.textPreview,
+                    attemptId: pendingQuickRequest.attemptId,
+                    testId: pendingQuickRequest.testId,
                 },
             ].filter((item) => item.questionNumber > 0),
+            visibleQuestionRefs: [
+                {
+                    questionNumber: pendingQuickRequest.questionNumber ?? 0,
+                    questionId: pendingQuickRequest.questionId,
+                    textPreview: pendingQuickRequest.textPreview,
+                    attemptId: pendingQuickRequest.attemptId,
+                    testId: pendingQuickRequest.testId,
+                },
+            ].filter((item) => item.questionNumber > 0),
+            currentQuestionIndex: pendingQuickRequest.questionNumber ? 0 : undefined,
         };
 
         sendingQuickRequestRef.current = pendingQuickRequest.requestId;
@@ -477,7 +494,11 @@ export function ChatbotDrawer({
     };
 
     /* ---------- GỬI TIN NHẮN ---------- */
-    const handleSendMessage = async (override?: { text?: string; clientContext?: Record<string, unknown> }) => {
+    const handleSendMessage = async (override?: {
+        text?: string;
+        clientContext?: Record<string, unknown>;
+        routeContext?: ChatRouteContext;
+    }) => {
         const messageText = override?.text ?? input;
         if (!messageText.trim() || !selectedSession?._id) return;
 
@@ -485,7 +506,7 @@ export function ChatbotDrawer({
         if (!override?.text) setInput("");
 
         try {
-            const routeContext = buildRouteContext({
+            const routeContext = override?.routeContext ?? buildRouteContext({
                 pathname: location.pathname,
                 search: location.search,
                 params,

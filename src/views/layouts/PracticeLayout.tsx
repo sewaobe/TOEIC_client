@@ -1,6 +1,14 @@
 import { Box, SxProps } from "@mui/material"
-import { ReactNode } from "react"
+import { ReactNode, useState } from "react"
+import { useSelector } from "react-redux"
+import { ChatbotDrawer } from "../../components/chatbot/ChatbotDrawer"
+import RightMenuDrawer from "../../components/common/RightMenu"
+import DictionaryDrawer from "../../components/dictionary/DictionaryDrawer"
+import { LearningProgressModal } from "../../components/modals/LearningProgressModal"
+import ReportIssueModal from "../../components/modals/ReportIssueModal"
 import PracticeHeader from "../../components/practices/HeaderPractice"
+import { RootState } from "../../stores/store"
+import StudyNotebookFlip3D from "../pages/NotebookPage"
 
 interface PracticeLayoutProps {
     children: ReactNode
@@ -11,6 +19,16 @@ export default function PracticeLayout({
     children,
     sx,
 }: PracticeLayoutProps) {
+    const isAuthenticated = useSelector(
+        (state: RootState) => state.user.isAuthenticated
+    )
+
+    const [showNotebook, setShowNotebook] = useState(false)
+    const [showDictionary, setShowDictionary] = useState(false)
+    const [showLearningProgress, setShowLearningProgress] = useState(false)
+    const [showChatbot, setShowChatbot] = useState(false)
+    const [showReportModal, setShowReportModal] = useState(false)
+
     return (
         <Box
             display="flex"
@@ -39,6 +57,37 @@ export default function PracticeLayout({
             >
                 {children}
             </Box>
+            {isAuthenticated && (
+                <>
+                    <RightMenuDrawer
+                        onShowNotebook={setShowNotebook}
+                        onShowProgress={setShowLearningProgress}
+                        onShowChatbot={setShowChatbot}
+                        onShowReport={setShowReportModal}
+                        onShowDictionary={setShowDictionary}
+                    />
+                    <StudyNotebookFlip3D
+                        isOpen={showNotebook}
+                        onClose={() => setShowNotebook(false)}
+                    />
+                    <LearningProgressModal
+                        isFirstVisitToday={showLearningProgress}
+                        setIsFirstVisitToday={setShowLearningProgress}
+                    />
+                    <ChatbotDrawer
+                        isOpen={showChatbot}
+                        onClose={() => setShowChatbot(false)}
+                    />
+                    <ReportIssueModal
+                        open={showReportModal}
+                        onClose={() => setShowReportModal(false)}
+                    />
+                    <DictionaryDrawer
+                        open={showDictionary}
+                        onClose={() => setShowDictionary(false)}
+                    />
+                </>
+            )}
         </Box>
     )
 }

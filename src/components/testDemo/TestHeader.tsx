@@ -90,6 +90,7 @@ const TestHeader: FC<TestHeaderProps> = ({
   });
   const [isMockDialogOpen, setIsMockDialogOpen] = useState(false);
   const [mockAccuracy, setMockAccuracy] = useState(60);
+  const [mockScenarioOverride, setMockScenarioOverride] = useState<"PLATEAU" | undefined>();
   const [customPartAccuracy, setCustomPartAccuracy] = useState(false);
   const [partAccuracies, setPartAccuracies] = useState<Record<number, number>>({});
   const navigate = useNavigate();
@@ -240,6 +241,9 @@ const TestHeader: FC<TestHeaderProps> = ({
                 assessment_type: assessmentType,
                 week_study_id: assessmentReturn.weekStudyId,
                 day_study_id: dayStudyId,
+                ...(assessmentType === "mini_test" && mockScenarioOverride
+                  ? { debug_scenario_override: mockScenarioOverride }
+                  : {}),
               }
             );
 
@@ -350,11 +354,16 @@ const TestHeader: FC<TestHeaderProps> = ({
     );
     setPartAccuracies(nextPartAccuracies);
     setCustomPartAccuracy(false);
+    setMockScenarioOverride(undefined);
     setIsMockDialogOpen(true);
   };
 
-  const applyMockPreset = (accuracy: number) => {
+  const applyMockPreset = (
+    accuracy: number,
+    scenarioOverride?: "PLATEAU",
+  ) => {
     setMockAccuracy(accuracy);
+    setMockScenarioOverride(scenarioOverride);
     setPartAccuracies(
       Object.fromEntries(
         Array.from(getQuestionCountsByPart().keys()).map((part) => [part, accuracy])
@@ -458,14 +467,18 @@ const TestHeader: FC<TestHeaderProps> = ({
   };
 
   const isMockFullTest = !fromLesson || assessmentTypeParam === "full_test";
-  const mockPresets = isMockFullTest
+  const mockPresets: Array<{
+    label: string;
+    accuracy: number;
+    scenarioOverride?: "PLATEAU";
+  }> = isMockFullTest
     ? [
       { label: "Dưới mục tiêu", accuracy: 40 },
       { label: "Gần mục tiêu", accuracy: 60 },
       { label: "Kết quả cao", accuracy: 80 },
     ]
     : [
-      { label: "Plateau", accuracy: 30 },
+      { label: "Plateau", accuracy: 30, scenarioOverride: "PLATEAU" as const },
       { label: "Tiến bộ", accuracy: 85 },
       { label: "Kết quả cao", accuracy: 100 },
     ];
@@ -604,7 +617,7 @@ const TestHeader: FC<TestHeaderProps> = ({
               <Button
                 key={preset.label}
                 variant={mockAccuracy === preset.accuracy ? "contained" : "outlined"}
-                onClick={() => applyMockPreset(preset.accuracy)}
+                onClick={() => applyMockPreset(preset.accuracy, preset.scenarioOverride)}
               >
                 {preset.label} ({preset.accuracy}%)
               </Button>
@@ -616,6 +629,7 @@ const TestHeader: FC<TestHeaderProps> = ({
             onChange={(_, value) => {
               const accuracy = value as number;
               setMockAccuracy(accuracy);
+              setMockScenarioOverride(undefined);
               if (!customPartAccuracy) applyMockPreset(accuracy);
             }}
             valueLabelDisplay="auto"
@@ -627,7 +641,10 @@ const TestHeader: FC<TestHeaderProps> = ({
             control={
               <Switch
                 checked={customPartAccuracy}
-                onChange={(event) => setCustomPartAccuracy(event.target.checked)}
+                onChange={(event) => {
+                  setCustomPartAccuracy(event.target.checked);
+                  setMockScenarioOverride(undefined);
+                }}
               />
             }
             label="Tùy chỉnh tỷ lệ đúng theo từng Part"

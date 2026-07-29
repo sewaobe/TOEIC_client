@@ -1,5 +1,6 @@
 import type { DictationAttemptLog } from "../types/Dictation";
 import type {
+  DictationAIFeedbackResponse,
   DictationProgress,
   DictationProgressDifficulty,
   DictationProgressPatch,
@@ -40,6 +41,13 @@ export const dictationProgressService = {
   ): Promise<{ progress: DictationProgress; attempts: DictationAttemptLog[] }> => {
     const res = await axiosClient.post(`${BASE_URL}/${progressId}/complete`, patch);
     return unwrap<{ progress: DictationProgress; attempts: DictationAttemptLog[] }>(res);
+  },
+
+  getAIFeedback: async (progressId: string): Promise<DictationAIFeedbackResponse> => {
+    const res = await axiosClient.post(`${BASE_URL}/${progressId}/ai-feedback`, undefined, {
+      timeout: 20000,
+    });
+    return unwrap<DictationAIFeedbackResponse>(res);
   },
 
   cancel: async (progressId: string): Promise<DictationProgress> => {

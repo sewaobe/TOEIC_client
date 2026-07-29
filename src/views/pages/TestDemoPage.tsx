@@ -92,10 +92,21 @@ const TestDemoPage: FC = () => {
   useEffect(() => {
     const currentQuestions = groups[currentGroupIndex]?.questions ?? [];
     const currentQuestion = currentQuestions.length === 1 ? currentQuestions[0] : undefined;
+    const visibleQuestionRefs = currentQuestions.map((question: ExamQuestion) => ({
+      questionNumber: question.questionNumber,
+      questionId: question._id,
+      textPreview: compactQuestionText(question.textQuestion),
+    }));
     setChatRouteState({
       questionId: currentQuestion?._id,
       currentQuestionNumber: currentQuestion?.questionNumber,
       questionRefs,
+      currentVisibleQuestionId: currentQuestion?._id,
+      currentVisibleQuestionNumber: currentQuestion?.questionNumber,
+      selectedQuestionId: currentQuestion?._id,
+      selectedQuestionNumber: currentQuestion?.questionNumber,
+      visibleQuestionRefs,
+      currentQuestionIndex: currentQuestion ? 0 : undefined,
     });
     return clearChatRouteState;
   }, [groups, currentGroupIndex, questionRefs]);
